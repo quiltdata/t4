@@ -66,9 +66,6 @@ If the `srchash` and `desthash` are snapshots of different objects which do not 
 
 Either of `srchash` or `desthash` may have the value `"latest"`. In this case, the `srchash` or `desthash` wil be compared against the *current* T4 object. This will include changes which have not yet been snapshotted.
 
-#### `helium.diff(srchash, 'latest')`
-Lists changes to a T4 object between the snapshot at `srchash` and the object's current state. This includes changes which have not yet been snapshotted.
-
 ### Configuration
 
 #### `helium.config()`
