@@ -1,0 +1,36 @@
+*.egg-info
+*.py[cod]
+*.swp
+build
+.cache
+dist
+node_modules
+tmp_*
+
+metastore_db
+derby.log
+
+# Visual Studio Code
+.vscode
+.imdone
+
+# Test coverage
+.coverage
+cov_html/*
+
+# Tox testing cache
+**/.tox
+
+# Pytest cache
+compiler/.pytest_cache/*
+
+### emacs
+*~
+[#]*
+
+# Pycharm
+.idea
+
+registry/dpmd
+
+**/.ipynb_checkpoints

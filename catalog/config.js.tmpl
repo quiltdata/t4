@@ -1,0 +1,18 @@
+// eslint-disable-next-line no-underscore-dangle
+window.__CONFIG = {
+  alwaysRequiresAuth: Boolean('$ALWAYS_REQUIRES_AUTH'),
+  api: '$REGISTRY_URL',
+  sentryDSN: '$SENTRY_DSN',
+  mixpanelToken: '$MIXPANEL_TOKEN',
+  stripeKey: '$STRIPE_KEY',
+  // eslint-disable-next-line no-constant-condition
+  team: '$TEAM_ID' ? { id: '$TEAM_ID', name: '$TEAM_NAME' } : undefined,
+  aws: {
+    region: '$AWS_REGION',
+    s3Bucket: '$S3_BUCKET',
+    apiGatewayUrl: '$API_URL',
+    // eslint-disable-next-line comma-dangle
+    elasticSearchUrl: '$ES_URL'
+  // eslint-disable-next-line comma-dangle
+  }
+};

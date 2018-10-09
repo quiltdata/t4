@@ -1,0 +1,18 @@
+# Don't check auto-generated stuff into git
+coverage
+build
+quilt_packages
+stats.json
+static/config.js
+
+# Cruft
+.DS_Store
+npm-debug.log
+.idea
+
+# Quilt deployment
+.firebaserc
+firebase.json
+
+# Local env overrides
+.env

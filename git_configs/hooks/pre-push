@@ -1,0 +1,3 @@
+#!/bin/bash
+# No-op for now until unit testing in place
+exit 0

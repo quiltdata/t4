@@ -1,0 +1,37 @@
+#!/bin/bash
+
+PYLINT_ARGS='--enable=W,E --disable=C'
+EXIT_ON_WARNING_ERROR=1
+# Use 0 if need to avoid pylint failure and proceed to 'git commit'
+
+#
+# Checking.. if pylint install 
+#
+python -c "import pylint"
+if [[ $? -ne 0 ]]
+then
+  	echo "$0: Pylint not installed!"
+	echo "$0: make install"
+	exit 1
+fi
+
+#
+# Checking all directories inside repo 
+#
+git diff --staged --name-only HEAD | while read -r i; do 
+    echo "$0: Checking file $i" 
+    if [ ${i: -3} == ".py" ]
+    then
+        pylint $PYLINT_ARGS "$i"
+        if [[ $? -ne 0 ]]
+        then
+            echo "$0: Pylint failed in $i!"
+            if [[ $EXIT_ON_WARNING_ERROR -eq 1 ]]
+            then
+                echo "$0: Stop iterating.."
+                exit 1
+            fi
+        fi
+    fi
+done
+# otherwise hook exit with 0
