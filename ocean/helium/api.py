@@ -17,8 +17,8 @@ from .data_transfer import (download_bytes, download_file, upload_bytes, upload_
 from .snapshots import (create_snapshot, download_bytes_from_snapshot,
                         download_file_from_snapshot, read_snapshot_by_hash,
                         get_snapshots)
-from .util import (HeliumException, CONFIG_PATH, CONFIG_TEMPLATE, read_yaml, split_path,
-                   validate_url, write_yaml, yaml_has_comments)
+from .util import (HeliumException, AWS_SEPARATOR, CONFIG_PATH, CONFIG_TEMPLATE, read_yaml,
+                   split_path, validate_url, write_yaml, yaml_has_comments)
 
 
 class TargetType(Enum):
@@ -120,6 +120,9 @@ def _deserialize_obj(data, target):
 
 
 def put(obj, dest, meta=None):
+    if dest.endswith(AWS_SEPARATOR):
+        raise ValueError("Invalid path: %r; ends with a %r"
+                         % (dest, AWS_SEPARATOR))
     data, target = _serialize_obj(obj)
     all_meta = dict(
         target=target.value,

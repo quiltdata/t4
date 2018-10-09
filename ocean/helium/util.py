@@ -20,6 +20,8 @@ BASE_DIR = user_data_dir(APP_NAME, APP_AUTHOR)
 BASE_PATH = pathlib.Path(BASE_DIR)
 CONFIG_PATH = BASE_PATH / 'config.yml'
 
+AWS_SEPARATOR = '/'
+
 ## CONFIG_TEMPLATE
 # Must contain every permitted config key, as well as their default values (which can be 'null'/None).
 # Comments are retained and added to local config, unless overridden by autoconfig via `api.config(<url>)`
@@ -56,7 +58,7 @@ def split_path(path):
     """
     Split bucket name and intra-bucket path. Returns: (bucket, path)
     """
-    result = path.split('/', 1)
+    result = path.split(AWS_SEPARATOR, 1)
     if len(result) != 2:
         raise ValueError("Invalid path: %r; expected BUCKET/PATH/..." % path)
     return result
