@@ -262,4 +262,5 @@ Full-text search will include metadata matches in the results. To search metadat
 
 * Only objects placed into an S3 bucket via the T4 API are searchable. Existing objects in the S3 bucket, and objects placed in the bucket via the S3 API, are not.
 * Due to limitations with ElasticSearch indexing, we do not recommend including indexing files that are over 10 MB in size.
+* The tilde (`~`), forward slash (`/`), back slash, and angle bracket (`{`, `}`, `(`, `)`, `[`, `]`) characters will cause search to fail. If your search string includes these characters, be sure to quote your input. E.g. search for `"~aleksey"`, not `~aleksey`.
 * The tilde character (`~`) is known to cause issues when used with `get_file`. For now avoid using relative paths (like `~/Desktop`). Use absolute paths (like `/Users/alex/Desktop`) instead.
