@@ -5,6 +5,7 @@ import pick from 'lodash/pick';
 import React, { createElement, Fragment } from 'react';
 import {
   compose,
+  hoistStatics,
   mapProps,
   setDisplayName,
   wrapDisplayName,
@@ -28,7 +29,8 @@ import styled from 'styled-components';
  * const res1 = factory({ children: 'sup', cls: 'hey' });
  * const res2 = <Component cls="hey">sup</Component>;
  */
-const createFactory = (Component) => (props) => createElement(Component, props);
+const createFactory = hoistStatics((Component) =>
+  (props) => createElement(Component, props));
 
 /**
  * React Higher-Order Component: given a react component as an argument,
