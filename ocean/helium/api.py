@@ -192,8 +192,8 @@ def snapshot(path, message):
     return create_snapshot(path, message)
 
 
-def list_snapshots(path):
-    snapshots_list = get_snapshots(path)
+def list_snapshots(bucket, contains=None):
+    snapshots_list = get_snapshots(bucket, contains)
     return DisplayList(snapshots_list, columns=['hash', 'path', 'timestamp', 'message'], index='path')
 
 
