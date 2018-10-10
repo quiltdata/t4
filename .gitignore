@@ -34,3 +34,6 @@ compiler/.pytest_cache/*
 registry/dpmd
 
 **/.ipynb_checkpoints
+
+# xonsh
+.autoxsh

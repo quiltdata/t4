@@ -33,6 +33,21 @@ class TargetType(Enum):
 
 
 def put_file(src, dest, meta=None):
+    """Writes local file to T4.
+
+    The file ``src`` will be uploaded and stored in T4 at ``dest``.
+
+    Note:
+        Does not work with all objects -- object must be serializable.
+
+    You may pass a dict to ``meta`` to store it with ``obj`` at ``dest``.
+    See User Docs for more info on object Serialization and Metadata.
+
+    Parameters:
+        obj: a serializable object
+        dest (str): path in T4
+        meta (dict): Optional. metadata dict to store with ``obj`` at ``dest``
+    """
     all_meta = dict(
         user_meta=meta
     )
@@ -40,9 +55,23 @@ def put_file(src, dest, meta=None):
 
 
 def get_file(src, dest, snapshot=None, version=None):
+    """Retrieve a file and write it to a local path
+
+    Retrieves ``src`` object from T4, and writes that to to the ``dest``
+    path on your local disk.
+
+    An optional ``snapshot`` or ``version``
+    may be specified, but not both.
+
+    Parameters:
+        src (str): a T4 path to retrieve
+        dest (str): a local path to write to
+        snapshot (str): (optional) download from a specific snapshot
+        version (str): (optional) download a specific version
+    """
     if version is not None and snapshot is not None:
         raise HeliumException("Specify only one of snapshot or version.")
-    
+
     if snapshot is not None:
         download_file_from_snapshot(src, dest, snapshot)
     else:
@@ -120,6 +149,20 @@ def _deserialize_obj(data, target):
 
 
 def put(obj, dest, meta=None):
+    """Write an in-memory object to the specified T4 ``dest``
+
+    Note:
+        Does not work with all objects -- object must be serializable.
+
+    You may pass a dict to ``meta`` to store it with ``obj`` at ``dest``.
+
+    See User Docs for more info on object Serialization and Metadata.
+
+    Parameters:
+        obj: a serializable object
+        dest (str): path in T4
+        meta (dict): Optional. metadata dict to store with ``obj`` at ``dest``
+    """
     if dest.endswith(AWS_SEPARATOR):
         raise ValueError("Invalid path: %r; ends with a %r"
                          % (dest, AWS_SEPARATOR))
@@ -133,13 +176,24 @@ def put(obj, dest, meta=None):
 
 
 def get(src, snapshot=None, version=None):
+    """Retrieves src object from T4 and loads it into memory.
+
+    An optional ``snapshot`` or ``version`` may be specified, but not both.
+
+    Parameters:
+        src (str): A path specifying the object to retrieve
+        snapshot (str): Optional. A specific snapshot to use (mutually exclusive with ``version``)
+        version (str): Optional. A specific version to use (mutually exclusive with ``snapshot``)
+    Returns:
+        tuple: ``(data, metadata)``.  Does not work on all objects, see **serialization**
+    """
     if snapshot is not None and version is not None:
         raise HeliumException("Specify only one of snapshot or version.")
     if snapshot is not None:
         data, meta = download_bytes_from_snapshot(src, snapshot)
     else:
         data, meta = download_bytes(src, version)
-    
+
     target_str = meta.get('target')
     if target_str is None:
         raise HeliumException("No serialization metadata")
@@ -152,10 +206,36 @@ def get(src, snapshot=None, version=None):
 
 
 def delete(path):
+    """Delete and object from T4
+
+    Does not delete local files.
+
+    Parameters:
+        path (str): Path of object to delete
+    """
     delete_object(path)
 
 
+#TODO: Docstring for api.ls
 def ls(path, recursive=False):
+    """List data from the specified path
+
+    Parameters:
+        path (str): Path (including bucket name) to list
+        recursive (bool): show subdirectories and their contents as well
+    Returns:
+        ``list``: Return value structure has not yet been permanently decided
+
+        Currently, it's a ``tuple`` of ``list`` objects, containing the
+        following:
+
+        result[0]
+            directory info
+        result[1]
+            file/object info
+        result[2]
+            delete markers
+    """
     if not path.endswith('/'):
         path += '/'
 
@@ -189,15 +269,60 @@ class DisplayList(list):
 
 
 def snapshot(path, message):
+    """Creates a snapshot of a T4 object
+
+    Parameters:
+        path (str): path to snapshot
+        message (str): message to be associated with this snapshot
+    """
     return create_snapshot(path, message)
 
 
+#TODO: docstring: `contains` parameter
+#TODO: verify accuracy of docstring
 def list_snapshots(bucket, contains=None):
+    """Lists all snapshots of the T4 object in the bucket
+
+    Parameters:
+        path (str): path to look up
+
+    Returns:
+        ``list`` of ``dict``: A list of dicts with snapshot info.
+
+            Each dict of snapshot info has key/value pairs for ``hash``,
+            ``path``, ``message``, and ``timestamp``.
+    """
     snapshots_list = get_snapshots(bucket, contains)
     return DisplayList(snapshots_list, columns=['hash', 'path', 'timestamp', 'message'], index='path')
 
 
 def diff(bucket, src, dst):
+    """List differences between two T4 objects
+
+    Compares the objects specified by the hashes `src` and `dst`.
+
+    If the ``src`` hash and ``dst`` hash are snapshots of the same object,
+    this is effectively a piece of a particular object's history.
+
+    If the ``src`` hash and ``dst`` hash are snapshots of different objects
+    which overlap, this is effectively the difference between two snapshots.
+
+    If the ``src`` hash and ``dst`` hash are snapshots of different objects
+    which do not overlap, this command doesn't make any sense, and you will
+    get an error.
+
+    Either of ``src`` or ``dst`` may have the value "latest". In this case,
+    the ``src`` or ``dst`` will be compared against the current T4 object.
+    This will include changes which have not yet been snapshotted.
+
+    Parameters:
+        bucket (str): Bucket containing the ``src`` and ``dst`` hashes.
+        src: A T4 object hash contained in the bucket, or ``'latest'``
+        dst: A T4 object hash contained in the bucket, or ``'latest'``
+
+    Returns:
+        ``list``: List of differences.
+    """
     src_path = dst_path = None
     if src != 'latest':
         src_snapshot = read_snapshot_by_hash(bucket, src)
@@ -215,7 +340,7 @@ def diff(bucket, src, dst):
     else:
         src_list = list_objects(f"{bucket}/{dst_path}")
         src_objects = {obj['Key']: {'ETag': obj['ETag'], 'VersionId': None} for obj in src_list}
-        
+
     if dst_path:
         dst_objects = dst_snapshot['contents']
     else:
@@ -274,19 +399,34 @@ def _create_es():
     return es
 
 def search(query):
-    """
-    Searches your bucket. query can contain plaintext, and can also contain clauses
-    like $key:"$value" that search for exact matches on specific keys.
+    """Search your bucket
 
-    Returns either the request object (in case of an error) or a list of objects with the following keys:
-        key: key of the object
-        version_id: version_id of object version
-        operation: Create or Delete
-        meta: metadata attached to object
-        size: size of object in bytes
-        text: indexed text of object
-        source: source document for object (what is actually stored in ElasticSeach)
-        time: timestamp for operation
+    ``query`` can contain plaintext, and can also contain clauses like
+    `$key:"$value"` that search for exact matches on specific keys.
+
+    Parameters:
+        query (str): a query string
+
+    Returns:
+        ``list`` of ``dict``:  Either the request object (in case of an error)
+        or a list of objects with the following keys:
+
+            key
+                key of the object
+            version_id
+                version_id of object version
+            operation
+                Create or Delete
+            meta
+                metadata attached to object
+            size
+                size of object in bytes
+            text
+                indexed text of object
+            source
+                source document for object (what is actually stored in ElasticSeach)
+            time
+                timestamp for operation
     """
     es = _create_es()
 
@@ -374,20 +514,26 @@ def config(*autoconfig_url, **config_values):
     """Set or read the Helium configuration
 
     To retrieve the current config, call directly, without arguments:
+
         >>> import helium as he
         >>> he.config()
 
     To trigger autoconfiguration, call with just the navigator URL:
+
         >>> he.config('https://example.com')
 
     To set config values, call with one or more key=value pairs:
+
         >>> he.config(navigator_url='http://example.com',
         ...           elastic_search_url='http://example.com/queries')
-    When setting config values, unrecognized values are rejected.  Acceptable
-    config values can be found in `helium.util.CONFIG_TEMPLATE`
 
-    :param autoconfig_url: URL indicating a location to configure from
-    :param **config_values: `key=value` pairs to set in the config
+    Use either ``autoconfig_url`` or ``config_values``, but not both.
+
+    Parameters:
+        autoconfig_url (str): URL indicating a location to configure from
+
+    Keyword Args:
+        **config_values: `key=value` pairs to set in the config
     """
     if autoconfig_url and config_values:
         raise HeliumException("Expected either an auto-config URL or key=value pairs, but got both.")
