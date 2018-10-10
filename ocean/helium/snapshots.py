@@ -79,8 +79,7 @@ def read_snapshot_by_hash(bucket, snapshothash):
     return snapshot
 
 
-def get_snapshots(path):
-    bucket, prefix = split_path(path)
+def get_snapshots(bucket, prefix):
     snapshot_files = list_objects(f'{bucket}/{SNAPSHOT_PREFIX}')
 
     snapshots_list = []
@@ -88,7 +87,7 @@ def get_snapshots(path):
         snapshot_file_key = snapshot_rec['Key']
         tophash, snapshotpath = _parse_snapshot_path(snapshot_file_key)
         
-        if prefix.startswith(snapshotpath):
+        if prefix is None or prefix.startswith(snapshotpath):
             snapshotbytes, _ = download_bytes(f'{bucket}/{snapshot_file_key}')
             snapshot = json.loads(snapshotbytes.decode('utf-8'))
             message = snapshot.get('message')
