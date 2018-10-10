@@ -1,10 +1,12 @@
 import { Card, CardText } from 'material-ui/Card';
+import * as colors from 'material-ui/styles/colors';
 import { ListItem } from 'material-ui/List';
 import PT from 'prop-types';
 import * as React from 'react';
 import { Link } from 'react-router-dom';
 import {
   setPropTypes,
+  withProps,
 } from 'recompose';
 import styled from 'styled-components';
 
@@ -25,10 +27,10 @@ const ItemInfo = styled.div`
   display: flex;
 `;
 
-const ItemRow = composeComponent('Browser.ItemRow',
+const Item = composeComponent('Browser.Listing.Item',
   setPropTypes({
-    icon: PT.string.isRequired,
-    text: PT.string.isRequired,
+    icon: PT.string,
+    text: PT.string,
     link: PT.string,
     children: PT.node,
   }),
@@ -44,20 +46,20 @@ const ItemRow = composeComponent('Browser.ItemRow',
       {...props}
     >
       <ItemName>
-        <MIcon style={{ fontSize: 16, marginRight: 4 }}>{icon}</MIcon>
+        {!!icon && <MIcon style={{ fontSize: 16, marginRight: 4 }}>{icon}</MIcon>}
         {text}
       </ItemName>
       <ItemInfo>{children}</ItemInfo>
     </ListItem>
   ));
 
-const ItemDir = composeComponent('Browser.ItemDir',
+const ItemDir = composeComponent('Browser.Listing.ItemDir',
   setPropTypes({
     path: PT.string.isRequired,
     name: PT.string.isRequired,
   }),
   ({ path, name }) => (
-    <ItemRow
+    <Item
       icon="folder_open"
       text={name}
       link={`/browse/${path}`}
@@ -74,7 +76,7 @@ const FileInfoModified = styled.div`
   width: 12em;
 `;
 
-const ItemFile = composeComponent('Browser.ItemFile',
+const ItemFile = composeComponent('Browser.Listing.ItemFile',
   setPropTypes({
     name: PT.string.isRequired,
     modified: PT.instanceOf(Date).isRequired,
@@ -82,14 +84,50 @@ const ItemFile = composeComponent('Browser.ItemFile',
     onClick: PT.func.isRequired,
   }),
   ({ name, size, modified, onClick }) => (
-    <ItemRow
+    <Item
       icon="insert_drive_file"
       text={name}
       onClick={onClick}
     >
       <FileInfoSize>{readableBytes(size)}</FileInfoSize>
       <FileInfoModified>{modified.toLocaleString()}</FileInfoModified>
-    </ItemRow>
+    </Item>
+  ));
+
+const StatsContainer = styled.div`
+  background: ${colors.lightBlue50};
+  margin-left: -12px;
+  margin-right: -12px;
+  margin-top: -12px;
+  padding-bottom: 8px;
+  padding-left: 20px;
+  padding-right: 20px;
+  padding-top: 8px;
+`;
+
+const Stats = composeComponent('Browser.Listing.Stats',
+  setPropTypes({
+    files: PT.array.isRequired,
+  }),
+  withProps(({ files }) =>
+    files.reduce((sum, file) => ({
+      files: sum.files + 1,
+      size: sum.size + file.size,
+      modified: file.modified > sum.modified ? file.modified : sum.modified,
+    }), {
+      files: 0,
+      size: 0,
+      modified: 0,
+    })),
+  ({ files, size, modified }) => (
+    <StatsContainer>
+      {!!files && (
+        <span>{files} files {readableBytes(size)}</span>
+      )}
+      {!!modified && (
+        <span>Last modified {modified.toLocaleString()}</span>
+      )}
+    </StatsContainer>
   ));
 
 export default composeComponent('Browser.Listing',
@@ -101,7 +139,8 @@ export default composeComponent('Browser.Listing',
   }),
   ({ path, directories, files, onFileClick }) => (
     <Card>
-      <CardText style={{ padding: 12 }}>
+      <CardText style={{ padding: 0 }}>
+        <Stats files={files} />
         {path !== '' && <ItemDir path={up(path)} name=".." />}
         {directories.map((d) => (
           <ItemDir

@@ -86,7 +86,6 @@ const BreadCrumbs = composeComponent('Browser.BreadCrumbs',
     </h3>
   ));
 
-
 export default composeComponent('Browser',
   withProps({
     bucket: config.aws.s3Bucket,
