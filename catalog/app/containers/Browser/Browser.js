@@ -1,8 +1,6 @@
-import { basename, extname } from 'path';
+import { basename } from 'path';
 
 import invoke from 'lodash/fp/invoke';
-import { Card, CardTitle, CardText } from 'material-ui/Card';
-import { ListItem } from 'material-ui/List';
 import RaisedButton from 'material-ui/RaisedButton';
 import PT from 'prop-types';
 import * as React from 'react';
@@ -16,9 +14,7 @@ import {
   withStateHandlers,
   setPropTypes,
 } from 'recompose';
-import styled from 'styled-components';
 
-import Markdown from 'components/Markdown';
 import MIcon from 'components/MIcon';
 import Spinner from 'components/Spinner';
 import config from 'constants/config';
@@ -26,242 +22,42 @@ import { S3 } from 'utils/AWS';
 import { composeComponent } from 'utils/reactTools';
 import { injectReducer } from 'utils/ReducerInjector';
 import {
-  ensureNoSlash,
   up,
   splitPath,
   withoutPrefix,
 } from 'utils/s3paths';
 import { injectSaga } from 'utils/SagaInjector';
-import { readableBytes } from 'utils/string';
 
+import ContentWindow from './ContentWindow';
+import Listing from './Listing';
+import Summary, { SummaryItem } from './Summary';
 import { get } from './actions';
-import { REDUX_KEY } from './constants';
+import { REDUX_KEY, EXPIRATION } from './constants';
 import saga from './saga';
 import selector from './selectors';
 import reducer from './reducer';
 
 
-const IMAGE_EXTS = new Set([
-  '.jpg', '.jpeg', '.png', '.gif',
-]);
-
-const ItemName = styled.div`
-  display: flex;
-`;
-
-const ItemInfo = styled.div`
-  display: flex;
-`;
-
-const ItemRow = composeComponent('Browser.ItemRow',
+const Preview = composeComponent('Browser.Preview',
   setPropTypes({
-    icon: PT.string.isRequired,
-    text: PT.string.isRequired,
-    link: PT.string,
-    children: PT.node,
+    bucket: PT.string.isRequired,
+    path: PT.string,
+    expiration: PT.number,
+    hide: PT.func.isRequired,
   }),
-  ({ icon, text, link, children, ...props }) => (
-    <ListItem
-      containerElement={link ? <Link to={link} /> : undefined}
-      innerDivStyle={{
-        display: 'flex',
-        fontSize: 14,
-        justifyContent: 'space-between',
-        padding: 8,
-      }}
-      {...props}
+  ({ bucket, path, expiration, hide }) => (
+    <Modal
+      isOpen={!!path}
+      onRequestClose={hide}
     >
-      <ItemName>
-        <MIcon style={{ fontSize: 16, marginRight: 4 }}>{icon}</MIcon>
-        {text}
-      </ItemName>
-      <ItemInfo>{children}</ItemInfo>
-    </ListItem>
-  ));
-
-const ItemDir = composeComponent('Browser.ItemDir',
-  setPropTypes({
-    path: PT.string.isRequired,
-    name: PT.string.isRequired,
-  }),
-  ({ path, name }) => (
-    <ItemRow
-      icon="folder_open"
-      text={name}
-      link={`/browse/${path}`}
-    />
-  ));
-
-const FileInfoSize = styled.div`
-  text-align: right;
-  width: 6em;
-`;
-
-const FileInfoModified = styled.div`
-  text-align: right;
-  width: 12em;
-`;
-
-const FileShape = {
-  path: PT.string.isRequired,
-  modified: PT.instanceOf(Date).isRequired,
-  size: PT.number.isRequired,
-};
-
-const ItemFile = composeComponent('Browser.ItemFile',
-  setPropTypes({
-    name: PT.string.isRequired,
-    modified: PT.instanceOf(Date).isRequired,
-    size: PT.number.isRequired,
-    onClick: PT.func.isRequired,
-  }),
-  ({ name, size, modified, onClick }) => (
-    <ItemRow
-      icon="insert_drive_file"
-      text={name}
-      onClick={onClick}
-    >
-      <FileInfoSize>{readableBytes(size)}</FileInfoSize>
-      <FileInfoModified>{modified.toLocaleString()}</FileInfoModified>
-    </ItemRow>
-  ));
-
-const ImagePreview = styled.img`
-  display: block;
-  margin-left: auto;
-  margin-right: auto;
-  max-height: 100%;
-  max-width: 100%;
-  min-width: 20%;
-`;
-
-const Placeholder = () => (
-  <Spinner
-    style={{
-      fontSize: '4em',
-      position: 'absolute',
-      left: 20,
-    }}
-  />
-);
-
-const PreviewDir = composeComponent('Browser.PreviewDir',
-  setPropTypes({
-    path: PT.string.isRequired,
-    directories: PT.arrayOf(PT.string.isRequired).isRequired,
-    files: PT.arrayOf(PT.shape(FileShape).isRequired).isRequired,
-    readme: PT.shape({
-      file: PT.shape(FileShape).isRequired,
-      contents: PT.string.isRequired,
-    }),
-    s3: PT.object.isRequired,
-    s3Bucket: PT.string.isRequired,
-  }),
-  withStateHandlers({
-    preview: null,
-  }, {
-    showPreview: () => (type, data) => ({ preview: { type, data } }),
-    hidePreview: () => () => ({ preview: null }),
-  }),
-  withHandlers({
-    handlePreview: ({
-      s3,
-      s3Bucket,
-      showPreview,
-    }) => async (path) => {
-      const url = s3.getSignedUrl('getObject', {
-        Bucket: s3Bucket,
-        Key: path,
-      });
-      const ext = extname(path).toLowerCase();
-      if (IMAGE_EXTS.has(ext)) {
-        showPreview('image', url);
-      } else if (ext === '.html') {
-        showPreview('iframe', url);
-      } else if (ext === '.ipynb') {
-        showPreview('iframe',
-          `${config.aws.apiGatewayUrl}/preview?url=${encodeURIComponent(url)}`);
-      } else if (ext === '.md') {
-        showPreview('placeholder');
-        // TODO: Move this to saga.js?
-        const data = await s3.getObject({
-          Bucket: s3Bucket,
-          Key: path,
-        }).promise();
-        const body = data.Body.toString('utf-8');
-        showPreview('md', body);
-      } else {
-        window.open(url, '_blank');
-      }
-    },
-  }),
-  ({
-    path,
-    directories,
-    files,
-    readme,
-    hidePreview,
-    handlePreview,
-    preview,
-  }) => (
-    <React.Fragment>
-      <Modal
-        isOpen={!!preview}
-        onRequestClose={() => hidePreview()}
-      >
-        {preview && invoke(preview.type, {
-          md: () => <Markdown data={preview.data} />,
-          placeholder: () => <Placeholder />,
-          iframe: () => (
-            <React.Fragment>
-              <iframe
-                sandbox=""
-                title="Preview"
-                src={preview.data}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  border: 'none',
-                  position: 'relative',
-                  zIndex: 1,
-                }}
-              />
-              <Placeholder />
-            </React.Fragment>
-          ),
-          image: () => <ImagePreview src={preview.data} />,
-        })}
-      </Modal>
-      <Card>
-        <CardText style={{ padding: 12 }}>
-          {path !== '' && <ItemDir path={up(path)} name=".." />}
-          {directories.map((d) => (
-            <ItemDir
-              key={d}
-              path={d}
-              name={ensureNoSlash(withoutPrefix(path, d))}
-            />
-          ))}
-          {files.map(({ path: fPath, modified, size }) => (
-            <ItemFile
-              key={fPath}
-              name={withoutPrefix(path, fPath)}
-              size={size}
-              modified={modified}
-              onClick={() => handlePreview(fPath)}
-            />
-          ))}
-        </CardText>
-      </Card>
-      {readme && (
-        <Card style={{ marginTop: 16 }}>
-          <CardTitle title={withoutPrefix(path, readme.file.path)} />
-          <CardText>
-            <Markdown data={readme.contents} />
-          </CardText>
-        </Card>
+      {path && (
+        <ContentWindow
+          bucket={bucket}
+          path={path}
+          expiration={expiration}
+        />
       )}
-    </React.Fragment>
+    </Modal>
   ));
 
 const getBreadCrumbs = (prefix) =>
@@ -292,11 +88,20 @@ const BreadCrumbs = composeComponent('Browser.BreadCrumbs',
 
 
 export default composeComponent('Browser',
-  withProps({ s3Bucket: config.aws.s3Bucket }),
+  withProps({
+    bucket: config.aws.s3Bucket,
+    expiration: EXPIRATION,
+  }),
   S3.inject(),
   injectSaga(REDUX_KEY, saga),
   injectReducer(REDUX_KEY, reducer),
   connect(selector),
+  withStateHandlers({
+    preview: null,
+  }, {
+    showPreview: () => (path) => ({ preview: path }),
+    hidePreview: () => () => ({ preview: null }),
+  }),
   withProps(({ match: { params: { path } } }) => ({
     path,
     ...splitPath(path),
@@ -304,6 +109,23 @@ export default composeComponent('Browser',
   withHandlers({
     getData: ({ dispatch, path }) => () => {
       dispatch(get(path));
+    },
+    handleClick: ({
+      s3,
+      bucket,
+      showPreview,
+      expiration,
+    }) => async (path) => {
+      if (ContentWindow.supports(path)) {
+        showPreview(path);
+      } else {
+        const url = s3.getSignedUrl('getObject', {
+          Bucket: bucket,
+          Key: path,
+          Expires: expiration,
+        });
+        window.open(url, '_blank');
+      }
     },
   }),
   lifecycle({
@@ -321,11 +143,14 @@ export default composeComponent('Browser',
     state,
     result,
     getData,
-    s3,
-    s3Bucket,
+    bucket,
+    preview,
+    expiration,
+    hidePreview,
+    handleClick,
   }) => (
     <div>
-      <BreadCrumbs prefix={prefix} root={s3Bucket} />
+      <BreadCrumbs prefix={prefix} root={bucket} />
       {invoke(state, {
         FETCHING: () => (
           <Spinner style={{ fontSize: '3em' }} />
@@ -338,12 +163,35 @@ export default composeComponent('Browser',
           </h3>
         ),
         READY: () => (
-          <PreviewDir
-            path={prefix}
-            {...result}
-            s3={s3}
-            s3Bucket={s3Bucket}
-          />
+          <React.Fragment>
+            <Preview
+              bucket={bucket}
+              path={preview}
+              expiration={expiration}
+              hide={hidePreview}
+            />
+            <Listing
+              path={prefix}
+              directories={result.directories}
+              files={result.files}
+              onFileClick={handleClick}
+            />
+            {result.readme && (
+              <SummaryItem
+                title={withoutPrefix(prefix, result.readme)}
+                bucket={bucket}
+                path={result.readme}
+                expiration={expiration}
+              />
+            )}
+            {result.summary && (
+              <Summary
+                bucket={bucket}
+                path={result.summary}
+                expiration={expiration}
+              />
+            )}
+          </React.Fragment>
         ),
       })}
     </div>

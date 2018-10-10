@@ -2,24 +2,9 @@ import { call, put, takeLatest } from 'redux-saga/effects';
 
 import { get } from './actions';
 
-function* getReadme({ s3, s3Bucket }, files) {
-  const readmeFile = files.find(({ path: fPath }) =>
-    /readme\.md$/i.test(fPath));
-  if (!readmeFile) return undefined;
-
-  const readmeObject = yield s3.getObject({
-    Bucket: s3Bucket,
-    Key: readmeFile.path,
-  }).promise();
-  return {
-    file: readmeFile,
-    contents: readmeObject.Body.toString('utf-8'),
-  };
-}
-
-function* list({ s3, s3Bucket }, path) {
+function* list({ s3, bucket }, path) {
   const data = yield s3.listObjectsV2({
-    Bucket: s3Bucket,
+    Bucket: bucket,
     Delimiter: '/',
     Prefix: path,
   }).promise();
@@ -34,19 +19,15 @@ function* list({ s3, s3Bucket }, path) {
     // filter-out "directory-files" (files that match prefixes)
     .filter((f) => f.path !== path && !directories.includes(`${f.path}/`));
 
-  return {
-    files,
-    directories,
-    readme: yield call(getReadme, { s3, s3Bucket }, files),
-  };
+  return { files, directories };
 }
 
 function* handleGet(
-  { s3, s3Bucket },
+  { s3, bucket },
   { payload: { path }, meta: { resolve, reject } },
 ) {
   try {
-    const data = yield call(list, { s3Bucket, s3 }, path);
+    const data = yield call(list, { bucket, s3 }, path);
     yield put(get.resolve(data));
     if (resolve) yield call(resolve, data);
   } catch (e) {
@@ -56,8 +37,8 @@ function* handleGet(
 }
 
 export default function* saga({
-  s3Bucket,
+  bucket,
   s3,
 }) {
-  yield takeLatest(get.type, handleGet, { s3, s3Bucket });
+  yield takeLatest(get.type, handleGet, { s3, bucket });
 }
