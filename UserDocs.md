@@ -2,8 +2,9 @@ This file documents the T4 Python API, `helium`. `helium` allows you to interact
 
 ## Installation
 
-Make sure that you have Python 3.6 or higher, and have the [AWS CLI](https://aws.amazon.com/cli/) command line tool, `aws`, installed (via `pip install aws-cli`). Then, if this is your first time using AWS, run the following to store the IAM credentials you wish to use with T4:
+Make sure that you have Python 3.6 or higher, and have the [AWS CLI](https://aws.amazon.com/cli/) command line tool (via `pip install aws-cli`).
 
+If this is your first time using AWS, run the following to store the IAM credentials you wish to use with T4:
 ```
 $ aws configure
 ```
@@ -21,6 +22,8 @@ $ pip install git+https://github.com/quiltdata/t4.git#subdirectory=ocean
 Note the format for an S3 path is `BUCKET_NAME/path/to/file/or/dir/`.
 
 ### Reading and writing data
+
+![](./notebooks/helium-api.png)
 
 #### `helium.get(src, snapshot=None, version=None)`
 Retrieves `src` object from T4 and loads it into memory. Returns a `(data, metadata)` tuple.
@@ -53,16 +56,16 @@ Deletes the object at `path`.
 Creates a snapshot of the T4 object at `path` with commit message `message`.
 
 #### `helium.list_snapshots(bucket, contains=None)`
-Lists all snapshots in a T4 bucket. Output consists of path, hash, timestamp, and message. `contains` is an optional parameter that limits the results to only snapshots that contain the specified prefix.
+Lists all snapshots in a T4 `bucket`. Output consists of path, hash, timestamp, and message. `contains` is an optional parameter that limits the results to only snapshots that contain the specified prefix.
 
-#### `helium.diff(srchash, desthash)`
-Lists differences between two T4 objects: one object with snapshot `srchash` , and one object with snapshot `desthash`.
+#### `helium.diff(bucket, srchash, desthash)`
+Lists differences between two objects in a `bucket`: one object with snapshot `srchash` , and one object with snapshot `desthash`.
+
+The `bucket` may not contain a terminating `/` (temporary limitation).
 
 If the `srchash` and `desthash` are snapshots of the same object, this is effectively a piece of a particular object's history.
 
-If the `srchash` and `desthash` are snapshots of different objects which overlap, this is effectively the difference between two snapshots.
-
-If the `srchash` and `desthash` are snapshots of different objects which do not overlap, this command doesn't make any sense, and you will get an error.
+If the `srchash` and `desthash` are snapshots of different objects, this is effectively the difference between two snapshots.
 
 Either of `srchash` or `desthash` may have the value `"latest"`. In this case, the `srchash` or `desthash` wil be compared against the *current* T4 object. This will include changes which have not yet been snapshotted.
 
@@ -85,6 +88,7 @@ Searches a T4 instance for `key`. Returns a list of search results. Note that in
 Note that `search` currently automatically adds the `BUCKET_NAME` to any paths you pass to it.
 
 #### `helium.ls(path)`
+
 Enumerates the contents of a path in a T4 instance. This function returns a tuple whose first value is a list of sub-paths, and whose second value is a list of metadata statements about the file. Each version of an object in S3 gets its own entry in the list.
 
 ## User guide
@@ -164,9 +168,30 @@ To delete a file that's already been committed to T4, use the `delete` command:
 he.delete("bucket-name/my-frame.csv")
 ```
 
-### Snapshots and versioning
+### Versions
 
-Snapshots are the heart of T4. A **snapshot** is a capture of the state of a particular group of files at some point in time. Snapshots are immutable: once created, they cannot normally be deleted. Thus once you can mint a snapshot you can safely reference it forever after.
+In S3 buckets with object versioning enabled, object **versions** are automatic applied to every object in the bucket.
+
+You can access a specific version of an S3 object using the `version` keyword parameter in `get` or `get_file`:
+
+```python
+he.get("bucket-name/my-frame.csv", version="some_hash_here")
+```
+
+Use `helium.ls()`, or the web catalog, to display object versions.
+
+
+### Snapshots
+
+**Snapshots** are user-created and may apply to zero or more objects. As a
+general rule, snapshots apply to entire folders or *paths* in S3.
+
+A snapshot captures the state of an S3 bucket at a particular point in time.
+A snapshot contains a *prefix* under which all of the child object versions
+are recorded in your bucket's `.quilt/` directory.
+
+Snapshots are *immutable*. Their contents can never change
+(until and unless the underlying data or metadata are deleted). Together with versions, which are similarly immutable, snapshots are the building blocks of reproducible data pipelines.
 
 To create a snapshot use the `snapshot` command:
 
@@ -186,21 +211,20 @@ The `get` and `get_file` commands default to returning the current state of an S
 he.get("bucket-name/my-frame.csv", snapshot="some_hash_here")
 ```
 
-A snapshot hash is a very long character string, but you only need to provide as many characters from the beginning of the string as are unique amongst your snapshot hashes. In practice, usually the first five or so characters is enough.
+#### Short hashes
 
-Although you can snapshot individual S3 objects, this is probably an anti-pattern. Why? Because S3 already manages object lifecycles using **versions**. The difference between a snapshot and a version is that snapshots are (1) user-specified and (2) address arbitrary groups of objects, versions are (1) automatically generated each time there is a change and (2) address only individual objects.
-
-Like snapshots, individual versions are uniquely hashed. You can access a specific version of an S3 object using the `version` keyword parameter in `get` or `get_file`:
-
-```python
-he.get("bucket-name/my-frame.csv", version="some_hash_here")
-```
-
-At the moment, the only way to see a list of versions of an object (and their corresponding version hashes) is through the S3 console.
+A full-length snapshot hash is a SHA-256 digest with 64 characters. You may identify snapshots with *short hashes*.
+Short hashes contain the first few characters of the digest.
+In practice, six characters are sufficient to identify a unique
+snapshot.
 
 ### Serialization
 
-When you `put` a Python object in T4, the object is transparently serialized before it gets written. T4 supports the following objects, in the following formats:
+#### Built-ins
+
+When you `put` a Python object in T4, the object is transparently serialized
+before it gets written. T4 automatically de/serializes the following objects:
+
 
 | Python Type | Serialization format |
 | ------- | ------ |
@@ -210,11 +234,15 @@ When you `put` a Python object in T4, the object is transparently serialized bef
 | `numpy.ndarray` | .np |
 | `dict` | JSON | 
 
-Note: one common choice for serialization tasks is the `pickle` module built into Python. We opt not to use `pickle`, [as it is both slow and insecure](https://www.benfrederickson.com/dont-pickle-your-data/).
+> A common choice for serialization is Python's `pickle` module.
+Unfortunately, `pickle` is [slow and insecure](https://www.benfrederickson.com/dont-pickle-your-data/).
 
-To use a serialization format not in the built-ins, or to write an object lacking a built-in to T4, write that file to disk, then `put_file` it. Alternatively, `he.put(my_serializer.dumps(obj), "path/to/my/file.ext")`.
+####  Custom serializers
 
-If you would prefer to use a different serialization format, or if you would like to write an object with no format.
+To use a serialization format not in the built-ins, like `pickle`, you can do
+one of the following:
+* `he.put(my_serializer.dumps(obj), "path/to/my/file.ext")`
+* Write it to disk, then move it to S3 with `put_file`
 
 ### Metadata and search
 
@@ -253,11 +281,42 @@ To modify which file types are searchable, populate a `.quilt/config.json` file 
 }
 ```
 
-Full-text search will include metadata matches in the results. To search metadata only, enter a string of the form `user_meta.field:"value"` into the search field, replacing `field` with the name of the field of interest and `value` with its (quoted) value.
+By default search covers both plaintext and metadata
+(metadata are created via the `meta=` keyword in `put` or `put_file`).
+To search metadata only, enter a string of the form `METADATA_KEY:"VALUE"`.
 
-## Known limitations and gotchas
+T4 automatically populates the following metadata: 
+* `key` - the S3 path
+* `type` - serialization format
+* `version_id` - the object version
+* `target` - deserialization format
+* `size` - bytes
+* `updated` - date
 
-* Only objects placed into an S3 bucket via the T4 API are searchable. Existing objects in the S3 bucket, and objects placed in the bucket via the S3 API, are not.
+## Known issues
+
+* To annotate objects with searchable metadata, you must use the `put` API
+* The tilde (`~`), forward slash (`/`), back slash, and angle bracket (`{`, `}`, `(`, `)`, `[`, `]`) characters will cause search to fail. If your search string includes these characters, be sure to quote your input. E.g. search for `"~aleksey"`, not `~aleksey`.
+* The tilde character (`~`) is known to cause issues when used with `get_file`. For now avoid using relative paths (like `~/Desktop`). Use absolute paths (like `/Users/alex/Desktop`) instead.
+* Plaintext indexing and search does not require the `put` API, but the index
+will only contain *newly written objects* with the appropriate file extensions
+(*newly written* = created after T4's lambda functions have been attached to your bucket)
+* At present, due to limitations with ElasticSearch,
+we do not recommend plaintext indexing for files that are over 10 MB in size
+
+## Known issues
+
+* To annotate objects with searchable metadata, you must use the `put` API.
+* Only objects placed into an S3 bucket via the T4 API are searchable. More specifically, the search index will only contain objects with the appropriate file extensions created *after* the T4 lambda functions have been attached to the bucket.
 * Due to limitations with ElasticSearch indexing, we do not recommend including indexing files that are over 10 MB in size.
 * The tilde (`~`), forward slash (`/`), back slash, and angle bracket (`{`, `}`, `(`, `)`, `[`, `]`) characters will cause search to fail. If your search string includes these characters, be sure to quote your input. E.g. search for `"~aleksey"`, not `~aleksey`.
 * The tilde character (`~`) is known to cause issues when used with `get_file`. For now avoid using relative paths (like `~/Desktop`). Use absolute paths (like `/Users/alex/Desktop`) instead.
+* In order to use the entire T4 API, you need sufficient permissions for the underlying S3 bucket. Something like the following:
+
+    ```
+    s3:ListBucket
+    s3:PutObject
+    s3:GetObject
+    s3:GetObjectVersion
+    ```
+
