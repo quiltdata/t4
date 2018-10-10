@@ -52,8 +52,8 @@ Deletes the object at `path`.
 #### `helium.snapshot(path, message)`
 Creates a snapshot of the T4 object at `path` with commit message `message`.
 
-#### `helium.list_snapshots(path)`
-Lists all snapshots of the T4 object at path. Output consists of path, hash, timestamp, and message.
+#### `helium.list_snapshots(bucket, contains=None)`
+Lists all snapshots in a T4 bucket. Output consists of path, hash, timestamp, and message. `contains` is an optional parameter that limits the results to only snapshots that contain the specified prefix.
 
 #### `helium.diff(srchash, desthash)`
 Lists differences between two T4 objects: one object with snapshot `srchash` , and one object with snapshot `desthash`.

@@ -37,3 +37,11 @@ class TestAPI():
         # present.  ..but, a bad port causes an error..
         with pytest.raises(util.HeliumException, match='Port must be a number'):
             he.config('https://fliff:fluff')
+
+    
+    def test_put_to_directory_failure(self):
+        # Adding pathes with trailing delimeters causes AWS to treat them like virtual directories
+        # and can cause issues when downloading to host machine.
+        test_object = "foo"
+        with pytest.raises(ValueError):
+            he.put(test_object, "test/")
