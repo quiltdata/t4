@@ -66,9 +66,6 @@ If the `srchash` and `desthash` are snapshots of different objects which do not 
 
 Either of `srchash` or `desthash` may have the value `"latest"`. In this case, the `srchash` or `desthash` wil be compared against the *current* T4 object. This will include changes which have not yet been snapshotted.
 
-#### `helium.diff(srchash, 'latest')`
-Lists changes to a T4 object between the snapshot at `srchash` and the object's current state. This includes changes which have not yet been snapshotted.
-
 ### Configuration
 
 #### `helium.config()`
@@ -256,7 +253,11 @@ To modify which file types are searchable, populate a `.quilt/config.json` file 
 }
 ```
 
+Full-text search will include metadata matches in the results. To search metadata only, enter a string of the form `user_meta.field:"value"` into the search field, replacing `field` with the name of the field of interest and `value` with its (quoted) value.
+
 ## Known limitations and gotchas
 
-* At present, only objects placed into an S3 bucket via the T4 API are searchable. Existing objects in the S3 bucket, and objects placed in the bucket via the S3 API, are not.
-* At present, due to limitations with ElasticSearch indexing, we do not recommend including indexing files that are over 10 MB in size.
+* Only objects placed into an S3 bucket via the T4 API are searchable. Existing objects in the S3 bucket, and objects placed in the bucket via the S3 API, are not.
+* Due to limitations with ElasticSearch indexing, we do not recommend including indexing files that are over 10 MB in size.
+* The tilde (`~`), forward slash (`/`), back slash, and angle bracket (`{`, `}`, `(`, `)`, `[`, `]`) characters will cause search to fail. If your search string includes these characters, be sure to quote your input. E.g. search for `"~aleksey"`, not `~aleksey`.
+* The tilde character (`~`) is known to cause issues when used with `get_file`. For now avoid using relative paths (like `~/Desktop`). Use absolute paths (like `/Users/alex/Desktop`) instead.
