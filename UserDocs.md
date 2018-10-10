@@ -67,8 +67,6 @@ If the `srchash` and `desthash` are snapshots of the same object, this is effect
 
 If the `srchash` and `desthash` are snapshots of different objects which overlap, this is effectively the difference between two snapshots.
 
-If the `srchash` and `desthash` are snapshots of different objects which do not overlap, this command doesn't make any sense, and you will get an error.
-
 Either of `srchash` or `desthash` may have the value `"latest"`. In this case, the `srchash` or `desthash` wil be compared against the *current* T4 object. This will include changes which have not yet been snapshotted.
 
 #### `helium.diff(srchash, 'latest')`
@@ -93,6 +91,7 @@ Searches a T4 instance for `key`. Returns a list of search results. Note that in
 Note that `search` currently automatically adds the `BUCKET_NAME` to any paths you pass to it.
 
 #### `helium.ls(path)`
+
 Enumerates the contents of a path in a T4 instance. This function returns a tuple whose first value is a list of sub-paths, and whose second value is a list of metadata statements about the file. Each version of an object in S3 gets its own entry in the list.
 
 ## User guide
