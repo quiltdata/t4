@@ -56,16 +56,16 @@ Deletes the object at `path`.
 Creates a snapshot of the T4 object at `path` with commit message `message`.
 
 #### `helium.list_snapshots(bucket, contains=None)`
-Lists all snapshots in a T4 bucket. Output consists of path, hash, timestamp, and message. `contains` is an optional parameter that limits the results to only snapshots that contain the specified prefix.
+Lists all snapshots in a T4 `bucket`. Output consists of path, hash, timestamp, and message. `contains` is an optional parameter that limits the results to only snapshots that contain the specified prefix.
 
-#### `helium.diff(S3_BUCKET, srchash, desthash)`
-Lists differences between two T4 objects: one object with snapshot `srchash` , and one object with snapshot `desthash`.
+#### `helium.diff(bucket, srchash, desthash)`
+Lists differences between two objects in a `bucket`: one object with snapshot `srchash` , and one object with snapshot `desthash`.
 
-`S3_BUCKET` may not contain a terminating `/` (temporary limitation)
+The `bucket` may not contain a terminating `/` (temporary limitation).
 
 If the `srchash` and `desthash` are snapshots of the same object, this is effectively a piece of a particular object's history.
 
-If the `srchash` and `desthash` are snapshots of different objects which overlap, this is effectively the difference between two snapshots.
+If the `srchash` and `desthash` are snapshots of different objects, this is effectively the difference between two snapshots.
 
 Either of `srchash` or `desthash` may have the value `"latest"`. In this case, the `srchash` or `desthash` wil be compared against the *current* T4 object. This will include changes which have not yet been snapshotted.
 
@@ -168,10 +168,20 @@ To delete a file that's already been committed to T4, use the `delete` command:
 he.delete("bucket-name/my-frame.csv")
 ```
 
-### Versions and snapshots
+### Versions
 
-Object **versions** are automatic and apply to a single object
-(provided that your bucket has object versioning enabled).
+In S3 buckets with object versioning enabled, object **versions** are automatic applied to every object in the bucket.
+
+You can access a specific version of an S3 object using the `version` keyword parameter in `get` or `get_file`:
+
+```python
+he.get("bucket-name/my-frame.csv", version="some_hash_here")
+```
+
+Use `helium.ls()`, or the web catalog, to display object versions.
+
+
+### Snapshots
 
 **Snapshots** are user-created and may apply to zero or more objects. As a
 general rule, snapshots apply to entire folders or *paths* in S3.
@@ -180,9 +190,8 @@ A snapshot captures the state of an S3 bucket at a particular point in time.
 A snapshot contains a *prefix* under which all of the child object versions
 are recorded in your bucket's `.quilt/` directory.
 
-Versions and snapshots are *immutable*. Their contents can never change
-(until and unless the underlying data or metadata are deleted). Snapshots and
-versions are the building blocks of reproducible data pipelines. 
+Snapshots are *immutable*. Their contents can never change
+(until and unless the underlying data or metadata are deleted). Together with versions, which are similarly immutable, snapshots are the building blocks of reproducible data pipelines.
 
 To create a snapshot use the `snapshot` command:
 
@@ -204,22 +213,10 @@ he.get("bucket-name/my-frame.csv", snapshot="some_hash_here")
 
 #### Short hashes
 
-A snapshot hash is a SHA-256 digest with 64 characters.
-You may indentify snapshots with *short hashes*.
+A full-length snapshot hash is a SHA-256 digest with 64 characters. You may identify snapshots with *short hashes*.
 Short hashes contain the first few characters of the digest.
 In practice, six characters are sufficient to identify a unique
 snapshot.
-
-If your bucket has object versioning enabled, you will generally use snapshots for
-multiple files.
-
-You can access a specific version of an S3 object using the `version` keyword parameter in `get` or `get_file`:
-
-```python
-he.get("bucket-name/my-frame.csv", version="some_hash_here")
-```
-
-Use `helium.ls()`, or the web catalog, to display object versions.
 
 ### Serialization
 
@@ -238,7 +235,7 @@ before it gets written. T4 automatically de/serializes the following objects:
 | `dict` | JSON | 
 
 > A common choice for serialization is Python's `pickle` module.
-Unfortunately, `pickle` is both [slow and insecure](https://www.benfrederickson.com/dont-pickle-your-data/).
+Unfortunately, `pickle` is [slow and insecure](https://www.benfrederickson.com/dont-pickle-your-data/).
 
 ####  Custom serializers
 
@@ -284,10 +281,11 @@ To modify which file types are searchable, populate a `.quilt/config.json` file 
 }
 ```
 
-Full-text search will include metadata matches in the results. To search metadata only, enter a string of the form `user_meta.field:"value"` into the search field, replacing `field` with the name of the field of interest and `value` with its (quoted) value.
+Full-text search will include user-defined metadata (metadata created via the `meta` parameter in `put` or `put_file`) matches in the results. To search user-defined metadata only, enter a string of the form `user_meta.field:"value"` into the search field, replacing `field` with the name of the field of interest and `value` with its (quoted) value.
 
+There are also some automatic metadata fields that are populated whenever an object is created in T4. You can search via `key`, `type`, `version_id`, `target`, `size`, and `updated` by entering a string of the form `field:"value"` into search.
 
-## Known limitations and gotchas
+## Known issues
 
 * To annotate objects with searchable metadata, you must use the `put` API.
 * Only objects placed into an S3 bucket via the T4 API are searchable. More specifically, the search index will only contain objects with the appropriate file extensions created *after* the T4 lambda functions have been attached to the bucket.
