@@ -172,9 +172,21 @@ To delete a file that's already been committed to T4, use the `delete` command:
 he.delete("bucket-name/my-frame.csv")
 ```
 
-### Snapshots and versioning
+### Versions and snapshots
 
-Snapshots are the heart of T4. A **snapshot** is a capture of the state of a particular group of files at some point in time. Snapshots are immutable: once created, they cannot normally be deleted. Thus once you can mint a snapshot you can safely reference it forever after.
+Object **versions** are automatic and apply to a single object
+(provided that your bucket has object versioning enabled).
+
+**Snapshots** are user-created and may apply to zero or more objects. As a
+general rule, snapshots apply to entire folders or *paths* in S3.
+
+A snapshot captures the state of an S3 bucket at a particular point in time.
+A snapshot contains a *prefix* under which all of the child object versions
+are recorded in your bucket's `.quilt/` directory.
+
+Versions and snapshots are *immutable*. Their contents can never change
+(until and unless the underlying data or metadata are deleted). Snapshots and
+versions are the building blocks of reproducible data pipelines. 
 
 To create a snapshot use the `snapshot` command:
 
@@ -194,21 +206,32 @@ The `get` and `get_file` commands default to returning the current state of an S
 he.get("bucket-name/my-frame.csv", snapshot="some_hash_here")
 ```
 
-A snapshot hash is a very long character string, but you only need to provide as many characters from the beginning of the string as are unique amongst your snapshot hashes. In practice, usually the first five or so characters is enough.
+#### Short hashes
 
-Although you can snapshot individual S3 objects, this is probably an anti-pattern. Why? Because S3 already manages object lifecycles using **versions**. The difference between a snapshot and a version is that snapshots are (1) user-specified and (2) address arbitrary groups of objects, versions are (1) automatically generated each time there is a change and (2) address only individual objects.
+A snapshot hash is a SHA-256 digest with 64 characters.
+You may indentify snapshots with *short hashes*.
+Short hashes contain the first few characters of the digest.
+In practice, six characters are sufficient to identify a unique
+snapshot.
 
-Like snapshots, individual versions are uniquely hashed. You can access a specific version of an S3 object using the `version` keyword parameter in `get` or `get_file`:
+If your bucket has object versioning enabled, you will generally use snapshots for
+multiple files.
+
+You can access a specific version of an S3 object using the `version` keyword parameter in `get` or `get_file`:
 
 ```python
 he.get("bucket-name/my-frame.csv", version="some_hash_here")
 ```
 
-At the moment, the only way to see a list of versions of an object (and their corresponding version hashes) is through the S3 console.
+Use `helium.ls()`, or the web catalog, to display object versions.
 
 ### Serialization
 
-When you `put` a Python object in T4, the object is transparently serialized before it gets written. T4 supports the following objects, in the following formats:
+#### Built-ins
+
+When you `put` a Python object in T4, the object is transparently serialized
+before it gets written. T4 automatically de/serializes the following objects:
+
 
 | Python Type | Serialization format |
 | ------- | ------ |
@@ -218,11 +241,15 @@ When you `put` a Python object in T4, the object is transparently serialized bef
 | `numpy.ndarray` | .np |
 | `dict` | JSON | 
 
-Note: one common choice for serialization tasks is the `pickle` module built into Python. We opt not to use `pickle`, [as it is both slow and insecure](https://www.benfrederickson.com/dont-pickle-your-data/).
+> A common choice for serialization is Python's `pickle` module.
+Unfortunately, `pickle` is both [slow and insecure](https://www.benfrederickson.com/dont-pickle-your-data/).
 
-To use a serialization format not in the built-ins, or to write an object lacking a built-in to T4, write that file to disk, then `put_file` it. Alternatively, `he.put(my_serializer.dumps(obj), "path/to/my/file.ext")`.
+####  Custom serializers
 
-If you would prefer to use a different serialization format, or if you would like to write an object with no format.
+To use a serialization format not in the built-ins, like `pickle`, you can do
+one of the following:
+* `he.put(my_serializer.dumps(obj), "path/to/my/file.ext")`
+* Write it to disk, then move it to S3 with `put_file`
 
 ### Metadata and search
 
@@ -263,13 +290,19 @@ To modify which file types are searchable, populate a `.quilt/config.json` file 
 
 ## Known issues
 
-* At present, only objects placed into an S3 bucket via the T4 API are searchable. Existing objects in the S3 bucket, and objects placed in the bucket via the S3 API, are not.
-* At present, due to limitations with ElasticSearch indexing, we do not recommend including indexing files that are over 10 MB in size.
-* In order to use the entire T4 API, you need sufficient permissions for the underlying S3 bucket:
+* To annotate objects with searchable metadata, you must use the `put` API.
+* Plaintext indexing and search does not require the `put` API, but the index
+will only contain *newly written objects* with the appropriate file extensions
+(*newly written* = created after T4's lambda functions have been attached to your bucket)
 
-```
-s3:ListBucket
-s3:PutObject
-s3:GetObject
-s3:GetObjectVersion
-```
+* At present, due to limitations with ElasticSearch,
+we do not recommend plaintext indexing for files that are over 10 MB in size
+
+* In order to use the entire T4 API, you need sufficient permissions for the underlying S3 bucket. Something like the following:
+
+    ```
+    s3:ListBucket
+    s3:PutObject
+    s3:GetObject
+    s3:GetObjectVersion
+    ```
