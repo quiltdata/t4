@@ -192,8 +192,8 @@ def snapshot(path, message):
     return create_snapshot(path, message)
 
 
-def list_snapshots(path):
-    snapshots_list = get_snapshots(path)
+def list_snapshots(bucket, contains=None):
+    snapshots_list = get_snapshots(bucket, contains)
     return DisplayList(snapshots_list, columns=['hash', 'path', 'timestamp', 'message'], index='path')
 
 
@@ -208,9 +208,9 @@ def diff(bucket, src, dst):
         dst_path = dst_snapshot.get('path', None)
 
     # TODO: Raise exception instead
-    assert src_path or dst_path
+    assert src_path is not None or dst_path is not None
 
-    if src_path:
+    if src_path is not None:
         src_objects = src_snapshot['contents']
     else:
         src_list = list_objects(f"{bucket}/{dst_path}")

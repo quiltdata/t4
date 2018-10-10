@@ -55,8 +55,8 @@ Deletes the object at `path`.
 #### `helium.snapshot(path, message)`
 Creates a snapshot of the T4 object at `path` with commit message `message`.
 
-#### `helium.list_snapshots(path)`
-Lists all snapshots of the T4 object at path. Output consists of path, hash, timestamp, and message.
+#### `helium.list_snapshots(bucket, contains=None)`
+Lists all snapshots in a T4 bucket. Output consists of path, hash, timestamp, and message. `contains` is an optional parameter that limits the results to only snapshots that contain the specified prefix.
 
 #### `helium.diff(S3_BUCKET, srchash, desthash)`
 Lists differences between two T4 objects: one object with snapshot `srchash` , and one object with snapshot `desthash`.
@@ -68,9 +68,6 @@ If the `srchash` and `desthash` are snapshots of the same object, this is effect
 If the `srchash` and `desthash` are snapshots of different objects which overlap, this is effectively the difference between two snapshots.
 
 Either of `srchash` or `desthash` may have the value `"latest"`. In this case, the `srchash` or `desthash` wil be compared against the *current* T4 object. This will include changes which have not yet been snapshotted.
-
-#### `helium.diff(srchash, 'latest')`
-Lists changes to a T4 object between the snapshot at `srchash` and the object's current state. This includes changes which have not yet been snapshotted.
 
 ### Configuration
 
@@ -289,14 +286,14 @@ To modify which file types are searchable, populate a `.quilt/config.json` file 
 
 ## Known issues
 
-* To annotate objects with searchable metadata, you must use the `put` API.
+* To annotate objects with searchable metadata, you must use the `put` API
+* The tilde (`~`), forward slash (`/`), back slash, and angle bracket (`{`, `}`, `(`, `)`, `[`, `]`) characters will cause search to fail. If your search string includes these characters, be sure to quote your input. E.g. search for `"~aleksey"`, not `~aleksey`.
+* The tilde character (`~`) is known to cause issues when used with `get_file`. For now avoid using relative paths (like `~/Desktop`). Use absolute paths (like `/Users/alex/Desktop`) instead.
 * Plaintext indexing and search does not require the `put` API, but the index
 will only contain *newly written objects* with the appropriate file extensions
 (*newly written* = created after T4's lambda functions have been attached to your bucket)
-
 * At present, due to limitations with ElasticSearch,
 we do not recommend plaintext indexing for files that are over 10 MB in size
-
 * In order to use the entire T4 API, you need sufficient permissions for the underlying S3 bucket. Something like the following:
 
     ```
@@ -305,3 +302,6 @@ we do not recommend plaintext indexing for files that are over 10 MB in size
     s3:GetObject
     s3:GetObjectVersion
     ```
+
+* To search metadata only (to the exclusion of plaintext search),
+use a search a string of the form `user_meta.FIELD:"VALUE"`.
