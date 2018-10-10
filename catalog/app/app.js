@@ -74,8 +74,8 @@ const render = (messages) => {
         credentialsSelector: AWSAuth.selectors.credentials,
         region: config.aws.region,
       }],
-      AWS.Signer.Provider,
       AWS.S3.Provider,
+      AWS.Signer.Provider,
       [AWS.ES.Provider, {
         host: config.aws.elasticSearchUrl,
         log: 'trace',
