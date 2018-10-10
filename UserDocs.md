@@ -261,7 +261,15 @@ To modify which file types are searchable, populate a `.quilt/config.json` file 
 }
 ```
 
-## Known limitations and gotchas
+## Known issues
 
 * At present, only objects placed into an S3 bucket via the T4 API are searchable. Existing objects in the S3 bucket, and objects placed in the bucket via the S3 API, are not.
 * At present, due to limitations with ElasticSearch indexing, we do not recommend including indexing files that are over 10 MB in size.
+* In order to use the entire T4 API, you need sufficient permissions for the underlying S3 bucket:
+
+```
+s3:ListBucket
+s3:PutObject
+s3:GetObject
+s3:GetObjectVersion
+```
