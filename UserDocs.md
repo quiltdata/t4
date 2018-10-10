@@ -2,16 +2,16 @@ This file documents the T4 Python API, `helium`. `helium` allows you to interact
 
 ## Installation
 
-Make sure that you have Python 3.6 or higher, and have the [AWS CLI](https://aws.amazon.com/cli/) command line tool (via `pip install aws-cli`).
+Ensure that you have Python 3.6, and the [AWS CLI](https://aws.amazon.com/cli/) (`pip install aws-cli`).
 
 If this is your first time using AWS, run the following to store the IAM credentials you wish to use with T4:
 ```
 $ aws configure
 ```
 
-If you already have AWS credentials set up, you may want to initialize your credentials in a Quilt-specific [profile](https://docs.aws.amazon.com/cli/latest/userguide/cli-multiple-profiles.html).
+You may wish create a Quilt-specific [profile](https://docs.aws.amazon.com/cli/latest/userguide/cli-multiple-profiles.html).
 
-Once this is done, install T4 with `pip`:
+Install T4: 
 
 ```
 $ pip install git+https://github.com/quiltdata/t4.git#subdirectory=ocean
@@ -19,36 +19,49 @@ $ pip install git+https://github.com/quiltdata/t4.git#subdirectory=ocean
 
 ## API reference
 
-Note the format for an S3 path is `BUCKET_NAME/path/to/file/or/dir/`.
+> T4 expects S3 paths of the form `BUCKET_NAME/path/to/dir/data.csv`.
 
 ### Reading and writing data
 
 ![](./notebooks/helium-api.png)
 
-#### `helium.get(src, snapshot=None, version=None)`
+
+#### `helium.get(src [, snapshot=None | version=None])`
 Retrieves `src` object from T4 and loads it into memory. Returns a `(data, metadata)` tuple.
 
 Does not work on all objects. For a list of supported objects, see [Serialization](#serialization).
 
 Pass a snapshot hash to the optional `snapshot` parameter to retrieve the state of an S3 object at a given snapshot. Pass a version hash to the optional `version` parameter to retrieve the state of an S3 object at a given version. Only one or none of these two parameters may be specified at a time.
 
-#### `helium.put(obj, dest, meta=dict())`
-Writes in-memory object `src` to the `dest` object in T4. Does not work on all objects. For a list of supported objects, see [Serialization](#serialization).
+#### `helium.put(src, dest, meta={})`
+Writes the in-memory object `src` to the path `dest` in S3.
+Transparently serializes some object types.
+See [Serialization](#serialization) for details.
 
-You may specify metadata for the object by pass a dictionary of key-value pairs to the `meta` parameter. For more on metadata, see [Metadata and search](#metadata-and-search).
+You can annotate your object with custom metadata by passing a `dict`
+to `meta=`. Object metadata are indexed and searchable by the helium API.
 
-#### `helium.get_file(src, dest, snapshot=None, version=None)`
-Retrieves `src` object from T4, and writes to to the `dest` file on your local disk.
+For more on metadata, see [Metadata and search](#metadata-and-search).
 
-The `snapshot` and `version` optional parameters operate the same as in `helium.get`.
+#### `helium.get_file(src, dest [, snapshot=None | version=None])`
+Retrieves `src` object from T4, and writes to the `dest` file on your local disk.
 
-#### `helium.put_file(src, dest, meta=dict())`
-Writes local file `src` to the `dest` object in T4.
+`snapshot=` and `version=` optional parameters, described in `helium.get()`.
+
+#### `helium.put_file(src, dest, meta={})`
+Writes the local file `src` to `dest` in S3.
+
+Writes the in-memory object `src` to the path `dest` in S3.
+Transparently serializes some object types.
+See [Serialization](#serialization) for details.
+
+You can annotate your object with custom metadata by passing a `dict`
+to `meta=`. Object metadata are indexed and searchable by the helium API.
 
 As with `helium.put`, you may specify metadata for the object by pass a dictionary of key-value pairs to the `meta` parameter. For more on metadata, see [Metadata and search](#metadata-and-search).
 
 #### `helium.delete(path)`
-Deletes the object at `path`.
+Deletes the object at `path` (does not work on folders).
 
 ### Snapshots and history
 
@@ -56,40 +69,54 @@ Deletes the object at `path`.
 Creates a snapshot of the T4 object at `path` with commit message `message`.
 
 #### `helium.list_snapshots(bucket, contains=None)`
-Lists all snapshots in a T4 `bucket`. Output consists of path, hash, timestamp, and message. `contains` is an optional parameter that limits the results to only snapshots that contain the specified prefix.
+List all snapshots in `bucket`. `contains=` is an optional parameter that limits
+the results to snapshots that contain the specified prefix.
 
-#### `helium.diff(bucket, srchash, desthash)`
-Lists differences between two objects in a `bucket`: one object with snapshot `srchash` , and one object with snapshot `desthash`.
+Returns path, hash, timestamp, and snapshot message.
 
-The `bucket` may not contain a terminating `/` (temporary limitation).
+#### `helium.diff(bucket, src, dest)`
+Returns a list of differences between the two snapshots.
+Differences are one of three types: Add, Modify, or Delete.
 
-If the `srchash` and `desthash` are snapshots of the same object, this is effectively a piece of a particular object's history.
+`src` and `dest` are strings containing the snapshot's SHA-256 hash, or the string
+`"latest"`. `"latest"` signifies "what's currently in S3", but `"latest"` is not
+a proper snapshot.
 
-If the `srchash` and `desthash` are snapshots of different objects, this is effectively the difference between two snapshots.
+`bucket` may not contain a terminating `/`.
 
-Either of `srchash` or `desthash` may have the value `"latest"`. In this case, the `srchash` or `desthash` wil be compared against the *current* T4 object. This will include changes which have not yet been snapshotted.
+`src` is the hash of the source snapshot, and `dest` is the hash of the destination snapshot.
+If `dest` contains file that `src` does not, that fill will appear as an Add.
+(If you were to swap the order of the parameters, the same file would appear as Delete.)
 
 ### Configuration
 
 #### `helium.config()`
 Returns an `ordereddict` with the current T4 client configuration details. Configuration is saved to disk.
 
-#### `helium.config(KEY=VALUE [KEY2=VALUE2...])`
+#### `helium.config(KEY=VALUE [, KEY2=VALUE2, ...])`
 Manually sets a specific configuration option.
 
 #### `helium.config(URL)`
-Set a configuration option from the URL of a T4 instance.
+Set a configuration option from the URL of a T4 deployment.
 
 ### Navigation
 
 #### `helium.search(key)`
-Searches a T4 instance for `key`. Returns a list of search results. Note that in order for the `search` command to work, you must first connect to your bucket using `helium.config`.
+Searches a T4 bucket for `key`. Returns a list of search results.
 
-Note that `search` currently automatically adds the `BUCKET_NAME` to any paths you pass to it.
+In order for `search` to work, you must use `he.configure()` to
+point T4 to an ElasticSearch endpoint that indexes your
+T4 bucket.
+
+See [Metadata and search](#metadata-and-search) for additional syntax.
 
 #### `helium.ls(path)`
 
-Enumerates the contents of a path in a T4 instance. This function returns a tuple whose first value is a list of sub-paths, and whose second value is a list of metadata statements about the file. Each version of an object in S3 gets its own entry in the list.
+Lists the contents of a path in a T4 bucket.
+<!-- TODO: for all return values, show output instead of describing it -->
+Returns a tuple whose first item is a list of sub-paths,
+and whose second item is metadata about the first item.
+Each version of an object in S3 gets its own entry in the list.
 
 ## User guide
 
@@ -108,25 +135,31 @@ import helium as he
 he.put(df, "bucket-name/my-frame.parquet")
 ```
 
-This will put the `pandas` `DataFrame` created in this example to the top level of the T4 bucket. Note the use of the `parquet` file extension; this is merely for convenience when browsing the bucket, and you may omit a file extension if you so desire.
+The above code writes `df` at the top level of `bucket-name`.
 
-To put to a sub-folder within the bucket, just include the requisite file path:
+> The `.parquet` file extension is for reference. T4 uses object metadata to store the object's format, and can deserialize the dataframe with or without the file extension 
+
+To create sub-folders, add the sub-folders to your path:
 
 ```python
 he.put(df, "bucket-name/foo/bar/my-frame.parquet")
 ```
 
-If you put to a folder that doesnt exist yet, `helium` will create that folder for you. If you put another object to the same path, that object will overwrite it; the old object is retained as an older version of the same object.
+If you `put` to a folder that doesn't exist yet, `helium` will create that folder. If you overwrite an object, and bucket versioning is enabled, the overwritten object is retained as an older version of the same path.
 
-T4 handles serializing in-memory objects for you. For example, this `DataFrame` will be stored as a `parquet` file, [which serializes and deserializes faster than alternative formats](https://medium.com/@robnewman/e8dbdfb21394). To learn more about T4 serialization, as well as which Python objects are currently supported by T4, skip forward to the section on [Serialization](#serialization).
+T4 transparently serializes and de-serializes select Python
+objects. In the above example, `df` is automatically stored as an Apache
+Parquet file. This provides [substantial performance gains](http://wesmckinney.com/blog/python-parquet-update/).
 
-To read that file back out of T4, use the `get` command:
+See [Serialization](#serialization) for details.
+
+To read `df` out of S3 and into local memory, use `get`:
 
 ```python
 df, meta = he.get("bucket-name/my-frame.parquet")
 ```
 
-Notice that `get` returns a tuple of values. The first entry is the data that you put in. The second entry is the metadata associated with the object. If no metadata exists, this value will be `None`.
+`get` returns a tuple of values. The first entry is the data that you put in. The second entry is the metadata associated with the object. If no metadata exists, this value will be `None`.
 
 To learn more about metadata, skip forward to the section on [Metadata and querying](#metadata-and-querying).
 
@@ -180,7 +213,6 @@ he.get("bucket-name/my-frame.csv", version="some_hash_here")
 
 Use `helium.ls()`, or the web catalog, to display object versions.
 
-
 ### Snapshots
 
 **Snapshots** are user-created and may apply to zero or more objects. As a
@@ -213,18 +245,17 @@ he.get("bucket-name/my-frame.csv", snapshot="some_hash_here")
 
 #### Short hashes
 
-A full-length snapshot hash is a SHA-256 digest with 64 characters. You may identify snapshots with *short hashes*.
-Short hashes contain the first few characters of the digest.
-In practice, six characters are sufficient to identify a unique
-snapshot.
+T4 identifies snapshots by their SHA-256 digest. When referring to snapshots
+through the API, you may use *short hashes*. Short hashes contain the first
+few characters of the digest. In practice, six characters are sufficient to
+specify a unique snapshot. 
+
 
 ### Serialization
 
 #### Built-ins
 
-When you `put` a Python object in T4, the object is transparently serialized
-before it gets written. T4 automatically de/serializes the following objects:
-
+`put()` transparently serializes Python objects, and `get()` transparently de-serializes Python objects according the following table:
 
 | Python Type | Serialization format |
 | ------- | ------ |
@@ -234,23 +265,36 @@ before it gets written. T4 automatically de/serializes the following objects:
 | `numpy.ndarray` | .np |
 | `dict` | JSON | 
 
-> A common choice for serialization is Python's `pickle` module.
-Unfortunately, `pickle` is [slow and insecure](https://www.benfrederickson.com/dont-pickle-your-data/).
 
-####  Custom serializers
+#### No `pickle`?
 
-To use a serialization format not in the built-ins, like `pickle`, you can do
-one of the following:
+Since Python's `pickle` module is [slow and insecure](https://www.benfrederickson.com/dont-pickle-your-data/),
+T4 does not use `pickle` directly.
+In the next section, we'll show you how to use `pickle`
+and other custom serialization formats.
+
+#### Custom serializers
+
+To use a custom serialization format not in the built-ins,
+you can do one of the following:
 * `he.put(my_serializer.dumps(obj), "path/to/my/file.ext")`
-* Write it to disk, then move it to S3 with `put_file`
+* Serialize the object to disk, then call `put_file()`
 
 ### Metadata and search
 
-When you `put` or `put_file` you may optionally pass a dictionary to a `meta` keyword parameter. This metadata is stored alongside your data in the resulting S3 Object.
+T4 supports full-text search for select objects, and faceted search for metadata.
 
-T4 supports full-text search on a subset of the objects in your S3 bucket (using AWS's [Elasticsearch Service](https://aws.amazon.com/elasticsearch-service/)). Currently Markdown files ending in `md` and Jupyter notebooks ending in `ipynb` are searchable. 
+`put()` and `put_file()` take an optional `meta={}` keyword.
+The metadata in `meta=` are stored with your data and indexed by T4's search function.
 
-You may search objects in one of two ways. The first way is to go to the T4 Navigator homepage online and use the search bar there. The second way is to use the [`helium.search`](#`helium.search()`) command.
+T4 supports full-text search on a subset of the objects in your S3 bucket
+(T4 uses [Elasticsearch Service](https://aws.amazon.com/elasticsearch-service/)).
+By default, .md (markdown) and .ipynb (Jupyter) files are indexed.
+As a result you can search through code and markdown in notebook files.
+
+You may search in two ways:
+* With the search bar in your T4 web catalog
+* With [`helium.search`](#`helium.search()`) command.
 
 <!-- 
 
@@ -297,20 +341,10 @@ T4 automatically populates the following metadata:
 
 * To annotate objects with searchable metadata, you must use the `put` API
 * The tilde (`~`), forward slash (`/`), back slash, and angle bracket (`{`, `}`, `(`, `)`, `[`, `]`) characters will cause search to fail. If your search string includes these characters, be sure to quote your input. E.g. search for `"~aleksey"`, not `~aleksey`.
-* The tilde character (`~`) is known to cause issues when used with `get_file`. For now avoid using relative paths (like `~/Desktop`). Use absolute paths (like `/Users/alex/Desktop`) instead.
-* Plaintext indexing and search does not require the `put` API, but the index
-will only contain *newly written objects* with the appropriate file extensions
+* A tilde character (`~`) in an S3 path may cause issues with your operating system and `get_file()`. For local files, use absolute paths (like `/Users/alex/Desktop`) instead.
+* The T4 full-text search index only contains *newly written objects* with the appropriate file extensions
 (*newly written* = created after T4's lambda functions have been attached to your bucket)
-* At present, due to limitations with ElasticSearch,
-we do not recommend plaintext indexing for files that are over 10 MB in size
-
-## Known issues
-
-* To annotate objects with searchable metadata, you must use the `put` API.
-* Only objects placed into an S3 bucket via the T4 API are searchable. More specifically, the search index will only contain objects with the appropriate file extensions created *after* the T4 lambda functions have been attached to the bucket.
-* Due to limitations with ElasticSearch indexing, we do not recommend including indexing files that are over 10 MB in size.
-* The tilde (`~`), forward slash (`/`), back slash, and angle bracket (`{`, `}`, `(`, `)`, `[`, `]`) characters will cause search to fail. If your search string includes these characters, be sure to quote your input. E.g. search for `"~aleksey"`, not `~aleksey`.
-* The tilde character (`~`) is known to cause issues when used with `get_file`. For now avoid using relative paths (like `~/Desktop`). Use absolute paths (like `/Users/alex/Desktop`) instead.
+* At present, due to limitations with ElasticSearch, we do not recommend plaintext indexing for files that are over 10 MB in size
 * In order to use the entire T4 API, you need sufficient permissions for the underlying S3 bucket. Something like the following:
 
     ```
@@ -319,4 +353,3 @@ we do not recommend plaintext indexing for files that are over 10 MB in size
     s3:GetObject
     s3:GetObjectVersion
     ```
-
