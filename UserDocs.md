@@ -2,8 +2,9 @@ This file documents the T4 Python API, `helium`. `helium` allows you to interact
 
 ## Installation
 
-Make sure that you have Python 3.6 or higher, and have the [AWS CLI](https://aws.amazon.com/cli/) command line tool, `aws`, installed (via `pip install aws-cli`). Then, if this is your first time using AWS, run the following to store the IAM credentials you wish to use with T4:
+Make sure that you have Python 3.6 or higher, and have the [AWS CLI](https://aws.amazon.com/cli/) command line tool (via `pip install aws-cli`).
 
+If this is your first time using AWS, run the following to store the IAM credentials you wish to use with T4:
 ```
 $ aws configure
 ```
@@ -21,6 +22,8 @@ $ pip install git+https://github.com/quiltdata/t4.git#subdirectory=ocean
 Note the format for an S3 path is `BUCKET_NAME/path/to/file/or/dir/`.
 
 ### Reading and writing data
+
+![](./notebooks/helium-api.png)
 
 #### `helium.get(src, snapshot=None, version=None)`
 Retrieves `src` object from T4 and loads it into memory. Returns a `(data, metadata)` tuple.
@@ -55,8 +58,10 @@ Creates a snapshot of the T4 object at `path` with commit message `message`.
 #### `helium.list_snapshots(path)`
 Lists all snapshots of the T4 object at path. Output consists of path, hash, timestamp, and message.
 
-#### `helium.diff(srchash, desthash)`
+#### `helium.diff(S3_BUCKET, srchash, desthash)`
 Lists differences between two T4 objects: one object with snapshot `srchash` , and one object with snapshot `desthash`.
+
+`S3_BUCKET` may not contain a terminating `/` (temporary limitation)
 
 If the `srchash` and `desthash` are snapshots of the same object, this is effectively a piece of a particular object's history.
 
