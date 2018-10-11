@@ -8,8 +8,7 @@ jobs:
       - run:
         name: Setup
         command: |
-          cd ocean
-          pip install -e .
+          cd ocean && pip install -e .
       - run:
         name: Running Tests
         command: |
