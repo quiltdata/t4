@@ -26,6 +26,7 @@ T4 is alpha software. It is not yet recommended for production use.
 ## Things you can do with T4
 
 * Find the data that you're looking for
+    * Preview Jupyter notebooks, images, and markdown files in S3
     * Browse any S3 bucket
     * Search every file in your bucket
     * Annotate files and directories with searchable JSON tags
