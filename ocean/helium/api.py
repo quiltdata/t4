@@ -35,18 +35,18 @@ class TargetType(Enum):
 def put_file(src, dest, meta=None):
     """Writes local file to T4.
 
-    The file ``src`` will be uploaded and stored in T4 at ``dest``.
+    The file `src` will be uploaded and stored in T4 at `dest`.
 
     Note:
         Does not work with all objects -- object must be serializable.
 
-    You may pass a dict to ``meta`` to store it with ``obj`` at ``dest``.
+    You may pass a dict to `meta` to store it with `obj` at `dest`.
     See User Docs for more info on object Serialization and Metadata.
 
     Parameters:
         obj: a serializable object
         dest (str): path in T4
-        meta (dict): Optional. metadata dict to store with ``obj`` at ``dest``
+        meta (dict): Optional. metadata dict to store with `obj` at `dest`
     """
     all_meta = dict(
         user_meta=meta
@@ -57,10 +57,10 @@ def put_file(src, dest, meta=None):
 def get_file(src, dest, snapshot=None, version=None):
     """Retrieve a file and write it to a local path
 
-    Retrieves ``src`` object from T4, and writes that to to the ``dest``
+    Retrieves `src` object from T4, and writes that to to the `dest`
     path on your local disk.
 
-    An optional ``snapshot`` or ``version``
+    An optional `snapshot` or `version`
     may be specified, but not both.
 
     Parameters:
@@ -149,19 +149,19 @@ def _deserialize_obj(data, target):
 
 
 def put(obj, dest, meta=None):
-    """Write an in-memory object to the specified T4 ``dest``
+    """Write an in-memory object to the specified T4 `dest`
 
     Note:
         Does not work with all objects -- object must be serializable.
 
-    You may pass a dict to ``meta`` to store it with ``obj`` at ``dest``.
+    You may pass a dict to `meta` to store it with `obj` at `dest`.
 
     See User Docs for more info on object Serialization and Metadata.
 
     Parameters:
         obj: a serializable object
         dest (str): path in T4
-        meta (dict): Optional. metadata dict to store with ``obj`` at ``dest``
+        meta (dict): Optional. metadata dict to store with `obj` at `dest`
     """
     if dest.endswith(AWS_SEPARATOR):
         raise ValueError("Invalid path: %r; ends with a %r"
@@ -178,14 +178,14 @@ def put(obj, dest, meta=None):
 def get(src, snapshot=None, version=None):
     """Retrieves src object from T4 and loads it into memory.
 
-    An optional ``snapshot`` or ``version`` may be specified, but not both.
+    An optional `snapshot` or `version` may be specified, but not both.
 
     Parameters:
         src (str): A path specifying the object to retrieve
-        snapshot (str): Optional. A specific snapshot to use (mutually exclusive with ``version``)
-        version (str): Optional. A specific version to use (mutually exclusive with ``snapshot``)
+        snapshot (str): Optional. A specific snapshot to use (mutually exclusive with `version`)
+        version (str): Optional. A specific version to use (mutually exclusive with `snapshot`)
     Returns:
-        tuple: ``(data, metadata)``.  Does not work on all objects, see **serialization**
+        tuple: `(data, metadata)`.  Does not work on all objects, see **serialization**
     """
     if snapshot is not None and version is not None:
         raise HeliumException("Specify only one of snapshot or version.")
@@ -224,9 +224,9 @@ def ls(path, recursive=False):
         path (str): Path (including bucket name) to list
         recursive (bool): show subdirectories and their contents as well
     Returns:
-        ``list``: Return value structure has not yet been permanently decided
+        `list`: Return value structure has not yet been permanently decided
 
-        Currently, it's a ``tuple`` of ``list`` objects, containing the
+        Currently, it's a `tuple` of `list` objects, containing the
         following:
 
         result[0]
@@ -287,10 +287,10 @@ def list_snapshots(bucket, contains=None):
         path (str): path to look up
 
     Returns:
-        ``list`` of ``dict``: A list of dicts with snapshot info.
+        `list` of `dict`: A list of dicts with snapshot info.
 
-            Each dict of snapshot info has key/value pairs for ``hash``,
-            ``path``, ``message``, and ``timestamp``.
+            Each dict of snapshot info has key/value pairs for `hash`,
+            `path`, `message`, and `timestamp`.
     """
     snapshots_list = get_snapshots(bucket, contains)
     return DisplayList(snapshots_list, columns=['hash', 'path', 'timestamp', 'message'], index='path')
@@ -301,27 +301,27 @@ def diff(bucket, src, dst):
 
     Compares the objects specified by the hashes `src` and `dst`.
 
-    If the ``src`` hash and ``dst`` hash are snapshots of the same object,
+    If the `src` hash and `dst` hash are snapshots of the same object,
     this is effectively a piece of a particular object's history.
 
-    If the ``src`` hash and ``dst`` hash are snapshots of different objects
+    If the `src` hash and `dst` hash are snapshots of different objects
     which overlap, this is effectively the difference between two snapshots.
 
-    If the ``src`` hash and ``dst`` hash are snapshots of different objects
+    If the `src` hash and `dst` hash are snapshots of different objects
     which do not overlap, this command doesn't make any sense, and you will
     get an error.
 
-    Either of ``src`` or ``dst`` may have the value "latest". In this case,
-    the ``src`` or ``dst`` will be compared against the current T4 object.
+    Either of `src` or `dst` may have the value "latest". In this case,
+    the `src` or `dst` will be compared against the current T4 object.
     This will include changes which have not yet been snapshotted.
 
     Parameters:
-        bucket (str): Bucket containing the ``src`` and ``dst`` hashes.
-        src: A T4 object hash contained in the bucket, or ``'latest'``
-        dst: A T4 object hash contained in the bucket, or ``'latest'``
+        bucket (str): Bucket containing the `src` and `dst` hashes.
+        src: A T4 object hash contained in the bucket, or `'latest'`
+        dst: A T4 object hash contained in the bucket, or `'latest'`
 
     Returns:
-        ``list``: List of differences.
+        `list`: List of differences.
     """
     src_path = dst_path = None
     if src != 'latest':
@@ -401,14 +401,14 @@ def _create_es():
 def search(query):
     """Search your bucket
 
-    ``query`` can contain plaintext, and can also contain clauses like
+    `query` can contain plaintext, and can also contain clauses like
     `$key:"$value"` that search for exact matches on specific keys.
 
     Parameters:
         query (str): a query string
 
     Returns:
-        ``list`` of ``dict``:  Either the request object (in case of an error)
+        `list` of `dict`:  Either the request object (in case of an error)
         or a list of objects with the following keys:
 
             key
@@ -527,7 +527,7 @@ def config(*autoconfig_url, **config_values):
         >>> he.config(navigator_url='http://example.com',
         ...           elastic_search_url='http://example.com/queries')
 
-    Use either ``autoconfig_url`` or ``config_values``, but not both.
+    Use either `autoconfig_url` or `config_values`, but not both.
 
     Parameters:
         autoconfig_url (str): URL indicating a location to configure from
