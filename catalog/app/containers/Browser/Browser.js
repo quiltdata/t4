@@ -170,23 +170,21 @@ export default composeComponent('Browser',
               hide={hidePreview}
             />
             <Listing
-              path={prefix}
+              prefix={prefix}
               directories={result.directories}
               files={result.files}
               onFileClick={handleClick}
             />
             {result.readme && (
               <SummaryItem
-                title={withoutPrefix(prefix, result.readme)}
-                bucket={bucket}
-                path={result.readme}
+                title={withoutPrefix(prefix, result.readme.key)}
+                object={result.readme}
                 expiration={expiration}
               />
             )}
             {result.summary && (
               <Summary
-                bucket={bucket}
-                path={result.summary}
+                object={result.summary}
                 expiration={expiration}
               />
             )}

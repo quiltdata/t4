@@ -132,30 +132,30 @@ const Stats = composeComponent('Browser.Listing.Stats',
 
 export default composeComponent('Browser.Listing',
   setPropTypes({
-    path: PT.string.isRequired,
+    prefix: PT.string.isRequired,
     directories: PT.array.isRequired,
     files: PT.array.isRequired,
     onFileClick: PT.func.isRequired,
   }),
-  ({ path, directories, files, onFileClick }) => (
+  ({ prefix, directories, files, onFileClick }) => (
     <Card>
       <CardText style={{ padding: 0 }}>
         <Stats files={files} />
-        {path !== '' && <ItemDir path={up(path)} name=".." />}
+        {prefix !== '' && <ItemDir path={up(prefix)} name=".." />}
         {directories.map((d) => (
           <ItemDir
             key={d}
             path={d}
-            name={ensureNoSlash(withoutPrefix(path, d))}
+            name={ensureNoSlash(withoutPrefix(prefix, d))}
           />
         ))}
-        {files.map(({ path: fPath, modified, size }) => (
+        {files.map(({ key, modified, size }) => (
           <ItemFile
-            key={fPath}
-            name={withoutPrefix(path, fPath)}
+            key={key}
+            name={withoutPrefix(prefix, key)}
             size={size}
             modified={modified}
-            onClick={() => onFileClick(fPath)}
+            onClick={() => onFileClick(key)}
           />
         ))}
       </CardText>

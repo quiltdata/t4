@@ -44,6 +44,7 @@ export const Provider = composeComponent('AWS.Signer.Provider',
         const signer = new SignerV4(request, serviceName);
         signer.addAuthorization(credentials, new Date());
       },
+      // TODO: remove?
       signURLForBucket: (url, s3Bucket) => {
         const info = parseS3Url(url);
         return info && info.bucket === s3Bucket
@@ -54,6 +55,12 @@ export const Provider = composeComponent('AWS.Signer.Provider',
           })
           : url;
       },
+      getSignedS3Url: ({ bucket, key }) =>
+        s3.getSignedUrl('getObject', {
+          Bucket: bucket,
+          Key: key,
+          Expires: urlExpiration,
+        }),
     },
   })),
   provide(Ctx, 'signer'));

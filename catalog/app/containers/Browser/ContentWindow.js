@@ -18,6 +18,9 @@ import Spinner from 'components/Spinner';
 import config from 'constants/config';
 import { S3, Signer } from 'utils/AWS';
 import { composeComponent } from 'utils/reactTools';
+import {
+  handleFromUrl,
+} from 'utils/s3paths';
 
 
 const ImgContent = styled.img`
@@ -60,12 +63,16 @@ const VegaContent = composeComponent('Browser.VegaContent',
   }),
   withHandlers({
     embed: ({ el, spec }) => () => {
-      embed(el, spec, { actions: false });
+      // console.log('embed', el, spec);
+      if (el) embed(el, spec, { actions: false });
     },
   }),
   lifecycle({
     componentDidMount() {
       this.props.embed();
+    },
+    componentDidUpdate(prevProps) {
+      if (prevProps.el !== this.props.el) this.props.embed();
     },
   }),
   ({ setEl }) => (
@@ -92,10 +99,10 @@ const HANDLERS = [
   {
     name: 'md',
     detect: '.md',
-    load: async ({ bucket, path, s3 }) => {
+    load: async ({ object, s3 }) => {
       const data = await s3.getObject({
-        Bucket: bucket,
-        Key: path,
+        Bucket: object.bucket,
+        Key: object.key,
       }).promise();
       return data.Body.toString('utf-8');
     },
@@ -119,10 +126,10 @@ const HANDLERS = [
   {
     name: 'vega',
     detect: '.json',
-    load: async ({ bucket, path, s3, signVega }) => {
+    load: async ({ object, s3, signVega }) => {
       const data = await s3.getObject({
-        Bucket: bucket,
-        Key: path,
+        Bucket: object.bucket,
+        Key: object.key,
       }).promise();
       const json = data.Body.toString('utf-8');
       // console.log('vega json', json);
@@ -136,34 +143,34 @@ const HANDLERS = [
 ];
 
 const normalizeMatcher = (matcher) => {
-  if (typeof matcher === 'string') return (path) => extname(path).toLowerCase() === matcher;
-  if (matcher instanceof RegExp) return (path) => matcher.test(path);
+  if (typeof matcher === 'string') return (key) => extname(key).toLowerCase() === matcher;
+  if (matcher instanceof RegExp) return (key) => matcher.test(key);
   if (typeof matcher === 'function') return matcher;
   throw new Error(`invalid matcher of type ${typeof matcher}`);
 };
 
-const getHandler = (path) =>
+const getHandler = (key) =>
   HANDLERS.find(({ detect }) =>
     [].concat(detect)
       .map(normalizeMatcher)
-      .some((matcher) => matcher(path)));
+      .some((matcher) => matcher(key)));
 
 // TODO
 // eslint-disable-next-line react/prop-types
-const ErrorDisplay = ({ error }) => <h1>error: {error}</h1>;
+const ErrorDisplay = ({ error }) => <h1>error: {`${error}`}</h1>;
 
-const defaultLoad = ({ bucket, path, expiration, s3 }) =>
+// TODO: handle caching (use etag)
+const defaultLoad = ({ object, expiration, s3 }) =>
   s3.getSignedUrl('getObject', {
-    Bucket: bucket,
-    Key: path,
+    Bucket: object.bucket,
+    Key: object.key,
     Expires: expiration,
   });
 
 export default composeComponent('Browser.ContentWindow',
-  setStatic('supports', (path) => !!getHandler(path)),
+  setStatic('supports', (key) => !!getHandler(key)),
   setPropTypes({
-    bucket: PT.string.isRequired,
-    path: PT.string.isRequired,
+    object: PT.object.isRequired,
     expiration: PT.number,
   }),
   S3.inject(),
@@ -177,17 +184,18 @@ export default composeComponent('Browser.ContentWindow',
     setContent: () => (content) => ({ loading: false, content, error: null }),
     setError: () => (error) => ({ loading: false, content: null, error }),
   }),
-  withProps(({ path }) => ({
-    handler: getHandler(path),
+  withProps(({ object }) => ({
+    handler: getHandler(object.key),
   })),
   withHandlers({
-    signImg: ({ signer, bucket }) => ({ src, ...img }) => ({
-      src: signer.signURLForBucket(src, bucket),
+    signImg: ({ signer, object }) => ({ src, ...img }) => ({
+      // TODO: refactor
+      src: signer.signURLForBucket(src, object.bucket),
       ...img,
     }),
-    signVega: ({ signer, bucket }) => ({ data, ...spec }) => ({
+    signVega: ({ signer, object }) => ({ data, ...spec }) => ({
       data: data.map(({ url, ...rest }) => ({
-        url: url && signer.signURLForBucket(url, bucket),
+        url: url && signer.getSignedS3Url(handleFromUrl(url, object)),
         ...rest,
       })),
       ...spec,
@@ -200,13 +208,18 @@ export default composeComponent('Browser.ContentWindow',
         return;
       }
 
-      setLoading();
+      try {
+        setLoading();
 
-      // console.log('props', props);
-      const content = await (handler.load || defaultLoad)(props);
-      // console.log('content', content);
-      // TODO: handle errors
-      setContent(content);
+        // console.log('load', props);
+        const content = await (handler.load || defaultLoad)(props);
+        // console.log('load: content', content);
+        // TODO: handle errors
+        setContent(content);
+      } catch (e) {
+        // console.log('load: error', e);
+        setError(e);
+      }
     },
   }),
   lifecycle({

@@ -7,7 +7,7 @@ import { REDUX_KEY, README_RE, SUMMARY_RE } from './constants';
 
 
 const findFile = (files, re) =>
-  (files.find(({ path }) => re.test(splitPath(path).file)) || {}).path;
+  files.find(({ key }) => re.test(splitPath(key).file));
 
 export default createSelector(get(REDUX_KEY), (s) => {
   const { state, result } = s.toJS();
