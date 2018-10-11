@@ -5,5 +5,5 @@ jobs:
       - image: circleci/python:2.7.14-jessie
     steps:
       - checkout
-      - run: cd ocean && pip install -e .
+      - run: pip install --user -e ocean
       - run: pytest
