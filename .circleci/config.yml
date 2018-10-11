@@ -5,6 +5,15 @@ jobs:
       - image: circleci/python:2.7.14-jessie
     steps:
       - checkout
-      - run: pip install --user -e ocean
-      - run: pip install --user pytest
-      - run: pytest
+      - run:
+        name: Setup
+        command: |
+          virtualenv venv
+          . venv/bin/activate
+          pip install -e ocean
+      - run:
+        name: Run Pytest
+        command: cd ocean && pytest
+
+
+
