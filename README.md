@@ -1,12 +1,14 @@
-# ALPHA version
+# Alpha - technology preview
 
 T4 is alpha software. It is not yet recommended for production use.
 
 ## T4 is like Dropbox for data science, built on S3
 
-* T4 adds search, browsing, content preview, and a Python API to any S3 bucket
+* T4 adds search, content preview, versioning, and a Python API to any S3 bucket
 * Every file in T4 is versioned and searchable
 * T4 is for data scientists, data engineers, and data-driven teams
+
+![](img/t4.gif)
 
 ## Known limitations of the Alpha Preview
 
@@ -21,9 +23,12 @@ T4 is alpha software. It is not yet recommended for production use.
 * [User docs](./UserDocs.md)
 * [Developer docs](./DeveloperDocs.md)
 
+![](notebooks/helium-api.png)
+
 ## Things you can do with T4
 
 * Find the data that you're looking for
+    * Preview Jupyter notebooks, images, and markdown files in S3
     * Browse any S3 bucket
     * Search every file in your bucket
     * Annotate files and directories with searchable JSON tags
