@@ -38,6 +38,8 @@ Writes the in-memory object `src` to the path `dest` in S3.
 Transparently serializes some object types.
 See [Serialization](#serialization) for details.
 
+`dest` should not end in `/`. Objects that end in `/` are treated specially by some s3 tools in a way that is potentially dangerous, so it's best to avoid them.
+
 You can annotate your object with custom metadata by passing a `dict`
 to `meta=`. Object metadata are indexed and searchable by the helium API.
 
@@ -54,6 +56,8 @@ Writes the local file `src` to `dest` in S3.
 Writes the in-memory object `src` to the path `dest` in S3.
 Transparently serializes some object types.
 See [Serialization](#serialization) for details.
+
+`dest` should not end in `/`. Objects that end in `/` are treated specially by some s3 tools in a way that is potentially dangerous, so it's best to avoid them.
 
 You can annotate your object with custom metadata by passing a `dict`
 to `meta=`. Object metadata are indexed and searchable by the helium API.
