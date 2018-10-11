@@ -6,4 +6,5 @@ jobs:
     steps:
       - checkout
       - run: pip install --user -e ocean
+      - run: pip install --user pytest
       - run: pytest
