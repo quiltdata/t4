@@ -8,6 +8,8 @@ T4 is alpha software. It is not yet recommended for production use.
 * Every file in T4 is versioned and searchable
 * T4 is for data scientists, data engineers, and data-driven teams
 
+![](img/t4.gif)
+
 ## Known limitations of the Alpha Preview
 
 * Web catalog supports only one bucket (temporary limitation)
@@ -21,7 +23,7 @@ T4 is alpha software. It is not yet recommended for production use.
 * [User docs](./UserDocs.md)
 * [Developer docs](./DeveloperDocs.md)
 
-![](./notebooks/helium-api.png)
+![](notebooks/helium-api.png)
 
 ## Things you can do with T4
 
