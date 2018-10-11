@@ -91,7 +91,7 @@ If `dest` contains file that `src` does not, that fill will appear as an Add.
 ### Configuration
 
 #### `helium.config()`
-Returns the currenct configuration details as an `ordereddict` subclass, `HeliumConfig`.
+Returns the current configuration details as an `ordereddict` subclass, `HeliumConfig`.
 `HeliumConfig` has a cleaner appearance, and includes the file path.
 
 #### `helium.config(URL)`
