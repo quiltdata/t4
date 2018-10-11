@@ -10,8 +10,7 @@ jobs:
           command: |
             virtualenv venv
             . venv/bin/activate
-            pip install -e ocean
-            pip install pytest
+            pip install -e ocean[tests]
       - run:
           name: Run Pytest
           command: |
