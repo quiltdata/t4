@@ -6,16 +6,13 @@ jobs:
     steps:
       - checkout
       - run:
-        name: Setup
-        command: |
-          virtualenv venv
-          . venv/bin/activate
-          pip install -e ocean
+          name: Setup
+          command: |
+            virtualenv venv
+            . venv/bin/activate
+            pip install -e ocean
       - run:
-        name: Run Pytest
-        command: |
-          . venv/bin/activate
-          cd ocean && pytest
-
-
-
+          name: Run Pytest
+          command: |
+            . venv/bin/activate
+            cd ocean && pytest
