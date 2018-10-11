@@ -10,12 +10,7 @@ jobs:
         command: |
           cd ocean
           pip install -e .
-          
       - run:
         name: Running Tests
         command: |
           pytest
-
-
-
-
