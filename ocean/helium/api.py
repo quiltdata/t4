@@ -47,6 +47,8 @@ def put_file(src, dest, meta=None):
         obj: a serializable object
         dest (str): path in T4
         meta (dict): Optional. metadata dict to store with `obj` at `dest`
+    Returns:
+        None
     """
     all_meta = dict(
         user_meta=meta
@@ -68,6 +70,10 @@ def get_file(src, dest, snapshot=None, version=None):
         dest (str): a local path to write to
         snapshot (str): (optional) download from a specific snapshot
         version (str): (optional) download a specific version
+    Returns:
+        None
+    Raises:
+        HeliumException: if both `snapshot` and `version` are given
     """
     if version is not None and snapshot is not None:
         raise HeliumException("Specify only one of snapshot or version.")
@@ -162,6 +168,10 @@ def put(obj, dest, meta=None):
         obj: a serializable object
         dest (str): path in T4
         meta (dict): Optional. metadata dict to store with `obj` at `dest`
+    Returns:
+        None
+    Raises:
+        ValueError: when a path ends in the path separator
     """
     if dest.endswith(AWS_SEPARATOR):
         raise ValueError("Invalid path: %r; ends with a %r"
@@ -186,6 +196,11 @@ def get(src, snapshot=None, version=None):
         version (str): Optional. A specific version to use (mutually exclusive with `snapshot`)
     Returns:
         tuple: `(data, metadata)`.  Does not work on all objects, see **serialization**
+    Raises:
+        HeliumException:
+            * when both snapshot and version are specified
+            * when the metadata contains no deserialization information
+            * when the metadata contains an unknown deserialization target
     """
     if snapshot is not None and version is not None:
         raise HeliumException("Specify only one of snapshot or version.")
@@ -196,12 +211,12 @@ def get(src, snapshot=None, version=None):
 
     target_str = meta.get('target')
     if target_str is None:
-        raise HeliumException("No serialization metadata")
+        raise HeliumException("No deserialization metadata")
 
     try:
         target = TargetType(target_str)
     except ValueError:
-        raise HeliumException("Unknown serialization target: %r" % target_str)
+        raise HeliumException("Unknown deserialization target: %r" % target_str)
     return _deserialize_obj(data, target), meta.get('user_meta')
 
 
@@ -274,6 +289,8 @@ def snapshot(path, message):
     Parameters:
         path (str): path to snapshot
         message (str): message to be associated with this snapshot
+    Returns:
+        str: snapshot hash
     """
     return create_snapshot(path, message)
 
@@ -285,12 +302,14 @@ def list_snapshots(bucket, contains=None):
 
     Parameters:
         path (str): path to look up
-
     Returns:
         `list` of `dict`: A list of dicts with snapshot info.
-
-            Each dict of snapshot info has key/value pairs for `hash`,
-            `path`, `message`, and `timestamp`.
+            [{
+                'hash': <str>,
+                'path': <str>,
+                'message': <str>,
+                'timestamp': <datetime.datetime>,
+            }]
     """
     snapshots_list = get_snapshots(bucket, contains)
     return DisplayList(snapshots_list, columns=['hash', 'path', 'timestamp', 'message'], index='path')
@@ -299,29 +318,31 @@ def list_snapshots(bucket, contains=None):
 def diff(bucket, src, dst):
     """List differences between two T4 objects
 
-    Compares the objects specified by the hashes `src` and `dst`.
+    Returns a list of differences between `src` and `dst.
 
-    If the `src` hash and `dst` hash are snapshots of the same object,
-    this is effectively a piece of a particular object's history.
+    `src` and `dest` are strings containing the snapshot's SHA-256 hash, or
+    the string "latest". "latest" signifies "what's currently in S3", but
+    "latest" is not a proper snapshot.
 
-    If the `src` hash and `dst` hash are snapshots of different objects
-    which overlap, this is effectively the difference between two snapshots.
-
-    If the `src` hash and `dst` hash are snapshots of different objects
-    which do not overlap, this command doesn't make any sense, and you will
-    get an error.
-
-    Either of `src` or `dst` may have the value "latest". In this case,
-    the `src` or `dst` will be compared against the current T4 object.
-    This will include changes which have not yet been snapshotted.
+    If the snapshot specified by `dst` contains a file that `src` does not,
+    that file will appear as an Add. If you were to swap the order of the
+    parameters, the same file would appear as Delete.
 
     Parameters:
-        bucket (str): Bucket containing the `src` and `dst` hashes.
+        bucket (str): Bucket containing the `src` and `dst` hashes.  May not
+            contain a terminating '/'.
         src: A T4 object hash contained in the bucket, or `'latest'`
         dst: A T4 object hash contained in the bucket, or `'latest'`
 
     Returns:
-        `list`: List of differences.
+        `DisplayList`: A list of differences (as dicts).  Differences are one
+            of three types: Add, Modify, or Delete.
+
+            Example Return Value:
+                [{'status': 'Deleted',
+                  'key': 'foo/bar',
+                  'ETag': '"502f21cfc143ae9c35f563eda5699f37"'
+                }]
     """
     src_path = dst_path = None
     if src != 'latest':
@@ -409,24 +430,19 @@ def search(query):
 
     Returns:
         `list` of `dict`:  Either the request object (in case of an error)
-        or a list of objects with the following keys:
+        or a list of dicts which contain search results:
 
-            key
-                key of the object
-            version_id
-                version_id of object version
-            operation
-                Create or Delete
-            meta
-                metadata attached to object
-            size
-                size of object in bytes
-            text
-                indexed text of object
-            source
-                source document for object (what is actually stored in ElasticSeach)
-            time
-                timestamp for operation
+        Example Return Value:
+            [{
+                key: <key of the object>,
+                version_id: <object version>,
+                operation: <Create or Delete>,
+                meta: <metadata attached to object>,
+                size: <size of object in bytes>,
+                text: <indexed text of object>,
+                source: <source document for object (what is actually stored in ElasticSeach)>,
+                time: <timestamp for operation>,
+            }]
     """
     es = _create_es()
 
@@ -531,9 +547,12 @@ def config(*autoconfig_url, **config_values):
 
     Parameters:
         autoconfig_url (str): URL indicating a location to configure from
-
     Keyword Args:
         **config_values: `key=value` pairs to set in the config
+    Returns:
+        `HeliumConfig`: An ordered dict with a readable representation.
+            Contains the config as it is (including any modifications made
+            by calling `config()` with parameters).
     """
     if autoconfig_url and config_values:
         raise HeliumException("Expected either an auto-config URL or key=value pairs, but got both.")
