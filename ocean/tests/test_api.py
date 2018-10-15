@@ -45,6 +45,10 @@ class TestAPI():
         with pytest.raises(ValueError):
             he.put(test_object, "test/")
 
+    def test_search_no_config(self):
+        with pytest.raises(util.HeliumException, match="No configured region."):
+            he.search('*')
+
     @patch('helium.api._create_es')
     def test_search(self, _create_es):
         mock_es_client = Mock()
