@@ -45,9 +45,8 @@ class TestAPI():
         with pytest.raises(ValueError):
             he.put(test_object, "test/")
 
-    @patch('helium.search')
     @patch('helium.api._create_es')
-    def test_search(self, _create_es, search):
+    def test_search(self, _create_es):
         mock_es_client = Mock()
         mock_es_client.search.return_value = {}
 
@@ -60,6 +59,6 @@ class TestAPI():
                 }}}
 
         he.search(query)
-        assert search.called
+        assert mock_es_client.search.called
 
-        assert mock_es_client.search.assert_called_with(index=he.api.es_index, body=payload)
+        mock_es_client.search.assert_called_with(index=he.api.es_index, body=payload)
