@@ -1,13 +1,12 @@
-
 import pytest
 import requests
 import responses
 from ruamel.yaml import YAML
+from unittest.mock import Mock, create_autospec, patch
 
+from elasticsearch import Elasticsearch
 import helium as he
 from helium import util
-
-
 
 class TestAPI():
     @responses.activate
@@ -45,3 +44,22 @@ class TestAPI():
         test_object = "foo"
         with pytest.raises(ValueError):
             he.put(test_object, "test/")
+
+    @patch('helium.search')
+    @patch('helium.api._create_es')
+    def test_search(self, _create_es, search):
+        mock_es_client = Mock()
+        mock_es_client.search.return_value = {}
+
+        _create_es.return_value = mock_es_client
+        query = '*'
+        payload = {'query': {'query_string': {
+                'default_field': 'content',
+                'query': query,
+                'quote_analyzer': 'keyword',
+                }}}
+
+        he.search(query)
+        assert search.called
+
+        assert mock_es_client.search.assert_called_with(index=he.api.es_index, body=payload)
