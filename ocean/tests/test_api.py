@@ -52,7 +52,13 @@ class TestAPI():
     @patch('helium.api._create_es')
     def test_search(self, _create_es):
         mock_es_client = Mock()
-        mock_es_client.search.return_value = {}
+        mock_es_client.search.return_value = {
+                'took': 3,
+                'timed_out': False,
+                '_shards': {'total': 5, 'successful': 5, 'skipped': 0, 'failed': 0},
+                'hits': {'total': 0, 'max_score': None, 'hits': []}
+            }
+
 
         _create_es.return_value = mock_es_client
         query = '*'
@@ -62,7 +68,9 @@ class TestAPI():
                 'quote_analyzer': 'keyword',
                 }}}
 
-        he.search(query)
+        result = he.search(query)
         assert mock_es_client.search.called
-
         mock_es_client.search.assert_called_with(index=he.api.es_index, body=payload)
+
+        assert isinstance(result, list)
+        assert result == []
