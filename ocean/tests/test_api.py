@@ -1,10 +1,9 @@
+from unittest.mock import Mock, patch
+
 import pytest
-import requests
 import responses
 from ruamel.yaml import YAML
-from unittest.mock import Mock, create_autospec, patch
 
-from elasticsearch import Elasticsearch
 import helium as he
 from helium import util
 
@@ -37,7 +36,6 @@ class TestAPI():
         with pytest.raises(util.HeliumException, match='Port must be a number'):
             he.config('https://fliff:fluff')
 
-    
     def test_put_to_directory_failure(self):
         # Adding pathes with trailing delimeters causes AWS to treat them like virtual directories
         # and can cause issues when downloading to host machine.
@@ -53,20 +51,19 @@ class TestAPI():
     def test_search(self, _create_es):
         mock_es_client = Mock()
         mock_es_client.search.return_value = {
-                'took': 3,
-                'timed_out': False,
-                '_shards': {'total': 5, 'successful': 5, 'skipped': 0, 'failed': 0},
-                'hits': {'total': 0, 'max_score': None, 'hits': []}
-            }
-
+            'took': 3,
+            'timed_out': False,
+            '_shards': {'total': 5, 'successful': 5, 'skipped': 0, 'failed': 0},
+            'hits': {'total': 0, 'max_score': None, 'hits': []}
+        }
 
         _create_es.return_value = mock_es_client
         query = '*'
         payload = {'query': {'query_string': {
-                'default_field': 'content',
-                'query': query,
-                'quote_analyzer': 'keyword',
-                }}}
+            'default_field': 'content',
+            'query': query,
+            'quote_analyzer': 'keyword',
+        }}}
 
         result = he.search(query)
         assert mock_es_client.search.called
