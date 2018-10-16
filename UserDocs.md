@@ -23,7 +23,7 @@ $ pip install git+https://github.com/quiltdata/t4.git#subdirectory=ocean
 
 ### Reading and writing data
 
-![](./notebooks/helium-api.png)
+![](img/helium-api.png)
 
 
 #### `helium.get(src [, snapshot=None | version=None])`
