@@ -23,7 +23,7 @@ T4 is alpha software. It is not yet recommended for production use.
 * [User docs](./UserDocs.md)
 * [Developer docs](./DeveloperDocs.md)
 
-![](notebooks/helium-api.png)
+![](img/helium-api.png)
 
 ## Things you can do with T4
 
