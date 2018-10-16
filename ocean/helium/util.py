@@ -54,13 +54,18 @@ class HeliumException(Exception):
             setattr(self, k, v)
 
 
-def split_path(path):
+def split_path(path, require_subpath=False):
     """
     Split bucket name and intra-bucket path. Returns: (bucket, path)
     """
+
     result = path.split(AWS_SEPARATOR, 1)
     if len(result) != 2:
-        raise ValueError("Invalid path: %r; expected BUCKET/PATH/..." % path)
+        raise ValueError("Invalid path: %r; expected BUCKET/PATH..." % path)
+    if require_subpath and not all(result):
+        raise ValueError("Invalid path: %r; expected BUCKET/PATH... (BUCKET and PATH both required)"
+                         % path)
+
     return result
 
 
