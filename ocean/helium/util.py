@@ -1,5 +1,6 @@
 from collections import Mapping, Sequence, Set
 import datetime
+import json
 import os
 
 # backports
@@ -157,3 +158,18 @@ def validate_url(url):
         parsed_url.port
     except ValueError:
         raise HeliumException("Invalid URL -- Port must be a number: {}".format(url))
+
+
+# Although displaying the config may seem not to warrant a class, it's pretty important
+# for good UX. A lot of points were considered in making this -- retaining order,
+# user's usage in an interpreted environment like Jupyter, and keeping the displayed
+# information concise.  Given the limitations of the other options, making a class with
+# custom repr panned out to be the best (and shortest) option.
+class HeliumConfig(OrderedDict):
+    def __init__(self, filepath, *args, **kwargs):
+        self.filepath = pathlib.Path(filepath)
+        super(HeliumConfig, self).__init__(*args, **kwargs)
+
+    def __repr__(self):
+        return "<{} at {!r} {}>".format(type(self).__name__, str(self.filepath), json.dumps(self, indent=4))
+
