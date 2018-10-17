@@ -38,8 +38,6 @@ Writes the in-memory object `src` to the path `dest` in S3.
 Transparently serializes some object types.
 See [Serialization](#serialization) for details.
 
-`dest` should not end in `/`. Objects that end in `/` are treated specially by some s3 tools in a way that is potentially dangerous, so it's best to avoid them.
-
 You can annotate your object with custom metadata by passing a `dict`
 to `meta=`. Object metadata are indexed and searchable by the helium API.
 
@@ -56,8 +54,6 @@ Writes the local file `src` to `dest` in S3.
 Writes the in-memory object `src` to the path `dest` in S3.
 Transparently serializes some object types.
 See [Serialization](#serialization) for details.
-
-`dest` should not end in `/`. Objects that end in `/` are treated specially by some s3 tools in a way that is potentially dangerous, so it's best to avoid them.
 
 You can annotate your object with custom metadata by passing a `dict`
 to `meta=`. Object metadata are indexed and searchable by the helium API.
@@ -357,3 +353,6 @@ T4 automatically populates the following metadata:
     s3:GetObject
     s3:GetObjectVersion
     ```
+* The keys of objects in s3 should not end in `/`. Objects that end in `/` are treated specially by some s3 tools in a way that is potentially dangerous, so it's best to avoid them. The helium API will help you avoid this rough edge by rejecting keys that end in `/`.
+
+Refer to [Amazon's documentation](https://docs.aws.amazon.com/AmazonS3/latest/user-guide/using-folders.html) on folder objects.
