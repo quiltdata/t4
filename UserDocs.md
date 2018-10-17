@@ -353,6 +353,8 @@ T4 automatically populates the following metadata:
     s3:GetObject
     s3:GetObjectVersion
     ```
-* The keys of objects in s3 should not end in `/`. Objects that end in `/` are treated specially by some s3 tools in a way that is potentially dangerous, so it's best to avoid them. The helium API will help you avoid this rough edge by rejecting keys that end in `/`.
-
+* The keys of objects in S3 should not end in `/`. Objects that end in `/`
+are treated specially by some S3 tools in a way that
+is potentially dangerous, so it's best to avoid them.
+The helium API will help you avoid this rough edge by rejecting keys that end in `/`.
 Refer to [Amazon's documentation](https://docs.aws.amazon.com/AmazonS3/latest/user-guide/using-folders.html) on folder objects.
