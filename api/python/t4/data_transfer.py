@@ -1,10 +1,11 @@
+from concurrent.futures import ThreadPoolExecutor
+import hashlib
 import json
-import os
 import pathlib
-from threading import Lock, get_ident
+from threading import Lock
 
 import boto3
-from boto3.s3.transfer import S3Transfer, TransferConfig, create_transfer_manager
+from boto3.s3.transfer import TransferConfig, create_transfer_manager
 from s3transfer.subscribers import BaseSubscriber
 from tqdm.autonotebook import tqdm
 
@@ -14,7 +15,8 @@ from .util import HeliumException, split_path
 HELIUM_METADATA = 'helium'
 
 s3_client = boto3.client('s3')
-s3_manager = create_transfer_manager(s3_client, TransferConfig())
+s3_transfer_config = TransferConfig()
+s3_manager = create_transfer_manager(s3_client, s3_transfer_config)
 
 
 class SizeCallback(BaseSubscriber):
@@ -148,6 +150,23 @@ def download_bytes(path, version=None):
     return body, meta
 
 
+def _calculate_etag(file_obj):
+    size = file_obj.stat().st_size
+    with open(file_obj, 'rb') as fd:
+        if size <= s3_transfer_config.multipart_threshold:
+            contents = fd.read()
+            etag = hashlib.md5(contents).hexdigest()
+        else:
+            hashes = []
+            while True:
+                contents = fd.read(s3_transfer_config.multipart_chunksize)
+                if not contents:
+                    break
+                hashes.append(hashlib.md5(contents).digest())
+            etag = '%s-%d' % (hashlib.md5(b''.join(hashes)).hexdigest(), len(hashes))
+    return '"%s"' % etag
+
+
 def upload_file(src_path, dest_path, meta):
     src_file = pathlib.Path(src_path)
     is_dir = src_file.is_dir()
@@ -172,13 +191,33 @@ def upload_file(src_path, dest_path, meta):
 
     total_size = sum(f.stat().st_size for f in src_file_list)
 
+    with ThreadPoolExecutor() as executor:
+        # Calculate local ETags in parallel.
+        src_etag_iter = executor.map(_calculate_etag, src_file_list)
+
+        # While waiting for the above, get ETags for the destination dir in the bucket.
+        # (Listing the whole bucket is slow, but the target dir might be a good compromise.)
+        existing_etags = {}
+        for response in _list_object_versions(Bucket=bucket, Prefix=key):
+            for obj in response.get('Versions', []):
+                existing_etags[obj['ETag']] = (obj['Key'], obj['VersionId'])
+
+        src_etag_list = list(src_etag_iter)
+
     with tqdm(total=total_size, unit='B', unit_scale=True) as progress:
         callback = ProgressCallback(progress)
 
         futures = []
-        for f in src_file_list:
+        for f, etag in zip(src_file_list, src_etag_list):
             real_dest_path = key + str(f.relative_to(src_root)) if (not key or key.endswith('/')) else key
-            future = s3_manager.upload(str(f), bucket, real_dest_path, extra_args, [callback])
+            existing_src = existing_etags.get(etag)
+            if existing_src is not None:
+                future = s3_manager.copy(
+                    dict(Bucket=bucket, Key=existing_src[0], VersionId=existing_src[1]),
+                    bucket, real_dest_path, extra_args, [callback]
+                )
+            else:
+                future = s3_manager.upload(str(f), bucket, real_dest_path, extra_args, [callback])
             futures.append(future)
 
         for future in futures:
