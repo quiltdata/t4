@@ -358,3 +358,9 @@ are treated specially by some S3 tools in a way that
 is potentially dangerous, so it's best to avoid them.
 The helium API will help you avoid this rough edge by rejecting object keys that end in `/`.
 Refer to [Amazon's documentation](https://docs.aws.amazon.com/AmazonS3/latest/user-guide/using-folders.html) on folder objects.
+
+~~`he.put_file("foo.txt", "s3://bucket/path/")`~~ - don't do this
+
+`he.put_file("local_directory/", "s3://bucket/path/")` - this will perform a recursive copy, and is correct
+
+
