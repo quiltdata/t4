@@ -50,8 +50,8 @@ def _response_generator(func, tokens, **kwargs):
             kwargs[token] = response['Next' + token]
 
 
-_list_objects = partial(_response_generator, s3_client.list_objects_v2, ['ContinuationToken'])
-_list_object_versions = partial(_response_generator, s3_client.list_object_versions, ['KeyMarker', 'VersionIdMarker'])
+_list_objects = partial(_response_generator, func=s3_client.list_objects_v2, tokens=['ContinuationToken'])
+_list_object_versions = partial(_response_generator, func=s3_client.list_object_versions, tokens=['KeyMarker', 'VersionIdMarker'])
 
 
 def _download_single_file(bucket, key, dest_path, version=None):
