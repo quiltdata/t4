@@ -188,6 +188,25 @@ class Snapshot(object):
         """
         raise NotImplementedError
 
+    @staticmethod
+    def snap(path):
+        """
+        Takes a snapshot of a provided path.
+
+        Recursively enumerates every file in path, and returns a new
+        snapshot that contains all those files.
+
+        Args:
+            path: path to snapshot
+
+        Returns:
+            A new snapshot of that path
+
+        Raises:
+            when path doesn't exist
+        """
+        raise NotImplementedError
+
     def get(self, logical_key):
         """
         Gets object from local_key and returns it as an in-memory object.
