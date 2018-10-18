@@ -167,6 +167,7 @@ class Snapshot(object):
         size is the length of the object in bytes
         """
         self._data = {}
+        self._meta = {}
         pass
 
     def _clone(self):
