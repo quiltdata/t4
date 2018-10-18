@@ -176,6 +176,7 @@ class Snapshot(object):
         """
         snap = Snapshot()
         snap._data = copy.deepcopy(self._data)
+        snap._meta = copy.deepcopy(self._meta)
         return snap
 
     def __contains__(self, logical_key):
