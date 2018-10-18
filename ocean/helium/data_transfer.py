@@ -208,10 +208,14 @@ def upload_bytes(data, path, meta):
 
 def delete_object(path):
     bucket, key = split_path(path, require_subpath=True)
-    resp = s3_client.delete_object(
-        Bucket=bucket,
-        Key=key
-    )
+
+    if path.endswith('/'):
+        for response in _list_objects(Bucket=bucket, Prefix=key):
+            for obj in response.get('Contents', []):
+                s3_client.delete_object(Bucket=bucket, Key=obj['Key'])
+    else:
+        s3_client.head_object(Bucket=bucket, Key=key)  # Make sure it exists
+        s3_client.delete_object(Bucket=bucket, Key=key)  # Actually delete it
 
 
 def list_object_versions(path, recursive=True):
