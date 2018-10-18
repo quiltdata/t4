@@ -197,8 +197,8 @@ class Snapshot(object):
     def materialize(self, path):
         """
         copies each object in this snapshot to path according to logical key structure,
-        then places a serialized version of this snapshot with physical_keys that point
-        to the new copies
+        then adds to the registry a serialized version of this snapshot 
+        with physical_keys that point to the new copies
         """
         raise NotImplementedError
     
