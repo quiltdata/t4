@@ -138,3 +138,69 @@ def download_bytes_from_snapshot(src, snapshothash):
     snapshot_data = read_snapshot_by_hash(bucket, snapshothash)
     obj_rec = snapshot_data['contents'][key]
     return download_bytes(src, version=obj_rec['VersionId'])
+
+
+class Snapshot(object):
+    """ In-memory representation of a snapshot """
+
+    def __init__(self):
+        """
+        _data is of the form {logical_key: entry}
+        entry is of the form (physical_key, hash, size, user_meta)
+        physical_key is of the form {
+            schema_version: string
+            type: string
+            uri: string
+        }
+        hash is of the form {
+            type: string (e.g. "SHA256")
+            value: string
+        }
+        size is the length of the object in bytes
+        """
+        self._data = {}
+        pass
+
+    @staticmethod
+    def load(path):
+        """ loads a snapshot from a path """
+        raise NotImplementedError
+
+    def get(self, logical_key):
+        """ gets object from local_key and returns it as an in-memory object """
+        raise NotImplementedError
+
+    def get_file(self, logical_key, local_path):
+        """ gets object from local_key inside the snapshot and saves it to local_path """
+        raise NotImplementedError
+
+    def dump(self, path):
+        """ serializes this snapshot to a file at path """
+        raise NotImplementedError
+
+    def update(self, local_key, entry):
+        """ returns a new snapshot with the object at local_key set to entry """
+        raise NotImplementedError
+
+    def delete(self, local_key):
+        """ returns a new snapshot with local_key removed """
+        raise NotImplementedError
+
+    def tophash(self):
+        """
+        returns the tophash of the snapshot.
+        Note that physical keys are not hashed because the snapshot has
+            the same semantics regardless of where the bytes come from.
+        """
+        raise NotImplementedError
+
+    def materialize(self, path):
+        """
+        copies each object in this snapshot to path according to logical key structure,
+        then places a serialized version of this snapshot with physical_keys that point
+        to the new copies
+        """
+        raise NotImplementedError
+    
+    # Should probably have [] operator be an alias for get
+    # not sure how to overload [] for lvalues
