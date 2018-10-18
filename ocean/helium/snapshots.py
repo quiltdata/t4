@@ -1,4 +1,5 @@
 import boto3
+import copy
 import hashlib
 import json
 
@@ -161,6 +162,14 @@ class Snapshot(object):
         self._data = {}
         pass
 
+    def _clone(self):
+        """
+        Returns clone of this snapshot.
+        """
+        snap = Snapshot()
+        snap._data = copy.deepcopy(self._data)
+        return snap
+
     def __contains__(self, logical_key):
         """
         Checks whether the snapshot contains a specified logical_key.
@@ -221,6 +230,9 @@ class Snapshot(object):
             KeyError: when logical_key is not present in the snapshot
             physical key failure
         """
+        entry = self._data[logical_key]
+        physical_key = entry['physical_key']
+        # TODO actually fetch from physical key
         raise NotImplementedError
 
     def get_file(self, logical_key, path):
@@ -241,6 +253,13 @@ class Snapshot(object):
             fail to finish write
         """
         raise NotImplementedError
+
+    def get_meta(self, logical_key):
+        """
+        Returns user metadata for specified logical key.
+        """
+        entry = self._data[logical_key]
+        return entry['user_meta']
 
     def dump(self, path):
         """
@@ -269,7 +288,9 @@ class Snapshot(object):
         Returns:
             A new snapshot
         """
-        raise NotImplementedError
+        snap = self._clone()
+        snap._data[logical_key] = entry
+        return snap
 
     def delete(self, logical_key):
         """
@@ -281,7 +302,9 @@ class Snapshot(object):
         Raises:
             KeyError: when logical_key is not present to be deleted
         """
-        raise NotImplementedError
+        snap = self._clone()
+        snap._data.pop(logical_key)
+        return snap
 
     def top_hash(self):
         """
