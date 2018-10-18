@@ -1,3 +1,4 @@
+from functools import partial
 import json
 import os
 import pathlib
@@ -37,6 +38,20 @@ class ProgressCallback(BaseSubscriber):
 
 def _parse_metadata(resp):
     return json.loads(resp['Metadata'].get(HELIUM_METADATA, '{}'))
+
+
+def _response_generator(func, tokens, **kwargs):
+    while True:
+        response = func(**kwargs)
+        yield response
+        if not response['IsTruncated']:
+            break
+        for token in tokens:
+            kwargs[token] = response['Next' + token]
+
+
+_list_objects = partial(_response_generator, func=s3_client.list_objects_v2, tokens=['ContinuationToken'])
+_list_object_versions = partial(_response_generator, func=s3_client.list_object_versions, tokens=['KeyMarker', 'VersionIdMarker'])
 
 
 def _download_single_file(bucket, key, dest_path, version=None):
@@ -212,16 +227,8 @@ def list_object_versions(path, recursive=True):
     versions = []
     delete_markers = []
     prefixes = []
-    more = True
-    while more:
-        response = s3_client.list_object_versions(**list_obj_params)
-        more = response['IsTruncated']
-        if more:
-            next_key = response['NextKeyMarker']
-            next_vid = response['NextVersionIdMarker']
-            list_obj_params.update({'VersionIdMarker': next_vid,
-                                    'KeyMarker': next_key})
 
+    for response in _list_object_versions(**list_obj_params):
         versions += response.get('Versions', [])
         delete_markers += response.get('DeleteMarkers', [])
         prefixes += response.get('CommonPrefixes', [])
@@ -242,15 +249,7 @@ def list_objects(path, recursive=True):
         # Treat '/' as a directory separator and only return one level of files instead of everything.
         list_obj_params.update(dict(Delimiter='/'))
 
-    #TODO: make this a generator?
-    more = True
-    while more:
-        response = s3_client.list_objects_v2(**list_obj_params)
-        more = response['IsTruncated']
-        if more:
-            next_token = response['NextContinuationToken']
-            list_obj_params.update({'ContinuationToken': next_token})
-
+    for response in _list_objects(**list_obj_params):
         objects += response.get('Contents', [])
         prefixes += response.get('CommonPrefixes', [])
 
