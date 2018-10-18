@@ -3,6 +3,8 @@ import copy
 import hashlib
 import json
 
+import jsonlines
+
 from .data_transfer import (download_bytes, download_file, list_objects,
                             list_object_versions, upload_bytes)
 from .util import HeliumException, split_path
@@ -141,6 +143,11 @@ def download_bytes_from_snapshot(src, snapshothash):
     return download_bytes(src, version=obj_rec['VersionId'])
 
 
+class SnapshotException(Exception):
+    """ Exception relating to snapshot validity. """
+    pass
+
+
 class Snapshot(object):
     """ In-memory representation of a snapshot """
 
@@ -195,7 +202,17 @@ class Snapshot(object):
             json decode error
             invalid snapshot exception
         """
-        raise NotImplementedError
+        snap = Snapshot()
+        with jsonlines.open(path) as reader:
+            snap._meta = reader.read()
+            for obj in reader:
+                lk = obj['logical_key']
+                if lk in snap._data:
+                    raise SnapshotException("Duplicate logical key while loading snapshot")
+                del obj['logical_key']
+                snap._data[lk] = obj
+
+        return snap
 
     @staticmethod
     def snap(path):
@@ -275,7 +292,12 @@ class Snapshot(object):
             fail to create file
             fail to finish write
         """
-        raise NotImplementedError
+        snap = Snapshot()
+        with jsonlines.open(path, mode='w') as writer:
+            writer.write(snap._meta)
+            for logical_key, obj in self._data.items():
+                obj['logical_key'] = logical_key
+                writer.write(obj)
 
     def update(self, logical_key, entry):
         """
