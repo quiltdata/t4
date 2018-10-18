@@ -289,6 +289,7 @@ class Snapshot(object):
             A new snapshot
         """
         snap = self._clone()
+        # TODO validate entry contents
         snap._data[logical_key] = entry
         return snap
 
