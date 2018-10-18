@@ -161,46 +161,138 @@ class Snapshot(object):
         self._data = {}
         pass
 
+    def __contains__(self, logical_key):
+        """
+        Checks whether the snapshot contains a specified logical_key.
+
+        Returns:
+            True or False
+        """
+        return logical_key in self._data
+
     @staticmethod
     def load(path):
-        """ loads a snapshot from a path """
+        """
+        Loads a snapshot from a path.
+
+        Args:
+            path: string representing the location to load the snapshot from
+
+        Returns:
+            a new Snapshot object
+
+        Raises:
+            file not found
+            json decode error
+            invalid snapshot exception
+        """
         raise NotImplementedError
 
     def get(self, logical_key):
-        """ gets object from local_key and returns it as an in-memory object """
+        """
+        Gets object from local_key and returns it as an in-memory object.
+
+        Args:
+            logical_key: logical key of the object to get
+
+        Returns:
+            A deserialized object from the logical_key
+
+        Raises:
+            KeyError: when logical_key is not present in the snapshot
+            physical key failure
+        """
         raise NotImplementedError
 
-    def get_file(self, logical_key, local_path):
-        """ gets object from local_key inside the snapshot and saves it to local_path """
+    def get_file(self, logical_key, path):
+        """
+        Gets object from logical_key inside the snapshot and saves it to path.
+
+        Args:
+            logical_key: logical key inside snapshot to get
+            path: where to put the file
+
+        Returns:
+            None
+
+        Raises:
+            logical key not found
+            physical key failure
+            fail to create file
+            fail to finish write
+        """
         raise NotImplementedError
 
     def dump(self, path):
-        """ serializes this snapshot to a file at path """
-        raise NotImplementedError
-
-    def update(self, local_key, entry):
-        """ returns a new snapshot with the object at local_key set to entry """
-        raise NotImplementedError
-
-    def delete(self, local_key):
-        """ returns a new snapshot with local_key removed """
-        raise NotImplementedError
-
-    def tophash(self):
         """
-        returns the tophash of the snapshot.
+        Serializes this snapshot to a file at path.
+
+        Args:
+            path: where to serialize the snapshot to
+
+        Returns:
+            None
+
+        Raises:
+            fail to create file
+            fail to finish write
+        """
+        raise NotImplementedError
+
+    def update(self, logical_key, entry):
+        """
+        Returns a new snapshot with the object at logical_key set to entry.
+
+        Args:
+            logical_key: logical key to update
+            entry: new entry to place at logical_key in the snapshot
+
+        Returns:
+            A new snapshot
+        """
+        raise NotImplementedError
+
+    def delete(self, logical_key):
+        """
+        Returns a new snapshot with logical_key removed.
+
+        Returns:
+            A new snapshot
+
+        Raises:
+            KeyError: when logical_key is not present to be deleted
+        """
+        raise NotImplementedError
+
+    def top_hash(self):
+        """
+        Returns the top hash of the snapshot.
+
         Note that physical keys are not hashed because the snapshot has
             the same semantics regardless of where the bytes come from.
+
+        Returns:
+            A string that represents the top hash of the snapshot
         """
         raise NotImplementedError
 
     def materialize(self, path):
         """
-        copies each object in this snapshot to path according to logical key structure,
+        Copies objects to path, then creates a new snapshot that points to those objects.
+        
+        Copies each object in this snapshot to path according to logical key structure,
         then adds to the registry a serialized version of this snapshot 
-        with physical_keys that point to the new copies
+        with physical_keys that point to the new copies.
+
+        Args:
+            path: where to copy the objects in the snapshot
+
+        Returns:
+            A new snapshot that points to the copied objects
+
+        Raises:
+            fail to get bytes
+            fail to put bytes
+            fail to put snapshot to registry
         """
         raise NotImplementedError
-    
-    # Should probably have [] operator be an alias for get
-    # not sure how to overload [] for lvalues
