@@ -151,6 +151,13 @@ def download_bytes(path, version=None):
 
 
 def _calculate_etag(file_obj):
+    """
+    Attempts to calculate a local file's ETag the way S3 does:
+    - Normal uploads: MD5 of the file
+    - Multi-part uploads: MD5 of the (binary) MD5s of the parts, dash, number of parts
+    We can't know how the file was actually uploaded - but we're assuming it was done using
+    the default settings, which we get from `s3_transfer_config`.
+    """
     size = file_obj.stat().st_size
     with open(file_obj, 'rb') as fd:
         if size <= s3_transfer_config.multipart_threshold:
@@ -212,11 +219,15 @@ def upload_file(src_path, dest_path, meta):
             real_dest_path = key + str(f.relative_to(src_root)) if (not key or key.endswith('/')) else key
             existing_src = existing_etags.get(etag)
             if existing_src is not None:
+                # We found an existing object with the same ETag, so copy it instead of uploading
+                # the bytes. (In the common case, it's the same key - the object is already there -
+                # but we still copy it onto itself just in case the metadata has changed.)
                 future = s3_manager.copy(
                     dict(Bucket=bucket, Key=existing_src[0], VersionId=existing_src[1]),
                     bucket, real_dest_path, extra_args, [callback]
                 )
             else:
+                # Upload the file.
                 future = s3_manager.upload(str(f), bucket, real_dest_path, extra_args, [callback])
             futures.append(future)
 
