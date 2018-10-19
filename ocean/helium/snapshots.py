@@ -147,7 +147,13 @@ def download_bytes_from_snapshot(src, snapshothash):
 def hash_file(path):
     """ Returns SHA256 hash of file at path. """
     with open(path, 'rb') as f:
-        return hashlib.sha256(f.read()).hexdigest()
+        buf = f.read(4096)
+        hasher = hashlib.sha256()
+        while len(buf):
+            hasher.update(buf)
+            buf = f.read(4096)
+
+        return hasher.hexdigest()
 
 class PackageException(Exception):
     """ Exception relating to package validity. """
@@ -368,6 +374,15 @@ class Package(object):
         pkg._data.pop(logical_key)
         return pkg
 
+    def _top_hash(self):
+        """
+        Sets the top_hash in _meta
+
+        Returns:
+            None
+        """
+        raise NotImplementedError
+
     def top_hash(self):
         """
         Returns the top hash of the package.
@@ -378,7 +393,9 @@ class Package(object):
         Returns:
             A string that represents the top hash of the package
         """
-        raise NotImplementedError
+        if top_hash not in self._meta:
+            self._top_hash()
+        return self._meta['top_hash']
 
     def materialize(self, path):
         """
