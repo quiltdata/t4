@@ -224,10 +224,9 @@ class Package(object):
         with jsonlines.open(path) as reader:
             meta = reader.read()
             for obj in reader:
-                lk = obj['logical_key']
+                lk = obj.pop('logical_key')
                 if lk in data:
                     raise PackageException("Duplicate logical key while loading package")
-                del obj['logical_key']
                 data[lk] = obj
 
         return Package(data, meta)
@@ -341,8 +340,7 @@ class Package(object):
             with jsonlines.Writer(f) as writer:
                 writer.write(self._meta)
                 for logical_key, obj in self._data.items():
-                    obj['logical_key'] = logical_key
-                    writer.write(obj)
+                    writer.write({**{'logical_key': logical_key}, **obj})
 
     def update(self, logical_key, entry):
         """
