@@ -1,10 +1,10 @@
-import boto3
 import copy
 import hashlib
 import json
 import pathlib
 import os
 
+import boto3
 import jsonlines
 
 from .data_transfer import (download_bytes, download_file, list_objects,
@@ -73,7 +73,7 @@ def read_latest_snapshot(path):
     uid, snapshot_path = _parse_snapshot_path(snapshot_file_key)
     snapshot.update(dict(path=snapshot_path))
     return snapshot
-    
+
 
 def read_snapshot_by_hash(bucket, snapshothash):
     snapshot_file_key = _lookup_snapshot_path(bucket, snapshothash)
@@ -91,7 +91,7 @@ def get_snapshots(bucket, prefix):
     for snapshot_rec in sorted(snapshot_files, key=lambda k: k['LastModified'], reverse=True):
         snapshot_file_key = snapshot_rec['Key']
         tophash, snapshotpath = _parse_snapshot_path(snapshot_file_key)
-        
+
         if prefix is None or prefix.startswith(snapshotpath):
             snapshotbytes, _ = download_bytes(f'{bucket}/{snapshot_file_key}')
             snapshot = json.loads(snapshotbytes.decode('utf-8'))
@@ -121,7 +121,7 @@ def create_snapshot(path, message):
                 ETag = etag,
                 VersionId = vid
                 )
-    
+
     bytes = json.dumps(dict(contents=snapshot, message=message, path=path), default=str).encode('utf-8')
     tophash = hashlib.sha256()
     tophash.update(bytes)
@@ -136,7 +136,7 @@ def download_file_from_snapshot(src, dst, snapshothash):
     snapshot_data = read_snapshot_by_hash(bucket, snapshothash)
     obj_rec = snapshot_data['contents'][key]
     return download_file(src, dst, version=obj_rec['VersionId'])
-    
+
 
 def download_bytes_from_snapshot(src, snapshothash):
     bucket, key = split_path(src)
@@ -149,8 +149,8 @@ def hash_file(path):
     with open(path, 'rb') as f:
         return hashlib.sha256(f.read()).hexdigest()
 
-class SnapshotException(Exception):
-    """ Exception relating to snapshot validity. """
+class PackageException(Exception):
+    """ Exception relating to package validity. """
     pass
 
 
@@ -162,10 +162,10 @@ def dereference_physical_key(physical_key):
     raise NotImplementedError
 
 
-class Snapshot(object):
-    """ In-memory representation of a snapshot """
+class Package(object):
+    """ In-memory representation of a package """
 
-    def __init__(self):
+    def __init__(self, data=None, meta=None):
         """
         _data is of the form {logical_key: entry}
         entry is of the form (physical_key, hash, size, user_meta)
@@ -180,22 +180,18 @@ class Snapshot(object):
         }
         size is the length of the object in bytes
         """
-        self._data = {}
-        self._meta = {}
-        pass
+        self._data = data or {}
+        self._meta = meta or {}
 
     def _clone(self):
         """
-        Returns clone of this snapshot.
+        Returns clone of this package.
         """
-        snap = Snapshot()
-        snap._data = copy.deepcopy(self._data)
-        snap._meta = copy.deepcopy(self._meta)
-        return snap
+        return Package(copy.deepcopy(self._data), copy.deepcopy(self._meta))
 
     def __contains__(self, logical_key):
         """
-        Checks whether the snapshot contains a specified logical_key.
+        Checks whether the package contains a specified logical_key.
 
         Returns:
             True or False
@@ -205,51 +201,52 @@ class Snapshot(object):
     @staticmethod
     def load(path):
         """
-        Loads a snapshot from a path.
+        Loads a package from a path.
 
         Args:
-            path: string representing the location to load the snapshot from
+            path: string representing the location to load the package from
 
         Returns:
-            a new Snapshot object
+            a new package object
 
         Raises:
             file not found
             json decode error
-            invalid snapshot exception
+            invalid package exception
         """
-        snap = Snapshot()
+        data = {}
         with jsonlines.open(path) as reader:
-            snap._meta = reader.read()
+            meta = reader.read()
             for obj in reader:
                 lk = obj['logical_key']
-                if lk in snap._data:
-                    raise SnapshotException("Duplicate logical key while loading snapshot")
+                if lk in data:
+                    raise PackageException("Duplicate logical key while loading package")
                 del obj['logical_key']
-                snap._data[lk] = obj
+                data[lk] = obj
 
-        return snap
+        return Package(data, meta)
 
     @staticmethod
-    def snap(path):
+    def pkg(path):
         """
-        Takes a snapshot of a provided path.
+        Takes a package of a provided path.
 
         Recursively enumerates every file in path, and returns a new
-        snapshot that contains all those files.
+        package that contains all those files.
 
         Args:
-            path: path to snapshot
+            path: path to package
 
         Returns:
-            A new snapshot of that path
+            A new package of that path
 
         Raises:
             when path doesn't exist
         """
         # TODO: anything but local paths
         # TODO: deserialization metadata
-        snap = Snapshot()
+        data = {}
+        meta = {}
         src_path = pathlib.Path(path)
         files = src_path.rglob('*')
         for f in files:
@@ -264,8 +261,8 @@ class Snapshot(object):
                     'path': os.path.abspath(f)
                 }]
             }
-            snap._data[str(f)] = entry
-        return snap
+            data[str(f)] = entry
+        return Package(data, meta)
 
     def get(self, logical_key):
         """
@@ -279,7 +276,7 @@ class Snapshot(object):
                 a stream of bytes if deserialization info is missing
 
         Raises:
-            KeyError: when logical_key is not present in the snapshot
+            KeyError: when logical_key is not present in the package
             physical key failure
             hash verification fail
         """
@@ -296,10 +293,10 @@ class Snapshot(object):
 
     def get_file(self, logical_key, path):
         """
-        Gets object from logical_key inside the snapshot and saves it to path.
+        Gets object from logical_key inside the package and saves it to path.
 
         Args:
-            logical_key: logical key inside snapshot to get
+            logical_key: logical key inside package to get
             path: where to put the file
 
         Returns:
@@ -322,10 +319,10 @@ class Snapshot(object):
 
     def dump(self, path):
         """
-        Serializes this snapshot to a file at path.
+        Serializes this package to a file at path.
 
         Args:
-            path: where to serialize the snapshot to
+            path: where to serialize the package to
 
         Returns:
             None
@@ -334,72 +331,72 @@ class Snapshot(object):
             fail to create file
             fail to finish write
         """
-        snap = Snapshot()
-        with jsonlines.open(path, mode='w') as writer:
-            writer.write(snap._meta)
-            for logical_key, obj in self._data.items():
-                obj['logical_key'] = logical_key
-                writer.write(obj)
+        with open(path, mode='w') as f:
+            with jsonlines.Writer(f) as writer:
+                writer.write(self._meta)
+                for logical_key, obj in self._data.items():
+                    obj['logical_key'] = logical_key
+                    writer.write(obj)
 
     def update(self, logical_key, entry):
         """
-        Returns a new snapshot with the object at logical_key set to entry.
+        Returns a new package with the object at logical_key set to entry.
 
         Args:
             logical_key: logical key to update
-            entry: new entry to place at logical_key in the snapshot
+            entry: new entry to place at logical_key in the package
 
         Returns:
-            A new snapshot
+            A new package
         """
-        snap = self._clone()
+        pkg = self._clone()
         # TODO validate entry contents
-        snap._data[logical_key] = entry
-        return snap
+        pkg._data[logical_key] = entry
+        return pkg
 
     def delete(self, logical_key):
         """
-        Returns a new snapshot with logical_key removed.
+        Returns a new package with logical_key removed.
 
         Returns:
-            A new snapshot
+            A new package
 
         Raises:
             KeyError: when logical_key is not present to be deleted
         """
-        snap = self._clone()
-        snap._data.pop(logical_key)
-        return snap
+        pkg = self._clone()
+        pkg._data.pop(logical_key)
+        return pkg
 
     def top_hash(self):
         """
-        Returns the top hash of the snapshot.
+        Returns the top hash of the package.
 
-        Note that physical keys are not hashed because the snapshot has
+        Note that physical keys are not hashed because the package has
             the same semantics regardless of where the bytes come from.
 
         Returns:
-            A string that represents the top hash of the snapshot
+            A string that represents the top hash of the package
         """
         raise NotImplementedError
 
     def materialize(self, path):
         """
-        Copies objects to path, then creates a new snapshot that points to those objects.
-        
-        Copies each object in this snapshot to path according to logical key structure,
-        then adds to the registry a serialized version of this snapshot 
+        Copies objects to path, then creates a new package that points to those objects.
+
+        Copies each object in this package to path according to logical key structure,
+        then adds to the registry a serialized version of this package
         with physical_keys that point to the new copies.
 
         Args:
-            path: where to copy the objects in the snapshot
+            path: where to copy the objects in the package
 
         Returns:
-            A new snapshot that points to the copied objects
+            A new package that points to the copied objects
 
         Raises:
             fail to get bytes
             fail to put bytes
-            fail to put snapshot to registry
+            fail to put package to registry
         """
         raise NotImplementedError
