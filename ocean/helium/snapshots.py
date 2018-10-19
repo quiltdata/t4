@@ -154,6 +154,14 @@ class SnapshotException(Exception):
     pass
 
 
+def dereference_physical_key(physical_key):
+    ty = physical_key['type']
+    if ty == 'local_file':
+        return open(physical_key['path'])
+
+    raise NotImplementedError
+
+
 class Snapshot(object):
     """ In-memory representation of a snapshot """
 
@@ -161,7 +169,7 @@ class Snapshot(object):
         """
         _data is of the form {logical_key: entry}
         entry is of the form (physical_key, hash, size, user_meta)
-        physical_key is of the form {
+        physical_keys is a list of objects of the form {
             schema_version: string
             type: string
             uri: string
@@ -251,10 +259,10 @@ class Snapshot(object):
                 'hash': hash_file(f),
                 'size': os.path.getsize(f),
                 'user_meta': {},
-                'physical_key': {
+                'physical_keys': [{
                     'type': 'local_file',
                     'path': os.path.abspath(f)
-                }
+                }]
             }
             snap._data[str(f)] = entry
         return snap
@@ -267,16 +275,24 @@ class Snapshot(object):
             logical_key: logical key of the object to get
 
         Returns:
-            A deserialized object from the logical_key
+            A deserialized object from the logical_key or
+                a stream of bytes if deserialization info is missing
 
         Raises:
             KeyError: when logical_key is not present in the snapshot
             physical key failure
+            hash verification fail
         """
         entry = self._data[logical_key]
-        physical_key = entry['physical_key']
-        # TODO actually fetch from physical key
-        raise NotImplementedError
+        physical_keys = entry['physical_keys']
+        physical_key = physical_keys[0] # TODO: support multiple physical keys
+        stream = dereference_physical_key(physical_key)
+        # TODO: verify hash
+        if 'target' in entry:
+            # TODO: dispatch on target to deserialize
+            raise NotImplementedError
+
+        return stream
 
     def get_file(self, logical_key, path):
         """
