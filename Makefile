@@ -3,9 +3,9 @@ githook:
 	ln -s -f ../../git_configs/hooks/pre-commit .git/hooks/pre-commit
 
 install: githook
-	pip install -e sdk/python pip-tools
-	pip-compile ocean/setup.py
-	pip-sync ocean/setup.txt requirements.txt
+	pip3 install -e sdk/python pip-tools
+	pip-compile sdk/python/setup.py
+	pip-sync sdk/python/setup.txt requirements.txt
 
 clean:
 	find . -name "*.pyc" -exec rm -f {} \;
