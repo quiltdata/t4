@@ -42,6 +42,7 @@ setup(
         'ruamel.yaml<=0.15.70',
         'six>=1.10.0',
         'tqdm>=4.26.0',
+        'xattr>=0.9.6',
     ],
     extras_require={
         'tests': [

@@ -13,15 +13,30 @@ from boto3.s3.transfer import TransferConfig, create_transfer_manager
 from s3transfer.subscribers import BaseSubscriber
 from six import BytesIO, binary_type, text_type
 from tqdm.autonotebook import tqdm
+import xattr
 
 from .util import HeliumException, split_path, parse_file_url, parse_s3_url
 
 
 HELIUM_METADATA = 'helium'
+HELIUM_XATTR = 'user.com.quiltdata.helium'
 
 s3_client = boto3.client('s3')
 s3_transfer_config = TransferConfig()
 s3_manager = create_transfer_manager(s3_client, s3_transfer_config)
+
+_old_get_object = s3_client.get_object
+def _get_object(self, **kwargs):
+    callback = kwargs.pop('Callback', None)
+    resp = _old_get_object(**kwargs)
+    if callback is not None:
+        callback(resp)
+    return resp
+s3_client.get_object = type(_old_get_object)(_get_object, s3_client)
+
+s3_manager = create_transfer_manager(s3_client, TransferConfig())
+s3_manager.ALLOWED_DOWNLOAD_ARGS = s3_manager.ALLOWED_DOWNLOAD_ARGS + ['Callback']
+
 
 class TargetType(Enum):
     """
@@ -109,6 +124,7 @@ def serialize_obj(obj):
 
     return data, target
 
+
 class SizeCallback(BaseSubscriber):
     def __init__(self, size):
         self.size = size
@@ -155,7 +171,7 @@ def _download_single_file(bucket, key, dest_path, version=None):
         params.update(dict(VersionId=version))
     resp = s3_client.head_object(**params)
     size = resp['ContentLength']
-    # meta = _parse_metadata(resp)
+    meta = _parse_metadata(resp)
     extra = dict(VersionId=version) if version is not None else {}
 
     if dest_path.endswith('/'):
@@ -170,6 +186,7 @@ def _download_single_file(bucket, key, dest_path, version=None):
             extra_args=extra
         )
         future.result()
+        xattr.setxattr(dest_path, HELIUM_XATTR, json.dumps(meta).encode('utf-8'))
 
 
 def _download_dir(bucket, prefix, dest_path):
@@ -204,16 +221,28 @@ def _download_dir(bucket, prefix, dest_path):
     with tqdm(total=total_size, unit='B', unit_scale=True) as progress:
         callback = ProgressCallback(progress)
 
+        metadata = {}
+        lock = Lock()
+
         futures = []
         for key, dest_file, size in tuples_list:
+            def meta_callback(resp):
+                meta = _parse_metadata(resp)
+                with lock:
+                    metadata[key] = meta
             dest_file.parent.mkdir(parents=True, exist_ok=True)
             future = s3_manager.download(
-                bucket, key, str(dest_file), subscribers=[SizeCallback(size), callback]
+                bucket, key, str(dest_file),
+                extra_args=dict(Callback=meta_callback), subscribers=[SizeCallback(size), callback]
             )
             futures.append(future)
 
         for future in futures:
             future.result()
+
+        for key, dest_file, _ in tuples_list:
+            meta = metadata[key]
+            xattr.setxattr(dest_file, HELIUM_XATTR, json.dumps(meta).encode('utf-8'))
 
 
 def download_file(src_path, dest_path, version=None):
@@ -264,7 +293,7 @@ def _calculate_etag(file_obj):
     return '"%s"' % etag
 
 
-def upload_file(src_path, dest_path, meta):
+def upload_file(src_path, dest_path):
     src_file = pathlib.Path(src_path)
     is_dir = src_file.is_dir()
     if src_path.endswith('/'):
@@ -276,15 +305,14 @@ def upload_file(src_path, dest_path, meta):
         if is_dir:
             raise ValueError("Source path is a directory; must end in /")
 
-    bucket, key = split_path(dest_path)
-    extra_args = dict(Metadata={HELIUM_METADATA: json.dumps(meta)})
-
     if is_dir:
         src_root = src_file
         src_file_list = list(f for f in src_file.rglob('*') if f.is_file())
     else:
         src_root = src_file.parent
         src_file_list = [src_file]
+
+    bucket, key = split_path(dest_path)
 
     total_size = sum(f.stat().st_size for f in src_file_list)
 
@@ -307,6 +335,17 @@ def upload_file(src_path, dest_path, meta):
         futures = []
         for f, etag in zip(src_file_list, src_etag_list):
             real_dest_path = key + str(f.relative_to(src_root)) if (not key or key.endswith('/')) else key
+
+            try:
+                meta_bytes = xattr.getxattr(f, HELIUM_XATTR)
+                meta = json.loads(meta_bytes.decode('utf-8'))
+            except IOError:
+                # No metadata
+                meta = {}
+            except ValueError:
+                raise ValueError("Source path contains invalid metadata")
+
+            extra_args = dict(Metadata={HELIUM_METADATA: json.dumps(meta)})
             existing_src = existing_etags.get(etag)
             if existing_src is not None:
                 # We found an existing object with the same ETag, so copy it instead of uploading
