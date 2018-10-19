@@ -2,6 +2,8 @@ import boto3
 import copy
 import hashlib
 import json
+import pathlib
+import os
 
 import jsonlines
 
@@ -142,6 +144,10 @@ def download_bytes_from_snapshot(src, snapshothash):
     obj_rec = snapshot_data['contents'][key]
     return download_bytes(src, version=obj_rec['VersionId'])
 
+def hash_file(path):
+    """ Returns SHA256 hash of file at path. """
+    with open(path, 'rb') as f:
+        return hashlib.sha256(f.read()).hexdigest()
 
 class SnapshotException(Exception):
     """ Exception relating to snapshot validity. """
@@ -233,7 +239,25 @@ class Snapshot(object):
         Raises:
             when path doesn't exist
         """
-        raise NotImplementedError
+        # TODO: anything but local paths
+        # TODO: deserialization metadata
+        snap = Snapshot()
+        src_path = pathlib.Path(path)
+        files = src_path.rglob('*')
+        for f in files:
+            if not f.is_file():
+                continue
+            entry = {
+                'hash': hash_file(f),
+                'size': os.path.getsize(f),
+                'user_meta': {},
+                'physical_key': {
+                    'type': 'local_file',
+                    'path': os.path.abspath(f)
+                }
+            }
+            snap._data[str(f)] = entry
+        return snap
 
     def get(self, logical_key):
         """
