@@ -17,9 +17,9 @@ jobs:
           command: |
             virtualenv venv
             . venv/bin/activate
-            pip install -e sdk/python[tests]
+            pip install -e api/python[tests]
       - run:
           name: Run Pytest
           command: |
             . venv/bin/activate
-            cd sdk/python && pytest
+            cd api/python && pytest
