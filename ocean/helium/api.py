@@ -12,8 +12,9 @@ from six.moves import urllib
 from six import BytesIO, binary_type, text_type
 from enum import Enum
 
-from .data_transfer import (download_bytes, download_file, upload_bytes, upload_file,
-                            delete_object, list_objects, list_object_versions)
+from .data_transfer import (deserialize_obj, download_bytes, download_file,
+                            upload_bytes, upload_file, delete_object,
+                            list_objects, list_object_versions)
 from .snapshots import (create_snapshot, download_bytes_from_snapshot,
                         download_file_from_snapshot, read_snapshot_by_hash,
                         get_snapshots)
@@ -96,29 +97,6 @@ def _serialize_obj(obj):
     return data, target
 
 
-def _deserialize_obj(data, target):
-    if target == TargetType.BYTES:
-        obj = data
-    elif target == TargetType.UNICODE:
-        obj = data.decode('utf-8')
-    elif target == TargetType.JSON:
-        obj = json.loads(data.decode('utf-8'))
-    elif target == TargetType.NUMPY:
-        import numpy as np
-        buf = BytesIO(data)
-        obj = np.load(buf, allow_pickle=False)
-    elif target == TargetType.PYARROW:
-        import pyarrow as pa
-        from pyarrow import parquet
-        buf = BytesIO(data)
-        table = parquet.read_table(buf)
-        obj = pa.Table.to_pandas(table)
-    else:
-        raise NotImplementedError
-
-    return obj
-
-
 def put(obj, dest, meta=None):
     if dest.endswith(AWS_SEPARATOR):
         raise ValueError("Invalid path: %r; ends with a %r"
@@ -148,7 +126,7 @@ def get(src, snapshot=None, version=None):
         target = TargetType(target_str)
     except ValueError:
         raise HeliumException("Unknown serialization target: %r" % target_str)
-    return _deserialize_obj(data, target), meta.get('user_meta')
+    return deserialize_obj(data, target), meta.get('user_meta')
 
 
 def delete(path):

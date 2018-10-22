@@ -9,6 +9,7 @@ import jsonlines
 
 from .data_transfer import (download_bytes, download_file, list_objects,
                             list_object_versions, upload_bytes)
+from .exceptions import PackageException
 from .util import HeliumException, split_path
 
 SNAPSHOT_PREFIX = ".quilt/snapshots"
@@ -155,11 +156,6 @@ def hash_file(path):
 
         return hasher.hexdigest()
 
-class PackageException(Exception):
-    """ Exception relating to package validity. """
-    pass
-
-
 def dereference_physical_key(physical_key):
     ty = physical_key['type']
     if ty == 'local_file':
@@ -232,7 +228,7 @@ class Package(object):
         return Package(data, meta)
 
     @staticmethod
-    def pkg(path):
+    def create_package(path):
         """
         Takes a package of a provided path.
 
@@ -294,15 +290,15 @@ class Package(object):
             # TODO: dispatch on target to deserialize
             raise NotImplementedError
 
-        return stream
+        raise NotImplementedError
 
-    def get_file(self, logical_key, path):
+    def get_files(self, logical_key, path):
         """
-        Gets object from logical_key inside the package and saves it to path.
+        Gets objects from logical_key inside the package and saves them to path.
 
         Args:
             logical_key: logical key inside package to get
-            path: where to put the file
+            path: where to put the files
 
         Returns:
             None

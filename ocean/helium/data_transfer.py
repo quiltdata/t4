@@ -18,6 +18,28 @@ s3_client = boto3.client('s3')
 s3_manager = create_transfer_manager(s3_client, TransferConfig())
 
 
+def deserialize_obj(data, target):
+    if target == TargetType.BYTES:
+        obj = data
+    elif target == TargetType.UNICODE:
+        obj = data.decode('utf-8')
+    elif target == TargetType.JSON:
+        obj = json.loads(data.decode('utf-8'))
+    elif target == TargetType.NUMPY:
+        import numpy as np
+        buf = BytesIO(data)
+        obj = np.load(buf, allow_pickle=False)
+    elif target == TargetType.PYARROW:
+        import pyarrow as pa
+        from pyarrow import parquet
+        buf = BytesIO(data)
+        table = parquet.read_table(buf)
+        obj = pa.Table.to_pandas(table)
+    else:
+        raise NotImplementedError
+
+    return obj
+
 class SizeCallback(BaseSubscriber):
     def __init__(self, size):
         self.size = size
