@@ -6,10 +6,10 @@ def readme():
     return readme_short
 
 setup(
-    name="helium",
+    name="t4",
     version="0.0.1-dev",
     packages=find_packages(),
-    description='Helium',
+    description='T4',
     long_description=readme(),
     classifiers=[
         'Development Status :: 5 - Production/Stable',

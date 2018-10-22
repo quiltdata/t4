@@ -2,6 +2,9 @@
 
 T4 is alpha software. It is not yet recommended for production use.
 
+## Overview
+[Rethinking S3: Announcing T4, a team data hub](https://blog.quiltdata.com/rethinking-s3-announcing-t4-a-team-data-hub-8e63ce7ec988).
+
 ## T4 is like Dropbox for data science, built on S3
 
 * T4 adds search, content preview, versioning, and a Python API to any S3 bucket

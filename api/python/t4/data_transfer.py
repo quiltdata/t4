@@ -1,4 +1,3 @@
-from functools import partial
 import json
 import os
 import pathlib
@@ -62,7 +61,7 @@ def _parse_metadata(resp):
     return json.loads(resp['Metadata'].get(HELIUM_METADATA, '{}'))
 
 
-def _response_generator(func, tokens, **kwargs):
+def _response_generator(func, tokens, kwargs):
     while True:
         response = func(**kwargs)
         yield response
@@ -72,8 +71,12 @@ def _response_generator(func, tokens, **kwargs):
             kwargs[token] = response['Next' + token]
 
 
-_list_objects = partial(_response_generator, func=s3_client.list_objects_v2, tokens=['ContinuationToken'])
-_list_object_versions = partial(_response_generator, func=s3_client.list_object_versions, tokens=['KeyMarker', 'VersionIdMarker'])
+def _list_objects(**kwargs):
+    return _response_generator(s3_client.list_objects_v2, ['ContinuationToken'], kwargs)
+
+
+def _list_object_versions(**kwargs):
+    return _response_generator(s3_client.list_object_versions, ['KeyMarker', 'VersionIdMarker'], kwargs)
 
 
 def _download_single_file(bucket, key, dest_path, version=None):
@@ -108,16 +111,7 @@ def _download_dir(bucket, prefix, dest_path):
     total_size = 0
     tuples_list = []
 
-    continuation_token = None
-    kwargs = dict()
-
-    while True:
-        resp = s3_client.list_objects_v2(
-            Bucket=bucket,
-            Prefix=prefix,
-            **kwargs
-        )
-
+    for resp in _list_objects(Bucket=bucket, Prefix=prefix):
         for item in resp.get('Contents', []):
             key = item['Key']
             size = item['Size']
@@ -136,11 +130,6 @@ def _download_dir(bucket, prefix, dest_path):
                 raise ValueError("Cannot download %r: reserved file name" % dest_file)
 
             tuples_list.append((key, dest_file, size))
-
-        if not resp['IsTruncated']:
-            break
-
-        kwargs = dict(ContinuationToken=resp['NextContinuationToken'])
 
     with tqdm(total=total_size, unit='B', unit_scale=True) as progress:
         callback = ProgressCallback(progress)
@@ -230,10 +219,14 @@ def upload_bytes(data, path, meta):
 
 def delete_object(path):
     bucket, key = split_path(path, require_subpath=True)
-    resp = s3_client.delete_object(
-        Bucket=bucket,
-        Key=key
-    )
+
+    if path.endswith('/'):
+        for response in _list_objects(Bucket=bucket, Prefix=key):
+            for obj in response.get('Contents', []):
+                s3_client.delete_object(Bucket=bucket, Key=obj['Key'])
+    else:
+        s3_client.head_object(Bucket=bucket, Key=key)  # Make sure it exists
+        s3_client.delete_object(Bucket=bucket, Key=key)  # Actually delete it
 
 
 def list_object_versions(path, recursive=True):

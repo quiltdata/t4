@@ -39,10 +39,10 @@ def each_session(request, tmpdir_factory):
     vars.config_path = vars.base_path / 'config.yml'
 
     mockers = [
-        mock.patch('helium.util.BASE_DIR', vars.base_dir),
-        mock.patch('helium.util.BASE_PATH', vars.base_path),
-        mock.patch('helium.util.CONFIG_PATH', vars.config_path),
-        mock.patch('helium.api.CONFIG_PATH', vars.config_path),
+        mock.patch('t4.util.BASE_DIR', vars.base_dir),
+        mock.patch('t4.util.BASE_PATH', vars.base_path),
+        mock.patch('t4.util.CONFIG_PATH', vars.config_path),
+        mock.patch('t4.api.CONFIG_PATH', vars.config_path),
         ]
     for mocker in mockers:
         mocker.start()
