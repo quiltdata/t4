@@ -17,9 +17,9 @@ jobs:
           command: |
             virtualenv venv
             . venv/bin/activate
-            pip install -e ocean[tests]
+            pip install -e api/python[tests]
       - run:
           name: Run Pytest
           command: |
             . venv/bin/activate
-            cd ocean && pytest
+            cd api/python && pytest
