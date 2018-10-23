@@ -248,12 +248,12 @@ class Package(object):
         return logical_key in self._data
 
     @staticmethod
-    def load(path):
+    def load(readable_file):
         """
-        Loads a package from a path.
+        Loads a package from a readable file-like object.
 
         Args:
-            path(string): the location to load the package from
+            readable_file: readable file-like object to deserialize package from
 
         Returns:
             a new package object
@@ -264,18 +264,18 @@ class Package(object):
             invalid package exception
         """
         data = {}
-        with jsonlines.open(path) as reader:
-            meta = reader.read()
-            for obj in reader:
-                lk = obj.pop('logical_key')
-                if lk in data:
-                    raise PackageException("Duplicate logical key while loading package")
-                data[lk] = PackageEntry(
-                    obj['physical_keys'],
-                    obj['size'],
-                    obj['hash'],
-                    obj['meta']
-                )
+        reader = jsonlines.Reader(readable_file)
+        meta = reader.read()
+        for obj in reader:
+            lk = obj.pop('logical_key')
+            if lk in data:
+                raise PackageException("Duplicate logical key while loading package")
+            data[lk] = PackageEntry(
+                obj['physical_keys'],
+                obj['size'],
+                obj['hash'],
+                obj['meta']
+            )
 
         return Package(data, meta)
 
@@ -374,12 +374,12 @@ class Package(object):
         entry = self._data[logical_key]
         return entry['user_meta']
 
-    def dump(self, path):
+    def dump(self, writable_file):
         """
-        Serializes this package to a file at path.
+        Serializes this package to a writable file-like object.
 
         Args:
-            path: where to serialize the package to
+            writable_file: file-like object to write serialized package.
 
         Returns:
             None
@@ -388,11 +388,10 @@ class Package(object):
             fail to create file
             fail to finish write
         """
-        with open(path, mode='w') as f:
-            with jsonlines.Writer(f) as writer:
-                writer.write(self._meta)
-                for logical_key, entry in self._data.items():
-                    writer.write({'logical_key': logical_key, **entry.as_dict()})
+        writer = jsonlines.Writer(writable_file)
+        writer.write(self._meta)
+        for logical_key, entry in self._data.items():
+            writer.write({'logical_key': logical_key, **entry.as_dict()})
 
     def update(self, logical_key, entry):
         """
