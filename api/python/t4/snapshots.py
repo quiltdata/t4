@@ -1,4 +1,5 @@
 import copy
+from enum import Enum
 import hashlib
 import json
 import pathlib
@@ -145,12 +146,16 @@ def download_bytes_from_snapshot(src, snapshothash):
     obj_rec = snapshot_data['contents'][key]
     return download_bytes(src, version=obj_rec['VersionId'])
 
+class PhysicalKeyType(Enum):
+    LOCAL = 1
+    S3 = 2
+
 def hash_file(path):
     """ Returns SHA256 hash of file at path. """
     with open(path, 'rb') as f:
         buf = f.read(4096)
         hasher = hashlib.sha256()
-        while len(buf):
+        while buf:
             hasher.update(buf)
             buf = f.read(4096)
 
@@ -158,11 +163,10 @@ def hash_file(path):
 
 def dereference_physical_key(physical_key):
     ty = physical_key['type']
-    if ty == 'local_file':
+    if ty == PhysicalKeyType.LOCAL.name:
         return open(physical_key['path'])
 
     raise NotImplementedError
-
 
 class Package(object):
     """ In-memory representation of a package """
@@ -254,11 +258,14 @@ class Package(object):
             if not f.is_file():
                 continue
             entry = {
-                'hash': hash_file(f),
+                'hash': {
+                    'type': 'SHA256',
+                    'value': hash_file(f)
+                },
                 'size': os.path.getsize(f),
                 'user_meta': {},
                 'physical_keys': [{
-                    'type': 'local_file',
+                    'type': PhysicalKeyType.LOCAL.name,
                     'path': os.path.abspath(f)
                 }]
             }
@@ -387,7 +394,7 @@ class Package(object):
         Returns:
             A string that represents the top hash of the package
         """
-        if top_hash not in self._meta:
+        if 'top_hash' not in self._meta:
             self._top_hash()
         return self._meta['top_hash']
 
