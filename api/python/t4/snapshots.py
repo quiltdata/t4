@@ -175,14 +175,13 @@ def get_package_registry(path):
         bucket = path[5:].partition('/')[0]
         return "s3://{}/.quilt/packages/".format(bucket)
     else:
-        # local path
-        return "appdirs/.quilt/packages" # TODO: replace with actual logic
+        raise NotImplementedError
 
 class PackageEntry(object):
     """
     Represents an entry at a logical key inside a package.
     """
-    __slots__ = ['physical_keys', 'size', 'hash_obj', 'meta']
+    __slots__ = ['physical_keys', 'size', 'hash', 'meta']
     def __init__(self, physical_keys, size, hash_obj, meta):
         """
         Creates an entry.
@@ -208,7 +207,7 @@ class PackageEntry(object):
         ret = {
             'physical_keys': self.physical_keys,
             'size': self.size,
-            'hash': self.hash_obj,
+            'hash': self.hash,
             'meta': self.meta
         }
         return copy.deepcopy(ret)
@@ -338,6 +337,8 @@ class Package(object):
         """
         entry = self._data[logical_key]
         physical_keys = entry.physical_keys
+        if len(physical_keys) > 1:
+            raise NotImplementedError
         physical_key = physical_keys[0] # TODO: support multiple physical keys
         stream = dereference_physical_key(physical_key)
         # TODO: verify hash
@@ -391,7 +392,7 @@ class Package(object):
             with jsonlines.Writer(f) as writer:
                 writer.write(self._meta)
                 for logical_key, entry in self._data.items():
-                    writer.write({**{'logical_key': logical_key}, **entry.as_dict()})
+                    writer.write({'logical_key': logical_key, **entry.as_dict()})
 
     def update(self, logical_key, entry):
         """
@@ -481,8 +482,8 @@ class Package(object):
             fail to put bytes
             fail to put package to registry
         """
+        raise NotImplementedError
         if name is None:
             name = self.textual_hash()
         self.get_files(path)
         self.dump(get_package_registry(path) + name)
-        raise NotImplementedError
