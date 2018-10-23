@@ -4,6 +4,7 @@ import hashlib
 import json
 import pathlib
 import os
+import tempfile
 
 import boto3
 import jsonlines
@@ -167,6 +168,15 @@ def dereference_physical_key(physical_key):
         return open(physical_key['path'])
 
     raise NotImplementedError
+
+def get_package_registry(path):
+    """ Returns the package registry for a given path """
+    if path.startswith('s3://'):
+        bucket = path[5:].partition('/')[0]
+        return "s3://{}/.quilt/packages/".format(bucket)
+    else:
+        # local path
+        return "appdirs/.quilt/packages" # TODO: replace with actual logic
 
 class Package(object):
     """ In-memory representation of a package """
@@ -398,7 +408,21 @@ class Package(object):
             self._top_hash()
         return self._meta['top_hash']
 
-    def materialize(self, path):
+    def textual_hash(self):
+        """
+        Returns the textual hash of the package manifest serialized to disk
+
+        Returns:
+            SHA256 hash of serialized manifest
+        """
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_name = tmpdir + 'temp.pkg'
+            self.dump(tmp_name)
+            self_hash = hash_file(tmp_name)
+
+        return self_hash
+
+    def materialize(self, path, name=None):
         """
         Copies objects to path, then creates a new package that points to those objects.
 
@@ -408,6 +432,8 @@ class Package(object):
 
         Args:
             path: where to copy the objects in the package
+            name: optional name for package in registry
+                    defaults to the textual hash of the package manifest
 
         Returns:
             A new package that points to the copied objects
@@ -417,4 +443,8 @@ class Package(object):
             fail to put bytes
             fail to put package to registry
         """
+        if name is None:
+            name = self.textual_hash()
+        self.get_files(path)
+        self.dump(get_package_registry(path) + name)
         raise NotImplementedError
