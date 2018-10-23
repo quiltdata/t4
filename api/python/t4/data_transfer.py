@@ -1,11 +1,12 @@
+from enum import Enum
 import json
-import os
 import pathlib
-from threading import Lock, get_ident
+from threading import Lock
 
 import boto3
-from boto3.s3.transfer import S3Transfer, TransferConfig, create_transfer_manager
+from boto3.s3.transfer import TransferConfig, create_transfer_manager
 from s3transfer.subscribers import BaseSubscriber
+from six import BytesIO, binary_type, text_type
 from tqdm.autonotebook import tqdm
 
 from .util import HeliumException, split_path
@@ -15,6 +16,16 @@ HELIUM_METADATA = 'helium'
 
 s3_client = boto3.client('s3')
 s3_manager = create_transfer_manager(s3_client, TransferConfig())
+
+class TargetType(Enum):
+    """
+    Enums for target types
+    """
+    BYTES = 'bytes'
+    UNICODE = 'unicode'
+    JSON = 'json'
+    PYARROW = 'pyarrow'
+    NUMPY = 'numpy'
 
 
 def deserialize_obj(data, target):
@@ -38,6 +49,51 @@ def deserialize_obj(data, target):
         raise NotImplementedError
 
     return obj
+
+def _get_target_for_object(obj):
+    # TODO: Lazy loading.
+    import numpy as np
+    import pandas as pd
+
+    if isinstance(obj, binary_type):
+        target = TargetType.BYTES
+    elif isinstance(obj, text_type):
+        target = TargetType.UNICODE
+    elif isinstance(obj, dict):
+        target = TargetType.JSON
+    elif isinstance(obj, np.ndarray):
+        target = TargetType.NUMPY
+    elif isinstance(obj, pd.DataFrame):
+        target = TargetType.PYARROW
+    else:
+        raise HeliumException("Unsupported object type")
+    return target
+
+def serialize_obj(obj):
+    target = _get_target_for_object(obj)
+
+    if target == TargetType.BYTES:
+        data = obj
+    elif target == TargetType.UNICODE:
+        data = obj.encode('utf-8')
+    elif target == TargetType.JSON:
+        data = json.dumps(obj).encode('utf-8')
+    elif target == TargetType.NUMPY:
+        import numpy as np
+        buf = BytesIO()
+        np.save(buf, obj, allow_pickle=False)
+        data = buf.getvalue()
+    elif target == TargetType.PYARROW:
+        import pyarrow as pa
+        from pyarrow import parquet
+        buf = BytesIO()
+        table = pa.Table.from_pandas(obj)
+        parquet.write_table(table, buf)
+        data = buf.getvalue()
+    else:
+        raise HeliumException("Don't know how to serialize object")
+
+    return data, target
 
 class SizeCallback(BaseSubscriber):
     def __init__(self, size):
@@ -233,7 +289,7 @@ def list_object_versions(path, recursive=True):
     bucket, key = split_path(path)
     list_obj_params = dict(Bucket=bucket,
                            Prefix=key
-                           )
+                          )
     if not recursive:
         # Treat '/' as a directory separator and only return one level of files instead of everything.
         list_obj_params.update(dict(Delimiter='/'))

@@ -1,36 +1,20 @@
 import json
-import os
-import subprocess
-import pandas as pd
-import re
 import requests
-import sys
 
 from aws_requests_auth.boto_utils import BotoAWSRequestsAuth
 from elasticsearch import Elasticsearch, RequestsHttpConnection
 from six.moves import urllib
-from six import BytesIO, binary_type, text_type
-from enum import Enum
+import pandas as pd
 
-from .data_transfer import (deserialize_obj, download_bytes, download_file,
-                            upload_bytes, upload_file, delete_object,
-                            list_objects, list_object_versions)
+from .data_transfer import (TargetType, deserialize_obj, download_bytes,
+                            download_file, upload_bytes, upload_file, delete_object,
+                            list_objects, list_object_versions, serialize_obj)
 from .snapshots import (create_snapshot, download_bytes_from_snapshot,
                         download_file_from_snapshot, read_snapshot_by_hash,
                         get_snapshots)
-from .util import (HeliumConfig, HeliumException, AWS_SEPARATOR, CONFIG_PATH, CONFIG_TEMPLATE,
-                   read_yaml, split_path, validate_url, write_yaml, yaml_has_comments)
-
-
-class TargetType(Enum):
-    """
-    Enums for target types
-    """
-    BYTES = 'bytes'
-    UNICODE = 'unicode'
-    JSON = 'json'
-    PYARROW = 'pyarrow'
-    NUMPY = 'numpy'
+from .util import (HeliumConfig, HeliumException, AWS_SEPARATOR, CONFIG_PATH,
+                   CONFIG_TEMPLATE, read_yaml, validate_url,
+                   write_yaml, yaml_has_comments)
 
 
 def put_file(src, dest, meta=None):
@@ -43,65 +27,18 @@ def put_file(src, dest, meta=None):
 def get_file(src, dest, snapshot=None, version=None):
     if version is not None and snapshot is not None:
         raise HeliumException("Specify only one of snapshot or version.")
-    
+
     if snapshot is not None:
         download_file_from_snapshot(src, dest, snapshot)
     else:
         download_file(src, dest, version=version)
 
 
-def _get_target_for_object(obj):
-    # TODO: Lazy loading.
-    import numpy as np
-    import pandas as pd
-
-    if isinstance(obj, binary_type):
-        target = TargetType.BYTES
-    elif isinstance(obj, text_type):
-        target = TargetType.UNICODE
-    elif isinstance(obj, dict):
-        target = TargetType.JSON
-    elif isinstance(obj, np.ndarray):
-        target = TargetType.NUMPY
-    elif isinstance(obj, pd.DataFrame):
-        target = TargetType.PYARROW
-    else:
-        raise HeliumException("Unsupported object type")
-    return target
-
-
-def _serialize_obj(obj):
-    target = _get_target_for_object(obj)
-
-    if target == TargetType.BYTES:
-        data = obj
-    elif target == TargetType.UNICODE:
-        data = obj.encode('utf-8')
-    elif target == TargetType.JSON:
-        data = json.dumps(obj).encode('utf-8')
-    elif target == TargetType.NUMPY:
-        import numpy as np
-        buf = BytesIO()
-        np.save(buf, obj, allow_pickle=False)
-        data = buf.getvalue()
-    elif target == TargetType.PYARROW:
-        import pyarrow as pa
-        from pyarrow import parquet
-        buf = BytesIO()
-        table = pa.Table.from_pandas(obj)
-        parquet.write_table(table, buf)
-        data = buf.getvalue()
-    else:
-        raise HeliumException("Don't know how to serialize object")
-
-    return data, target
-
-
 def put(obj, dest, meta=None):
     if dest.endswith(AWS_SEPARATOR):
         raise ValueError("Invalid path: %r; ends with a %r"
                          % (dest, AWS_SEPARATOR))
-    data, target = _serialize_obj(obj)
+    data, target = serialize_obj(obj)
     all_meta = dict(
         target=target.value,
         user_meta=meta
@@ -117,7 +54,7 @@ def get(src, snapshot=None, version=None):
         data, meta = download_bytes_from_snapshot(src, snapshot)
     else:
         data, meta = download_bytes(src, version)
-    
+
     target_str = meta.get('target')
     if target_str is None:
         raise HeliumException("No serialization metadata")
@@ -193,7 +130,7 @@ def diff(bucket, src, dst):
     else:
         src_list = list_objects(f"{bucket}/{dst_path}")
         src_objects = {obj['Key']: {'ETag': obj['ETag'], 'VersionId': None} for obj in src_list}
-        
+
     if dst_path:
         dst_objects = dst_snapshot['contents']
     else:
@@ -341,7 +278,7 @@ def log(key, pprint=False):
             ptable = [('Date', 'Version ID', 'Operation', 'Size', 'Meta')]
             for t in table:
                 ptable.append((t['time'], t['version_id'], t['operation'],
-                    t['size'], t['meta']))
+                               t['size'], t['meta']))
             _print_table(ptable)
         return table
     except KeyError as e:

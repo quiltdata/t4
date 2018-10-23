@@ -340,7 +340,6 @@ class Package(object):
         if len(physical_keys) > 1:
             raise NotImplementedError
         physical_key = physical_keys[0] # TODO: support multiple physical keys
-        stream = dereference_physical_key(physical_key)
         # TODO: verify hash
         if 'target' in entry.meta:
             # TODO: dispatch on target to deserialize
