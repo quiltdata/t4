@@ -453,9 +453,9 @@ class Package(object):
         Returns:
             SHA256 hash of serialized manifest
         """
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tmp_name = tmpdir + 'temp.pkg'
-            self.dump(tmp_name)
+        with tempfile.NamedTemporaryFile() as tmpfile:
+            tmp_name = tmpfile.name
+            self.dump(tmpfile)
             self_hash = hash_file(tmp_name)
 
         return self_hash
