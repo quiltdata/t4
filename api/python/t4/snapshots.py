@@ -178,13 +178,47 @@ def get_package_registry(path):
         # local path
         return "appdirs/.quilt/packages" # TODO: replace with actual logic
 
+class PackageEntry(object):
+    """
+    Represents an entry at a logical key inside a package.
+    """
+    __slots__ = ['physical_keys', 'size', 'hash_obj', 'meta']
+    def __init__(self, physical_keys, size, hash_obj, meta):
+        """
+        Creates an entry.
+
+        Args:
+            physical_keys([physical_key]): nonempty list of physical keys
+            size(number): size of object in bytes
+            hash({'type': string, 'value': string}): hash object
+            meta(dict): metadata dictionary
+
+        Returns:
+            a PackageEntry
+        """
+        self.physical_keys = physical_keys
+        self.size = size
+        self.hash = hash_obj
+        self.meta = meta
+
+    def as_dict(self):
+        """
+        Returns dict representation of entry.
+        """
+        ret = {
+            'physical_keys': self.physical_keys,
+            'size': self.size,
+            'hash': self.hash_obj,
+            'meta': self.meta
+        }
+        return copy.deepcopy(ret)
+
 class Package(object):
     """ In-memory representation of a package """
 
     def __init__(self, data=None, meta=None):
         """
-        _data is of the form {logical_key: entry}
-        entry is of the form (physical_key, hash, size, user_meta)
+        _data is of the form {logical_key: PackageEntry}
         physical_keys is a list of objects of the form {
             schema_version: string
             type: string
@@ -220,7 +254,7 @@ class Package(object):
         Loads a package from a path.
 
         Args:
-            path: string representing the location to load the package from
+            path(string): the location to load the package from
 
         Returns:
             a new package object
@@ -237,7 +271,12 @@ class Package(object):
                 lk = obj.pop('logical_key')
                 if lk in data:
                     raise PackageException("Duplicate logical key while loading package")
-                data[lk] = obj
+                data[lk] = PackageEntry(
+                    obj['physical_keys'],
+                    obj['size'],
+                    obj['hash'],
+                    obj['meta']
+                )
 
         return Package(data, meta)
 
@@ -250,10 +289,10 @@ class Package(object):
         package that contains all those files.
 
         Args:
-            path: path to package
+            path(string): path to package
 
         Returns:
-            A new package of that path
+            A new Package of that path
 
         Raises:
             when path doesn't exist
@@ -267,18 +306,17 @@ class Package(object):
         for f in files:
             if not f.is_file():
                 continue
-            entry = {
-                'hash': {
-                    'type': 'SHA256',
-                    'value': hash_file(f)
-                },
-                'size': os.path.getsize(f),
-                'user_meta': {},
-                'physical_keys': [{
-                    'type': PhysicalKeyType.LOCAL.name,
-                    'path': os.path.abspath(f)
-                }]
+
+            hash_obj = {
+                'type': 'SHA256',
+                'value': hash_file(f)
             }
+            size = os.path.getsize(f)
+            physical_keys = [{
+                'type': PhysicalKeyType.LOCAL.name,
+                'path': os.path.abspath(f)
+            }]
+            entry = PackageEntry(physical_keys, size, hash_obj, {})
             data[str(f)] = entry
         return Package(data, meta)
 
@@ -287,23 +325,23 @@ class Package(object):
         Gets object from local_key and returns it as an in-memory object.
 
         Args:
-            logical_key: logical key of the object to get
+            logical_key(string): logical key of the object to get
 
         Returns:
-            A deserialized object from the logical_key or
-                a stream of bytes if deserialization info is missing
+            A deserialized object from the logical_key
 
         Raises:
             KeyError: when logical_key is not present in the package
             physical key failure
             hash verification fail
+            when deserialization metadata is not present
         """
         entry = self._data[logical_key]
-        physical_keys = entry['physical_keys']
+        physical_keys = entry.physical_keys
         physical_key = physical_keys[0] # TODO: support multiple physical keys
         stream = dereference_physical_key(physical_key)
         # TODO: verify hash
-        if 'target' in entry:
+        if 'target' in entry.meta:
             # TODO: dispatch on target to deserialize
             raise NotImplementedError
 
@@ -352,16 +390,16 @@ class Package(object):
         with open(path, mode='w') as f:
             with jsonlines.Writer(f) as writer:
                 writer.write(self._meta)
-                for logical_key, obj in self._data.items():
-                    writer.write({**{'logical_key': logical_key}, **obj})
+                for logical_key, entry in self._data.items():
+                    writer.write({**{'logical_key': logical_key}, **entry.as_dict()})
 
     def update(self, logical_key, entry):
         """
         Returns a new package with the object at logical_key set to entry.
 
         Args:
-            logical_key: logical key to update
-            entry: new entry to place at logical_key in the package
+            logical_key(string): logical key to update
+            entry(PackageEntry): new entry to place at logical_key in the package
 
         Returns:
             A new package
