@@ -187,14 +187,20 @@ class PackageEntry(object):
         Creates an entry.
 
         Args:
-            physical_keys([physical_key]): nonempty list of physical keys
+            physical_keys is a nonempty list of objects of the form {
+                schema_version: string
+                type: string
+                uri: string
+            }
             size(number): size of object in bytes
             hash({'type': string, 'value': string}): hash object
+                for example: {'type': 'SHA256', 'value': 'bb08a...'}
             meta(dict): metadata dictionary
 
         Returns:
             a PackageEntry
         """
+        assert physical_keys
         self.physical_keys = physical_keys
         self.size = size
         self.hash = hash_obj
@@ -218,16 +224,6 @@ class Package(object):
     def __init__(self, data=None, meta=None):
         """
         _data is of the form {logical_key: PackageEntry}
-        physical_keys is a list of objects of the form {
-            schema_version: string
-            type: string
-            uri: string
-        }
-        hash is of the form {
-            type: string (e.g. "SHA256")
-            value: string
-        }
-        size is the length of the object in bytes
         """
         self._data = data or {}
         self._meta = meta or {}
