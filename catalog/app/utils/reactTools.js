@@ -244,3 +244,18 @@ export const consume = ({ Consumer }, propMapper) => {
   return (Component) => (props) =>
     <Consumer>{(value) => <Component {...mkProps(value, props)} />}</Consumer>;
 };
+
+/**
+ * Given a prop name and a function of that prop as the first argument and the
+ * rest props as the second, create a function of props.
+ *
+ * @param {string} prop Prop name to extract
+ * @param {function} fn
+ *   Function accepting the specified prop as the first arg and the rest props
+ *   as the second arg.
+ *
+ * @returns {function}
+ */
+export const extractProp = (prop, fn) =>
+  ({ [prop]: value, ...props }) =>
+    fn(value, props);
