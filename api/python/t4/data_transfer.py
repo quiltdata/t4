@@ -34,7 +34,6 @@ def _get_object(self, **kwargs):
     return resp
 s3_client.get_object = type(_old_get_object)(_get_object, s3_client)
 
-s3_manager = create_transfer_manager(s3_client, TransferConfig())
 s3_manager.ALLOWED_DOWNLOAD_ARGS = s3_manager.ALLOWED_DOWNLOAD_ARGS + ['Callback']
 
 
