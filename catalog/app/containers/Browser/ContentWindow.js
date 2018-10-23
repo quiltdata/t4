@@ -1,6 +1,8 @@
 import { extname } from 'path';
 
+import memoize from 'lodash/memoize';
 import PT from 'prop-types';
+import * as R from 'ramda';
 import * as React from 'react';
 import {
   lifecycle,
@@ -8,7 +10,7 @@ import {
   setStatic,
   withHandlers,
   withProps,
-  withStateHandlers,
+  withState,
 } from 'recompose';
 import styled from 'styled-components';
 import embed from 'vega-embed';
@@ -17,10 +19,10 @@ import Markdown from 'components/Markdown';
 import Spinner from 'components/Spinner';
 import config from 'constants/config';
 import { S3, Signer } from 'utils/AWS';
+import AsyncResult from 'utils/AsyncResult';
+import * as Resource from 'utils/Resource';
 import { composeComponent } from 'utils/reactTools';
-import {
-  handleFromUrl,
-} from 'utils/s3paths';
+import tagged from 'utils/tagged';
 
 
 const ImgContent = styled.img`
@@ -32,19 +34,14 @@ const ImgContent = styled.img`
   min-width: 20%;
 `;
 
-const IframeContainer = styled.div`
-  height: 100%;
-  width: 100%;
-`;
-
 const IframeContent = (props) => (
-  <IframeContainer>
+  <React.Fragment>
     <iframe
       sandbox=""
       title="Preview"
       style={{
         width: '100%',
-        height: '100%',
+        minHeight: '80vh',
         border: 'none',
         position: 'relative',
         zIndex: 1,
@@ -52,18 +49,13 @@ const IframeContent = (props) => (
       {...props}
     />
     <Placeholder />
-  </IframeContainer>
+  </React.Fragment>
 );
 
 const VegaContent = composeComponent('Browser.VegaContent',
-  withStateHandlers({
-    el: null,
-  }, {
-    setEl: () => (el) => ({ el }),
-  }),
+  withState('el', 'setEl', null),
   withHandlers({
     embed: ({ el, spec }) => () => {
-      // console.log('embed', el, spec);
       if (el) embed(el, spec, { actions: false });
     },
   }),
@@ -89,6 +81,42 @@ const Placeholder = () => (
   />
 );
 
+const Container = styled.div`
+  align-items: flex-start;
+  display: flex;
+  min-height: 84px; // for spinner
+  position: relative;
+`;
+
+const signImg = memoize(({ signer, handle }) => R.evolve({
+  src: (src) =>
+    signer.signResource({
+      ptr: Resource.parse(src),
+      ctx: { type: Resource.ContextType.MDImg(), handle },
+    }),
+}));
+
+const signLink = memoize(({ signer, handle }) => R.evolve({
+  href: (href) =>
+    signer.signResource({
+      ptr: Resource.parse(href),
+      ctx: { type: Resource.ContextType.MDLink(), handle },
+    }),
+}));
+
+const signVegaSpec = memoize(({ signer, handle }) => R.evolve({
+  data: R.map(R.evolve({
+    url: (url) =>
+      signer.signResource({
+        ptr: Resource.parse(url),
+        ctx: { type: Resource.ContextType.Vega(), handle },
+      }),
+  })),
+}));
+
+// TODO: handle caching (use etag)
+const defaultLoad = ({ handle, signer }) =>
+  signer.getSignedS3URL(handle);
 
 const HANDLERS = [
   {
@@ -99,15 +127,20 @@ const HANDLERS = [
   {
     name: 'md',
     detect: '.md',
-    load: async ({ object, s3 }) => {
+    load: async ({ handle, s3 }) => {
       const data = await s3.getObject({
-        Bucket: object.bucket,
-        Key: object.key,
+        Bucket: handle.bucket,
+        Key: handle.key,
       }).promise();
       return data.Body.toString('utf-8');
     },
-    render: (data, { signImg }) =>
-      <Markdown data={data} processImg={signImg} />,
+    render: (data, { signer, handle }) => (
+      <Markdown
+        data={data}
+        processImg={signImg({ signer, handle })}
+        processLink={signLink({ signer, handle })}
+      />
+    ),
   },
   {
     name: 'ipynb',
@@ -126,17 +159,17 @@ const HANDLERS = [
   {
     name: 'vega',
     detect: '.json',
-    load: async ({ object, s3, signVega }) => {
+    load: async ({ handle, s3, signer }) => {
       const data = await s3.getObject({
-        Bucket: object.bucket,
-        Key: object.key,
+        Bucket: handle.bucket,
+        Key: handle.key,
       }).promise();
       const json = data.Body.toString('utf-8');
       // console.log('vega json', json);
-      // TODO: validate json format
       const spec = JSON.parse(json);
+      // TODO: validate json format
       // console.log('vega spec', spec);
-      return signVega(spec);
+      return signVegaSpec({ signer, handle })(spec);
     },
     render: (spec) => <VegaContent spec={spec} />,
   },
@@ -155,70 +188,43 @@ const getHandler = (key) =>
       .map(normalizeMatcher)
       .some((matcher) => matcher(key)));
 
-// TODO
-// eslint-disable-next-line react/prop-types
-const ErrorDisplay = ({ error }) => <h1>error: {`${error}`}</h1>;
-
-// TODO: handle caching (use etag)
-const defaultLoad = ({ object, expiration, s3 }) =>
-  s3.getSignedUrl('getObject', {
-    Bucket: object.bucket,
-    Key: object.key,
-    Expires: expiration,
-  });
+const PreviewError = tagged(['Unsupported', 'DoesNotExist', 'Unknown']);
 
 export default composeComponent('Browser.ContentWindow',
   setStatic('supports', (key) => !!getHandler(key)),
   setPropTypes({
-    object: PT.object.isRequired,
-    expiration: PT.number,
+    handle: PT.object.isRequired,
   }),
   S3.inject(),
   Signer.inject(),
-  withStateHandlers({
-    loading: false,
-    content: null,
-    error: null,
-  }, {
-    setLoading: () => () => ({ loading: true, content: null, error: null }),
-    setContent: () => (content) => ({ loading: false, content, error: null }),
-    setError: () => (error) => ({ loading: false, content: null, error }),
-  }),
-  withProps(({ object }) => ({
-    handler: getHandler(object.key),
+  withState('state', 'setState', AsyncResult.Init()),
+  withProps(({ handle }) => ({
+    handler: getHandler(handle.key),
   })),
   withHandlers({
-    signImg: ({ signer, object }) => ({ src, ...img }) => ({
-      // TODO: refactor
-      src: signer.signURLForBucket(src, object.bucket),
-      ...img,
-    }),
-    signVega: ({ signer, object }) => ({ data, ...spec }) => ({
-      data: data.map(({ url, ...rest }) => ({
-        url: url && signer.getSignedS3Url(handleFromUrl(url, object)),
-        ...rest,
-      })),
-      ...spec,
-    }),
-  }),
-  withHandlers({
-    load: ({ setLoading, setContent, setError, handler, ...props }) => async () => {
+    load: ({ setState, handler, ...props }) => async () => {
       if (!handler) {
-        setError('unsupported');
+        setState(AsyncResult.Err(PreviewError.Unsupported()));
         return;
       }
 
       try {
-        setLoading();
+        setState(AsyncResult.Pending());
 
         // console.log('load', props);
         const content = await (handler.load || defaultLoad)(props);
         // console.log('load: content', content);
         // TODO: handle errors
-        setContent(content);
+        setState(AsyncResult.Ok(content));
       } catch (e) {
-        // console.log('load: error', e);
-        setError(e);
+        if (e.name === 'NoSuchKey') {
+          setState(AsyncResult.Err(PreviewError.DoesNotExist()));
+          return;
+        }
+        // TODO: handle error
+        // eslint-disable-next-line no-console
+        console.log('Preview error:', e);
+        setState(AsyncResult.Err(PreviewError.Unknown()));
       }
     },
   }),
@@ -227,9 +233,20 @@ export default composeComponent('Browser.ContentWindow',
       this.props.load();
     },
   }),
-  ({ handler, loading, content, error, ...props }) => {
-    if (loading) return <Placeholder />;
-    if (error) return <ErrorDisplay error={error} />;
-    if (content) return handler.render(content, props);
-    return null;
-  });
+  ({ state, ...props }) => (
+    <Container>
+      {AsyncResult.case({
+        Err: (e) => (
+          <h1>
+            {PreviewError.case({
+              Unsupported: () => 'File type not supported',
+              DoesNotExist: () => 'Object does not exist',
+              Unknown: () => 'An unknown error occured',
+            }, e)}
+          </h1>
+        ),
+        Ok: (content, { handler, ...rest }) => handler.render(content, rest),
+        _: () => <Placeholder />,
+      }, state, props)}
+    </Container>
+  ));

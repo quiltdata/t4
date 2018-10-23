@@ -1,3 +1,5 @@
+import { basename } from 'path';
+
 import { Card, CardText } from 'material-ui/Card';
 import * as colors from 'material-ui/styles/colors';
 import { ListItem } from 'material-ui/List';
@@ -78,16 +80,15 @@ const FileInfoModified = styled.div`
 
 const ItemFile = composeComponent('Browser.Listing.ItemFile',
   setPropTypes({
-    name: PT.string.isRequired,
+    path: PT.string.isRequired,
     modified: PT.instanceOf(Date).isRequired,
     size: PT.number.isRequired,
-    onClick: PT.func.isRequired,
   }),
-  ({ name, size, modified, onClick }) => (
+  ({ path, size, modified }) => (
     <Item
       icon="insert_drive_file"
-      text={name}
-      onClick={onClick}
+      text={basename(path)}
+      link={`/browse/${path}`}
     >
       <FileInfoSize>{readableBytes(size)}</FileInfoSize>
       <FileInfoModified>{modified.toLocaleString()}</FileInfoModified>
@@ -96,13 +97,9 @@ const ItemFile = composeComponent('Browser.Listing.ItemFile',
 
 const StatsContainer = styled.div`
   background: ${colors.lightBlue50};
-  margin-left: -12px;
-  margin-right: -12px;
-  margin-top: -12px;
-  padding-bottom: 8px;
-  padding-left: 20px;
-  padding-right: 20px;
-  padding-top: 8px;
+  display: flex;
+  justify-content: space-between;
+  padding: 8px;
 `;
 
 const Stats = composeComponent('Browser.Listing.Stats',
@@ -122,7 +119,7 @@ const Stats = composeComponent('Browser.Listing.Stats',
   ({ files, size, modified }) => (
     <StatsContainer>
       {!!files && (
-        <span>{files} files {readableBytes(size)}</span>
+        <span>{files} files / {readableBytes(size)}</span>
       )}
       {!!modified && (
         <span>Last modified {modified.toLocaleString()}</span>
@@ -135,9 +132,8 @@ export default composeComponent('Browser.Listing',
     prefix: PT.string.isRequired,
     directories: PT.array.isRequired,
     files: PT.array.isRequired,
-    onFileClick: PT.func.isRequired,
   }),
-  ({ prefix, directories, files, onFileClick }) => (
+  ({ prefix, directories, files }) => (
     <Card>
       <CardText style={{ padding: 0 }}>
         <Stats files={files} />
@@ -152,10 +148,9 @@ export default composeComponent('Browser.Listing',
         {files.map(({ key, modified, size }) => (
           <ItemFile
             key={key}
-            name={withoutPrefix(prefix, key)}
+            path={key}
             size={size}
             modified={modified}
-            onClick={() => onFileClick(key)}
           />
         ))}
       </CardText>

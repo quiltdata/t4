@@ -1,8 +1,12 @@
+import * as R from 'ramda';
 import { call, put, takeLatest } from 'redux-saga/effects';
 
-import { get } from './actions';
+import AsyncResult from 'utils/AsyncResult';
 
-const mkS3File = (bucket) => (i) => ({
+import { Action } from './reducer';
+
+
+const mkHandle = (bucket) => (i) => ({
   bucket,
   key: i.Key,
   modified: i.LastModified,
@@ -10,40 +14,51 @@ const mkS3File = (bucket) => (i) => ({
   etag: i.ETag,
 });
 
-function* list({ s3 }, bucket, prefix) {
-  const data = yield s3.listObjectsV2({
+const list = async ({ s3 }, bucket, prefix) => {
+  const data = await s3.listObjectsV2({
     Bucket: bucket,
     Delimiter: '/',
     Prefix: prefix,
   }).promise();
 
-  const directories = data.CommonPrefixes.map((i) => i.Prefix);
-  // console.log('list data', data);
+  const directories = R.pipe(
+    R.pluck('Prefix'),
+    R.filter((d) => d !== '../'),
+    R.uniq,
+  )(data.CommonPrefixes);
+
   const files = data.Contents
-    .map(mkS3File(bucket))
+    .map(mkHandle(bucket))
     // filter-out "directory-files" (files that match prefixes)
     .filter((f) => f.key !== prefix && !directories.includes(`${f.key}/`));
 
   return { files, directories };
-}
+};
 
 function* handleGet(
   { s3, bucket },
-  { payload: { path }, meta: { resolve, reject } },
+  { path, resolver: { resolve, reject } = {} },
 ) {
   try {
     const data = yield call(list, { s3 }, bucket, path);
-    yield put(get.resolve(data));
+    yield put(Action.GetResult(AsyncResult.Ok(data)));
     if (resolve) yield call(resolve, data);
   } catch (e) {
-    yield put(get.resolve(e));
+    // TODO: handle error
+    // eslint-disable-next-line no-console
+    console.log('Error listing files:', e);
+    yield put(Action.GetResult(AsyncResult.Err(e)));
     if (reject) yield call(reject, e);
   }
 }
 
-export default function* saga({
-  bucket,
-  s3,
-}) {
-  yield takeLatest(get.type, handleGet, { s3, bucket });
+const mapAction = (mapping, fn) => (...args) =>
+  fn(...R.adjust(mapping, -1, args));
+
+const takeLatestTagged = (variant, fn, ...args) =>
+  // eslint-disable-next-line redux-saga/yield-effects
+  takeLatest(variant.is, mapAction(variant.unbox, fn), ...args);
+
+export default function* saga({ bucket, s3 }) {
+  yield takeLatestTagged(Action.Get, handleGet, { s3, bucket });
 }

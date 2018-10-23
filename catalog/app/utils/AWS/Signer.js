@@ -1,28 +1,51 @@
 import SignerV4 from 'aws-sdk/lib/signers/v4';
+import invariant from 'invariant';
 import PT from 'prop-types';
 import * as React from 'react';
 import { defaultProps, withPropsOnChange, setPropTypes } from 'recompose';
 
+import * as Resource from 'utils/Resource';
 import {
   composeComponent,
   composeHOC,
   provide,
   consume,
 } from 'utils/reactTools';
+import { resolveKey } from 'utils/s3paths';
 
 import * as Config from './Config';
 import * as S3 from './S3';
 
 
+const scope = 'app/utils/AWS/Signer';
+
 const DEFAULT_URL_EXPIRATION = 5 * 60; // in seconds
 
 const Ctx = React.createContext();
 
-const parseS3Url = (url) => {
-  const withoutProto = url.replace(/^(https?:)?\/\//, '');
-  const match = withoutProto.match(/s3\.amazonaws\.com\/([a-z0-9-.]+)\/(.+)/);
-  return !!match && { bucket: match[1], key: match[2] };
-};
+/*
+Resource.Pointer handling / signing:
+
+------------------+------------+-------------------+--------------------------+
+context           | "web" urls | s3:// urls        | paths                    |
+------------------+------------+-------------------+--------------------------+
+MDImg             | as is      | parsed, signed,   | considered an s3 url     |
+                  |            | relative to the   |                          |
+                  |            | containing file   |                          |
+------------------+------------+-------------------+--------------------------+
+MDLink            | as is      | parsed, signed,   | as is (relative to the   |
+                  |            | relative to the   | current web UI URL)      |
+                  |            | containing file   |                          |
+------------------+------------+-------------------+--------------------------+
+Summary           | as is      | parsed, signed,   | considered an s3 url     |
+                  |            | relative to the   |                          |
+                  |            | containing file   |                          |
+------------------+------------+-------------------+--------------------------+
+Spec              | as is      | parsed, signed,   | considered an s3 url     |
+                  |            | relative to the   |                          |
+                  |            | containing file   |                          |
+------------------+------------+-------------------+--------------------------+
+*/
 
 export const Provider = composeComponent('AWS.Signer.Provider',
   setPropTypes({
@@ -40,22 +63,33 @@ export const Provider = composeComponent('AWS.Signer.Provider',
   }) => ({
     signer: {
       signRequest: (request, serviceName) => {
-        if (!credentials) throw new Error('sign: no credentials');
+        invariant(credentials,
+          `${scope}.Provider.signer.signRequest: missing credentials`);
         const signer = new SignerV4(request, serviceName);
         signer.addAuthorization(credentials, new Date());
       },
-      // TODO: remove?
-      signURLForBucket: (url, s3Bucket) => {
-        const info = parseS3Url(url);
-        return info && info.bucket === s3Bucket
-          ? s3.getSignedUrl('getObject', {
-            Bucket: s3Bucket,
-            Key: info.key,
+      signResource: ({ ctx, ptr }) => {
+        const sign = (bucket, key) =>
+          s3.getSignedUrl('getObject', {
+            Bucket: bucket,
+            Key: key,
             Expires: urlExpiration,
-          })
-          : url;
+          });
+
+        return Resource.Pointer.case({
+          Web: (url) => url,
+          S3: (handle) =>
+            sign(handle.bucket || ctx.handle.bucket, handle.key),
+          S3Rel: (path) =>
+            sign(ctx.handle.bucket, resolveKey(ctx.handle.key, path)),
+          Path: (path) =>
+            Resource.ContextType.case({
+              MDLink: () => path,
+              _: () => sign(ctx.handle.bucket, resolveKey(ctx.handle.key, path)),
+            }, ctx.type),
+        }, ptr);
       },
-      getSignedS3Url: ({ bucket, key }) =>
+      getSignedS3URL: ({ bucket, key }) =>
         s3.getSignedUrl('getObject', {
           Bucket: bucket,
           Key: key,

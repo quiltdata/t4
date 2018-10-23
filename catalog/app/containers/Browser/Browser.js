@@ -1,17 +1,15 @@
 import { basename } from 'path';
 
-import invoke from 'lodash/fp/invoke';
+import { Card, CardText } from 'material-ui/Card';
 import RaisedButton from 'material-ui/RaisedButton';
 import PT from 'prop-types';
 import * as React from 'react';
-import Modal from 'react-modal';
 import { connect } from 'react-redux';
 import { Link } from 'react-router-dom';
 import {
   lifecycle,
   withProps,
   withHandlers,
-  withStateHandlers,
   setPropTypes,
 } from 'recompose';
 
@@ -19,65 +17,39 @@ import MIcon from 'components/MIcon';
 import Spinner from 'components/Spinner';
 import config from 'constants/config';
 import { S3 } from 'utils/AWS';
-import { composeComponent } from 'utils/reactTools';
+import AsyncResult from 'utils/AsyncResult';
 import { injectReducer } from 'utils/ReducerInjector';
 import {
-  up,
-  splitPath,
-  withoutPrefix,
+  getBreadCrumbs,
+  isDir,
 } from 'utils/s3paths';
 import { injectSaga } from 'utils/SagaInjector';
+import { composeComponent, extractProp } from 'utils/reactTools';
 
 import ContentWindow from './ContentWindow';
 import Listing from './Listing';
 import Summary, { SummaryItem } from './Summary';
-import { get } from './actions';
-import { REDUX_KEY, EXPIRATION } from './constants';
+import { REDUX_KEY } from './constants';
 import saga from './saga';
 import selector from './selectors';
-import reducer from './reducer';
+import reducer, { Action } from './reducer';
 
-
-const Preview = composeComponent('Browser.Preview',
-  setPropTypes({
-    bucket: PT.string.isRequired,
-    path: PT.string,
-    expiration: PT.number,
-    hide: PT.func.isRequired,
-  }),
-  ({ bucket, path, expiration, hide }) => (
-    <Modal
-      isOpen={!!path}
-      onRequestClose={hide}
-    >
-      {path && (
-        <ContentWindow
-          bucket={bucket}
-          path={path}
-          expiration={expiration}
-        />
-      )}
-    </Modal>
-  ));
-
-const getBreadCrumbs = (prefix) =>
-  prefix ? [...getBreadCrumbs(up(prefix)), prefix] : [];
 
 const BreadCrumbs = composeComponent('Browser.BreadCrumbs',
   setPropTypes({
-    prefix: PT.string.isRequired,
+    path: PT.string.isRequired,
     root: PT.string.isRequired,
   }),
-  ({ prefix, root }) => (
-    <h3>
-      {prefix
+  ({ path, root }) => (
+    <h3 style={{ fontSize: 18 }}>
+      {path
         ? <Link to="/browse/">{root}</Link>
         : root
       }
-      {getBreadCrumbs(prefix).map((b) => (
+      {getBreadCrumbs(path).map((b) => (
         <span key={b}>
           <span> / </span>
-          {b === prefix
+          {b === path
             ? basename(b)
             : <Link to={`/browse/${b}`}>{basename(b)}</Link>
           }
@@ -86,45 +58,56 @@ const BreadCrumbs = composeComponent('Browser.BreadCrumbs',
     </h3>
   ));
 
-export default composeComponent('Browser',
-  withProps({
-    bucket: config.aws.s3Bucket,
-    expiration: EXPIRATION,
+const ErrorDisplay = composeComponent('Browser.ErrorDisplay',
+  setPropTypes({
+    retry: PT.func,
+    children: PT.node,
+  }),
+  ({ retry, children }) => (
+    <h3>
+      <MIcon>warning</MIcon>
+      {children || 'Something went wrong'}
+      {!!retry && <RaisedButton label="Retry" onClick={retry} />}
+    </h3>
+  ));
+
+const FileDisplay = composeComponent('Browser.FileDisplay',
+  setPropTypes({
+    bucket: PT.string.isRequired,
+    path: PT.string.isRequired,
+  }),
+  ({ bucket, path }) => (
+    // TODO: meta
+    // TODO: download
+    <Card style={{ marginTop: 16 }}>
+      <CardText>
+        <ContentWindow handle={{ bucket, key: path }} />
+      </CardText>
+    </Card>
+  ));
+
+/* TODO: download link:
+  if (ContentWindow.supports(path)) {
+    showPreview(path);
+  } else {
+    const url = signer.getSignedS3URL({ bucket, key: path });
+  }
+*/
+
+const Placeholder = () => <Spinner style={{ fontSize: '3em' }} />;
+
+const DirectoryDisplay = composeComponent('Browser.DirectoryDisplay',
+  setPropTypes({
+    bucket: PT.string.isRequired,
+    path: PT.string.isRequired,
   }),
   S3.inject(),
   injectSaga(REDUX_KEY, saga),
   injectReducer(REDUX_KEY, reducer),
   connect(selector),
-  withStateHandlers({
-    preview: null,
-  }, {
-    showPreview: () => (path) => ({ preview: path }),
-    hidePreview: () => () => ({ preview: null }),
-  }),
-  withProps(({ match: { params: { path } } }) => ({
-    path,
-    ...splitPath(path),
-  })),
   withHandlers({
     getData: ({ dispatch, path }) => () => {
-      dispatch(get(path));
-    },
-    handleClick: ({
-      s3,
-      bucket,
-      showPreview,
-      expiration,
-    }) => async (path) => {
-      if (ContentWindow.supports(path)) {
-        showPreview(path);
-      } else {
-        const url = s3.getSignedUrl('getObject', {
-          Bucket: bucket,
-          Key: path,
-          Expires: expiration,
-        });
-        window.open(url, '_blank');
-      }
+      dispatch(Action.Get({ path }));
     },
   }),
   lifecycle({
@@ -137,59 +120,43 @@ export default composeComponent('Browser',
       }
     },
   }),
-  ({
-    prefix,
-    state,
-    result,
-    getData,
-    bucket,
-    preview,
-    expiration,
-    hidePreview,
-    handleClick,
-  }) => (
+  extractProp('state', AsyncResult.case({
+    _: () => <Placeholder />,
+    // eslint-disable-next-line react/prop-types
+    Ok: ({ files, directories, readme, summary }, { path }) => (
+      <React.Fragment>
+        <Listing
+          prefix={path}
+          directories={directories}
+          files={files}
+        />
+        {readme && (
+          <SummaryItem
+            title={basename(readme.key)}
+            handle={readme}
+          />
+        )}
+        {summary && (
+          <Summary handle={summary} />
+        )}
+      </React.Fragment>
+    ),
+    Err: (err, { getData }) => (
+      <ErrorDisplay retry={getData} />
+    ),
+  })));
+
+export default composeComponent('Browser',
+  withProps(({ match: { params: { path } } }) => ({
+    bucket: config.aws.s3Bucket,
+    path,
+  })),
+  ({ bucket, path }) => (
     <div>
-      <BreadCrumbs prefix={prefix} root={bucket} />
-      {invoke(state, {
-        FETCHING: () => (
-          <Spinner style={{ fontSize: '3em' }} />
-        ),
-        ERROR: () => (
-          <h3>
-            <MIcon>warning</MIcon>
-            Something went wrong
-            <RaisedButton label="Retry" onClick={getData} />
-          </h3>
-        ),
-        READY: () => (
-          <React.Fragment>
-            <Preview
-              bucket={bucket}
-              path={preview}
-              expiration={expiration}
-              hide={hidePreview}
-            />
-            <Listing
-              prefix={prefix}
-              directories={result.directories}
-              files={result.files}
-              onFileClick={handleClick}
-            />
-            {result.readme && (
-              <SummaryItem
-                title={withoutPrefix(prefix, result.readme.key)}
-                object={result.readme}
-                expiration={expiration}
-              />
-            )}
-            {result.summary && (
-              <Summary
-                object={result.summary}
-                expiration={expiration}
-              />
-            )}
-          </React.Fragment>
-        ),
-      })}
+      <BreadCrumbs path={path} root={bucket} />
+      {isDir(path)
+        ? <DirectoryDisplay bucket={bucket} path={path} />
+        : <FileDisplay bucket={bucket} path={path} />
+      }
     </div>
   ));
