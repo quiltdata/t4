@@ -25,14 +25,16 @@ class TestPackages():
     def test_read_manifest(self, tmpdir):
         """ Verify reading serialized manifest from disk. """
         pkg = Package.load(open(LOCAL_MANIFEST))
-        pass
-        #assert pkg.get('foo')
+
+
+        with pytest.raises(NotImplementedError):
+            pkg.get('foo')
+
         out_path = os.path.join(tmpdir, 'new_manifest.jsonl')
         pkg.dump(open(out_path, "w"))
         
         # Insepct the jsonl to verify everything is maintained, i.e.
         # that load/dump results in an equivalent set.
-
         original_set = list(jsonlines.Reader(open(LOCAL_MANIFEST)))
         written_set = list(jsonlines.Reader(open(out_path)))
         assert len(original_set) == len(written_set)
@@ -45,12 +47,14 @@ class TestPackages():
             pkg = Package.load(open(REMOTE_MANIFEST))
             assert pkg._data['foo'].physical_keys[0]['type'] == PhysicalKeyType.S3.name
             
-            # mat_pkg = pkg.materialize(open(REMOTE_MANIFEST))
-            # assert mat_pkg._data['foo'].physical_keys[0]['type'] == PhysicalKeyType.LOCAL.name
+            with pytest.raises(NotImplementedError):
+                mat_pkg = pkg.materialize(open(REMOTE_MANIFEST))
+                assert mat_pkg._data['foo'].physical_keys[0]['type'] == PhysicalKeyType.LOCAL.name
 
     def test_load_into_t4(self):
         """ Verify loading local manifest and data into S3. """
         with patch('botocore.client.BaseClient._make_api_call', new=mock_make_api_call) as mock:
             pkg = Package.load(open(LOCAL_MANIFEST))
-            # pkg.materialize(open(REMOTE_MANIFEST))
-            # assert mock.called
+
+            with pytest.raises(NotImplementedError):
+                pkg.materialize(open(REMOTE_MANIFEST))
