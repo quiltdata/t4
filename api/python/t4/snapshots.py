@@ -301,7 +301,7 @@ class Package(object):
             if not f.is_file():
                 continue
 
-            with open(f) as file_to_hash:
+            with open(f, 'rb') as file_to_hash:
                 hash_obj = {
                     'type': 'SHA256',
                     'value': hash_file(file_to_hash)
@@ -313,7 +313,8 @@ class Package(object):
                 'path': os.path.abspath(f)
             }]
             entry = PackageEntry(physical_keys, size, hash_obj, {})
-            data[str(f)] = entry
+            logical_key = pathlib.Path(f).relative_to(src_path).as_posix()
+            data[logical_key] = entry
         return Package(data, meta)
 
     def get(self, logical_key):
