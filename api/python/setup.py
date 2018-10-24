@@ -32,6 +32,7 @@ setup(
         'elasticsearch~=6.3.1',
         'enum34; python_version<"3.0"',     # stdlib backport
         'future>=0.16.0',                   # stdlib backport: 'from builtins import xxx', plus others.
+        'jsonlines==1.2.0',
         'numpy>=1.14.0',                    # required by pandas, but missing from its dependencies.
         'packaging>=16.8',
         'pandas>=0.19.2',
