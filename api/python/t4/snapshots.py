@@ -4,7 +4,6 @@ import hashlib
 import json
 import pathlib
 import os
-import tempfile
 
 import boto3
 import jsonlines
@@ -443,20 +442,6 @@ class Package(object):
             self._top_hash()
         return self._meta['top_hash']
 
-    def textual_hash(self):
-        """
-        Returns the textual hash of the package manifest serialized to disk
-
-        Returns:
-            SHA256 hash of serialized manifest
-        """
-        with tempfile.TemporaryFile() as tmpfile:
-            self.dump(tmpfile)
-            tmpfile.seek(0)
-            self_hash = hash_file(tmpfile)
-
-        return self_hash
-
     def materialize(self, path, name=None):
         """
         Copies objects to path, then creates a new package that points to those objects.
@@ -480,6 +465,6 @@ class Package(object):
         """
         raise NotImplementedError
         if name is None:
-            name = self.textual_hash()
+            raise NotImplementedError
         self.get_files(path)
         self.dump(get_package_registry(path) + name)
