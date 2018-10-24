@@ -160,6 +160,46 @@ def hash_file(readable_file):
 
     return hasher.hexdigest()
 
+def bytes_to_int(input_bytes):
+    result = 0
+    for byte in input_bytes:
+        result = result * 256 + int(byte)
+    return result
+
+HASH_MAX = 2 ** 256
+
+def sum_hash(current, add_bytes):
+    """
+    Sums hashes for order-independence.
+
+    Args:
+        current(int)
+        add_bytes(bytes)
+
+    Returns:
+        New total
+    """
+    total = current + bytes_to_int(add_bytes)
+    total = total % HASH_MAX
+    return total
+
+def hash_object(obj):
+    hasher = hashlib.sha256()
+    if isinstance(obj, dict):
+        current = 0
+        for key, value in obj.items():
+            item_hash = hashlib.sha256()
+            item_hash.update(hash_object(key).encode('utf-8'))
+            item_hash.update(hash_object(value).encode('utf-8'))
+            current = sum_hash(current, item_hash.digest())
+        hasher.update(str(current).encode('utf-8'))
+    elif isinstance(obj, list):
+        for item in obj:
+            hasher.update(hash_object(item).encode('utf-8'))
+    else:
+        hasher.update(str(obj).encode('utf-8'))
+    return hasher.hexdigest()
+
 def dereference_physical_key(physical_key):
     ty = physical_key['type']
     if ty == PhysicalKeyType.LOCAL.name:
@@ -293,7 +333,7 @@ class Package(object):
         # TODO: anything but local paths
         # TODO: deserialization metadata
         data = {}
-        meta = {}
+        meta = {'version': '0.0.1'}
         src_path = pathlib.Path(path)
         files = src_path.rglob('*')
         for f in files:
@@ -308,6 +348,7 @@ class Package(object):
 
             size = os.path.getsize(f)
             physical_keys = [{
+                'version': '0.0.1',
                 'type': PhysicalKeyType.LOCAL.name,
                 'path': os.path.abspath(f)
             }]
@@ -365,10 +406,10 @@ class Package(object):
 
     def get_meta(self, logical_key):
         """
-        Returns user metadata for specified logical key.
+        Returns metadata for specified logical key.
         """
         entry = self._data[logical_key]
-        return entry['user_meta']
+        return entry.meta
 
     def dump(self, writable_file):
         """
@@ -384,6 +425,7 @@ class Package(object):
             fail to create file
             fail to finish write
         """
+        self.top_hash() # assure top hash is calculated
         writer = jsonlines.Writer(writable_file)
         writer.write(self._meta)
         for logical_key, entry in self._data.items():
@@ -426,7 +468,23 @@ class Package(object):
         Returns:
             None
         """
-        raise NotImplementedError
+        top_hash = hashlib.sha256()
+        hashable_meta = copy.deepcopy(self._meta)
+        hashable_meta.pop('top_hash', None)
+        top_meta_hash = hash_object(hashable_meta)
+        top_hash.update(top_meta_hash.encode('utf-8'))
+        current = 0
+        for lk, entry in self._data.items():
+            key_hash = hashlib.sha256()
+            key_hash.update(lk.encode('utf-8'))
+            key_hash.update(hash_object(entry.hash).encode('utf-8'))
+            key_hash.update(str(entry.size).encode('utf-8'))
+            key_hash.update(hash_object(entry.meta).encode('utf-8'))
+            current = sum_hash(current, key_hash.digest())
+
+        top_hash.update(str(current).encode('utf-8'))
+
+        self._meta['top_hash'] = top_hash.hexdigest()
 
     def top_hash(self):
         """
