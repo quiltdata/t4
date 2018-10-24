@@ -151,16 +151,15 @@ class PhysicalKeyType(Enum):
     LOCAL = 1
     S3 = 2
 
-def hash_file(path):
-    """ Returns SHA256 hash of file at path. """
-    with open(path, 'rb') as f:
-        buf = f.read(4096)
-        hasher = hashlib.sha256()
-        while buf:
-            hasher.update(buf)
-            buf = f.read(4096)
+def hash_file(readable_file):
+    """ Returns SHA256 hash of readable file-like object """
+    buf = readable_file.read(4096)
+    hasher = hashlib.sha256()
+    while buf:
+        hasher.update(buf)
+        buf = readable_file.read(4096)
 
-        return hasher.hexdigest()
+    return hasher.hexdigest()
 
 def dereference_physical_key(physical_key):
     ty = physical_key['type']
@@ -302,10 +301,12 @@ class Package(object):
             if not f.is_file():
                 continue
 
-            hash_obj = {
-                'type': 'SHA256',
-                'value': hash_file(f)
-            }
+            with open(f) as file_to_hash:
+                hash_obj = {
+                    'type': 'SHA256',
+                    'value': hash_file(file_to_hash)
+                }
+
             size = os.path.getsize(f)
             physical_keys = [{
                 'type': PhysicalKeyType.LOCAL.name,
@@ -451,7 +452,8 @@ class Package(object):
         with tempfile.NamedTemporaryFile() as tmpfile:
             tmp_name = tmpfile.name
             self.dump(tmpfile)
-            self_hash = hash_file(tmp_name)
+            tmpfile.seek(0)
+            self_hash = hash_file(tmpfile)
 
         return self_hash
 
