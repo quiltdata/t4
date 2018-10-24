@@ -45,7 +45,7 @@ setup(
     ],
     extras_require={
         'tests': [
-            'mock; python_version<"3.5"',   # XXX correct syntax for extras_require?
+            'mock',   # XXX correct syntax for extras_require?
             'pytest',
             'pytest-cov',
             'responses',
