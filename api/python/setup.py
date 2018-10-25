@@ -6,10 +6,10 @@ def readme():
     return readme_short
 
 setup(
-    name="helium",
+    name="t4",
     version="0.0.1-dev",
     packages=find_packages(),
-    description='Helium',
+    description='T4',
     long_description=readme(),
     classifiers=[
         'Development Status :: 5 - Production/Stable',
@@ -32,6 +32,7 @@ setup(
         'elasticsearch~=6.3.1',
         'enum34; python_version<"3.0"',     # stdlib backport
         'future>=0.16.0',                   # stdlib backport: 'from builtins import xxx', plus others.
+        'jsonlines==1.2.0',
         'numpy>=1.14.0',                    # required by pandas, but missing from its dependencies.
         'packaging>=16.8',
         'pandas>=0.19.2',

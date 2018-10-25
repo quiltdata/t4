@@ -329,15 +329,19 @@ To modify which file types are searchable, populate a `.quilt/config.json` file 
 
 By default search covers both plaintext and metadata
 (metadata are created via the `meta=` keyword in `put` or `put_file`).
-To search metadata only, enter a string of the form `METADATA_KEY:"VALUE"`.
 
-T4 automatically populates the following metadata: 
+To search user-defined metadata, perform a search of the form `user_meta.METADATA_KEY:"VALUE"`. For example, to get a list of objects whose metadata contains a value of `bar` for the field `foo`, search for `user_meta.foo:"bar"`.
+
+T4 populates some other metadata fields automatically:
+
 * `key` - the S3 path
 * `type` - serialization format
 * `version_id` - the object version
 * `target` - deserialization format
-* `size` - bytes
-* `updated` - date
+* `size` - the number of bytes
+* `updated` - the current version's timestamp
+
+To search automatic metadata, perform a search of the form `METADATA_KEY:"VALUE"`. For example, to get a list of objects 10 bytes in size, search for `size:"10"`.
 
 ## Known issues
 
@@ -355,3 +359,14 @@ T4 automatically populates the following metadata:
     s3:GetObject
     s3:GetObjectVersion
     ```
+* The keys of objects in S3 should not end in `/`. Objects whose keys end in `/`
+are treated specially by some S3 tools in a way that
+is potentially dangerous, so it's best to avoid them.
+The helium API will help you avoid this rough edge by rejecting object keys that end in `/`.
+Refer to [Amazon's documentation](https://docs.aws.amazon.com/AmazonS3/latest/user-guide/using-folders.html) on folder objects.
+
+  ~~`he.put_file("foo.txt", "bucket/path/")`~~ - this is not supported
+
+  `he.put_file("local_directory/", "bucket/path/")` - this will perform a recursive copy, and is correct
+
+

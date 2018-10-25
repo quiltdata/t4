@@ -4,8 +4,8 @@ import pytest
 import responses
 from ruamel.yaml import YAML
 
-import helium as he
-from helium import util
+import t4 as he
+from t4 import util
 
 class TestAPI():
     @responses.activate
@@ -47,7 +47,7 @@ class TestAPI():
         with pytest.raises(util.HeliumException, match="No configured region."):
             he.search('*')
 
-    @patch('helium.api._create_es')
+    @patch('t4.api._create_es')
     def test_search(self, _create_es):
         mock_es_client = Mock()
         mock_es_client.search.return_value = {
