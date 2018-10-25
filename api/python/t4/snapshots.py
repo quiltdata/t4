@@ -474,9 +474,9 @@ class Package(object):
         top_meta_hash = hash_object(hashable_meta)
         top_hash.update(top_meta_hash.encode('utf-8'))
         current = 0
-        for lk, entry in self._data.items():
+        for logical_key, entry in self._data.items():
             key_hash = hashlib.sha256()
-            key_hash.update(lk.encode('utf-8'))
+            key_hash.update(logical_key.encode('utf-8'))
             key_hash.update(hash_object(entry.hash).encode('utf-8'))
             key_hash.update(str(entry.size).encode('utf-8'))
             key_hash.update(hash_object(entry.meta).encode('utf-8'))
