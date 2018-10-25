@@ -216,6 +216,21 @@ class PackageEntry(object):
         }
         return copy.deepcopy(ret)
 
+    @staticmethod
+    def from_local_path(path):
+        with open(path, 'rb') as file_to_hash:
+            hash_obj = {
+                'type': 'SHA256',
+                'value': hash_file(file_to_hash)
+            }
+
+        size = os.path.getsize(path)
+        physical_keys = [{
+            'type': PhysicalKeyType.LOCAL.name,
+            'path': os.path.abspath(path)
+        }]
+        return PackageEntry(physical_keys, size, hash_obj, {})
+
 class Package(object):
     """ In-memory representation of a package """
 
@@ -300,18 +315,7 @@ class Package(object):
             if not f.is_file():
                 continue
 
-            with open(f, 'rb') as file_to_hash:
-                hash_obj = {
-                    'type': 'SHA256',
-                    'value': hash_file(file_to_hash)
-                }
-
-            size = os.path.getsize(f)
-            physical_keys = [{
-                'type': PhysicalKeyType.LOCAL.name,
-                'path': os.path.abspath(f)
-            }]
-            entry = PackageEntry(physical_keys, size, hash_obj, {})
+            entry = PackageEntry.from_local_path(f)
             logical_key = pathlib.Path(f).relative_to(src_path).as_posix()
             data[logical_key] = entry
         return Package(data, meta)
@@ -389,7 +393,7 @@ class Package(object):
         for logical_key, entry in self._data.items():
             writer.write({'logical_key': logical_key, **entry.as_dict()})
 
-    def update(self, logical_key, entry):
+    def set(self, logical_key, entry=None, **kwargs):
         """
         Returns a new package with the object at logical_key set to entry.
 
@@ -400,9 +404,22 @@ class Package(object):
         Returns:
             A new package
         """
+        if 'meta' in kwargs and entry is None:
+            return self._update_meta(logical_key, kwargs['meta'])
+
         pkg = self._clone()
-        # TODO validate entry contents
-        pkg._data[logical_key] = entry
+        if isinstance(entry, str):
+            entry = PackageEntry.from_local_path(entry)
+            pkg._data[logical_key] = entry
+        elif isinstance(entry, PackageEntry):
+            pkg._data[logical_key] = entry
+        else:
+            raise NotImplementedError
+        return pkg
+
+    def _update_meta(self, logical_key, meta):
+        pkg = self._clone()
+        pkg._data[logical_key].meta = meta
         return pkg
 
     def delete(self, logical_key):
