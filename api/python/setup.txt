@@ -16,6 +16,7 @@ future==0.16.0
 futures==3.2.0            # via pyarrow, s3transfer
 idna==2.7                 # via requests
 jmespath==0.9.3           # via boto3, botocore
+jsonlines==1.2.0
 numpy==1.15.2
 packaging==18.0
 pandas==0.23.4
