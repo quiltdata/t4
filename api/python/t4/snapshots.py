@@ -484,7 +484,10 @@ class Package(object):
 
         top_hash.update(str(current).encode('utf-8'))
 
-        self._meta['top_hash'] = top_hash.hexdigest()
+        self._meta['top_hash'] = {
+            'alg': 'v0',
+            'value': top_hash.hexdigest()
+        }
 
     def top_hash(self):
         """
