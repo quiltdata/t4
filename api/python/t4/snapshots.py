@@ -393,19 +393,27 @@ class Package(object):
         for logical_key, entry in self._data.items():
             writer.write({'logical_key': logical_key, **entry.as_dict()})
 
-    def set(self, logical_key, entry=None, **kwargs):
+    def set(self, logical_key, entry=None, meta=None):
         """
         Returns a new package with the object at logical_key set to entry.
 
         Args:
             logical_key(string): logical key to update
-            entry(PackageEntry): new entry to place at logical_key in the package
+            entry(PackageEntry OR string): new entry to place at logical_key in the package
+                if entry is a string, it is treated as a path to local disk and an entry
+                is created based on the file at that path on your local disk
+            meta(dict): metadata dict to attach to entry. If meta is provided, set just
+                updates the meta attached to logical_key without changing anything
+                else in the entry
 
         Returns:
             A new package
         """
-        if 'meta' in kwargs and entry is None:
-            return self._update_meta(logical_key, kwargs['meta'])
+        if entry is None and meta is None:
+            raise PackageException('Must specify either entry or meta')
+
+        if entry is None:
+            return self._update_meta(logical_key, meta)
 
         pkg = self._clone()
         if isinstance(entry, str):
