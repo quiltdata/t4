@@ -96,7 +96,7 @@ const ItemFile = composeComponent('Browser.Listing.ItemFile',
   ));
 
 const StatsContainer = styled.div`
-  background: ${colors.lightBlue50};
+  background: ${colors.grey50};
   display: flex;
   justify-content: space-between;
   padding: 8px;
