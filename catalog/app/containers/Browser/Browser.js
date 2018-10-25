@@ -12,11 +12,12 @@ import {
   withHandlers,
   setPropTypes,
 } from 'recompose';
+import styled from 'styled-components';
 
 import MIcon from 'components/MIcon';
 import Spinner from 'components/Spinner';
 import config from 'constants/config';
-import { S3 } from 'utils/AWS';
+import { S3, Signer } from 'utils/AWS';
 import AsyncResult from 'utils/AsyncResult';
 import { injectReducer } from 'utils/ReducerInjector';
 import {
@@ -41,7 +42,7 @@ const BreadCrumbs = composeComponent('Browser.BreadCrumbs',
     root: PT.string.isRequired,
   }),
   ({ path, root }) => (
-    <h3 style={{ fontSize: 18 }}>
+    <h3 style={{ fontSize: 18, margin: 0 }}>
       {path
         ? <Link to="/browse/">{root}</Link>
         : root
@@ -85,14 +86,6 @@ const FileDisplay = composeComponent('Browser.FileDisplay',
       </CardText>
     </Card>
   ));
-
-/* TODO: download link:
-  if (ContentWindow.supports(path)) {
-    showPreview(path);
-  } else {
-    const url = signer.getSignedS3URL({ bucket, key: path });
-  }
-*/
 
 const Placeholder = () => <Spinner style={{ fontSize: '3em' }} />;
 
@@ -146,14 +139,32 @@ const DirectoryDisplay = composeComponent('Browser.DirectoryDisplay',
     ),
   })));
 
+const TopBar = styled.div`
+  align-items: baseline;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  margin-top: 4px;
+`;
+
 export default composeComponent('Browser',
+  Signer.inject(),
   withProps(({ match: { params: { path } } }) => ({
     bucket: config.aws.s3Bucket,
     path,
   })),
-  ({ bucket, path }) => (
+  ({ bucket, path, signer }) => (
     <div>
-      <BreadCrumbs path={path} root={bucket} />
+      <TopBar>
+        <BreadCrumbs path={path} root={bucket} />
+        {!isDir(path) && (
+          <RaisedButton
+            href={signer.getSignedS3URL({ bucket, key: path })}
+            label="Download file"
+          />
+        )}
+      </TopBar>
+
       {isDir(path)
         ? <DirectoryDisplay bucket={bucket} path={path} />
         : <FileDisplay bucket={bucket} path={path} />
