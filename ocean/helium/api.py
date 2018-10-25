@@ -17,8 +17,8 @@ from .data_transfer import (download_bytes, download_file, upload_bytes, upload_
 from .snapshots import (create_snapshot, download_bytes_from_snapshot,
                         download_file_from_snapshot, read_snapshot_by_hash,
                         get_snapshots)
-from .util import (HeliumException, AWS_SEPARATOR, CONFIG_PATH, CONFIG_TEMPLATE, read_yaml,
-                   split_path, validate_url, write_yaml, yaml_has_comments)
+from .util import (HeliumConfig, HeliumException, AWS_SEPARATOR, CONFIG_PATH, CONFIG_TEMPLATE,
+                   read_yaml, split_path, validate_url, write_yaml, yaml_has_comments)
 
 
 class TargetType(Enum):
@@ -211,12 +211,12 @@ def get(src, snapshot=None, version=None):
 
     target_str = meta.get('target')
     if target_str is None:
-        raise HeliumException("No deserialization metadata")
+        raise HeliumException("No serialization metadata")
 
     try:
         target = TargetType(target_str)
     except ValueError:
-        raise HeliumException("Unknown deserialization target: %r" % target_str)
+        raise HeliumException("Unknown serialization target: %r" % target_str)
     return _deserialize_obj(data, target), meta.get('user_meta')
 
 
@@ -562,11 +562,11 @@ def config(*autoconfig_url, **config_values):
 
     config_template = read_yaml(CONFIG_TEMPLATE)
     if autoconfig_url:
-        autoconfig_url = autoconfig_url[0].rstrip('/')
-        if not autoconfig_url[:7].lower() in ('http://', 'https:/'):
-            autoconfig_url = 'https://' + autoconfig_url
-        config_template['navigator_url'] = autoconfig_url  # set the provided navigator URL
-        config_url = autoconfig_url + '/config.json'
+        autoconfig_url = autoconfig_url[0]
+        config_url = autoconfig_url.rstrip('/') + '/config.json'
+
+        if config_url[:7] not in ('http://', 'https:/'):
+            config_url = 'https://' + config_url
 
         validate_url(config_url)
 
@@ -592,13 +592,13 @@ def config(*autoconfig_url, **config_values):
             for key in set(config_template) - set(new_config):
                 new_config[key] = config_template[key]
             write_yaml(new_config, CONFIG_PATH, keep_backup=True)
-            return new_config
+            return HeliumConfig(CONFIG_PATH, new_config)
         # Use our config + their configured values, keeping our comments.
         else:
             for key, value in new_config.items():
                 config_template[key] = value
             write_yaml(config_template, CONFIG_PATH, keep_backup=True)
-            return config_template
+            return HeliumConfig(CONFIG_PATH, config_template)
     # No autoconfig URL given -- use local config
     if CONFIG_PATH.exists():
         local_config = read_yaml(CONFIG_PATH)
@@ -613,4 +613,4 @@ def config(*autoconfig_url, **config_values):
             validate_url(value)
         local_config[key] = value
     write_yaml(local_config, CONFIG_PATH, keep_backup=True)
-    return local_config
+    return HeliumConfig(CONFIG_PATH, local_config)

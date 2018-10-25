@@ -1,0 +1,25 @@
+version: 2
+
+workflows:
+  version: 2
+  test:
+    jobs:
+      - test-3.6
+
+jobs:
+  test-3.6: &test-template
+    docker:
+      - image: circleci/python:3.6-jessie
+    steps:
+      - checkout
+      - run:
+          name: Setup
+          command: |
+            virtualenv venv
+            . venv/bin/activate
+            pip install -e ocean[tests]
+      - run:
+          name: Run Pytest
+          command: |
+            . venv/bin/activate
+            cd ocean && pytest

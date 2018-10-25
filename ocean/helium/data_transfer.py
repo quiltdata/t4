@@ -47,7 +47,7 @@ def _download_single_file(bucket, key, dest_path, version=None):
     size = resp['ContentLength']
     # meta = _parse_metadata(resp)
     extra = dict(VersionId=version) if version is not None else {}
-    
+
     if dest_path.endswith('/'):
         dest_path += pathlib.PurePosixPath(key).name
 
@@ -132,12 +132,12 @@ def download_file(src_path, dest_path, version=None):
 
 
 def download_bytes(path, version=None):
-    bucket, key = split_path(path)
+    bucket, key = split_path(path, require_subpath=True)
     params = dict(Bucket=bucket,
                   Key=key)
     if version is not None:
         params.update(dict(VersionId=version))
-        
+
     resp = s3_client.get_object(**params)
     meta = _parse_metadata(resp)
     body = resp['Body'].read()
@@ -182,7 +182,7 @@ def upload_file(src_path, dest_path, meta):
 
 
 def upload_bytes(data, path, meta):
-    bucket, key = split_path(path)
+    bucket, key = split_path(path, require_subpath=True)
     s3_client.put_object(
         Bucket=bucket,
         Key=key,
@@ -192,7 +192,7 @@ def upload_bytes(data, path, meta):
 
 
 def delete_object(path):
-    bucket, key = split_path(path)
+    bucket, key = split_path(path, require_subpath=True)
     resp = s3_client.delete_object(
         Bucket=bucket,
         Key=key
@@ -221,7 +221,7 @@ def list_object_versions(path, recursive=True):
             next_vid = response['NextVersionIdMarker']
             list_obj_params.update({'VersionIdMarker': next_vid,
                                     'KeyMarker': next_key})
-            
+
         versions += response.get('Versions', [])
         delete_markers += response.get('DeleteMarkers', [])
         prefixes += response.get('CommonPrefixes', [])

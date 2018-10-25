@@ -23,7 +23,7 @@ $ pip install git+https://github.com/quiltdata/t4.git#subdirectory=ocean
 
 ### Reading and writing data
 
-![](./notebooks/helium-api.png)
+![](img/helium-api.png)
 
 
 #### `helium.get(src [, snapshot=None | version=None])`
@@ -91,13 +91,15 @@ If `dest` contains file that `src` does not, that fill will appear as an Add.
 ### Configuration
 
 #### `helium.config()`
-Returns an `ordereddict` with the current T4 client configuration details. Configuration is saved to disk.
-
-#### `helium.config(KEY=VALUE [, KEY2=VALUE2, ...])`
-Manually sets a specific configuration option.
+Returns the current configuration details as an `ordereddict` subclass, `HeliumConfig`.
+`HeliumConfig` has a cleaner appearance, and includes the file path.
 
 #### `helium.config(URL)`
-Set a configuration option from the URL of a T4 deployment.
+Set the local configuration from the URL of a T4 instance.  Overwrites all local config 
+values if successful, but keeps a backup in the config dir.
+
+#### `helium.config(KEY=VALUE [, KEY2=VALUE2, ...])`
+Manually sets specific configuration options.
 
 ### Navigation
 
