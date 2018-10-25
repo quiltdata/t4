@@ -17,6 +17,8 @@ export default createSelector(get(REDUX_KEY), R.pipe(
       ...result,
       readme: findFile(result.files, README_RE),
       summary: findFile(result.files, SUMMARY_RE),
+      images: result.files.filter(({ key }) =>
+        ['.jpg', '.jpeg', '.png', '.gif'].some((ext) => key.endsWith(ext))),
     }),
     _: R.identity,
   }),

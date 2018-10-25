@@ -1,8 +1,9 @@
 import { basename } from 'path';
 
-import { Card, CardText } from 'material-ui/Card';
+import { Card, CardText, CardTitle } from 'material-ui/Card';
 import RaisedButton from 'material-ui/RaisedButton';
 import PT from 'prop-types';
+import * as R from 'ramda';
 import * as React from 'react';
 import { connect } from 'react-redux';
 import { Link } from 'react-router-dom';
@@ -35,6 +36,8 @@ import saga from './saga';
 import selector from './selectors';
 import reducer, { Action } from './reducer';
 
+
+const MAX_THUMBNAILS = 100;
 
 const BreadCrumbs = composeComponent('Browser.BreadCrumbs',
   setPropTypes({
@@ -79,7 +82,6 @@ const FileDisplay = composeComponent('Browser.FileDisplay',
   }),
   ({ bucket, path }) => (
     // TODO: meta
-    // TODO: download
     <Card style={{ marginTop: 16 }}>
       <CardText>
         <ContentWindow handle={{ bucket, key: path }} />
@@ -88,6 +90,65 @@ const FileDisplay = composeComponent('Browser.FileDisplay',
   ));
 
 const Placeholder = () => <Spinner style={{ fontSize: '3em' }} />;
+
+const ThumbnailsContainer = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+`;
+
+const ThumbnailFiller = styled.div`
+  flex-basis: 19%;
+
+  &::after {
+    content: "";
+  }
+`;
+
+const Thumbnails = composeComponent('Browser.Thumbnails',
+  Signer.inject(),
+  withProps(({ images }) => ({
+    showing: images.slice(0, MAX_THUMBNAILS),
+  })),
+  ({ images, showing, signer }) => (
+    <Card style={{ marginTop: 16 }}>
+      <CardTitle
+        title={`Images (showing ${showing.length} out of ${images.length})`}
+        titleStyle={{ fontSize: 21 }}
+      />
+      <CardText>
+        <ThumbnailsContainer>
+          {showing.map((i) => (
+            <Link
+              key={i.key}
+              to={`/browse/${i.key}`}
+              style={{
+                flexBasis: '19%',
+                marginBottom: 16,
+              }}
+            >
+              <img
+                alt={basename(i.key)}
+                title={basename(i.key)}
+                src={signer.getSignedS3URL(i)}
+                style={{
+                  display: 'block',
+                  marginLeft: 'auto',
+                  marginRight: 'auto',
+                  maxHeight: 200,
+                  maxWidth: '100%',
+                }}
+              />
+            </Link>
+          ))}
+          {R.times(
+            (i) => <ThumbnailFiller key={`__filler${i}`} />,
+            (5 - (showing.length % 5)) % 5
+          )}
+        </ThumbnailsContainer>
+      </CardText>
+    </Card>
+  ));
 
 const DirectoryDisplay = composeComponent('Browser.DirectoryDisplay',
   setPropTypes({
@@ -116,7 +177,7 @@ const DirectoryDisplay = composeComponent('Browser.DirectoryDisplay',
   extractProp('state', AsyncResult.case({
     _: () => <Placeholder />,
     // eslint-disable-next-line react/prop-types
-    Ok: ({ files, directories, readme, summary }, { path }) => (
+    Ok: ({ files, directories, images, readme, summary }, { path }) => (
       <React.Fragment>
         <Listing
           prefix={path}
@@ -129,6 +190,7 @@ const DirectoryDisplay = composeComponent('Browser.DirectoryDisplay',
             handle={readme}
           />
         )}
+        {!!images.length && <Thumbnails images={images} />}
         {summary && (
           <Summary handle={summary} />
         )}
