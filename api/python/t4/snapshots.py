@@ -166,40 +166,6 @@ def bytes_to_int(input_bytes):
         result = result * 256 + int(byte)
     return result
 
-HASH_MAX = 2 ** 256
-
-def sum_hash(current, add_bytes):
-    """
-    Sums hashes for order-independence.
-
-    Args:
-        current(int)
-        add_bytes(bytes)
-
-    Returns:
-        New total
-    """
-    total = current + bytes_to_int(add_bytes)
-    total = total % HASH_MAX
-    return total
-
-def hash_object(obj):
-    hasher = hashlib.sha256()
-    if isinstance(obj, dict):
-        current = 0
-        for key, value in obj.items():
-            item_hash = hashlib.sha256()
-            item_hash.update(hash_object(key).encode('utf-8'))
-            item_hash.update(hash_object(value).encode('utf-8'))
-            current = sum_hash(current, item_hash.digest())
-        hasher.update(str(current).encode('utf-8'))
-    elif isinstance(obj, list):
-        for item in obj:
-            hasher.update(hash_object(item).encode('utf-8'))
-    else:
-        hasher.update(str(obj).encode('utf-8'))
-    return hasher.hexdigest()
-
 def dereference_physical_key(physical_key):
     ty = physical_key['type']
     if ty == PhysicalKeyType.LOCAL.name:
@@ -471,18 +437,15 @@ class Package(object):
         top_hash = hashlib.sha256()
         hashable_meta = copy.deepcopy(self._meta)
         hashable_meta.pop('top_hash', None)
-        top_meta_hash = hash_object(hashable_meta)
-        top_hash.update(top_meta_hash.encode('utf-8'))
+        top_meta = json.dumps(hashable_meta, sort_keys=True, separators=(',', ':'))
+        top_hash.update(top_meta.encode('utf-8'))
         current = 0
-        for logical_key, entry in self._data.items():
-            key_hash = hashlib.sha256()
-            key_hash.update(logical_key.encode('utf-8'))
-            key_hash.update(hash_object(entry.hash).encode('utf-8'))
-            key_hash.update(str(entry.size).encode('utf-8'))
-            key_hash.update(hash_object(entry.meta).encode('utf-8'))
-            current = sum_hash(current, key_hash.digest())
-
-        top_hash.update(str(current).encode('utf-8'))
+        for logical_key, entry in sorted(list(self._data.items())):
+            entry_dict = entry.as_dict()
+            entry_dict['logical_key'] = logical_key
+            entry_dict.pop('physical_keys', None)
+            entry_dict_str = json.dumps(entry_dict, sort_keys=True, separators=(',', ':'))
+            top_hash.update(entry_dict_str.encode('utf-8'))
 
         self._meta['top_hash'] = {
             'alg': 'v0',
