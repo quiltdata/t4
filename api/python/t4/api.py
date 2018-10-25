@@ -29,7 +29,7 @@ def put_file(src, dest, meta=None):
     See User Docs for more info on object Serialization and Metadata.
 
     Parameters:
-        obj: a serializable object
+        src: a serializable object
         dest (str): path in T4
         meta (dict): Optional. metadata dict to store with `obj` at `dest`
     Returns:
@@ -47,8 +47,7 @@ def get_file(src, dest, snapshot=None, version=None):
     Retrieves `src` object from T4, and writes that to to the `dest`
     path on your local disk.
 
-    An optional `snapshot` or `version`
-    may be specified, but not both.
+    An optional `snapshot` or `version` may be specified, but not both.
 
     Parameters:
         src (str): a T4 path to retrieve
@@ -70,7 +69,7 @@ def get_file(src, dest, snapshot=None, version=None):
 
 
 def put(obj, dest, meta=None):
-    """Write an in-memory object to the specified T4 `dest`
+    """Write an in-memory object `obj` to the T4 location `dest`
 
     Note:
         Does not work with all objects -- object must be serializable.
@@ -101,7 +100,7 @@ def put(obj, dest, meta=None):
 
 
 def get(src, snapshot=None, version=None):
-    """Retrieves src object from T4 and loads it into memory.
+    """Retrieves `src` object from T4 and loads it into memory.
 
     An optional `snapshot` or `version` may be specified, but not both.
 
@@ -136,7 +135,7 @@ def get(src, snapshot=None, version=None):
 
 
 def delete(path):
-    """Delete and object from T4
+    """Delete an object from T4
 
     Does not delete local files.
 
@@ -146,7 +145,7 @@ def delete(path):
     delete_object(path)
 
 
-#TODO: Docstring for api.ls
+# TODO: Docstring for api.ls
 def ls(path, recursive=False):
     """List data from the specified path
 
@@ -210,13 +209,14 @@ def snapshot(path, message):
     return create_snapshot(path, message)
 
 
-#TODO: docstring: `contains` parameter
-#TODO: verify accuracy of docstring
+# TODO: docstring: `contains` parameter
+# TODO: verify accuracy of docstring
 def list_snapshots(bucket, contains=None):
     """Lists all snapshots of the T4 object in the bucket
 
     Parameters:
-        path (str): path to look up
+        bucket (str): bucket to check snapshots in
+        contains (str):
     Returns:
         `list` of `dict`: A list of dicts with snapshot info.
             [{
