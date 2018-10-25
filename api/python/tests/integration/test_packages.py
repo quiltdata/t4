@@ -32,8 +32,10 @@ def test_read_manifest(tmpdir):
     # Insepct the jsonl to verify everything is maintained, i.e.
     # that load/dump results in an equivalent set.
     # todo: Use load/dump once __eq__ implemented.
-    original_set = list(jsonlines.Reader(open(LOCAL_MANIFEST)))
-    written_set = list(jsonlines.Reader(open(out_path)))
+    with open(LOCAL_MANIFEST) as fd:
+        original_set = list(jsonlines.Reader(fd))
+    with open(out_path) as fd:
+        written_set = list(jsonlines.Reader(fd))
     assert len(original_set) == len(written_set)
     assert sorted(original_set, key=lambda k: k.get('logical_key','manifest')) \
         == sorted(written_set, key=lambda k: k.get('logical_key','manifest'))
@@ -41,19 +43,23 @@ def test_read_manifest(tmpdir):
 def test_materialize_from_remote():
     """ Verify loading data and mainfest transforms from S3. """
     with patch('botocore.client.BaseClient._make_api_call', new=mock_make_api_call):
-        pkg = Package.load(open(REMOTE_MANIFEST))
+        with open(REMOTE_MANIFEST) as fd:   
+            pkg = Package.load(fd)
         assert PhysicalKeyType.S3.name \
             == pkg._data['foo'].physical_keys[0]['type'] # pylint: disable=W0212
         
         with pytest.raises(NotImplementedError):
-            mat_pkg = pkg.materialize(open(REMOTE_MANIFEST))
+            with open(REMOTE_MANIFEST) as fd:   
+                mat_pkg = pkg.materialize(fd)
             assert PhysicalKeyType.LOCAL.name \
                 == mat_pkg._data['foo'].physical_keys[0]['type'] # pylint: disable=W0212
 
 def test_load_into_t4():
     """ Verify loading local manifest and data into S3. """
     with patch('botocore.client.BaseClient._make_api_call', new=mock_make_api_call):
-        pkg = Package.load(open(LOCAL_MANIFEST))
+        with open(LOCAL_MANIFEST) as fd:
+            pkg = Package.load(fd)
 
         with pytest.raises(NotImplementedError):
-            pkg.materialize(open(REMOTE_MANIFEST))
+            with open(REMOTE_MANIFEST) as fd:   
+                pkg.materialize(fd)
