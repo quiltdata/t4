@@ -1,6 +1,7 @@
 import { extname } from 'path';
 
 import memoize from 'lodash/memoize';
+import * as colors from 'material-ui/styles/colors';
 import PT from 'prop-types';
 import * as R from 'ramda';
 import * as React from 'react';
@@ -190,6 +191,12 @@ const getHandler = (key) =>
 
 const PreviewError = tagged(['Unsupported', 'DoesNotExist', 'Unknown']);
 
+const ErrorText = styled.p`
+  color: ${colors.grey500};
+  font-size: 1.5em;
+  margin: 0;
+`;
+
 export default composeComponent('Browser.ContentWindow',
   setStatic('supports', (key) => !!getHandler(key)),
   setPropTypes({
@@ -237,13 +244,12 @@ export default composeComponent('Browser.ContentWindow',
     <Container>
       {AsyncResult.case({
         Err: (e) => (
-          <h1>
+          <ErrorText>
             {PreviewError.case({
-              Unsupported: () => 'File type not supported',
               DoesNotExist: () => 'Object does not exist',
-              Unknown: () => 'An unknown error occured',
+              _: () => 'Preview not available',
             }, e)}
-          </h1>
+          </ErrorText>
         ),
         Ok: (content, { handler, ...rest }) => handler.render(content, rest),
         _: () => <Placeholder />,
