@@ -336,6 +336,26 @@ def delete_object(path):
         s3_client.delete_object(Bucket=bucket, Key=key)  # Actually delete it
 
 
+def copy_object(src, dest, meta, version=None):
+    src_bucket, src_key = split_path(src, require_subpath=True)
+    dest_bucket, dest_key = split_path(dest, require_subpath=True)
+    src_params = dict(
+        Bucket=src_bucket,
+        Key=src_key
+    )
+    if version is not None:
+        src_params.update(
+            VersionId=version
+        )
+
+    s3_client.copy_object(
+        CopySource=src_params,
+        Bucket=dest_bucket,
+        Key=dest_key,
+        Metadata={HELIUM_METADATA: json.dumps(meta)}
+    )
+
+
 def list_object_versions(path, recursive=True):
     bucket, key = split_path(path)
     list_obj_params = dict(Bucket=bucket,
