@@ -385,9 +385,10 @@ class Package(object):
             fail to create file
             fail to finish write
         """
-        self.top_hash() # assure top hash is calculated
         writer = jsonlines.Writer(writable_file)
-        writer.write(self._meta)
+        writable_meta = copy.deepcopy(self._meta)
+        writable_meta.pop('top_hash', None)
+        writer.write(writable_meta)
         for logical_key, entry in self._data.items():
             writer.write({'logical_key': logical_key, **entry.as_dict()})
 
@@ -433,7 +434,6 @@ class Package(object):
         hashable_meta.pop('top_hash', None)
         top_meta = json.dumps(hashable_meta, sort_keys=True, separators=(',', ':'))
         top_hash.update(top_meta.encode('utf-8'))
-        current = 0
         for logical_key, entry in sorted(list(self._data.items())):
             entry_dict = entry.as_dict()
             entry_dict['logical_key'] = logical_key
