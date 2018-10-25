@@ -41,6 +41,7 @@ const Item = composeComponent('Browser.Listing.Item',
       containerElement={link ? <Link to={link} /> : undefined}
       innerDivStyle={{
         display: 'flex',
+        flexWrap: 'wrap',
         fontSize: 14,
         justifyContent: 'space-between',
         padding: 8,
@@ -98,6 +99,7 @@ const ItemFile = composeComponent('Browser.Listing.ItemFile',
 const StatsContainer = styled.div`
   background: ${colors.grey50};
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   padding: 8px;
 `;

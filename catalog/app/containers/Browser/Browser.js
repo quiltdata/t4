@@ -142,6 +142,7 @@ const DirectoryDisplay = composeComponent('Browser.DirectoryDisplay',
 const TopBar = styled.div`
   align-items: baseline;
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   margin-bottom: 16px;
   margin-top: 4px;
