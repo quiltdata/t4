@@ -160,12 +160,6 @@ def hash_file(readable_file):
 
     return hasher.hexdigest()
 
-def bytes_to_int(input_bytes):
-    result = 0
-    for byte in input_bytes:
-        result = result * 256 + int(byte)
-    return result
-
 def dereference_physical_key(physical_key):
     ty = physical_key['type']
     if ty == PhysicalKeyType.LOCAL.name:
