@@ -25,6 +25,10 @@ s3_client = boto3.client('s3')
 s3_transfer_config = TransferConfig()
 s3_manager = create_transfer_manager(s3_client, s3_transfer_config)
 
+# s3transfer does not give us a way to access the metadata of an object it's downloading,
+# even though it has access to it. To get around this, we patch the s3 client to get a callback
+# with the response.
+# See https://github.com/boto/s3transfer/issues/104
 _old_get_object = s3_client.get_object
 def _get_object(self, **kwargs):
     callback = kwargs.pop('Callback', None)
