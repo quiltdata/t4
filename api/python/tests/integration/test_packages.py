@@ -19,17 +19,19 @@ def mock_make_api_call(operation_name):
 
 def test_read_manifest(tmpdir):
     """ Verify reading serialized manifest from disk. """
-    pkg = Package.load(open(LOCAL_MANIFEST))
-
+    with open(LOCAL_MANIFEST) as fd:
+        pkg = Package.load(fd)
 
     with pytest.raises(NotImplementedError):
         pkg.get('foo')
 
     out_path = os.path.join(tmpdir, 'new_manifest.jsonl')
-    pkg.dump(open(out_path, "w"))
+    with open(out_path, "w") as fd:
+        pkg.dump(fd)
     
     # Insepct the jsonl to verify everything is maintained, i.e.
     # that load/dump results in an equivalent set.
+    # todo: Use load/dump once __eq__ implemented.
     original_set = list(jsonlines.Reader(open(LOCAL_MANIFEST)))
     written_set = list(jsonlines.Reader(open(out_path)))
     assert len(original_set) == len(written_set)
