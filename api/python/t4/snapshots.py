@@ -464,7 +464,8 @@ class Package(object):
         Returns:
             None
         """
-        with open(os.path.join(get_local_package_registry(), "packages", name), "w") as fh:
+        hash_string = self.top_hash()["value"]
+        with open(os.path.join(get_local_package_registry(), "packages", hash_string), "w") as fh:
             self.dump(fh)
 
         # Build the package directory if necessary.
@@ -472,10 +473,11 @@ class Package(object):
         Path(named_path).mkdir(parents=True, exist_ok=True)
         # todo: use a float to string formater instead of double casting
         with open(os.path.join(named_path, str(int(time.time()))), "w") as fh:
-            fh.write(self.top_hash())
-        # todo: symlink
+            fh.write(self.top_hash()["value"])
+        # todo: symlink when local
         with open(os.path.join(named_path, "latest"), "w") as fh:
-            fh.write(self.top_hash())
+            fh.write(self.top_hash()["value"])
+        return hash_string
 
     def dump(self, writable_file):
         """

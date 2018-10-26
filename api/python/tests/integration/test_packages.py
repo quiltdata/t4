@@ -22,19 +22,26 @@ def mock_make_api_call(operation_name):
 def test_build(tmpdir):
     """Verify that build dumps the manifest to appdirs directory."""
     new_pkg = Package()
+
+    # Create a dummy file to add to the package.
     test_file = os.path.join(tmpdir, 'bar')
     with open(test_file, "w") as fd:    
         fd.write(test_file)
 
-    new_pkg.set('foo', test_file)
+    # Build a new package into the local registry.
+    new_pkg = new_pkg.set('foo', test_file)
     top_hash = new_pkg.build("Test")
-    out_path = os.path.join(appdirs.user_data_dir("quilt"), ".quilt", "packages", top_hash)
+
+    # Verify manifest is registered by hash.
+    out_path = os.path.join(appdirs.user_data_dir("quilt"), "packages", top_hash)
     with open(out_path) as fd:
         pkg = Package.load(fd)
-        assert pkg._data['foo'].physical_keys[0] == test_file # pylint: disable=W0212
+        assert "file://" + test_file \
+            == pkg._data['foo'].physical_keys[0]['path'] # pylint: disable=W0212
+
+    # Verify latest points to the new location.
     named_pointer_path = os.path.join(
         appdirs.user_data_dir("quilt"),
-        ".quilt",
         "named_packages",
         "Test",
         "latest")
