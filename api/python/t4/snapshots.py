@@ -371,8 +371,7 @@ class Package(object):
         Raises:
             when path doesn't exist
         """
-        if prefix:
-            prefix = quote(prefix).strip("/")
+        prefix = "" if not prefix else quote(prefix).strip("/") + "/"
 
         # TODO: anything but local paths
         # TODO: deserialization metadata
@@ -383,10 +382,7 @@ class Package(object):
             if not f.is_file():
                 continue
             entry = PackageEntry.from_local_path(f)
-            if prefix:
-                logical_key = prefix + "/" + f.relative_to(src_path).as_posix()
-            else:
-                logical_key = f.relative_to(src_path).as_posix()            
+            logical_key = prefix + f.relative_to(src_path).as_posix()
             # TODO: Warn if overwritting a logical key?
             pkg = pkg.set(logical_key, entry)
         return pkg
