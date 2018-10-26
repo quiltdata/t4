@@ -6,8 +6,10 @@ import pathlib
 import os
 
 import shutil
-import time 
-from urllib.parse import parse_qs, unquote, urlparse
+import tempfile
+import time
+
+from urllib.parse import parse_qs, quote, unquote, urlparse
 from urllib.request import url2pathname
 
 import boto3
@@ -223,7 +225,7 @@ def get_package_registry(path):
     """ Returns the package registry for a given path """
     if path.startswith('s3://'):
         bucket = path[5:].partition('/')[0]
-        return "s3://{}/.quilt/packages/".format(bucket)
+        return "s3://{}/.quilt".format(bucket)
     else:
         raise NotImplementedError
 
@@ -288,6 +290,13 @@ class PackageEntry(object):
             'path': pathlib.Path(path).resolve().as_uri()
         }]
         return PackageEntry(physical_keys, size, hash_obj, {})
+
+    def _clone(self):
+        """
+        Returns clone of this package.
+        """
+        return PackageEntry(copy.deepcopy(self.physical_keys), self.size, \
+                            copy.deepcopy(self.hash), copy.deepcopy(self.meta))
 
 class Package(object):
     """ In-memory representation of a package """
@@ -591,18 +600,64 @@ class Package(object):
             self._top_hash()
         return self._meta['top_hash']
 
-    def materialize(self, path, name=None):
+    def push(self, name, path):
+        """
+        Copies objects to path, then creates a new package that points to those objects.
+        Copies each object in this package to path according to logical key structure,
+        then adds to the registry a serialized version of this package
+        with physical_keys that point to the new copies.
+        Args:
+            path: where to copy the objects in the package
+            name: name for package in registry
+        Returns:
+            A new package that points to the copied objects
+        """
+        dest = _fix_url(path)
+        if not dest.startswith('s3://'):
+            raise NotImplementedError
+        if not name:
+            # todo: handle where to put data for unnamed remote packages
+            raise NotImplementedError
+        pkg = self._materialize('{}/{}'.format(dest.strip("/"), quote(name)))
+
+        with tempfile.NamedTemporaryFile() as manifest:
+            pkg.dump(manifest)
+            manifest.flush()
+            _copy_file(
+                pathlib.Path(manifest.name).resolve().as_uri(),
+                get_package_registry(path) + "/packages/" + pkg.top_hash()["value"],
+                {}
+            )
+
+        if name:
+            # Build the package directory if necessary.
+            named_path = get_package_registry(path) + '/named_packages/' + name + "/"
+            # todo: use a float to string formater instead of double casting
+            with tempfile.NamedTemporaryFile() as hash_file:
+                hash_file.write(pkg.top_hash()["value"].encode('utf-8'))
+                hash_file.flush()
+                _copy_file(
+                    pathlib.Path(hash_file.name).resolve().as_uri(),
+                    named_path + str(int(time.time())),
+                    {}
+                )
+                hash_file.seek(0)
+                _copy_file(
+                    pathlib.Path(hash_file.name).resolve().as_uri(),
+                    named_path + "latest",
+                    {}
+                )
+        return pkg
+
+    def _materialize(self, path):
         """
         Copies objects to path, then creates a new package that points to those objects.
 
         Copies each object in this package to path according to logical key structure,
-        then adds to the registry a serialized version of this package
-        with physical_keys that point to the new copies.
+        and returns a package with physical_keys that point to the new copies.
 
         Args:
             path: where to copy the objects in the package
-            name: optional name for package in registry
-                    defaults to the textual hash of the package manifest
 
         Returns:
             A new package that points to the copied objects
@@ -612,8 +667,23 @@ class Package(object):
             fail to put bytes
             fail to put package to registry
         """
-        raise NotImplementedError
-        if name is None:
-            raise NotImplementedError
-        self.get_files(path)
-        self.dump(get_package_registry(path) + name)
+        pkg = self._clone()
+        for logical_key, entry in self._data.items():
+            # Copy the datafiles in the package.
+            new_physical_key = path + "/" + quote(logical_key)
+            # TODO: remove physical key types entirely.
+            if path.startswith('s3://'):
+                new_type = PhysicalKeyType.S3.name
+            else:
+                new_type = PhysicalKeyType.LOCAL.name
+
+            self.copy(logical_key, new_physical_key)
+            # Create a new package pointing to the new remote key.
+            new_entry = entry._clone()
+            new_entry.physical_keys = [{
+                'type': new_type,
+                'path': new_physical_key
+            }]
+            # Treat as a local path
+            pkg = pkg.set(logical_key, new_entry)
+        return pkg
