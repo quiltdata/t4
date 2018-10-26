@@ -673,7 +673,7 @@ class Package(object):
                 new_physical_key = path + "/" + logical_key
                 new_type = PhysicalKeyType.S3.name
             else:
-                new_physical_key = os.path.join(path, logical_key).resolve().as_uri()
+                new_physical_key = pathlib.Path(path, logical_key).resolve().as_uri()
                 new_type = PhysicalKeyType.LOCAL.name
 
             self.copy(logical_key, new_physical_key)
