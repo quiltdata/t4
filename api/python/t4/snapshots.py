@@ -305,7 +305,6 @@ class Package(object):
         if name is None and pkg_hash is None and registry is None:
             self._data = {}
             self._meta = {'version': 'v0'}
-            return self
 
         if registry is None:
             # default to local registry
@@ -317,7 +316,7 @@ class Package(object):
             # TODO replace open with something that supports both local and s3
             with open(pkg_path) as pkg_file:
                 pkg = self.load(pkg_file)
-            return pkg
+            self = pkg._clone()
 
         pkg_path = registry + '/named_packages/{}/'.format(name)
         # TODO: list files at this directory
