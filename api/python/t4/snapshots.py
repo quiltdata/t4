@@ -1,18 +1,23 @@
+import appdirs
 import copy
 from enum import Enum
 import hashlib
 import json
 import pathlib
 import os
+
 import shutil
+import time 
 from urllib.parse import parse_qs, unquote, urlparse
 from urllib.request import url2pathname
 
 import boto3
 import jsonlines
 
+from pathlib import Path
 from .data_transfer import (copy_object, deserialize_obj, download_bytes, download_file, list_objects,
                             list_object_versions, upload_bytes, upload_file, TargetType)
+
 from .exceptions import PackageException
 from .util import HeliumException, split_path
 
@@ -222,6 +227,13 @@ def get_package_registry(path):
         return "s3://{}/.quilt/packages/".format(bucket)
     else:
         raise NotImplementedError
+
+def get_local_package_registry():
+    """ Returns a local package registry path as a string. """
+    local_dir = appdirs.user_data_dir("quilt")
+    Path(os.path.join(local_dir, "packages")).mkdir(parents=True, exist_ok=True)
+    Path(os.path.join(local_dir, "named_packages")).mkdir(parents=True, exist_ok=True)
+    return local_dir
 
 class PackageEntry(object):
     """
@@ -440,6 +452,30 @@ class Package(object):
         """
         entry = self._data[logical_key]
         return entry.meta
+
+    def build(self, name):
+        """
+        Serializes this package to a local registry.
+
+        Args:
+            name: optional name for package in registry
+                    defaults to the textual hash of the package manifest
+
+        Returns:
+            None
+        """
+        with open(os.path.join(get_local_package_registry(), "packages", name), "w") as fh:
+            self.dump(fh)
+
+        # Build the package directory if necessary.
+        named_path = os.path.join(get_local_package_registry(), "named_packages", name)
+        Path(named_path).mkdir(parents=True, exist_ok=True)
+        # todo: use a float to string formater instead of double casting
+        with open(os.path.join(named_path, str(int(time.time()))), "w") as fh:
+            fh.write(self.top_hash())
+        # todo: symlink
+        with open(os.path.join(named_path, "latest"), "w") as fh:
+            fh.write(self.top_hash())
 
     def dump(self, writable_file):
         """

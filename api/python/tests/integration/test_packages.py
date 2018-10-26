@@ -1,4 +1,5 @@
 """ Integration tests for T4 Packages. """
+import appdirs
 import jsonlines
 import os
 import pytest
@@ -17,6 +18,28 @@ def mock_make_api_call(operation_name):
         parsed_response = {'Body': {'foo'}}
         return parsed_response
     raise NotImplementedError
+
+def test_build(tmpdir):
+    """Verify that build dumps the manifest to appdirs directory."""
+    new_pkg = Package()
+    test_file = os.path.join(tmpdir, 'bar')
+    with open(test_file, "w") as fd:    
+        fd.write(test_file)
+
+    new_pkg.set('foo', test_file)
+    top_hash = new_pkg.build("Test")
+    out_path = os.path.join(appdirs.user_data_dir("quilt"), ".quilt", "packages", top_hash)
+    with open(out_path) as fd:
+        pkg = Package.load(fd)
+        assert pkg._data['foo'].physical_keys[0] == test_file # pylint: disable=W0212
+    named_pointer_path = os.path.join(
+        appdirs.user_data_dir("quilt"),
+        ".quilt",
+        "named_packages",
+        "Test",
+        "latest")
+    with open(named_pointer_path) as fd:
+        assert fd.read().replace('\n', '') == top_hash
 
 def test_read_manifest(tmpdir):
     """ Verify reading serialized manifest from disk. """

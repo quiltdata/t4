@@ -37,6 +37,7 @@ setup(
         'packaging>=16.8',
         'pandas>=0.19.2',
         'pathlib2; python_version<="3.5"',  # stdlib backport
+        'pathlib-1.0.1',
         'pyarrow>=0.9.0',
         'requests>=2.12.4',
         'ruamel.yaml<=0.15.70',
