@@ -355,8 +355,7 @@ class Package(object):
 
         return Package(data, meta)
 
-    @staticmethod
-    def create_package(path):
+    def capture(self, path):
         """
         Takes a package of a provided path.
 
@@ -374,18 +373,17 @@ class Package(object):
         """
         # TODO: anything but local paths
         # TODO: deserialization metadata
-        data = {}
-        meta = {'version': '0.0.1'}
         src_path = pathlib.Path(path)
         files = src_path.rglob('*')
+        pkg = self._clone()
         for f in files:
             if not f.is_file():
                 continue
-
             entry = PackageEntry.from_local_path(f)
             logical_key = f.relative_to(src_path).as_posix()
-            data[logical_key] = entry
-        return Package(data, meta)
+            # TODO: Warn if overwritting a logical key?
+            pkg = pkg.set(logical_key, entry)
+        return pkg
 
     def get(self, logical_key):
         """
