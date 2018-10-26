@@ -60,7 +60,6 @@ def test_build(tmpdir):
 
 
 def test_read_manifest(tmpdir):
-
     """ Verify reading serialized manifest from disk. """
     with open(LOCAL_MANIFEST) as fd:
         pkg = Package.load(fd)
