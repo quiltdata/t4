@@ -5,7 +5,7 @@ import json
 import pathlib
 import os
 import shutil
-from urllib.parse import unquote, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 from urllib.request import url2pathname
 
 import boto3
@@ -48,6 +48,13 @@ def _parse_snapshot_path(snapshot_file_key):
     return uid, path
 
 
+def _parse_version_id(s3_url):
+    # Parse the version ID the way the Java SDK does:
+    # https://github.com/aws/aws-sdk-java/blob/master/aws-java-sdk-s3/src/main/java/com/amazonaws/services/s3/AmazonS3URI.java#L192
+    query = parse_qs(s3_url.query)
+    return query.get('versionId', [None])[0]
+
+
 def _fix_url(url):
     """Convert non-URL paths to file:// URLs"""
     # TODO: Do something about file paths like C:\Users\foo if we care about Windows.
@@ -69,11 +76,12 @@ def _copy_file(src, dest, meta):
         else:
             raise NotImplementedError
     elif src_url.scheme == 's3':
+        version_id = _parse_version_id(src_url)
         if dest_url.scheme == 'file':
             # TODO: metadata
-            download_file(src_url.netloc + unquote(src_url.path), url2pathname(dest_url.path))
+            download_file(src_url.netloc + unquote(src_url.path), url2pathname(dest_url.path), version_id)
         elif dest_url.scheme == 's3':
-            copy_object(src_url.netloc + unquote(src_url.path), dest_url.netloc + unquote(dest_url.path), meta)
+            copy_object(src_url.netloc + unquote(src_url.path), dest_url.netloc + unquote(dest_url.path), meta, version_id)
         else:
             raise NotImplementedError
     else:
@@ -201,7 +209,8 @@ def read_physical_key(physical_key):
         with open(url2pathname(url.path), 'rb') as fd:
             return fd.read()
     elif url.scheme == 's3':
-        return download_bytes(url.netloc + unquote(url.path))[0]
+        version_id = _parse_version_id(url)
+        return download_bytes(url.netloc + unquote(url.path), version_id)[0]
     else:
         raise NotImplementedError
 
