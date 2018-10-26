@@ -251,7 +251,7 @@ class PackageEntry(object):
             a PackageEntry
         """
         assert physical_keys
-        self.physical_keys = physical_keys
+        self.physical_keys = [_fix_url(x) for x in physical_keys]
         self.size = size
         self.hash = hash_obj
         self.meta = meta
