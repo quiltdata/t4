@@ -5,7 +5,8 @@ import json
 import pathlib
 import os
 import shutil
-import urllib
+from urllib.parse import unquote, urlparse
+from urllib.request import url2pathname
 
 import boto3
 import jsonlines
@@ -49,32 +50,30 @@ def _parse_snapshot_path(snapshot_file_key):
 
 def _fix_url(url):
     """Convert non-URL paths to file:// URLs"""
-    parsed = urllib.parse.urlparse(url)
+    # TODO: Do something about file paths like C:\Users\foo if we care about Windows.
+    parsed = urlparse(url)
     if not parsed.scheme:
-        parts = list(parsed)
-        parts[0] = 'file'
-        parts[2] = str(pathlib.Path(parts[2]).resolve())
-        url = urllib.parse.urlunparse(parts)
+        url = pathlib.Path(url).resolve().as_uri()
     return url
 
 
 def _copy_file(src, dest, meta):
-    src_url = urllib.parse.urlparse(src)
-    dest_url = urllib.parse.urlparse(dest)
+    src_url = urlparse(src)
+    dest_url = urlparse(dest)
     if src_url.scheme == 'file':
         if dest_url.scheme == 'file':
             # TODO: metadata
-            shutil.copyfile(src_url.path, dest_url.path)
+            shutil.copyfile(url2pathname(src_url.path), url2pathname(dest_url.path))
         elif dest_url.scheme == 's3':
-            upload_file(src_url.path, dest_url.netloc + dest_url.path, meta)
+            upload_file(url2pathname(src_url.path), dest_url.netloc + unquote(dest_url.path), meta)
         else:
             raise NotImplementedError
     elif src_url.scheme == 's3':
         if dest_url.scheme == 'file':
             # TODO: metadata
-            download_file(src_url.netloc + src_url.path, dest_url.path)
+            download_file(src_url.netloc + unquote(src_url.path), url2pathname(dest_url.path))
         elif dest_url.scheme == 's3':
-            copy_object(src_url.netloc + src_url.path, dest_url.netloc + dest_url.path, meta)
+            copy_object(src_url.netloc + unquote(src_url.path), dest_url.netloc + unquote(dest_url.path), meta)
         else:
             raise NotImplementedError
     else:
@@ -197,19 +196,14 @@ def hash_file(readable_file):
 
 def read_physical_key(physical_key):
     # TODO: Stream the data.
-    ty = PhysicalKeyType(physical_key['type'])
-    url = urllib.parse.urlparse(physical_key['path'])
-    if ty == PhysicalKeyType.LOCAL:
-        if url.scheme != 'file':
-            raise ValueError('Unexpected scheme: %r' % url.scheme)
-        with open(url.path, 'rb') as fd:
+    url = urlparse(physical_key['path'])
+    if url.scheme == 'file':
+        with open(url2pathname(url.path), 'rb') as fd:
             return fd.read()
-    elif ty == PhysicalKeyType.S3:
-        if url.scheme != 's3':
-            raise ValueError('Unexpected scheme: %r' % url.scheme)
-        return download_bytes(url.netloc + url.path)[0]
+    elif url.scheme == 's3':
+        return download_bytes(url.netloc + unquote(url.path))[0]
     else:
-        assert False
+        raise NotImplementedError
 
 
 def get_package_registry(path):
