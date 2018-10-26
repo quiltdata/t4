@@ -194,10 +194,6 @@ def download_bytes_from_snapshot(src, snapshothash):
     obj_rec = snapshot_data['contents'][key]
     return download_bytes(src, version=obj_rec['VersionId'])
 
-class PhysicalKeyType(Enum):
-    LOCAL = 'LOCAL'
-    S3 = 'S3'
-
 def hash_file(readable_file):
     """ Returns SHA256 hash of readable file-like object """
     buf = readable_file.read(4096)
@@ -210,7 +206,7 @@ def hash_file(readable_file):
 
 def read_physical_key(physical_key):
     # TODO: Stream the data.
-    url = urlparse(physical_key['path'])
+    url = urlparse(physical_key)
     if url.scheme == 'file':
         with open(url2pathname(url.path), 'rb') as fd:
             return fd.read()
@@ -245,11 +241,7 @@ class PackageEntry(object):
         Creates an entry.
 
         Args:
-            physical_keys is a nonempty list of objects of the form {
-                schema_version: string
-                type: string
-                uri: string
-            }
+            physical_keys is a nonempty list of URIs (either s3:// or file://)
             size(number): size of object in bytes
             hash({'type': string, 'value': string}): hash object
                 for example: {'type': 'SHA256', 'value': 'bb08a...'}
@@ -285,10 +277,7 @@ class PackageEntry(object):
             }
 
         size = os.path.getsize(path)
-        physical_keys = [{
-            'type': PhysicalKeyType.LOCAL.name,
-            'path': pathlib.Path(path).resolve().as_uri()
-        }]
+        physical_keys = [pathlib.Path(path).resolve().as_uri()]
         return PackageEntry(physical_keys, size, hash_obj, {})
 
     def _clone(self):
@@ -451,7 +440,7 @@ class Package(object):
 
         dest = _fix_url(dest)
 
-        _copy_file(physical_key['path'], dest, entry.meta)
+        _copy_file(physical_key, dest, entry.meta)
 
     def get_meta(self, logical_key):
         """
@@ -671,19 +660,11 @@ class Package(object):
         for logical_key, entry in self._data.items():
             # Copy the datafiles in the package.
             new_physical_key = path + "/" + quote(logical_key)
-            # TODO: remove physical key types entirely.
-            if path.startswith('s3://'):
-                new_type = PhysicalKeyType.S3.name
-            else:
-                new_type = PhysicalKeyType.LOCAL.name
 
             self.copy(logical_key, new_physical_key)
             # Create a new package pointing to the new remote key.
             new_entry = entry._clone()
-            new_entry.physical_keys = [{
-                'type': new_type,
-                'path': new_physical_key
-            }]
+            new_entry.physical_keys = [new_physical_key]
             # Treat as a local path
             pkg = pkg.set(logical_key, new_entry)
         return pkg
