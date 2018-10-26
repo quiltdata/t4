@@ -305,6 +305,7 @@ class Package(object):
         if name is None and pkg_hash is None and registry is None:
             self._data = {}
             self._meta = {'version': 'v0'}
+            pass
 
         if registry is None:
             # default to local registry
