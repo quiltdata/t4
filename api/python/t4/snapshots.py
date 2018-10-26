@@ -668,10 +668,9 @@ class Package(object):
             fail to put package to registry
         """
         pkg = self._clone()
-
         for logical_key, entry in self._data.items():
             # Copy the datafiles in the package.
-            new_physical_key = dest + "/" + quote(logical_key)
+            new_physical_key = path + "/" + quote(logical_key)
             # TODO: remove physical key types entirely.
             if path.startswith('s3://'):
                 new_type = PhysicalKeyType.S3.name
