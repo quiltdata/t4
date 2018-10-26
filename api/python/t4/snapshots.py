@@ -313,14 +313,14 @@ class Package(object):
 
         if pkg_hash is not None:
             # if hash is specified, name doesn't matter
-            pkg_path = registry + '/packages/{}'.format(pkg_hash)
+            pkg_path = registry + '.quilt/packages/{}'.format(pkg_hash)
             # TODO replace open with something that supports both local and s3
             with open(pkg_path) as pkg_file:
                 pkg = self.load(pkg_file)
             self = pkg._clone()
             return
 
-        pkg_path = registry + '/named_packages/{}/'.format(name)
+        pkg_path = registry + '.quilt/named_packages/{}/'.format(name)
         # TODO: list files at this directory
         # TODO: default to latest version of named package
         raise NotImplementedError
