@@ -193,9 +193,25 @@ class Package(object):
             return
 
         pkg_path = registry + 'named_packages/{}/'.format(name)
-        # TODO: list files at this directory
-        # TODO: default to latest version of named package
-        raise NotImplementedError
+        latest = pkg_path + 'latest'
+        if latest.startswith('file:///'):
+            with open(latest) as latest_file:
+                latest_hash = latest_file.read()
+        elif latest.startswith('s3://'):
+            no_scheme_path = latest[5:]
+            latest_bytes = download_bytes(no_scheme_path)
+            latest_hash = latest_bytes.decode('utf-8')
+        else:
+            raise NotImplementedError
+
+        latest_path = registry + 'packages/{}'.format(latest_hash)
+        if latest_path.startswith('file:///'):
+            with open(latest_path) as latest_file:
+                pkg = self.load(latest_file)
+        elif latest_path.startswith('s3://'):
+            body, _ = download_bytes(latest_path)
+            pkg = self.load(io.BytesIO(body))
+        self = pkg._clone()
 
     def _set_state(self, data, meta):
         self._data = data
