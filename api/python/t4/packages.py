@@ -291,7 +291,6 @@ class Package(object):
             if not f.is_file():
                 continue
             entry = PackageEntry.from_local_path(f)
-            data[logical_key] = entry
             logical_key = prefix + f.relative_to(src_path).as_posix()
             # TODO: Warn if overwritting a logical key?
             pkg = pkg.set(logical_key, entry)
