@@ -21,6 +21,9 @@ def mock_make_api_call(operation_name):
 
 def test_build(tmpdir):
     """Verify that build dumps the manifest to appdirs directory."""
+    # Patch appdirs to use a temp dir.
+    appdirs.user_data_dir = lambda x: os.path.join(tmpdir, x)
+
     new_pkg = Package()
 
     # Create a dummy file to add to the package.
