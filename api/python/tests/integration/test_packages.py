@@ -51,6 +51,17 @@ def test_build(tmpdir):
     with open(named_pointer_path) as fd:
         assert fd.read().replace('\n', '') == top_hash
 
+    # Test unnamed packages.
+    new_pkg = Package()
+    new_pkg = new_pkg.set('bar', test_file)
+    top_hash = new_pkg.build()
+    out_path = os.path.join(appdirs.user_data_dir("quilt"), "packages", top_hash)
+    with open(out_path) as fd:
+        pkg = Package.load(fd)
+        assert "file://" + test_file \
+            == pkg._data['bar'].physical_keys[0]['path'] # pylint: disable=W0212
+
+
 def test_read_manifest(tmpdir):
     """ Verify reading serialized manifest from disk. """
     with open(LOCAL_MANIFEST) as fd:
