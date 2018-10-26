@@ -86,14 +86,13 @@ def read_physical_key(physical_key):
         raise NotImplementedError
 
 
-def get_package_registry_root(path=''):
+def get_package_registry(path=''):
     """ Returns the package registry root for a given path """
     if path.startswith('s3://'):
         bucket = path[5:].partition('/')[0]
         return "s3://{}/.quilt/".format(bucket)
     else:
-        # TODO: return local registry root
-        raise NotImplementedError
+        return get_local_package_registry()
 
 def get_local_package_registry():    
     """ Returns a local package registry Path as a string. """
