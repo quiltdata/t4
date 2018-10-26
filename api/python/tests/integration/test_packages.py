@@ -155,3 +155,10 @@ def test_capture():
         == pkg._data['foo_dir/baz_dir/baz'].physical_keys[0]['path'] # pylint: disable=W0212
     assert pathlib.Path(foodir / 'bar').resolve().as_uri() \
         == pkg._data['foo_dir/bar'].physical_keys[0]['path'] # pylint: disable=W0212
+
+    pkg = Package()
+    pkg = pkg.capture('foo_dir/baz_dir/')
+    print(pkg._data.keys())
+    # todo nested at capture site or relative to capture path.
+    assert pathlib.Path(bazdir / 'baz').resolve().as_uri() \
+        == pkg._data['foo_dir/baz_dir/baz'].physical_keys[0]['path'] # pylint: disable=W0212
