@@ -8,10 +8,7 @@ import pandas as pd
 
 from .data_transfer import (TargetType, deserialize_obj, download_bytes,
                             download_file, upload_bytes, upload_file, delete_object,
-                            list_objects, list_object_versions, serialize_obj)
-from .snapshots import (create_snapshot, download_bytes_from_snapshot,
-                        download_file_from_snapshot, read_snapshot_by_hash,
-                        get_snapshots)
+                            list_object_versions, serialize_obj)
 from .util import (HeliumConfig, HeliumException, AWS_SEPARATOR, CONFIG_PATH,
                    CONFIG_TEMPLATE, read_yaml, validate_url,
                    write_yaml, yaml_has_comments)
@@ -24,14 +21,8 @@ def put_file(src, dest, meta=None):
     upload_file(src, dest, all_meta)
 
 
-def get_file(src, dest, snapshot=None, version=None):
-    if version is not None and snapshot is not None:
-        raise HeliumException("Specify only one of snapshot or version.")
-
-    if snapshot is not None:
-        download_file_from_snapshot(src, dest, snapshot)
-    else:
-        download_file(src, dest, version=version)
+def get_file(src, dest, version=None):
+    download_file(src, dest, version=version)
 
 
 def put(obj, dest, meta=None):
@@ -47,13 +38,8 @@ def put(obj, dest, meta=None):
     upload_bytes(data, dest, all_meta)
 
 
-def get(src, snapshot=None, version=None):
-    if snapshot is not None and version is not None:
-        raise HeliumException("Specify only one of snapshot or version.")
-    if snapshot is not None:
-        data, meta = download_bytes_from_snapshot(src, snapshot)
-    else:
-        data, meta = download_bytes(src, version)
+def get(src, version=None):
+    data, meta = download_bytes(src, version)
 
     target_str = meta.get('target')
     if target_str is None:
@@ -77,81 +63,6 @@ def ls(path, recursive=False):
     results = list_object_versions(path, recursive=recursive)
 
     return results
-
-
-########################################
-# Snapshots
-########################################
-
-class DisplayList(list):
-    """
-    Wrapper around the list of dicts returned by status, diff and compare
-    to show the results clearly in iPython and Jupyter.
-    """
-
-    def __init__(self, src, columns=None, index=None):
-        self._displayargs = {}
-        if columns:
-            self._displayargs['columns'] = columns
-
-        if index:
-            self._displayargs['index'] = index
-        super(DisplayList, self).__init__(src)
-
-    def _repr_html_(self):
-        df = pd.DataFrame.from_records(self, **self._displayargs)
-        return df.to_html()
-
-
-def snapshot(path, message):
-    return create_snapshot(path, message)
-
-
-def list_snapshots(bucket, contains=None):
-    snapshots_list = get_snapshots(bucket, contains)
-    return DisplayList(snapshots_list, columns=['hash', 'path', 'timestamp', 'message'], index='path')
-
-
-def diff(bucket, src, dst):
-    src_path = dst_path = None
-    if src != 'latest':
-        src_snapshot = read_snapshot_by_hash(bucket, src)
-        src_path = src_snapshot.get('path', None)
-
-    if dst != 'latest':
-        dst_snapshot = read_snapshot_by_hash(bucket, dst)
-        dst_path = dst_snapshot.get('path', None)
-
-    # TODO: Raise exception instead
-    assert src_path is not None or dst_path is not None
-
-    if src_path is not None:
-        src_objects = src_snapshot['contents']
-    else:
-        src_list = list_objects(f"{bucket}/{dst_path}")
-        src_objects = {obj['Key']: {'ETag': obj['ETag'], 'VersionId': None} for obj in src_list}
-
-    if dst_path:
-        dst_objects = dst_snapshot['contents']
-    else:
-        dst_list = list_objects(f"{bucket}/{src_path}")
-        dst_objects = {obj['Key']: {'ETag': obj['ETag'], 'VersionId': None} for obj in dst_list}
-
-    # Iterate through current objects
-    diff = []
-    for key, src_obj in src_objects.items():
-        etag = src_obj['ETag']
-        if key in dst_objects:
-            if etag != dst_objects[key]['ETag']:
-                diff.append(dict(Key=key, ETag=etag, status="Modified"))
-            del dst_objects[key]
-        else:
-            diff.append(dict(Key=key, ETag=etag, status="Deleted"))
-
-    for key, attrs in dst_objects.items():
-        diff.append(dict(Key=key, ETag=attrs['ETag'], status="Added"))
-
-    return DisplayList(diff, columns=['status', 'Key', 'ETag'], index='status')
 
 
 ########################################
