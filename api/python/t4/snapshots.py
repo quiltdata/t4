@@ -623,7 +623,7 @@ class Package(object):
             pkg.dump(manifest)
             manifest.flush()
             _copy_file(
-                _fix_url(manifest.name),
+                pathlib.Path(manifest.name).resolve().as_uri(),
                 get_package_registry(path) + "/packages/" + pkg.top_hash()["value"],
                 {}
             )
@@ -636,13 +636,13 @@ class Package(object):
                 hash_file.write(pkg.top_hash()["value"].encode('utf-8'))
                 hash_file.flush()
                 _copy_file(
-                    _fix_url(hash_file.name),
+                    pathlib.Path(hash_file.name).resolve().as_uri(),
                     named_path + str(int(time.time())),
                     {}
                 )
                 hash_file.seek(0)
                 _copy_file(
-                    _fix_url(hash_file.name),
+                    pathlib.Path(hash_file.name).resolve().as_uri(),
                     named_path + "latest",
                     {}
                 )
@@ -673,7 +673,7 @@ class Package(object):
                 new_physical_key = path + "/" + logical_key
                 new_type = PhysicalKeyType.S3.name
             else:
-                new_physical_key = os.path.join(path, logical_key)
+                new_physical_key = os.path.join(path, logical_key).resolve().as_uri()
                 new_type = PhysicalKeyType.LOCAL.name
 
             self.copy(logical_key, new_physical_key)
