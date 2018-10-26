@@ -534,13 +534,13 @@ class Package(object):
             manifest.flush()
             _copy_file(
                 pathlib.Path(manifest.name).resolve().as_uri(),
-                get_package_registry(path) + "/packages/" + pkg.top_hash()["value"],
+                get_package_registry(path) + "packages/" + pkg.top_hash()["value"],
                 {}
             )
 
         if name:
             # Build the package directory if necessary.
-            named_path = get_package_registry(path) + '/named_packages/' + name + "/"
+            named_path = get_package_registry(path) + 'named_packages/' + name + "/"
             # todo: use a float to string formater instead of double casting
             with tempfile.NamedTemporaryFile() as hash_file:
                 hash_file.write(pkg.top_hash()["value"].encode('utf-8'))
