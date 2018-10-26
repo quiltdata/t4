@@ -20,7 +20,7 @@ def mock_make_api_call(operation_name):
         return parsed_response
     raise NotImplementedError
 
-@patch('appdirs.user_data_dir', side_effect=(lambda x,y: os.path.join('test_appdir', x)))
+@patch('appdirs.user_data_dir', lambda x,y: os.path.join('test_appdir', x))
 def test_build(tmpdir):
     """Verify that build dumps the manifest to appdirs directory."""
     new_pkg = Package()

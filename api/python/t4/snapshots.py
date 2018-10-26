@@ -469,7 +469,7 @@ class Package(object):
         if name:
             # Build the package directory if necessary.
             named_path = get_local_package_registry() / "named_packages" / name
-            Path(named_path).mkdir(parents=True, exist_ok=True)
+            named_path.mkdir(parents=True, exist_ok=True)
             # todo: use a float to string formater instead of double casting
             with open(named_path / str(int(time.time())), "w") as fh:
                 fh.write(self.top_hash()["value"])
