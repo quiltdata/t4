@@ -525,8 +525,6 @@ class Package(object):
                 entry.meta = meta
             pkg._data[logical_key] = entry
         elif isinstance(entry, PackageEntry):
-            # TODO: consider removing this to prevent users from passing malformed
-            # entities or update PackageEntry to URI-fy physical keys on construction
             pkg._data[logical_key] = entry
             if meta is not None:
                 raise PackageException("Must specify metadata in the entry")
