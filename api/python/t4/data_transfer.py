@@ -47,7 +47,15 @@ def deserialize_obj(data, target):
         from pyarrow import parquet
         buf = BytesIO(data)
         table = parquet.read_table(buf)
-        obj = pa.Table.to_pandas(table)
+        try:
+            obj = pa.Table.to_pandas(table)
+        except AssertionError:
+            # Try again to convert the table after removing
+            # the possibly buggy Pandas-specific metadata.
+            meta = table.schema.metadata.copy()
+            meta.pop(b'pandas')
+            newtable = table.replace_schema_metadata(meta)
+            obj = newtable.to_pandas()
     else:
         raise NotImplementedError
 
