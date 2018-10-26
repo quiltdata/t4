@@ -4,12 +4,15 @@ import hashlib
 import json
 import pathlib
 import os
+import shutil
+from urllib.parse import parse_qs, unquote, urlparse
+from urllib.request import url2pathname
 
 import boto3
 import jsonlines
 
-from .data_transfer import (download_bytes, download_file, list_objects,
-                            list_object_versions, upload_bytes)
+from .data_transfer import (copy_object, deserialize_obj, download_bytes, download_file, list_objects,
+                            list_object_versions, upload_bytes, upload_file, TargetType)
 from .exceptions import PackageException
 from .util import HeliumException, split_path
 
@@ -44,6 +47,45 @@ def _parse_snapshot_path(snapshot_file_key):
     path = "/".join(parts[3:])
     return uid, path
 
+
+def _parse_version_id(s3_url):
+    # Parse the version ID the way the Java SDK does:
+    # https://github.com/aws/aws-sdk-java/blob/master/aws-java-sdk-s3/src/main/java/com/amazonaws/services/s3/AmazonS3URI.java#L192
+    query = parse_qs(s3_url.query)
+    return query.get('versionId', [None])[0]
+
+
+def _fix_url(url):
+    """Convert non-URL paths to file:// URLs"""
+    # TODO: Do something about file paths like C:\Users\foo if we care about Windows.
+    parsed = urlparse(url)
+    if not parsed.scheme:
+        url = pathlib.Path(url).resolve().as_uri()
+    return url
+
+
+def _copy_file(src, dest, meta):
+    src_url = urlparse(src)
+    dest_url = urlparse(dest)
+    if src_url.scheme == 'file':
+        if dest_url.scheme == 'file':
+            # TODO: metadata
+            shutil.copyfile(url2pathname(src_url.path), url2pathname(dest_url.path))
+        elif dest_url.scheme == 's3':
+            upload_file(url2pathname(src_url.path), dest_url.netloc + unquote(dest_url.path), meta)
+        else:
+            raise NotImplementedError
+    elif src_url.scheme == 's3':
+        version_id = _parse_version_id(src_url)
+        if dest_url.scheme == 'file':
+            # TODO: metadata
+            download_file(src_url.netloc + unquote(src_url.path), url2pathname(dest_url.path), version_id)
+        elif dest_url.scheme == 's3':
+            copy_object(src_url.netloc + unquote(src_url.path), dest_url.netloc + unquote(dest_url.path), meta, version_id)
+        else:
+            raise NotImplementedError
+    else:
+        raise NotImplementedError
 
 def read_snapshot_by_key(snapshot_file_key):
     if snapshot_file_key is None:
@@ -147,8 +189,8 @@ def download_bytes_from_snapshot(src, snapshothash):
     return download_bytes(src, version=obj_rec['VersionId'])
 
 class PhysicalKeyType(Enum):
-    LOCAL = 1
-    S3 = 2
+    LOCAL = 'LOCAL'
+    S3 = 'S3'
 
 def hash_file(readable_file):
     """ Returns SHA256 hash of readable file-like object """
@@ -160,12 +202,18 @@ def hash_file(readable_file):
 
     return hasher.hexdigest()
 
-def dereference_physical_key(physical_key):
-    ty = physical_key['type']
-    if ty == PhysicalKeyType.LOCAL.name:
-        return open(physical_key['path'])
+def read_physical_key(physical_key):
+    # TODO: Stream the data.
+    url = urlparse(physical_key['path'])
+    if url.scheme == 'file':
+        with open(url2pathname(url.path), 'rb') as fd:
+            return fd.read()
+    elif url.scheme == 's3':
+        version_id = _parse_version_id(url)
+        return download_bytes(url.netloc + unquote(url.path), version_id)[0]
+    else:
+        raise NotImplementedError
 
-    raise NotImplementedError
 
 def get_package_registry(path):
     """ Returns the package registry for a given path """
@@ -227,7 +275,7 @@ class PackageEntry(object):
         size = os.path.getsize(path)
         physical_keys = [{
             'type': PhysicalKeyType.LOCAL.name,
-            'path': os.path.abspath(path)
+            'path': pathlib.Path(path).resolve().as_uri()
         }]
         return PackageEntry(physical_keys, size, hash_obj, {})
 
@@ -316,7 +364,7 @@ class Package(object):
                 continue
 
             entry = PackageEntry.from_local_path(f)
-            logical_key = pathlib.Path(f).relative_to(src_path).as_posix()
+            logical_key = f.relative_to(src_path).as_posix()
             data[logical_key] = entry
         return Package(data, meta)
 
@@ -328,7 +376,7 @@ class Package(object):
             logical_key(string): logical key of the object to get
 
         Returns:
-            A deserialized object from the logical_key
+            A tuple containing the deserialized object from the logical_key and its metadata
 
         Raises:
             KeyError: when logical_key is not present in the package
@@ -337,24 +385,34 @@ class Package(object):
             when deserialization metadata is not present
         """
         entry = self._data[logical_key]
+
+        target_str = entry.meta.get('target')
+        if target_str is None:
+            raise HeliumException("No serialization metadata")
+
+        try:
+            target = TargetType(target_str)
+        except ValueError:
+            raise HeliumException("Unknown serialization target: %r" % target_str)
+
         physical_keys = entry.physical_keys
         if len(physical_keys) > 1:
             raise NotImplementedError
         physical_key = physical_keys[0] # TODO: support multiple physical keys
+
+        data = read_physical_key(physical_key)
+
         # TODO: verify hash
-        if 'target' in entry.meta:
-            # TODO: dispatch on target to deserialize
-            raise NotImplementedError
 
-        raise NotImplementedError
+        return deserialize_obj(data, target), entry.meta.get('user_meta')
 
-    def get_files(self, logical_key, path):
+    def copy(self, logical_key, dest):
         """
-        Gets objects from logical_key inside the package and saves them to path.
+        Gets objects from logical_key inside the package and saves them to dest.
 
         Args:
             logical_key: logical key inside package to get
-            path: where to put the files
+            dest: where to put the files
 
         Returns:
             None
@@ -365,7 +423,16 @@ class Package(object):
             fail to create file
             fail to finish write
         """
-        raise NotImplementedError
+        entry = self._data[logical_key]
+
+        physical_keys = entry.physical_keys
+        if len(physical_keys) > 1:
+            raise NotImplementedError
+        physical_key = physical_keys[0] # TODO: support multiple physical keys
+
+        dest = _fix_url(dest)
+
+        _copy_file(physical_key['path'], dest, entry.meta)
 
     def get_meta(self, logical_key):
         """
@@ -418,9 +485,13 @@ class Package(object):
         pkg = self._clone()
         if isinstance(entry, str):
             entry = PackageEntry.from_local_path(entry)
+            if meta is not None:
+                entry.meta = meta
             pkg._data[logical_key] = entry
         elif isinstance(entry, PackageEntry):
             pkg._data[logical_key] = entry
+            if meta is not None:
+                raise PackageException("Must specify metadata in the entry")
         else:
             raise NotImplementedError
         return pkg
