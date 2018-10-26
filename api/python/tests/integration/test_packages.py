@@ -143,22 +143,22 @@ def test_capture():
     pkg = pkg.capture("")
 
     assert pathlib.Path('foo').resolve().as_uri() \
-        == pkg._data['foo'].physical_keys[0]['path'] # pylint: disable=W0212
+        == pkg._data['foo'].physical_keys[0] # pylint: disable=W0212
     assert pathlib.Path('bar').resolve().as_uri() \
-        == pkg._data['bar'].physical_keys[0]['path'] # pylint: disable=W0212
+        == pkg._data['bar'].physical_keys[0] # pylint: disable=W0212
     assert pathlib.Path(bazdir / 'baz').resolve().as_uri() \
-        == pkg._data['foo_dir/baz_dir/baz'].physical_keys[0]['path'] # pylint: disable=W0212
+        == pkg._data['foo_dir/baz_dir/baz'].physical_keys[0] # pylint: disable=W0212
     assert pathlib.Path(foodir / 'bar').resolve().as_uri() \
-        == pkg._data['foo_dir/bar'].physical_keys[0]['path'] # pylint: disable=W0212
+        == pkg._data['foo_dir/bar'].physical_keys[0] # pylint: disable=W0212
 
     pkg = Package()
     pkg = pkg.capture('foo_dir/baz_dir/')
     # todo nested at capture site or relative to capture path.
     assert pathlib.Path(bazdir / 'baz').resolve().as_uri() \
-        == pkg._data['baz'].physical_keys[0]['path'] # pylint: disable=W0212
+        == pkg._data['baz'].physical_keys[0] # pylint: disable=W0212
 
     pkg = Package()
     pkg = pkg.capture('foo_dir/baz_dir/', prefix='my_keys')
     # todo nested at capture site or relative to capture path.
     assert pathlib.Path(bazdir / 'baz').resolve().as_uri() \
-        == pkg._data['my_keys/baz'].physical_keys[0]['path'] # pylint: disable=W0212
+        == pkg._data['my_keys/baz'].physical_keys[0] # pylint: disable=W0212
