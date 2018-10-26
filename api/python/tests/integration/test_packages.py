@@ -21,7 +21,7 @@ def mock_make_api_call(operation_name):
     raise NotImplementedError
 
 @patch('appdirs.user_data_dir', side_effect=(lambda x,y: os.path.join('test_appdir', x)))
-def test_build(mock_appdirs):
+def test_build(tmpdir):
     """Verify that build dumps the manifest to appdirs directory."""
     new_pkg = Package()
 
@@ -43,11 +43,7 @@ def test_build(mock_appdirs):
             == pkg._data['foo'].physical_keys[0]['path'] # pylint: disable=W0212
 
     # Verify latest points to the new location.
-    named_pointer_path = Path(
-        BASE_PATH,
-        "named_packages",
-        "Test",
-        "latest")
+    named_pointer_path = Path(BASE_PATH, "named_packages", "Test", "latest")
     with open(named_pointer_path) as fd:
         assert fd.read().replace('\n', '') == top_hash
 
