@@ -1,6 +1,7 @@
 import copy
 from enum import Enum
 import hashlib
+import io
 import json
 import pathlib
 import os
@@ -315,8 +316,13 @@ class Package(object):
             # if hash is specified, name doesn't matter
             pkg_path = registry + 'packages/{}'.format(pkg_hash)
             # TODO replace open with something that supports both local and s3
-            with open(pkg_path) as pkg_file:
-                pkg = self.load(pkg_file)
+            if pkg_path.startswith('file:///'):
+                with open(pkg_path) as pkg_file:
+                    pkg = self.load(pkg_file)
+            elif pkg_path.startswith('s3://'):
+                body, _ = download_bytes(pkg_path)
+                pkg = self.load(io.BytesIO(body))
+
             self = pkg._clone()
             return
 
