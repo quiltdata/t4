@@ -618,7 +618,7 @@ class Package(object):
         if not name:
             # todo: handle where to put data for unnamed remote packages
             raise NotImplementedError
-        pkg = self._materialize('{}/{}'.format(dest.strip("/"), name))
+        pkg = self._materialize('{}/{}'.format(dest.strip("/"), quote(name)))
 
         with tempfile.NamedTemporaryFile() as manifest:
             pkg.dump(manifest)
@@ -668,7 +668,6 @@ class Package(object):
             fail to put package to registry
         """
         pkg = self._clone()
-        dest = _fix_url(path)
 
         for logical_key, entry in self._data.items():
             # Copy the datafiles in the package.
