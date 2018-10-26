@@ -162,3 +162,26 @@ def test_capture():
     # todo nested at capture site or relative to capture path.
     assert pathlib.Path(bazdir / 'baz').resolve().as_uri() \
         == pkg._data['my_keys/baz'].physical_keys[0] # pylint: disable=W0212
+
+
+def test_updates():
+    """ Verify building a package from a directory. """
+    pkg = (
+        Package()
+        .set('foo', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
+             {'target': 'unicode', 'user_meta': 'blah'})
+        .set('bar', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
+            {'target': 'unicode', 'user_meta': 'blah'})
+    )
+    assert pkg.get('foo') == ('123\n', 'blah')
+    assert pkg.get('bar') == ('123\n', 'blah')
+
+    # Build a dummy file to add to the map.
+    with open('bar.txt', "w") as fd:
+        fd.write('test_file_content_string')
+        test_file = Path(fd.name)
+    pkg = pkg.update({'bar': 'bar.txt'})
+    assert test_file.resolve().as_uri() \
+        == pkg._data['bar'].physical_keys[0] # pylint: disable=W0212
+
+    assert pkg.get('foo') == ('123\n', 'blah')
