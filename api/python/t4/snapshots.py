@@ -355,7 +355,7 @@ class Package(object):
 
         return Package(data, meta)
 
-    def capture(self, path):
+    def capture(self, path, prefix=None):
         """
         Takes a package of a provided path.
 
@@ -371,6 +371,9 @@ class Package(object):
         Raises:
             when path doesn't exist
         """
+        if prefix:
+            prefix = quote(prefix).strip("/")
+
         # TODO: anything but local paths
         # TODO: deserialization metadata
         src_path = pathlib.Path(path)
@@ -380,7 +383,10 @@ class Package(object):
             if not f.is_file():
                 continue
             entry = PackageEntry.from_local_path(f)
-            logical_key = f.relative_to(src_path).as_posix()
+            if prefix:
+                logical_key = prefix + "/" + f.relative_to(src_path).as_posix()
+            else:
+                logical_key = f.relative_to(src_path).as_posix()            
             # TODO: Warn if overwritting a logical key?
             pkg = pkg.set(logical_key, entry)
         return pkg
@@ -534,6 +540,8 @@ class Package(object):
                 entry.meta = meta
             pkg._data[logical_key] = entry
         elif isinstance(entry, PackageEntry):
+            # TODO: consider removing this to prevent users from passing malformed
+            # entities or update PackageEntry to URI-fy physical keys on construction
             pkg._data[logical_key] = entry
             if meta is not None:
                 raise PackageException("Must specify metadata in the entry")
