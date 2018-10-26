@@ -1,13 +1,14 @@
 """ Integration tests for T4 Packages. """
-import appdirs
 import jsonlines
 import os
 import pytest
 
-from t4 import Package, PhysicalKeyType
-from t4.util import HeliumException
-
 from mock import patch
+from pathlib import Path
+
+from t4 import Package, PhysicalKeyType
+from t4.util import HeliumException, BASE_PATH
+
 
 LOCAL_MANIFEST = os.path.join(os.path.dirname(__file__), 'data', 'local_manifest.jsonl')
 REMOTE_MANIFEST = os.path.join(os.path.dirname(__file__), 'data', 't4_manifest.jsonl')
@@ -19,32 +20,31 @@ def mock_make_api_call(operation_name):
         return parsed_response
     raise NotImplementedError
 
-def test_build(tmpdir):
+@patch('appdirs.user_data_dir', side_effect=(lambda x,y: os.path.join('test_appdir', x)))
+def test_build(mock_appdirs):
     """Verify that build dumps the manifest to appdirs directory."""
-    # Patch appdirs to use a temp dir.
-    appdirs.user_data_dir = lambda x: os.path.join(tmpdir, x)
-
     new_pkg = Package()
 
     # Create a dummy file to add to the package.
-    test_file = os.path.join(tmpdir, 'bar')
-    with open(test_file, "w") as fd:    
-        fd.write(test_file)
+    test_file_name = 'bar'
+    with open(test_file_name, "w") as fd:
+        fd.write('test_file_content_string')
+        test_file = Path(fd.name)
 
     # Build a new package into the local registry.
-    new_pkg = new_pkg.set('foo', test_file)
+    new_pkg = new_pkg.set('foo', test_file_name)
     top_hash = new_pkg.build("Test")
 
     # Verify manifest is registered by hash.
-    out_path = os.path.join(appdirs.user_data_dir("quilt"), "packages", top_hash)
+    out_path = Path(BASE_PATH, "packages", top_hash)
     with open(out_path) as fd:
         pkg = Package.load(fd)
-        assert "file://" + test_file \
+        assert test_file.resolve().as_uri() \
             == pkg._data['foo'].physical_keys[0]['path'] # pylint: disable=W0212
 
     # Verify latest points to the new location.
-    named_pointer_path = os.path.join(
-        appdirs.user_data_dir("quilt"),
+    named_pointer_path = Path(
+        BASE_PATH,
         "named_packages",
         "Test",
         "latest")
@@ -53,12 +53,12 @@ def test_build(tmpdir):
 
     # Test unnamed packages.
     new_pkg = Package()
-    new_pkg = new_pkg.set('bar', test_file)
+    new_pkg = new_pkg.set('bar', test_file_name)
     top_hash = new_pkg.build()
-    out_path = os.path.join(appdirs.user_data_dir("quilt"), "packages", top_hash)
+    out_path = Path(BASE_PATH, "packages", top_hash)
     with open(out_path) as fd:
         pkg = Package.load(fd)
-        assert "file://" + test_file \
+        assert test_file.resolve().as_uri() \
             == pkg._data['bar'].physical_keys[0]['path'] # pylint: disable=W0212
 
 

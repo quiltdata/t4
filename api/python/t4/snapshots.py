@@ -1,4 +1,3 @@
-import appdirs
 import copy
 from enum import Enum
 import hashlib
@@ -19,7 +18,7 @@ from .data_transfer import (copy_object, deserialize_obj, download_bytes, downlo
                             list_object_versions, upload_bytes, upload_file, TargetType)
 
 from .exceptions import PackageException
-from .util import HeliumException, split_path
+from .util import HeliumException, split_path, BASE_PATH
 
 SNAPSHOT_PREFIX = ".quilt/snapshots"
 
@@ -228,12 +227,11 @@ def get_package_registry(path):
     else:
         raise NotImplementedError
 
-def get_local_package_registry():
-    """ Returns a local package registry path as a string. """
-    local_dir = appdirs.user_data_dir("quilt")
-    Path(os.path.join(local_dir, "packages")).mkdir(parents=True, exist_ok=True)
-    Path(os.path.join(local_dir, "named_packages")).mkdir(parents=True, exist_ok=True)
-    return local_dir
+def get_local_package_registry():    
+    """ Returns a local package registry Path as a string. """
+    Path(BASE_PATH, "packages").mkdir(parents=True, exist_ok=True)
+    Path(BASE_PATH, "named_packages").mkdir(parents=True, exist_ok=True)
+    return BASE_PATH
 
 class PackageEntry(object):
     """
@@ -465,18 +463,18 @@ class Package(object):
             the top hash as a string
         """
         hash_string = self.top_hash()["value"]
-        with open(os.path.join(get_local_package_registry(), "packages", hash_string), "w") as fh:
+        with open(get_local_package_registry() / "packages" / hash_string, "w") as fh:
             self.dump(fh)
 
         if name:
             # Build the package directory if necessary.
-            named_path = os.path.join(get_local_package_registry(), "named_packages", name)
+            named_path = get_local_package_registry() / "named_packages" / name
             Path(named_path).mkdir(parents=True, exist_ok=True)
             # todo: use a float to string formater instead of double casting
-            with open(os.path.join(named_path, str(int(time.time()))), "w") as fh:
+            with open(named_path / str(int(time.time())), "w") as fh:
                 fh.write(self.top_hash()["value"])
             # todo: symlink when local
-            with open(os.path.join(named_path, "latest"), "w") as fh:
+            with open(named_path / "latest", "w") as fh:
                 fh.write(self.top_hash()["value"])
         return hash_string
 
