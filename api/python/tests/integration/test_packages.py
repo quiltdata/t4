@@ -4,6 +4,7 @@ import os
 import pytest
 
 from t4 import Package, PhysicalKeyType
+from t4.util import HeliumException
 
 from mock import patch
 
@@ -21,9 +22,6 @@ def test_read_manifest(tmpdir):
     """ Verify reading serialized manifest from disk. """
     with open(LOCAL_MANIFEST) as fd:
         pkg = Package.load(fd)
-
-    with pytest.raises(NotImplementedError):
-        pkg.get('foo')
 
     out_path = os.path.join(tmpdir, 'new_manifest.jsonl')
     with open(out_path, "w") as fd:
@@ -63,3 +61,17 @@ def test_load_into_t4():
         with pytest.raises(NotImplementedError):
             with open(REMOTE_MANIFEST) as fd:   
                 pkg.materialize(fd)
+
+def test_package_get():
+    """ Verify loading data from a local file. """
+    pkg = (
+        Package()
+        .set('foo', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
+             {'target': 'unicode', 'user_meta': 'blah'})
+        .set('bar', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'))
+    )
+
+    assert pkg.get('foo') == ('123\n', 'blah')
+
+    with pytest.raises(HeliumException):
+        pkg.get('bar')

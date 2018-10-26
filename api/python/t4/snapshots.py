@@ -485,9 +485,13 @@ class Package(object):
         pkg = self._clone()
         if isinstance(entry, str):
             entry = PackageEntry.from_local_path(entry)
+            if meta is not None:
+                entry.meta = meta
             pkg._data[logical_key] = entry
         elif isinstance(entry, PackageEntry):
             pkg._data[logical_key] = entry
+            if meta is not None:
+                raise PackageException("Must specify metadata in the entry")
         else:
             raise NotImplementedError
         return pkg
