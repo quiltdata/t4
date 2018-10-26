@@ -376,7 +376,7 @@ class Package(object):
             logical_key(string): logical key of the object to get
 
         Returns:
-            A deserialized object from the logical_key
+            A tuple containing the deserialized object from the logical_key and its metadata
 
         Raises:
             KeyError: when logical_key is not present in the package
@@ -408,11 +408,11 @@ class Package(object):
 
     def copy(self, logical_key, dest):
         """
-        Gets objects from logical_key inside the package and saves them to path.
+        Gets objects from logical_key inside the package and saves them to dest.
 
         Args:
             logical_key: logical key inside package to get
-            path: where to put the files
+            dest: where to put the files
 
         Returns:
             None
