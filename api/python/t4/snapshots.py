@@ -245,6 +245,7 @@ class Package(object):
             with open(pkg_path) as pkg_file:
                 pkg = self.load(pkg_file)
             self = pkg._clone()
+            return
 
         pkg_path = registry + '/named_packages/{}/'.format(name)
         # TODO: list files at this directory
