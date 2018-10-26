@@ -167,12 +167,13 @@ def dereference_physical_key(physical_key):
 
     raise NotImplementedError
 
-def get_package_registry(path):
-    """ Returns the package registry for a given path """
+def get_package_registry_root(path=''):
+    """ Returns the package registry root for a given path """
     if path.startswith('s3://'):
         bucket = path[5:].partition('/')[0]
-        return "s3://{}/.quilt/packages/".format(bucket)
+        return "s3://{}".format(bucket)
     else:
+        # TODO: return local registry root
         raise NotImplementedError
 
 class PackageEntry(object):
@@ -219,18 +220,47 @@ class PackageEntry(object):
 class Package(object):
     """ In-memory representation of a package """
 
-    def __init__(self, data=None, meta=None):
+    def __init__(self, name=None, pkg_hash=None, registry=None):
         """
-        _data is of the form {logical_key: PackageEntry}
+        Create a Package from scratch, or load one from a registry.
+
+        Args:
+            name(string): name of package to load
+            pkg_hash(string): top hash of package version to load
+            registry(string): location of registry to load package from
         """
-        self._data = data or {}
-        self._meta = meta or {}
+        if name is None and pkg_hash is None and registry is None:
+            self._data = {}
+            self._meta = {'version': 'v0'}
+            return self
+
+        if registry is None:
+            # default to local registry
+            registry = get_package_registry_root()
+
+        if pkg_hash is not None:
+            # if hash is specified, name doesn't matter
+            pkg_path = registry + '/packages/{}'.format(pkg_hash)
+            # TODO replace open with something that supports both local and s3
+            with open(pkg_path) as pkg_file:
+                pkg = self.load(pkg_file)
+            return pkg
+
+        pkg_path = registry + '/named_packages/{}/'.format(name)
+        # TODO: list files at this directory
+        # TODO: default to latest version of named package
+        raise NotImplementedError
+
+    def _set_state(self, data, meta):
+        self._data = data
+        self._meta = meta
+        return self
 
     def _clone(self):
         """
         Returns clone of this package.
         """
-        return Package(copy.deepcopy(self._data), copy.deepcopy(self._meta))
+        return Package()._set_state(copy.deepcopy(self._data), copy.deepcopy(self._meta))
 
     def __contains__(self, logical_key):
         """
@@ -271,7 +301,7 @@ class Package(object):
                 obj['meta']
             )
 
-        return Package(data, meta)
+        return Package()._set_state(data, meta)
 
     @staticmethod
     def create_package(path):
@@ -314,7 +344,7 @@ class Package(object):
             entry = PackageEntry(physical_keys, size, hash_obj, {})
             logical_key = pathlib.Path(f).relative_to(src_path).as_posix()
             data[logical_key] = entry
-        return Package(data, meta)
+        return Package()._set_state(data, meta)
 
     def get(self, logical_key):
         """
@@ -467,4 +497,4 @@ class Package(object):
         if name is None:
             raise NotImplementedError
         self.get_files(path)
-        self.dump(get_package_registry(path) + name)
+        self.dump(get_package_registry_root(path) + name)
