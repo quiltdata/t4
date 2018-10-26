@@ -457,7 +457,6 @@ class Package(object):
         hashable_meta.pop('top_hash', None)
         top_meta = json.dumps(hashable_meta, sort_keys=True, separators=(',', ':'))
         top_hash.update(top_meta.encode('utf-8'))
-        current = 0
         for logical_key, entry in sorted(list(self._data.items())):
             entry_dict = entry.as_dict()
             entry_dict['logical_key'] = logical_key
