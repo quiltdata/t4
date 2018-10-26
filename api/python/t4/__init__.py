@@ -14,4 +14,4 @@ from .api import (
     config,
 )
 
-from .snapshots import Package
+from .packages import Package
