@@ -1,6 +1,7 @@
 """ Integration tests for T4 Packages. """
 import jsonlines
 import os
+import pathlib
 import pytest
 
 from mock import patch
@@ -121,3 +122,43 @@ def test_package_get():
 
     with pytest.raises(HeliumException):
         pkg.get('bar')
+
+def test_capture():
+    """ Verify building a package from a directory. """
+    pkg = Package()
+    
+    # Create some nested example files that contain their names.
+    foodir = pathlib.Path("foo_dir")
+    bazdir = pathlib.Path(foodir, "baz_dir")
+    bazdir.mkdir(parents=True, exist_ok=True)
+    with open('bar', 'w') as fd:
+        fd.write(fd.name)
+    with open('foo', 'w') as fd:
+        fd.write(fd.name)
+    with open(bazdir / 'baz', 'w') as fd: 
+        fd.write(fd.name)
+    with open(foodir / 'bar', 'w') as fd:
+        fd.write(fd.name)
+
+    pkg = pkg.capture("")
+
+    assert pathlib.Path('foo').resolve().as_uri() \
+        == pkg._data['foo'].physical_keys[0]['path'] # pylint: disable=W0212
+    assert pathlib.Path('bar').resolve().as_uri() \
+        == pkg._data['bar'].physical_keys[0]['path'] # pylint: disable=W0212
+    assert pathlib.Path(bazdir / 'baz').resolve().as_uri() \
+        == pkg._data['foo_dir/baz_dir/baz'].physical_keys[0]['path'] # pylint: disable=W0212
+    assert pathlib.Path(foodir / 'bar').resolve().as_uri() \
+        == pkg._data['foo_dir/bar'].physical_keys[0]['path'] # pylint: disable=W0212
+
+    pkg = Package()
+    pkg = pkg.capture('foo_dir/baz_dir/')
+    # todo nested at capture site or relative to capture path.
+    assert pathlib.Path(bazdir / 'baz').resolve().as_uri() \
+        == pkg._data['baz'].physical_keys[0]['path'] # pylint: disable=W0212
+
+    pkg = Package()
+    pkg = pkg.capture('foo_dir/baz_dir/', prefix='my_keys')
+    # todo nested at capture site or relative to capture path.
+    assert pathlib.Path(bazdir / 'baz').resolve().as_uri() \
+        == pkg._data['my_keys/baz'].physical_keys[0]['path'] # pylint: disable=W0212
