@@ -10,9 +10,6 @@ from .api import (
     get,
     delete,
     ls,
-    diff,
-    snapshot,
-    list_snapshots,
     search,
     config,
 )
