@@ -15,7 +15,7 @@ import ruamel.yaml
 from appdirs import user_data_dir
 
 
-APP_NAME = "Helium"
+APP_NAME = "T4"
 APP_AUTHOR = "QuiltData"
 BASE_DIR = user_data_dir(APP_NAME, APP_AUTHOR)
 BASE_PATH = pathlib.Path(BASE_DIR)
