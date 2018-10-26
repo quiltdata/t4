@@ -17,4 +17,4 @@ from .api import (
     config,
 )
 
-from .snapshots import Package, PhysicalKeyType
+from .snapshots import Package

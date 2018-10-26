@@ -6,7 +6,7 @@ import pytest
 from mock import patch
 from pathlib import Path
 
-from t4 import Package, PhysicalKeyType
+from t4 import Package
 from t4.util import HeliumException, BASE_PATH
 
 
@@ -40,7 +40,7 @@ def test_build(tmpdir):
     with open(out_path) as fd:
         pkg = Package.load(fd)
         assert test_file.resolve().as_uri() \
-            == pkg._data['foo'].physical_keys[0]['path'] # pylint: disable=W0212
+            == pkg._data['foo'].physical_keys[0] # pylint: disable=W0212
 
     # Verify latest points to the new location.
     named_pointer_path = Path(BASE_PATH, "named_packages", "Test", "latest")
@@ -55,7 +55,7 @@ def test_build(tmpdir):
     with open(out_path) as fd:
         pkg = Package.load(fd)
         assert test_file.resolve().as_uri() \
-            == pkg._data['bar'].physical_keys[0]['path'] # pylint: disable=W0212
+            == pkg._data['bar'].physical_keys[0] # pylint: disable=W0212
 
 
 def test_read_manifest(tmpdir):
@@ -81,16 +81,11 @@ def test_read_manifest(tmpdir):
 def test_materialize_from_remote():
     """ Verify loading data and mainfest transforms from S3. """
     with patch('botocore.client.BaseClient._make_api_call', new=mock_make_api_call):
-        with open(REMOTE_MANIFEST) as fd:   
+        with open(REMOTE_MANIFEST) as fd:
             pkg = Package.load(fd)
-        assert PhysicalKeyType.S3.name \
-            == pkg._data['foo'].physical_keys[0]['type'] # pylint: disable=W0212
-        
         with pytest.raises(NotImplementedError):
             with open(REMOTE_MANIFEST) as fd:   
                 mat_pkg = pkg.push('test_pkg_name','/')
-            assert PhysicalKeyType.LOCAL.name \
-                == mat_pkg._data['foo'].physical_keys[0]['type'] # pylint: disable=W0212
 
 def test_load_into_t4(tmpdir):
     """ Verify loading local manifest and data into S3. """
