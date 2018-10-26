@@ -7,50 +7,20 @@ import pathlib
 import os
 
 import shutil
-import time 
-from urllib.parse import parse_qs, unquote, urlparse
+import tempfile
+import time
+
+from urllib.parse import parse_qs, quote, unquote, urlparse
 from urllib.request import url2pathname
 
-import boto3
 import jsonlines
 
 from pathlib import Path
-from .data_transfer import (copy_object, deserialize_obj, download_bytes, download_file, list_objects,
-                            list_object_versions, upload_bytes, upload_file, TargetType)
+from .data_transfer import (copy_object, deserialize_obj, download_bytes, download_file,
+                            upload_file, TargetType)
 
 from .exceptions import PackageException
-from .util import HeliumException, split_path, BASE_PATH
-
-SNAPSHOT_PREFIX = ".quilt/snapshots"
-
-s3_client = boto3.client('s3')
-
-def _make_prefix(key):
-    return "%s/" % key.rstrip('/')
-
-
-def _snapshot_path(tophash, path):
-    bucket, prefix = split_path(path)
-    return f'{bucket}/{SNAPSHOT_PREFIX}/{tophash}/{prefix}'
-
-
-def _lookup_snapshot_path(bucket, tophash):
-    snapshot_files = list_objects(f'{bucket}/{SNAPSHOT_PREFIX}/{tophash}')
-
-    if not snapshot_files:
-        raise HeliumException(f"Snapshot {tophash} not found")
-    elif len(snapshot_files) > 1:
-        raise HeliumException(f"Ambiguous snapshot hash: {tophash}")
-    else:
-        snapshot_file_key = snapshot_files[0]['Key']
-        return f'{bucket}/{snapshot_file_key}'
-
-
-def _parse_snapshot_path(snapshot_file_key):
-    parts = snapshot_file_key.split('/')
-    uid = parts[2]
-    path = "/".join(parts[3:])
-    return uid, path
+from .util import HeliumException, BASE_PATH
 
 
 def _parse_version_id(s3_url):
@@ -92,110 +62,6 @@ def _copy_file(src, dest, meta):
     else:
         raise NotImplementedError
 
-def read_snapshot_by_key(snapshot_file_key):
-    if snapshot_file_key is None:
-        snapshot_objs = {}
-    else:
-        snapshot_file, meta = download_bytes(snapshot_file_key)
-        snapshot_objs = json.loads(snapshot_file.decode('utf8'))
-
-    assert type(snapshot_objs) is dict
-    return snapshot_objs
-
-
-def read_latest_snapshot(path):
-    """
-    Find the most recent snapshot that contains the given path
-    """
-    bucket, prefix = split_path(path)
-    snapshots = list_objects(f'{bucket}/{SNAPSHOT_PREFIX}/')
-    snapshot_files = sorted(snapshots, key=lambda k: k['LastModified'], reverse=True)
-
-    snapshot_file_key = None
-    for snapshot in snapshot_files:
-        key = snapshot['Key']
-        uid, snap_path = _parse_snapshot_path(key)
-        if _make_prefix(prefix).startswith(_make_prefix(snap_path)):
-            snapshot_file_key = key
-    full_key = f'{bucket}/{snapshot_file_key}' if snapshot_file_key else None
-    snapshot = read_snapshot_by_key(full_key)
-    uid, snapshot_path = _parse_snapshot_path(snapshot_file_key)
-    snapshot.update(dict(path=snapshot_path))
-    return snapshot
-
-
-def read_snapshot_by_hash(bucket, snapshothash):
-    snapshot_file_key = _lookup_snapshot_path(bucket, snapshothash)
-    _, local_key = split_path(snapshot_file_key)
-    uid, snapshot_path = _parse_snapshot_path(local_key)
-    snapshot = read_snapshot_by_key(snapshot_file_key)
-    snapshot.update(dict(path=snapshot_path))
-    return snapshot
-
-
-def get_snapshots(bucket, prefix):
-    snapshot_files = list_objects(f'{bucket}/{SNAPSHOT_PREFIX}')
-
-    snapshots_list = []
-    for snapshot_rec in sorted(snapshot_files, key=lambda k: k['LastModified'], reverse=True):
-        snapshot_file_key = snapshot_rec['Key']
-        tophash, snapshotpath = _parse_snapshot_path(snapshot_file_key)
-
-        if prefix is None or prefix.startswith(snapshotpath):
-            snapshotbytes, _ = download_bytes(f'{bucket}/{snapshot_file_key}')
-            snapshot = json.loads(snapshotbytes.decode('utf-8'))
-            message = snapshot.get('message')
-            timestamp = snapshot_rec['LastModified']
-            snapshots_list.append(dict(hash=tophash, path=snapshotpath, message=message, timestamp=timestamp))
-
-    return snapshots_list
-
-
-def create_snapshot(path, message):
-    snapshot = {}
-    obj_versions, _ = list_object_versions(path)
-    for obj in obj_versions:
-        key = obj['Key']
-        etag = obj['ETag']
-        vid = obj['VersionId']
-        latest = bool(obj['IsLatest'])
-
-        # Only check current object versions
-        # Ignore snapshot files
-        if latest and not key.startswith(SNAPSHOT_PREFIX):
-            # make sure we only see one "Latest"
-            assert key not in snapshot
-            snapshot[key] = dict(
-                Key = key,
-                ETag = etag,
-                VersionId = vid
-                )
-
-    bytes = json.dumps(dict(contents=snapshot, message=message, path=path), default=str).encode('utf-8')
-    tophash = hashlib.sha256()
-    tophash.update(bytes)
-    tophash = tophash.hexdigest()
-
-    upload_bytes(bytes, _snapshot_path(tophash, path), meta={})
-    return tophash
-
-
-def download_file_from_snapshot(src, dst, snapshothash):
-    bucket, key = split_path(src)
-    snapshot_data = read_snapshot_by_hash(bucket, snapshothash)
-    obj_rec = snapshot_data['contents'][key]
-    return download_file(src, dst, version=obj_rec['VersionId'])
-
-
-def download_bytes_from_snapshot(src, snapshothash):
-    bucket, key = split_path(src)
-    snapshot_data = read_snapshot_by_hash(bucket, snapshothash)
-    obj_rec = snapshot_data['contents'][key]
-    return download_bytes(src, version=obj_rec['VersionId'])
-
-class PhysicalKeyType(Enum):
-    LOCAL = 'LOCAL'
-    S3 = 'S3'
 
 def hash_file(readable_file):
     """ Returns SHA256 hash of readable file-like object """
@@ -209,7 +75,7 @@ def hash_file(readable_file):
 
 def read_physical_key(physical_key):
     # TODO: Stream the data.
-    url = urlparse(physical_key['path'])
+    url = urlparse(physical_key)
     if url.scheme == 'file':
         with open(url2pathname(url.path), 'rb') as fd:
             return fd.read()
@@ -245,11 +111,7 @@ class PackageEntry(object):
         Creates an entry.
 
         Args:
-            physical_keys is a nonempty list of objects of the form {
-                schema_version: string
-                type: string
-                uri: string
-            }
+            physical_keys is a nonempty list of URIs (either s3:// or file://)
             size(number): size of object in bytes
             hash({'type': string, 'value': string}): hash object
                 for example: {'type': 'SHA256', 'value': 'bb08a...'}
@@ -259,7 +121,7 @@ class PackageEntry(object):
             a PackageEntry
         """
         assert physical_keys
-        self.physical_keys = physical_keys
+        self.physical_keys = [_fix_url(x) for x in physical_keys]
         self.size = size
         self.hash = hash_obj
         self.meta = meta
@@ -285,11 +147,15 @@ class PackageEntry(object):
             }
 
         size = os.path.getsize(path)
-        physical_keys = [{
-            'type': PhysicalKeyType.LOCAL.name,
-            'path': pathlib.Path(path).resolve().as_uri()
-        }]
+        physical_keys = [pathlib.Path(path).resolve().as_uri()]
         return PackageEntry(physical_keys, size, hash_obj, {})
+
+    def _clone(self):
+        """
+        Returns clone of this package.
+        """
+        return PackageEntry(copy.deepcopy(self.physical_keys), self.size, \
+                            copy.deepcopy(self.hash), copy.deepcopy(self.meta))
 
 class Package(object):
     """ In-memory representation of a package """
@@ -383,8 +249,7 @@ class Package(object):
 
         return Package()._set_state(data, meta)
 
-    @staticmethod
-    def create_package(path):
+    def capture(self, path, prefix=None):
         """
         Takes a package of a provided path.
 
@@ -400,20 +265,22 @@ class Package(object):
         Raises:
             when path doesn't exist
         """
+        prefix = "" if not prefix else quote(prefix).strip("/") + "/"
+
         # TODO: anything but local paths
         # TODO: deserialization metadata
-        data = {}
-        meta = {'version': '0.0.1'}
         src_path = pathlib.Path(path)
         files = src_path.rglob('*')
+        pkg = self._clone()
         for f in files:
             if not f.is_file():
                 continue
-
             entry = PackageEntry.from_local_path(f)
-            logical_key = f.relative_to(src_path).as_posix()
             data[logical_key] = entry
-        return Package()._set_state(data, meta)
+            logical_key = prefix + f.relative_to(src_path).as_posix()
+            # TODO: Warn if overwritting a logical key?
+            pkg = pkg.set(logical_key, entry)
+        return pkg
 
     def get(self, logical_key):
         """
@@ -479,7 +346,7 @@ class Package(object):
 
         dest = _fix_url(dest)
 
-        _copy_file(physical_key['path'], dest, entry.meta)
+        _copy_file(physical_key, dest, entry.meta)
 
     def get_meta(self, logical_key):
         """
@@ -628,18 +495,64 @@ class Package(object):
             self._top_hash()
         return self._meta['top_hash']
 
-    def materialize(self, path, name=None):
+    def push(self, name, path):
+        """
+        Copies objects to path, then creates a new package that points to those objects.
+        Copies each object in this package to path according to logical key structure,
+        then adds to the registry a serialized version of this package
+        with physical_keys that point to the new copies.
+        Args:
+            path: where to copy the objects in the package
+            name: name for package in registry
+        Returns:
+            A new package that points to the copied objects
+        """
+        dest = _fix_url(path)
+        if not dest.startswith('s3://'):
+            raise NotImplementedError
+        if not name:
+            # todo: handle where to put data for unnamed remote packages
+            raise NotImplementedError
+        pkg = self._materialize('{}/{}'.format(dest.strip("/"), quote(name)))
+
+        with tempfile.NamedTemporaryFile() as manifest:
+            pkg.dump(manifest)
+            manifest.flush()
+            _copy_file(
+                pathlib.Path(manifest.name).resolve().as_uri(),
+                get_package_registry(path) + "/packages/" + pkg.top_hash()["value"],
+                {}
+            )
+
+        if name:
+            # Build the package directory if necessary.
+            named_path = get_package_registry(path) + '/named_packages/' + name + "/"
+            # todo: use a float to string formater instead of double casting
+            with tempfile.NamedTemporaryFile() as hash_file:
+                hash_file.write(pkg.top_hash()["value"].encode('utf-8'))
+                hash_file.flush()
+                _copy_file(
+                    pathlib.Path(hash_file.name).resolve().as_uri(),
+                    named_path + str(int(time.time())),
+                    {}
+                )
+                hash_file.seek(0)
+                _copy_file(
+                    pathlib.Path(hash_file.name).resolve().as_uri(),
+                    named_path + "latest",
+                    {}
+                )
+        return pkg
+
+    def _materialize(self, path):
         """
         Copies objects to path, then creates a new package that points to those objects.
 
         Copies each object in this package to path according to logical key structure,
-        then adds to the registry a serialized version of this package
-        with physical_keys that point to the new copies.
+        and returns a package with physical_keys that point to the new copies.
 
         Args:
             path: where to copy the objects in the package
-            name: optional name for package in registry
-                    defaults to the textual hash of the package manifest
 
         Returns:
             A new package that points to the copied objects
@@ -649,8 +562,15 @@ class Package(object):
             fail to put bytes
             fail to put package to registry
         """
-        raise NotImplementedError
-        if name is None:
-            raise NotImplementedError
-        self.get_files(path)
-        self.dump(get_package_registry_root(path) + name)
+        pkg = self._clone()
+        for logical_key, entry in self._data.items():
+            # Copy the datafiles in the package.
+            new_physical_key = path + "/" + quote(logical_key)
+
+            self.copy(logical_key, new_physical_key)
+            # Create a new package pointing to the new remote key.
+            new_entry = entry._clone()
+            new_entry.physical_keys = [new_physical_key]
+            # Treat as a local path
+            pkg = pkg.set(logical_key, new_entry)
+        return pkg

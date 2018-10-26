@@ -42,13 +42,13 @@ T4 is alpha software. It is not yet recommended for production use.
     * Save Jupyter notebooks, with all of their dependencies, in S3
 
 * Reproduce all the things
-    * Build pipelines from _immutable snapshots_, producing consistent results across machines, time, and collaborators
+    * Build pipelines from _immutable packages_, producing consistent results across machines, time, and collaborators
     * Travel time to recover any version of any file
 
 * Collaborate
     * Securely share large data
     * Know the history of every change to every file
-    * Diff data snapshots to see what's changed
+    * Diff data packages to see what's changed
 
 * Summarize data
     * [ ] Slice files with SQL queries, without ever spinning up a database

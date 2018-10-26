@@ -10,11 +10,8 @@ from .api import (
     get,
     delete,
     ls,
-    diff,
-    snapshot,
-    list_snapshots,
     search,
     config,
 )
 
-from .snapshots import Package, PhysicalKeyType
+from .packages import Package
