@@ -356,7 +356,7 @@ class Package(object):
         # TODO: anything but local paths
         # TODO: deserialization metadata
         data = {}
-        meta = {}
+        meta = {'version': '0.0.1'}
         src_path = pathlib.Path(path)
         files = src_path.rglob('*')
         for f in files:
@@ -436,10 +436,10 @@ class Package(object):
 
     def get_meta(self, logical_key):
         """
-        Returns user metadata for specified logical key.
+        Returns metadata for specified logical key.
         """
         entry = self._data[logical_key]
-        return entry['user_meta']
+        return entry.meta
 
     def dump(self, writable_file):
         """
@@ -455,6 +455,7 @@ class Package(object):
             fail to create file
             fail to finish write
         """
+        self.top_hash() # assure top hash is calculated
         writer = jsonlines.Writer(writable_file)
         writer.write(self._meta)
         for logical_key, entry in self._data.items():
@@ -522,7 +523,22 @@ class Package(object):
         Returns:
             None
         """
-        raise NotImplementedError
+        top_hash = hashlib.sha256()
+        hashable_meta = copy.deepcopy(self._meta)
+        hashable_meta.pop('top_hash', None)
+        top_meta = json.dumps(hashable_meta, sort_keys=True, separators=(',', ':'))
+        top_hash.update(top_meta.encode('utf-8'))
+        for logical_key, entry in sorted(list(self._data.items())):
+            entry_dict = entry.as_dict()
+            entry_dict['logical_key'] = logical_key
+            entry_dict.pop('physical_keys', None)
+            entry_dict_str = json.dumps(entry_dict, sort_keys=True, separators=(',', ':'))
+            top_hash.update(entry_dict_str.encode('utf-8'))
+
+        self._meta['top_hash'] = {
+            'alg': 'v0',
+            'value': top_hash.hexdigest()
+        }
 
     def top_hash(self):
         """
