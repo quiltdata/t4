@@ -9,7 +9,7 @@ import shutil
 import tempfile
 import time
 
-from urllib.parse import parse_qs, unquote, urlparse
+from urllib.parse import parse_qs, quote, unquote, urlparse
 from urllib.request import url2pathname
 
 import boto3
@@ -612,12 +612,13 @@ class Package(object):
         Returns:
             A new package that points to the copied objects
         """
-        if not path.startswith('s3://'):
+        dest = _fix_url(path)
+        if not dest.startswith('s3://'):
             raise NotImplementedError
         if not name:
             # todo: handle where to put data for unnamed remote packages
             raise NotImplementedError
-        pkg = self._materialize('{}/{}'.format(path.strip("/"), name))
+        pkg = self._materialize('{}/{}'.format(dest.strip("/"), name))
 
         with tempfile.NamedTemporaryFile() as manifest:
             pkg.dump(manifest)
@@ -667,13 +668,15 @@ class Package(object):
             fail to put package to registry
         """
         pkg = self._clone()
+        dest = _fix_url(path)
+
         for logical_key, entry in self._data.items():
             # Copy the datafiles in the package.
+            new_physical_key = dest + "/" + quote(logical_key)
+            # TODO: remove physical key types entirely.
             if path.startswith('s3://'):
-                new_physical_key = path + "/" + logical_key
                 new_type = PhysicalKeyType.S3.name
             else:
-                new_physical_key = pathlib.Path(path, logical_key).resolve().as_uri()
                 new_type = PhysicalKeyType.LOCAL.name
 
             self.copy(logical_key, new_physical_key)
