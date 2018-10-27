@@ -92,7 +92,7 @@ def get_package_registry(path=''):
         bucket = path[5:].partition('/')[0]
         return "s3://{}/.quilt/".format(bucket)
     else:
-        return get_local_package_registry()
+        return get_local_package_registry().as_uri()
 
 def get_local_package_registry():    
     """ Returns a local package registry Path as a string. """
@@ -179,19 +179,12 @@ class Package(object):
 
         if pkg_hash is not None:
             # if hash is specified, name doesn't matter
-            pkg_path = registry + 'packages/{}'.format(pkg_hash)
+            pkg_path = '{}packages/{}'.format(registry, pkg_hash)
             # TODO replace open with something that supports both local and s3
-            if pkg_path.startswith('file:///'):
-                with open(pkg_path) as pkg_file:
-                    pkg = self.load(pkg_file)
-            elif pkg_path.startswith('s3://'):
-                body, _ = download_bytes(pkg_path)
-                pkg = self.load(io.BytesIO(body))
-
-            self = pkg._clone()
+            self = _from_path(pkg_path)
             return
 
-        pkg_path = registry + 'named_packages/{}/'.format(name)
+        pkg_path = '{}named_packages/{}/'.format(registry, quote(name))
         latest = pkg_path + 'latest'
         if latest.startswith('file:///'):
             with open(latest) as latest_file:
@@ -203,14 +196,22 @@ class Package(object):
         else:
             raise NotImplementedError
 
-        latest_path = registry + 'packages/{}'.format(latest_hash)
-        if latest_path.startswith('file:///'):
-            with open(latest_path) as latest_file:
-                pkg = self.load(latest_file)
-        elif latest_path.startswith('s3://'):
-            body, _ = download_bytes(latest_path)
+        latest_hash = latest_hash.strip()
+        latest_path = registry + 'packages/{}'.format(quote(latest_hash))
+        self = _from_path(latest_path)
+
+    @staticmethod
+    def _from_path(path):
+        if path.startswith('file:///'):
+            with open(path) as open_file:
+                pkg = self.load(open_file)
+        elif path.startswith('s3://'):
+            body, _ = download_bytes(path)
             pkg = self.load(io.BytesIO(body))
-        self = pkg._clone()
+        else:
+            raise NotImplementedError
+        return pkg
+
 
     def _set_state(self, data, meta):
         self._data = data
