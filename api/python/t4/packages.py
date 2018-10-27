@@ -90,7 +90,7 @@ def get_package_registry(path=''):
     """ Returns the package registry root for a given path """
     if path.startswith('s3://'):
         bucket = path[5:].partition('/')[0]
-        return "s3://{}/.quilt/".format(bucket)
+        return "s3://{}/.quilt".format(bucket)
     else:
         return get_local_package_registry().as_uri()
 
@@ -179,12 +179,12 @@ class Package(object):
 
         if pkg_hash is not None:
             # if hash is specified, name doesn't matter
-            pkg_path = '{}packages/{}'.format(registry, pkg_hash)
+            pkg_path = '{}/packages/{}'.format(registry, pkg_hash)
             # TODO replace open with something that supports both local and s3
             self = _from_path(pkg_path)
             return
 
-        pkg_path = '{}named_packages/{}/'.format(registry, quote(name))
+        pkg_path = '{}/named_packages/{}/'.format(registry, quote(name))
         latest = pkg_path + 'latest'
         if latest.startswith('file:///'):
             with open(latest) as latest_file:
@@ -197,7 +197,7 @@ class Package(object):
             raise NotImplementedError
 
         latest_hash = latest_hash.strip()
-        latest_path = registry + 'packages/{}'.format(quote(latest_hash))
+        latest_path = '{}/packages/{}'.format(registry, quote(latest_hash))
         self = _from_path(latest_path)
 
     @staticmethod
@@ -535,13 +535,13 @@ class Package(object):
             manifest.flush()
             _copy_file(
                 pathlib.Path(manifest.name).resolve().as_uri(),
-                get_package_registry(path) + "packages/" + pkg.top_hash()["value"],
+                get_package_registry(path) + "/packages/" + pkg.top_hash()["value"],
                 {}
             )
 
         if name:
             # Build the package directory if necessary.
-            named_path = get_package_registry(path) + 'named_packages/' + name + "/"
+            named_path = get_package_registry(path) + '/named_packages/' + name + "/"
             # todo: use a float to string formater instead of double casting
             with tempfile.NamedTemporaryFile() as hash_file:
                 hash_file.write(pkg.top_hash()["value"].encode('utf-8'))
