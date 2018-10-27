@@ -364,6 +364,26 @@ class Package(object):
         for logical_key, entry in self._data.items():
             writer.write({'logical_key': logical_key, **entry.as_dict()})
 
+    def update(self, new_keys_dict, meta=None):
+        """
+        Returns a new package with the object at logical_key set to entry.
+
+        If a metadata dict is provided, it is attached to and overwrites 
+        metadata for all entries in new_keys_dict.
+
+        Args:
+            new_dict(dict): dict of logical keys to 
+            meta(dict): metadata dict to attach to every input entry.
+
+        Returns:
+            A new package
+
+        """
+        pkg = self._clone()
+        for logical_key, entry in new_keys_dict.items():
+            pkg = pkg.set(logical_key, entry, meta)
+        return pkg
+
     def set(self, logical_key, entry=None, meta=None):
         """
         Returns a new package with the object at logical_key set to entry.
