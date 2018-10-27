@@ -4,25 +4,20 @@ import requests
 from aws_requests_auth.boto_utils import BotoAWSRequestsAuth
 from elasticsearch import Elasticsearch, RequestsHttpConnection
 from six.moves import urllib
-import pandas as pd
 
-from .data_transfer import (TargetType, deserialize_obj, download_bytes,
-                            download_file, upload_bytes, upload_file, delete_object,
+from .data_transfer import (TargetType, copy_file, deserialize_obj, download_bytes,
+                            upload_bytes, delete_object,
                             list_object_versions, serialize_obj)
 from .util import (HeliumConfig, HeliumException, AWS_SEPARATOR, CONFIG_PATH,
-                   CONFIG_TEMPLATE, read_yaml, validate_url,
+                   CONFIG_TEMPLATE, fix_url, read_yaml, validate_url,
                    write_yaml, yaml_has_comments)
 
 
-def put_file(src, dest, meta=None):
+def copy(src, dest, meta=None):
     all_meta = dict(
         user_meta=meta
     )
-    upload_file(src, dest, all_meta)
-
-
-def get_file(src, dest, version=None):
-    download_file(src, dest, version=version)
+    copy_file(fix_url(src), fix_url(dest), all_meta)
 
 
 def put(obj, dest, meta=None):
