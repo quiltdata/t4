@@ -205,7 +205,7 @@ class Package(object):
 
         latest_hash = latest_hash.strip()
         latest_path = '{}/packages/{}'.format(registry, quote(latest_hash))
-        self = _from_path(latest_path)
+        self = self._from_path(latest_path)
 
     @staticmethod
     def _from_path(path):
