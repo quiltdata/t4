@@ -5,13 +5,13 @@ T4 is alpha software. It is not yet recommended for production use.
 ## Overview
 [Rethinking S3: Announcing T4, a team data hub](https://blog.quiltdata.com/rethinking-s3-announcing-t4-a-team-data-hub-8e63ce7ec988).
 
-## Data ops for S3
+## A team data hub for S3
 
 * T4 adds search, content preview, versioning, and a Python API to any S3 bucket
 * Every file in T4 is versioned and searchable
 * T4 is for data scientists, data engineers, and data-driven teams
 
-![](img/helium-api.png)
+![](img/t4.gif)
 
 ### Use cases
 * Collaborate - get everyone on the same page by pointing them all to the same immutable data version
@@ -23,8 +23,6 @@ T4 is alpha software. It is not yet recommended for production use.
 * Browse any S3 bucket
 * Preview images, Jupyter notebooks, [Vega visualizations](https://vega.github.io/) - without downloading
 * Search any S3 bucket
-
-![](img/t4.gif)
 
 ## Known limitations of the Alpha Preview
 
@@ -38,3 +36,5 @@ T4 is alpha software. It is not yet recommended for production use.
 ## Documentation
 * [User docs](./UserDocs.md)
 * [Developer docs](./DeveloperDocs.md)
+
+![](img/helium-api.png)
