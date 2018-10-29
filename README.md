@@ -13,6 +13,10 @@ T4 is alpha software. It is not yet recommended for production use.
 
 ![](./img/t4.gif)
 
+# Second test
+
+![](https://s3.amazonaws.com/quilt-web-public/img/t4.gif)
+
 ### Use cases
 * Collaborate - get everyone on the same page by pointing them all to the same immutable data version
 * Experiment faster - blob storage is schemaless and scalable, so iterations are quick
