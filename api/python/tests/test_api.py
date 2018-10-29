@@ -17,7 +17,7 @@ class TestAPI():
             }
         responses.add(responses.GET, 'https://foo.bar/config.json', json=content, status=200)
 
-        he.config('foo.bar')
+        t4.config('foo.bar')
 
         assert len(responses.calls) == 1
         assert responses.calls[0].request.url == 'https://foo.bar/config.json'
@@ -34,18 +34,18 @@ class TestAPI():
         # of that, we automatically add 'https://' to the name if no schema is
         # present.  ..but, a bad port causes an error..
         with pytest.raises(util.HeliumException, match='Port must be a number'):
-            he.config('https://fliff:fluff')
+            t4.config('https://fliff:fluff')
 
     def test_put_to_directory_failure(self):
         # Adding pathes with trailing delimeters causes AWS to treat them like virtual directories
         # and can cause issues when downloading to host machine.
         test_object = "foo"
         with pytest.raises(ValueError):
-            he.put(test_object, "test/")
+            t4.put(test_object, "test/")
 
     def test_search_no_config(self):
         with pytest.raises(util.HeliumException, match="No configured region."):
-            he.search('*')
+            t4.search('*')
 
     @patch('t4.api._create_es')
     def test_search(self, _create_es):
@@ -71,3 +71,41 @@ class TestAPI():
 
         assert isinstance(result, list)
         assert result == []
+
+    @patch('appdirs.user_data_dir', lambda x,y: os.path.join('test_appdir', x))
+    def test_list_local_packages():
+        """Verify that build dumps the manifest to appdirs directory."""
+        new_pkg = Package()
+
+        # Build a new package into the local registry.
+        top_hash = new_pkg.build("Test")
+
+        # Verify manifest is registered by hash.
+        t4.list_packages()
+
+        out_path = Path(BASE_PATH, "packages", top_hash)
+        with open(out_path) as fd:
+            pkg = Package.load(fd)
+            assert test_file.resolve().as_uri() \
+                == pkg._data['foo'].physical_keys[0] # pylint: disable=W0212
+
+        # Verify latest points to the new location.
+        named_pointer_path = Path(BASE_PATH, "named_packages", "Test", "latest")
+        with open(named_pointer_path) as fd:
+            assert fd.read().replace('\n', '') == top_hash
+
+        # Test unnamed packages.
+        new_pkg = Package()
+        new_pkg = new_pkg.set('bar', test_file_name)
+        top_hash = new_pkg.build()
+        out_path = Path(BASE_PATH, "packages", top_hash)
+        with open(out_path) as fd:
+            pkg = Package.load(fd)
+            assert test_file.resolve().as_uri() \
+                == pkg._data['bar'].physical_keys[0] # pylint: disable=W0212
+
+
+        assert True
+
+    def test_list_remote_packages():
+        assert True

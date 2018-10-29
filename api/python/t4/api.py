@@ -60,6 +60,37 @@ def ls(path, recursive=False):
     return results
 
 
+def list_packages(registry=None):
+    """
+
+    Returns a list of all named packages in a registry.
+    If the registry in None, default to the local registry.
+
+    Args:
+        registry(string): location of registry to load package from.
+
+    Returns:
+        A list of strings containing the names of the packages        
+    """
+
+    if registry is None:
+        # default to local registry
+        registry = get_local_package_registry()
+    path = _fix_url(registry)
+    path = Packages.get_package_registry(path) + '/named_packages/'
+    
+    if path.startswith("file://"):
+        return os.listdir(path)
+
+    elif path.startswith("s3://"):
+        prefixes, _ = list_objects(path, recursive=False)
+    else:
+        raise NotImplementedError
+
+    return prefixes
+
+
+
 ########################################
 # Search
 ########################################
@@ -189,7 +220,6 @@ def log(key, pprint=False):
         return table
     except KeyError as e:
         return r
-
 
 def config(*autoconfig_url, **config_values):
     """Set or read the Helium configuration

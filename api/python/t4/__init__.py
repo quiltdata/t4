@@ -9,6 +9,7 @@ from .api import (
     get,
     delete,
     ls,
+    list_packages,
     search,
     config,
 )

@@ -1,4 +1,5 @@
 """ Integration tests for T4 Packages. """
+import appdirs
 import io
 import jsonlines
 import os
@@ -237,3 +238,29 @@ def test_updates():
         == pkg._data['bar'].physical_keys[0] # pylint: disable=W0212
 
     assert pkg.get('foo') == ('123\n', 'blah')
+
+@patch('appdirs.user_data_dir', lambda x,y: os.path.join('test_appdir', x))
+def test_list_local_packages():
+    """Verify that list returns packages in the appdirs directory."""
+    # Build a new package into the local registry.
+    foo_top_hash = Package().build("Foo")
+    bar_top_hash = Package().build("Bar")
+
+    # Verify pacakges are returned.
+    pkgs = t4.list_packages()
+    assert "Foo" in pkgs
+    assert "Bar" in pkgs
+
+    # Verify manifest is registered by hash when local path given
+    local_path = os.path.join(appdirs.user_data_dir, 'named_packages')
+    pkgs = t4.list_packages(local_path)
+    assert "Foo" in pkgs
+    assert "Bar" in pkgs
+
+    # Test unnamed packages are not added.
+    Package().build()
+    pkgs = t4.list_packages(local_path)
+    assert len(pkgs) == 2
+
+def test_list_remote_packages():
+    assert True
