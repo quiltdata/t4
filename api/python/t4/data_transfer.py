@@ -3,7 +3,10 @@ from enum import Enum
 import hashlib
 import json
 import pathlib
+import shutil
 from threading import Lock
+from urllib.parse import urlparse
+from urllib.request import url2pathname
 
 import boto3
 from boto3.s3.transfer import TransferConfig, create_transfer_manager
@@ -11,7 +14,7 @@ from s3transfer.subscribers import BaseSubscriber
 from six import BytesIO, binary_type, text_type
 from tqdm.autonotebook import tqdm
 
-from .util import HeliumException, split_path
+from .util import HeliumException, split_path, parse_s3_url
 
 
 HELIUM_METADATA = 'helium'
@@ -407,3 +410,33 @@ def list_objects(path, recursive=True):
         return objects
     else:
         return prefixes, objects
+
+
+def copy_file(src, dest, meta):
+    src_url = urlparse(src)
+    dest_url = urlparse(dest)
+    if src_url.scheme == 'file':
+        if dest_url.scheme == 'file':
+            # TODO: metadata
+            shutil.copyfile(url2pathname(src_url.path), url2pathname(dest_url.path))
+        elif dest_url.scheme == 's3':
+            dest_bucket, dest_path, dest_version_id = parse_s3_url(dest_url)
+            if dest_version_id:
+                raise ValueError("Cannot set VersionId on destination")
+            upload_file(url2pathname(src_url.path), dest_bucket + '/' + dest_path, meta)
+        else:
+            raise NotImplementedError
+    elif src_url.scheme == 's3':
+        src_bucket, src_path, src_version_id = parse_s3_url(src_url)
+        if dest_url.scheme == 'file':
+            # TODO: metadata
+            download_file(src_bucket + '/' + src_path, url2pathname(dest_url.path), src_version_id)
+        elif dest_url.scheme == 's3':
+            dest_bucket, dest_path, dest_version_id = parse_s3_url(dest_url)
+            if dest_version_id:
+                raise ValueError("Cannot set VersionId on destination")
+            copy_object(src_bucket + '/' + src_path, dest_bucket + '/' + dest_path, meta, src_version_id)
+        else:
+            raise NotImplementedError
+    else:
+        raise NotImplementedError

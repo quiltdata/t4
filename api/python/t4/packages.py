@@ -6,61 +6,19 @@ import json
 import pathlib
 import os
 
-import shutil
 import tempfile
 import time
 
-from urllib.parse import parse_qs, quote, unquote, urlparse
+from urllib.parse import quote, urlparse
 from urllib.request import url2pathname
 
 import jsonlines
 
 from pathlib import Path
-from .data_transfer import (copy_object, deserialize_obj, download_bytes, download_file,
-                            upload_file, TargetType)
+from .data_transfer import copy_file, deserialize_obj, download_bytes, TargetType
 
 from .exceptions import PackageException
-from .util import HeliumException, BASE_PATH
-
-
-def _parse_version_id(s3_url):
-    # Parse the version ID the way the Java SDK does:
-    # https://github.com/aws/aws-sdk-java/blob/master/aws-java-sdk-s3/src/main/java/com/amazonaws/services/s3/AmazonS3URI.java#L192
-    query = parse_qs(s3_url.query)
-    return query.get('versionId', [None])[0]
-
-
-def _fix_url(url):
-    """Convert non-URL paths to file:// URLs"""
-    # TODO: Do something about file paths like C:\Users\foo if we care about Windows.
-    parsed = urlparse(url)
-    if not parsed.scheme:
-        url = pathlib.Path(url).resolve().as_uri()
-    return url
-
-
-def _copy_file(src, dest, meta):
-    src_url = urlparse(src)
-    dest_url = urlparse(dest)
-    if src_url.scheme == 'file':
-        if dest_url.scheme == 'file':
-            # TODO: metadata
-            shutil.copyfile(url2pathname(src_url.path), url2pathname(dest_url.path))
-        elif dest_url.scheme == 's3':
-            upload_file(url2pathname(src_url.path), dest_url.netloc + unquote(dest_url.path), meta)
-        else:
-            raise NotImplementedError
-    elif src_url.scheme == 's3':
-        version_id = _parse_version_id(src_url)
-        if dest_url.scheme == 'file':
-            # TODO: metadata
-            download_file(src_url.netloc + unquote(src_url.path), url2pathname(dest_url.path), version_id)
-        elif dest_url.scheme == 's3':
-            copy_object(src_url.netloc + unquote(src_url.path), dest_url.netloc + unquote(dest_url.path), meta, version_id)
-        else:
-            raise NotImplementedError
-    else:
-        raise NotImplementedError
+from .util import HeliumException, BASE_PATH, fix_url, parse_s3_url
 
 
 def hash_file(readable_file):
@@ -80,8 +38,8 @@ def read_physical_key(physical_key):
         with open(url2pathname(url.path), 'rb') as fd:
             return fd.read()
     elif url.scheme == 's3':
-        version_id = _parse_version_id(url)
-        return download_bytes(url.netloc + unquote(url.path), version_id)[0]
+        bucket, path, version_id = parse_s3_url(url)
+        return download_bytes(bucket + '/' + path, version_id)[0]
     else:
         raise NotImplementedError
 
@@ -120,7 +78,7 @@ class PackageEntry(object):
             a PackageEntry
         """
         assert physical_keys
-        self.physical_keys = [_fix_url(x) for x in physical_keys]
+        self.physical_keys = [fix_url(x) for x in physical_keys]
         self.size = size
         self.hash = hash_obj
         self.meta = meta
@@ -366,9 +324,9 @@ class Package(object):
             raise NotImplementedError
         physical_key = physical_keys[0] # TODO: support multiple physical keys
 
-        dest = _fix_url(dest)
+        dest = fix_url(dest)
 
-        _copy_file(physical_key, dest, entry.meta)
+        copy_file(physical_key, dest, entry.meta)
 
     def get_meta(self, logical_key):
         """
@@ -423,6 +381,26 @@ class Package(object):
         writer.write(self._meta)
         for logical_key, entry in self._data.items():
             writer.write({'logical_key': logical_key, **entry.as_dict()})
+
+    def update(self, new_keys_dict, meta=None):
+        """
+        Returns a new package with the object at logical_key set to entry.
+
+        If a metadata dict is provided, it is attached to and overwrites 
+        metadata for all entries in new_keys_dict.
+
+        Args:
+            new_dict(dict): dict of logical keys to 
+            meta(dict): metadata dict to attach to every input entry.
+
+        Returns:
+            A new package
+
+        """
+        pkg = self._clone()
+        for logical_key, entry in new_keys_dict.items():
+            pkg = pkg.set(logical_key, entry, meta)
+        return pkg
 
     def set(self, logical_key, entry=None, meta=None):
         """
@@ -529,7 +507,7 @@ class Package(object):
         Returns:
             A new package that points to the copied objects
         """
-        dest = _fix_url(path)
+        dest = fix_url(path)
         if not dest.startswith('s3://'):
             raise NotImplementedError
         if not name:
@@ -540,7 +518,7 @@ class Package(object):
         with tempfile.NamedTemporaryFile() as manifest:
             pkg.dump(manifest)
             manifest.flush()
-            _copy_file(
+            copy_file(
                 pathlib.Path(manifest.name).resolve().as_uri(),
                 get_package_registry(path) + "/packages/" + pkg.top_hash()["value"],
                 {}
@@ -553,13 +531,13 @@ class Package(object):
             with tempfile.NamedTemporaryFile() as hash_file:
                 hash_file.write(pkg.top_hash()["value"].encode('utf-8'))
                 hash_file.flush()
-                _copy_file(
+                copy_file(
                     pathlib.Path(hash_file.name).resolve().as_uri(),
                     named_path + str(int(time.time())),
                     {}
                 )
                 hash_file.seek(0)
-                _copy_file(
+                copy_file(
                     pathlib.Path(hash_file.name).resolve().as_uri(),
                     named_path + "latest",
                     {}
