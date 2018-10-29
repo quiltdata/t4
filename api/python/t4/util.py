@@ -2,6 +2,7 @@ from collections import Mapping, Sequence, Set, OrderedDict
 import datetime
 import json
 import os
+from urllib.parse import parse_qs, unquote, urlparse
 
 # backports
 from six.moves import urllib
@@ -68,6 +69,29 @@ def split_path(path, require_subpath=False):
                          % path)
 
     return result
+
+
+def fix_url(url):
+    """Convert non-URL paths to file:// URLs"""
+    # TODO: Do something about file paths like C:\Users\foo if we care about Windows.
+    parsed = urlparse(url)
+    if not parsed.scheme:
+        url = pathlib.Path(url).resolve().as_uri()
+    return url
+
+
+def parse_s3_url(s3_url):
+    if s3_url.scheme != 's3' or not s3_url.netloc or not s3_url.path.startswith('/'):
+        raise ValueError("Malformed S3 URI")
+    bucket = s3_url.netloc
+    path = unquote(s3_url.path)[1:]
+    # Parse the version ID the way the Java SDK does:
+    # https://github.com/aws/aws-sdk-java/blob/master/aws-java-sdk-s3/src/main/java/com/amazonaws/services/s3/AmazonS3URI.java#L192
+    query = parse_qs(s3_url.query)
+    version_id = query.pop('versionId', [None])[0]
+    if query:
+        raise ValueError("Unexpected S3 query string: %r" % s3_url.query)
+    return bucket, path, version_id
 
 
 def read_yaml(yaml_stream):

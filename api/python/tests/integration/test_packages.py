@@ -90,7 +90,7 @@ def test_materialize_from_remote():
 
 def test_load_into_t4(tmpdir):
     """ Verify loading local manifest and data into S3. """
-    with patch('t4.packages._copy_file') as mock:
+    with patch('t4.packages.copy_file') as mock:
         new_pkg = Package()
         # Create a dummy file to add to the package.
         test_file = os.path.join(tmpdir, 'bar')
