@@ -181,13 +181,13 @@ class Package(object):
 
         if registry is None:
             # default to local registry
-            registry = get_package_registry_root()
+            registry = get_package_registry()
 
         if pkg_hash is not None:
             # if hash is specified, name doesn't matter
             pkg_path = '{}/packages/{}'.format(registry, pkg_hash)
             # TODO replace open with something that supports both local and s3
-            self = _from_path(pkg_path)
+            self = self._from_path(pkg_path)
             return
 
         pkg_path = '{}/named_packages/{}/'.format(registry, quote(name))
