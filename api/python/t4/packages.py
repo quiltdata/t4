@@ -156,6 +156,12 @@ class PackageEntry(object):
         return PackageEntry(copy.deepcopy(self.physical_keys), self.size, \
                             copy.deepcopy(self.hash), copy.deepcopy(self.meta))
 
+
+def parse_s3_url(s3_url):
+    parsed = urlparse(s3_url)
+    no_scheme = parsed.netloc + parsed.path
+    return no_scheme
+
 class Package(object):
     """ In-memory representation of a package """
 
@@ -187,10 +193,11 @@ class Package(object):
         pkg_path = '{}/named_packages/{}/'.format(registry, quote(name))
         latest = pkg_path + 'latest'
         if latest.startswith('file:///'):
-            with open(latest) as latest_file:
+            latest_path = unquote(urlparse(latest).path)
+            with open(latest_path) as latest_file:
                 latest_hash = latest_file.read()
         elif latest.startswith('s3://'):
-            no_scheme_path = latest[5:]
+            no_scheme_path = parse_s3_url(latest)
             latest_bytes = download_bytes(no_scheme_path)
             latest_hash = latest_bytes.decode('utf-8')
         else:
