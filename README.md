@@ -5,11 +5,24 @@ T4 is alpha software. It is not yet recommended for production use.
 ## Overview
 [Rethinking S3: Announcing T4, a team data hub](https://blog.quiltdata.com/rethinking-s3-announcing-t4-a-team-data-hub-8e63ce7ec988).
 
-## T4 is like Dropbox for data science, built on S3
+## Data ops for S3
 
 * T4 adds search, content preview, versioning, and a Python API to any S3 bucket
 * Every file in T4 is versioned and searchable
 * T4 is for data scientists, data engineers, and data-driven teams
+
+![](img/helium-api.png)
+
+### Use cases
+* Collaborate - get everyone on the same page by pointing them all to the same immutable data version
+* Experiment faster - blob storage is schemaless and scalable, so iterations are quick
+* Recover, rollback, and reproduce with immutable packages
+* Understand what's in S3 - plaintext and faceted search over S3
+
+### Key features
+* Browse any S3 bucket
+* Preview images, Jupyter notebooks, [Vega visualizations](https://vega.github.io/) - without downloading
+* Search any S3 bucket
 
 ![](img/t4.gif)
 
@@ -19,38 +32,9 @@ T4 is alpha software. It is not yet recommended for production use.
 
 ## Components
 
-* Catalog (JavaScript) - Search, browse, and preview your data in S3
-* Ocean (Python) - Read, write, and annotate Python objects in S3
+* `/catalog` (JavaScript) - Search, browse, and preview your data in S3
+* `/api/python` - Read, write, and annotate Python objects in S3
 
 ## Documentation
 * [User docs](./UserDocs.md)
 * [Developer docs](./DeveloperDocs.md)
-
-![](img/helium-api.png)
-
-## Things you can do with T4
-
-* Find the data that you're looking for
-    * Preview Jupyter notebooks, images, and markdown files in S3
-    * Browse any S3 bucket
-    * Search every file in your bucket
-    * Annotate files and directories with searchable JSON tags
-
-* Back everything up
-    * Store files too large for git or git LFS
-    * Copy local directories to the cloud
-    * Save Jupyter notebooks, with all of their dependencies, in S3
-
-* Reproduce all the things
-    * Build pipelines from _immutable packages_, producing consistent results across machines, time, and collaborators
-    * Travel time to recover any version of any file
-
-* Collaborate
-    * Securely share large data
-    * Know the history of every change to every file
-    * Diff data packages to see what's changed
-
-* Summarize data
-    * [ ] Slice files with SQL queries, without ever spinning up a database
-    * [ ] Visualize data with Vega
-
