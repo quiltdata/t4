@@ -9,7 +9,7 @@ import os
 import tempfile
 import time
 
-from urllib.parse import quote, urlparse
+from urllib.parse import quote, unquote, urlparse
 from urllib.request import url2pathname
 
 import jsonlines
@@ -115,11 +115,6 @@ class PackageEntry(object):
                             copy.deepcopy(self.hash), copy.deepcopy(self.meta))
 
 
-def parse_s3_url(s3_url):
-    parsed = urlparse(s3_url)
-    no_scheme = parsed.netloc + parsed.path
-    return no_scheme
-
 class Package(object):
     """ In-memory representation of a package """
 
@@ -149,14 +144,14 @@ class Package(object):
             return
 
         pkg_path = '{}/named_packages/{}/'.format(registry, quote(name))
-        latest = pkg_path + 'latest'
-        if latest.startswith('file:///'):
-            latest_path = unquote(urlparse(latest).path)
+        latest = urlparse(pkg_path + 'latest')
+        if latest.scheme == 'file':
+            latest_path = unquote(latest.path)
             with open(latest_path) as latest_file:
                 latest_hash = latest_file.read()
-        elif latest.startswith('s3://'):
-            no_scheme_path = parse_s3_url(latest)
-            latest_bytes = download_bytes(no_scheme_path)
+        elif latest.scheme == 's3':
+            bucket, path, vid = parse_s3_url(latest)
+            latest_bytes = download_bytes(bucket + path)
             latest_hash = latest_bytes.decode('utf-8')
         else:
             raise NotImplementedError
@@ -166,12 +161,14 @@ class Package(object):
         self = self._from_path(latest_path)
 
     @staticmethod
-    def _from_path(path):
-        if path.startswith('file:///'):
-            with open(path) as open_file:
+    def _from_path(uri):
+        """ Takes a URI and returns a package loaded from that URI """
+        src_url = urlparse(uri)
+        if src_url.scheme == 'file':
+            with open(unquote(src_url.path)) as open_file:
                 pkg = self.load(open_file)
-        elif path.startswith('s3://'):
-            body, _ = download_bytes(path)
+        elif src_url.scheme == 's3':
+            body, _ = download_bytes(src_url.geturl())
             pkg = self.load(io.BytesIO(body))
         else:
             raise NotImplementedError

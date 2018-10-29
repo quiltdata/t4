@@ -93,52 +93,51 @@ def test_materialize_from_remote():
 
 def test_package_constructor_from_registry():
     """ Verify loading manifest locally and from s3 """
-    with patch('t4.packages._copy_file') as mock:
-        with patch('t4.Package._from_path') as pkgmock:
-            registry = BASE_PATH.as_uri()
-            pkg = Package()
-            pkgmock.return_value = pkg
-            pkghash = pkg.top_hash()['value']
+    with patch('t4.Package._from_path') as pkgmock:
+        registry = BASE_PATH.as_uri()
+        pkg = Package()
+        pkgmock.return_value = pkg
+        pkghash = pkg.top_hash()['value']
 
-            # local load
-            pkg = Package(pkg_hash=pkghash)
-            assert registry + '/packages/{}'.format(pkghash) \
-                    in [x[0][0] for x in pkgmock.call_args_list]
+        # local load
+        pkg = Package(pkg_hash=pkghash)
+        assert registry + '/packages/{}'.format(pkghash) \
+                in [x[0][0] for x in pkgmock.call_args_list]
 
-            pkgmock.reset_mock()
+        pkgmock.reset_mock()
 
-            pkg = Package('nice-name', pkg_hash=pkghash)
-            assert registry + '/packages/{}'.format(pkghash) \
-                    in [x[0][0] for x in pkgmock.call_args_list]
+        pkg = Package('nice-name', pkg_hash=pkghash)
+        assert registry + '/packages/{}'.format(pkghash) \
+                in [x[0][0] for x in pkgmock.call_args_list]
 
-            pkgmock.reset_mock()
+        pkgmock.reset_mock()
 
-            with patch('t4.packages.open') as open_mock:
-                open_mock.return_value = io.BytesIO(pkghash.encode('utf-8'))
-                pkg = Package('nice-name')
-                assert urlparse(registry + '/named_packages/nice-name/latest').path \
-                        == open_mock.call_args_list[0][0][0]
+        with patch('t4.packages.open') as open_mock:
+            open_mock.return_value = io.BytesIO(pkghash.encode('utf-8'))
+            pkg = Package('nice-name')
+            assert urlparse(registry + '/named_packages/nice-name/latest').path \
+                    == open_mock.call_args_list[0][0][0]
 
-            assert registry + '/packages/{}'.format(pkghash) \
-                    in [x[0][0] for x in pkgmock.call_args_list]
-            pkgmock.reset_mock()
+        assert registry + '/packages/{}'.format(pkghash) \
+                in [x[0][0] for x in pkgmock.call_args_list]
+        pkgmock.reset_mock()
 
-            remote_registry = t4.packages.get_package_registry('s3://')
-            # remote load
-            pkg = Package('nice-name', registry=remote_registry, pkg_hash=pkghash)
-            assert remote_registry + '/packages/{}'.format(pkghash) \
-                    in [x[0][0] for x in pkgmock.call_args_list]
-            pkgmock.reset_mock()
-            pkg = Package(pkg_hash=pkghash, registry=remote_registry)
-            assert remote_registry + '/packages/{}'.format(pkghash) \
-                    in [x[0][0] for x in pkgmock.call_args_list]
+        remote_registry = t4.packages.get_package_registry('s3://asdf/')
+        # remote load
+        pkg = Package('nice-name', registry=remote_registry, pkg_hash=pkghash)
+        assert remote_registry + '/packages/{}'.format(pkghash) \
+                in [x[0][0] for x in pkgmock.call_args_list]
+        pkgmock.reset_mock()
+        pkg = Package(pkg_hash=pkghash, registry=remote_registry)
+        assert remote_registry + '/packages/{}'.format(pkghash) \
+                in [x[0][0] for x in pkgmock.call_args_list]
 
-            pkgmock.reset_mock()
-            with patch('t4.packages.download_bytes') as dl_mock:
-                dl_mock.return_value = pkghash.encode('utf-8')
-                pkg = Package('nice-name', registry=remote_registry)
-            assert remote_registry + '/packages/{}'.format(pkghash) \
-                    in [x[0][0] for x in pkgmock.call_args_list]
+        pkgmock.reset_mock()
+        with patch('t4.packages.download_bytes') as dl_mock:
+            dl_mock.return_value = pkghash.encode('utf-8')
+            pkg = Package('nice-name', registry=remote_registry)
+        assert remote_registry + '/packages/{}'.format(pkghash) \
+                in [x[0][0] for x in pkgmock.call_args_list]
 
 def test_load_into_t4(tmpdir):
     """ Verify loading local manifest and data into S3. """
