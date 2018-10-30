@@ -262,6 +262,9 @@ class Package(object):
             logical_key = prefix + f.relative_to(src_path).as_posix()
             # TODO: Warn if overwritting a logical key?
             pkg = pkg.set(logical_key, entry)
+
+        # modified package should have new top hash
+        pkg._unset_tophash()
         return pkg
 
     def get(self, logical_key):
@@ -438,11 +441,16 @@ class Package(object):
                 raise PackageException("Must specify metadata in the entry")
         else:
             raise NotImplementedError
+        
+        # modified package should have new top hash
+        pkg._unset_tophash()
         return pkg
 
     def _update_meta(self, logical_key, meta):
         pkg = self._clone()
         pkg._data[logical_key].meta = meta
+        # modified package should have new top hash
+        pkg._unset_tophash()
         return pkg
 
     def delete(self, logical_key):
@@ -457,6 +465,8 @@ class Package(object):
         """
         pkg = self._clone()
         pkg._data.pop(logical_key)
+        # modified package should have new top hash
+        pkg._unset_tophash()
         return pkg
 
     def _top_hash(self):
@@ -482,6 +492,15 @@ class Package(object):
             'alg': 'v0',
             'value': top_hash.hexdigest()
         }
+
+    def _unset_tophash(self):
+        """ 
+        Unsets the top hash
+        When a package is created from an existing package, the top hash
+            must be deleted so a correct new one can be calculated
+            when necessary
+        """
+        self._meta.pop('top_hash', None)
 
     def top_hash(self):
         """
