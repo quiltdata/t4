@@ -8,6 +8,7 @@ from threading import Lock
 from urllib.parse import urlparse
 from urllib.request import url2pathname
 
+from botocore.exceptions import ClientError
 import boto3
 from boto3.s3.transfer import TransferConfig, create_transfer_manager
 from s3transfer.subscribers import BaseSubscriber
@@ -346,6 +347,7 @@ def delete_object(path):
         s3_client.head_object(Bucket=bucket, Key=key)  # Make sure it exists
         s3_client.delete_object(Bucket=bucket, Key=key)  # Actually delete it
 
+NO_OP_COPY_ERROR_MESSAGE = "An error occurred (InvalidRequest) when calling the CopyObject operation: This copy request is illegal because it is trying to copy an object to itself without changing the object's metadata, storage class, website redirect location or encryption attributes."
 
 def copy_object(src, dest, meta, version=None):
     src_bucket, src_key = split_path(src, require_subpath=True)
@@ -359,13 +361,18 @@ def copy_object(src, dest, meta, version=None):
             VersionId=version
         )
 
-    s3_client.copy_object(
-        CopySource=src_params,
-        Bucket=dest_bucket,
-        Key=dest_key,
-        Metadata={HELIUM_METADATA: json.dumps(meta)}
-    )
-
+    try:
+        s3_client.copy_object(
+            CopySource=src_params,
+            Bucket=dest_bucket,
+            Key=dest_key,
+            Metadata={HELIUM_METADATA: json.dumps(meta)}
+        )
+    except ClientError as e:
+        # suppress error from copying a file to itself
+        if str(e) == NO_OP_COPY_ERROR_MESSAGE:
+            return
+        raise
 
 def list_object_versions(path, recursive=True):
     bucket, key = split_path(path)
