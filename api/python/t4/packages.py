@@ -146,12 +146,12 @@ class Package(object):
         pkg_path = '{}/named_packages/{}/'.format(registry, quote(name))
         latest = urlparse(pkg_path + 'latest')
         if latest.scheme == 'file':
-            latest_path = unquote(latest.path)
+            latest_path = url2pathname(latest.path)
             with open(latest_path) as latest_file:
                 latest_hash = latest_file.read()
         elif latest.scheme == 's3':
             bucket, path, vid = parse_s3_url(latest)
-            latest_bytes = download_bytes(bucket + path)
+            latest_bytes = download_bytes(bucket + path, version=vid)
             latest_hash = latest_bytes.decode('utf-8')
         else:
             raise NotImplementedError
@@ -165,10 +165,11 @@ class Package(object):
         """ Takes a URI and returns a package loaded from that URI """
         src_url = urlparse(uri)
         if src_url.scheme == 'file':
-            with open(unquote(src_url.path)) as open_file:
+            with open(url2pathname(src_url.path)) as open_file:
                 pkg = self.load(open_file)
         elif src_url.scheme == 's3':
-            body, _ = download_bytes(src_url.geturl())
+            bucket, path, vid = parse_s3_url(src_url.geturl())
+            body, _ = download_bytes(bucket + path, version=vid)
             pkg = self.load(io.BytesIO(body))
         else:
             raise NotImplementedError
