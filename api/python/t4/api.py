@@ -1,15 +1,19 @@
 import json
+import os
 import requests
 
 from aws_requests_auth.boto_utils import BotoAWSRequestsAuth
 from elasticsearch import Elasticsearch, RequestsHttpConnection
 from six.moves import urllib
+from urllib.parse import urlparse
+from urllib.request import url2pathname
 
 from .data_transfer import (TargetType, copy_file, deserialize_obj, download_bytes,
-                            upload_bytes, delete_object,
+                            upload_bytes, delete_object, list_objects,
                             list_object_versions, serialize_obj)
+from .packages import get_local_package_registry, get_package_registry
 from .util import (HeliumConfig, HeliumException, AWS_SEPARATOR, CONFIG_PATH,
-                   CONFIG_TEMPLATE, fix_url, read_yaml, validate_url,
+                   CONFIG_TEMPLATE, fix_url, parse_s3_url, read_yaml, validate_url,
                    write_yaml, yaml_has_comments)
 
 
@@ -75,20 +79,20 @@ def list_packages(registry=None):
 
     if registry is None:
         # default to local registry
-        registry = get_local_package_registry()
-    path = _fix_url(registry)
-    path = Packages.get_package_registry(path) + '/named_packages/'
-    
-    if path.startswith("file://"):
-        return os.listdir(path)
+        # Todo: Fix incosistency in local vs remote path vs string
+        # for get_registry functions.
+        registry = str(get_local_package_registry())
 
-    elif path.startswith("s3://"):
-        prefixes, _ = list_objects(path, recursive=False)
+    registry_url = urlparse(str(fix_url(registry + '/named_packages/')))
+    if registry_url.scheme == 'file':
+        return os.listdir(url2pathname(registry_url.path))
+    elif registry_url.scheme == 's3':
+        src_bucket, src_path, _ = parse_s3_url(registry_url)
+        prefixes, _ = list_objects(src_bucket + '/' + src_path, recursive=False)
     else:
         raise NotImplementedError
 
     return prefixes
-
 
 
 ########################################

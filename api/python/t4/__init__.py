@@ -14,4 +14,4 @@ from .api import (
     config,
 )
 
-from .packages import Package
+from .packages import Package, get_local_package_registry, get_package_registry

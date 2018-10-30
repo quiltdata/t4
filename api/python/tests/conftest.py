@@ -81,7 +81,7 @@ def set_temporary_working_dir(request, tmpdir):
     orig_dir = os.getcwd()
     os.chdir(tmpdir)
 
-    def teardown():  # can be named whatever
+    def teardown():  # can be named whatever        
         print("Unsetting tempdir..")
         os.chdir(orig_dir)
 
