@@ -301,7 +301,7 @@ def _calculate_etag(file_obj):
     return '"%s"' % etag
 
 
-def upload_file(src_path, dest_path):
+def upload_file(src_path, dest_path, override_meta=None):
     src_file = pathlib.Path(src_path)
     is_dir = src_file.is_dir()
     if src_path.endswith('/'):
@@ -344,14 +344,17 @@ def upload_file(src_path, dest_path):
         for f, etag in zip(src_file_list, src_etag_list):
             real_dest_path = key + str(f.relative_to(src_root)) if (not key or key.endswith('/')) else key
 
-            try:
-                meta_bytes = xattr.getxattr(f, HELIUM_XATTR)
-                meta = json.loads(meta_bytes.decode('utf-8'))
-            except IOError:
-                # No metadata
-                meta = {}
-            except ValueError:
-                raise ValueError("Source path contains invalid metadata")
+            if override_meta is None:
+                try:
+                    meta_bytes = xattr.getxattr(f, HELIUM_XATTR)
+                    meta = json.loads(meta_bytes.decode('utf-8'))
+                except IOError:
+                    # No metadata
+                    meta = {}
+                except ValueError:
+                    raise ValueError("Source path contains invalid metadata")
+            else:
+                meta = override_meta
 
             extra_args = dict(Metadata={HELIUM_METADATA: json.dumps(meta)})
             existing_src = existing_etags.get(etag)
@@ -400,7 +403,7 @@ NO_OP_COPY_ERROR_MESSAGE = ("An error occurred (InvalidRequest) when calling "
                             "class, website redirect location or encryption "
                             "attributes.")
 
-def copy_object(src, dest, meta, version=None):
+def copy_object(src, dest, override_meta=None, version=None):
     src_bucket, src_key = split_path(src, require_subpath=True)
     dest_bucket, dest_key = split_path(dest, require_subpath=True)
     src_params = dict(
@@ -412,18 +415,29 @@ def copy_object(src, dest, meta, version=None):
             VersionId=version
         )
 
+    params = dict(
+        CopySource=src_params,
+        Bucket=dest_bucket,
+        Key=dest_key
+    )
+    if override_meta is None:
+        params.update(dict(
+            MetadataDirective='COPY'
+        ))
+    else:
+        params.update(dict(
+            MetadataDirective='REPLACE',
+            Metadata={HELIUM_METADATA: json.dumps(override_meta)}
+        ))
+
     try:
-        s3_client.copy_object(
-            CopySource=src_params,
-            Bucket=dest_bucket,
-            Key=dest_key,
-            Metadata={HELIUM_METADATA: json.dumps(meta)}
-        )
+        s3_client.copy_object(**params)
     except ClientError as e:
         # suppress error from copying a file to itself
         if str(e) == NO_OP_COPY_ERROR_MESSAGE:
             return
         raise
+
 
 def list_object_versions(path, recursive=True):
     bucket, key = split_path(path)
@@ -470,7 +484,7 @@ def list_objects(path, recursive=True):
         return prefixes, objects
 
 
-def copy_file(src, dest, meta):
+def copy_file(src, dest, override_meta=None):
     src_url = urlparse(src)
     dest_url = urlparse(dest)
     if src_url.scheme == 'file':
@@ -481,7 +495,7 @@ def copy_file(src, dest, meta):
             dest_bucket, dest_path, dest_version_id = parse_s3_url(dest_url)
             if dest_version_id:
                 raise ValueError("Cannot set VersionId on destination")
-            upload_file(parse_file_url(src_url), dest_bucket + '/' + dest_path, meta)
+            upload_file(parse_file_url(src_url), dest_bucket + '/' + dest_path, override_meta)
         else:
             raise NotImplementedError
     elif src_url.scheme == 's3':
@@ -493,7 +507,7 @@ def copy_file(src, dest, meta):
             dest_bucket, dest_path, dest_version_id = parse_s3_url(dest_url)
             if dest_version_id:
                 raise ValueError("Cannot set VersionId on destination")
-            copy_object(src_bucket + '/' + src_path, dest_bucket + '/' + dest_path, meta, src_version_id)
+            copy_object(src_bucket + '/' + src_path, dest_bucket + '/' + dest_path, override_meta, src_version_id)
         else:
             raise NotImplementedError
     else:
