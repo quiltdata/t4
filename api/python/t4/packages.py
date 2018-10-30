@@ -136,13 +136,8 @@ class Package(object):
             # default to local registry
             registry = get_package_registry()
 
-        parsed_registry = urlparse(registry)
-        if parsed_registry.scheme == 's3' and parsed_registry.path in ['', '/']:
-            # rewrite user-provided s3 bucket registry to bucket/.quilt
-            if registry[-1:] == '/':
-                registry = ''.join([registry, '.quilt'])
-            else:
-                registry = ''.join([registry, '/.quilt'])
+        if registry.startswith('s3://'):
+            registry = get_package_registry(registry)
 
         if pkg_hash is not None:
             # if hash is specified, name doesn't matter
