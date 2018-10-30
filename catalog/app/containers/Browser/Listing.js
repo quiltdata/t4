@@ -120,9 +120,7 @@ const Stats = composeComponent('Browser.Listing.Stats',
     })),
   ({ files, size, modified }) => (
     <StatsContainer>
-      {!!files && (
-        <span>{files} files / {readableBytes(size)}</span>
-      )}
+      <span>{files} files / {readableBytes(size)}</span>
       {!!modified && (
         <span>Last modified {modified.toLocaleString()}</span>
       )}
