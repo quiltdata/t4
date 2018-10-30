@@ -139,7 +139,7 @@ def test_package_constructor_from_registry():
 
         pkgmock.reset_mock()
         with patch('t4.packages.download_bytes') as dl_mock:
-            dl_mock.return_value = pkghash.encode('utf-8')
+            dl_mock.return_value = (pkghash.encode('utf-8'), None)
             pkg = Package('nice-name', registry=remote_registry)
         assert remote_registry + '/packages/{}'.format(pkghash) \
                 in [x[0][0] for x in pkgmock.call_args_list]
