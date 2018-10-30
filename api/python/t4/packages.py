@@ -166,11 +166,11 @@ class Package(object):
         src_url = urlparse(uri)
         if src_url.scheme == 'file':
             with open(url2pathname(src_url.path)) as open_file:
-                pkg = self.load(open_file)
+                pkg = Package.load(open_file)
         elif src_url.scheme == 's3':
             bucket, path, vid = parse_s3_url(src_url.geturl())
             body, _ = download_bytes(bucket + '/' + path, version=vid)
-            pkg = self.load(io.BytesIO(body))
+            pkg = Package.load(io.BytesIO(body))
         else:
             raise NotImplementedError
         return pkg
