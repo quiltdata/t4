@@ -71,4 +71,3 @@ class TestAPI():
 
         assert isinstance(result, list)
         assert result == []
-
