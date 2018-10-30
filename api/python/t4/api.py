@@ -51,34 +51,47 @@ def put(obj, dest, meta=None):
 
     Parameters:
         obj: a serializable object
-        dest (str): path in T4
+        dest (str): A URI
         meta (dict): Optional. metadata dict to store with ``obj`` at ``dest``
     """
-    if dest.endswith(AWS_SEPARATOR):
+    url = urlparse(dest)
+    if url.scheme != 's3':
+        raise NotImplementedError
+
+    bucket, path, version = parse_s3_url(url)
+    if version:
+        raise ValueError("Cannot push to a version")
+
+    if path.endswith(AWS_SEPARATOR):
         raise ValueError("Invalid path: %r; ends with a %r"
-                         % (dest, AWS_SEPARATOR))
+                         % (path, AWS_SEPARATOR))
+
     data, target = serialize_obj(obj)
     all_meta = dict(
         target=target.value,
         user_meta=meta
     )
 
-    upload_bytes(data, dest, all_meta)
+    upload_bytes(data, bucket + '/' + path, all_meta)
 
 
-def get(src, version=None):
+def get(src):
     """Retrieves src object from T4 and loads it into memory.
 
     An optional ``version`` may be specified.
 
     Parameters:
-        src (str): A path specifying the object to retrieve
-        version (str): Optional. A specific S3 version id to use
+        src (str): A URI specifying the object to retrieve
 
     Returns:
         tuple: ``(data, metadata)``.  Does not work on all objects.
     """
-    data, meta = download_bytes(src, version)
+    url = urlparse(src)
+    if url.scheme != 's3':
+        raise NotImplementedError
+    bucket, path, version = parse_s3_url(url)
+
+    data, meta = download_bytes(bucket + '/' + path, version)
 
     target_str = meta.get('target')
     if target_str is None:
@@ -91,22 +104,28 @@ def get(src, version=None):
     return deserialize_obj(data, target), meta.get('user_meta')
 
 
-def delete(path):
-    """Delete an object from T4.
-
-    Does not delete local files.
+def delete(target):
+    """Delete an object.
 
     Parameters:
-        path (str): Path of object to delete
+        target (str): URI of the object to delete
     """
-    delete_object(path)
+    url = urlparse(target)
+    if url.scheme != 's3':
+        raise NotImplementedError
+
+    bucket, path, version = parse_s3_url(url)
+    if version:
+        raise ValueError("Cannot delete a version")
+
+    delete_object(bucket + '/' + path)
 
 
-def ls(path, recursive=False):
+def ls(target, recursive=False):
     """List data from the specified path.
 
     Parameters:
-        path (str): Path (including bucket name) to list
+        target (str): URI to list
         recursive (bool): show subdirectories and their contents as well
 
     Returns:
@@ -120,10 +139,18 @@ def ls(path, recursive=False):
         result[2]
             delete markers
     """
+    url = urlparse(target)
+    if url.scheme != 's3':
+        raise NotImplementedError
+
+    bucket, path, version = parse_s3_url(url)
+    if version:
+        raise ValueError("Versions don't make sense for directories")
+
     if not path.endswith('/'):
         path += '/'
 
-    results = list_object_versions(path, recursive=recursive)
+    results = list_object_versions(bucket + '/' + path, recursive=recursive)
 
     return results
 
