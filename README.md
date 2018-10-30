@@ -20,9 +20,10 @@ T4 is alpha software. It is not yet recommended for production use.
 * Understand what's in S3 - plaintext and faceted search over S3
 
 ### Key features
-* Browse any S3 bucket
+* Browse, search any S3 bucket
 * Preview images, Jupyter notebooks, [Vega visualizations](https://vega.github.io/) - without downloading
-* Search any S3 bucket
+* Read/write Python objects to and from S3
+* Immutable versions for objects, immutable packages for collections of objects
 
 ## Known limitations of the Alpha Preview
 
