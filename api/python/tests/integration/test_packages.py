@@ -5,6 +5,7 @@ import os
 import pathlib
 import pytest
 from urllib.parse import urlparse
+from urllib.request import url2pathname
 
 from mock import patch
 from pathlib import Path
@@ -115,7 +116,7 @@ def test_package_constructor_from_registry():
         with patch('t4.packages.open') as open_mock:
             open_mock.return_value = io.BytesIO(pkghash.encode('utf-8'))
             pkg = Package('nice-name')
-            assert urlparse(registry + '/named_packages/nice-name/latest').path \
+            assert url2pathname(urlparse(registry + '/named_packages/nice-name/latest').path) \
                     == open_mock.call_args_list[0][0][0]
 
         assert registry + '/packages/{}'.format(pkghash) \
