@@ -1,6 +1,7 @@
 import copy
 from enum import Enum
 import hashlib
+import io
 import json
 import pathlib
 import os
@@ -8,7 +9,7 @@ import os
 import tempfile
 import time
 
-from urllib.parse import quote, urlparse
+from urllib.parse import quote, unquote, urlparse
 from urllib.request import url2pathname
 
 import jsonlines
@@ -43,13 +44,13 @@ def read_physical_key(physical_key):
         raise NotImplementedError
 
 
-def get_package_registry(path):
-    """ Returns the package registry for a given path """
+def get_package_registry(path=''):
+    """ Returns the package registry root for a given path """
     if path.startswith('s3://'):
         bucket = path[5:].partition('/')[0]
         return "s3://{}/.quilt".format(bucket)
     else:
-        raise NotImplementedError
+        return get_local_package_registry().as_uri()
 
 def get_local_package_registry():    
     """ Returns a local package registry Path as a string. """
@@ -113,21 +114,78 @@ class PackageEntry(object):
         return PackageEntry(copy.deepcopy(self.physical_keys), self.size, \
                             copy.deepcopy(self.hash), copy.deepcopy(self.meta))
 
+
 class Package(object):
     """ In-memory representation of a package """
 
-    def __init__(self, data=None, meta=None):
+    def __init__(self, name=None, pkg_hash=None, registry=None):
         """
-        _data is of the form {logical_key: PackageEntry}
+        Create a Package from scratch, or load one from a registry.
+
+        Args:
+            name(string): name of package to load
+            pkg_hash(string): top hash of package version to load
+            registry(string): location of registry to load package from
         """
-        self._data = data or {}
-        self._meta = meta or {}
+        if name is None and pkg_hash is None and registry is None:
+            self._data = {}
+            self._meta = {'version': 'v0'}
+            return
+
+        if registry is None:
+            # default to local registry
+            registry = get_package_registry()
+
+        if pkg_hash is not None:
+            # if hash is specified, name doesn't matter
+            pkg_path = '{}/packages/{}'.format(registry, pkg_hash)
+            # TODO replace open with something that supports both local and s3
+            self = self._from_path(pkg_path)
+            return
+
+        pkg_path = '{}/named_packages/{}/'.format(registry, quote(name))
+        latest = urlparse(pkg_path + 'latest')
+        if latest.scheme == 'file':
+            latest_path = url2pathname(latest.path)
+            with open(latest_path) as latest_file:
+                latest_hash = latest_file.read()
+        elif latest.scheme == 's3':
+            bucket, path, vid = parse_s3_url(latest)
+            latest_bytes = download_bytes(bucket + '/' + path, version=vid)
+            latest_hash = latest_bytes.decode('utf-8')
+        else:
+            raise NotImplementedError
+
+        latest_hash = latest_hash.strip()
+        latest_path = '{}/packages/{}'.format(registry, quote(latest_hash))
+        self = self._from_path(latest_path)
+
+    @staticmethod
+    def _from_path(uri):
+        """ Takes a URI and returns a package loaded from that URI """
+        src_url = urlparse(uri)
+        if src_url.scheme == 'file':
+            with open(url2pathname(src_url.path)) as open_file:
+                pkg = self.load(open_file)
+        elif src_url.scheme == 's3':
+            bucket, path, vid = parse_s3_url(src_url.geturl())
+            body, _ = download_bytes(bucket + '/' + path, version=vid)
+            pkg = self.load(io.BytesIO(body))
+        else:
+            raise NotImplementedError
+        return pkg
+
+
+    def _set_state(self, data, meta):
+        self._data = data
+        self._meta = meta
+        return self
 
     def _clone(self):
         """
         Returns clone of this package.
         """
-        return Package(copy.deepcopy(self._data), copy.deepcopy(self._meta))
+        return Package()._set_state(copy.deepcopy(self._data), copy.deepcopy(self._meta))
 
     def __contains__(self, logical_key):
         """
@@ -168,7 +226,7 @@ class Package(object):
                 obj['meta']
             )
 
-        return Package(data, meta)
+        return Package()._set_state(data, meta)
 
     def capture(self, path, prefix=None):
         """
