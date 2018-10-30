@@ -405,8 +405,6 @@ class Package(object):
         pkg = self._clone()
         for logical_key, entry in new_keys_dict.items():
             pkg = pkg.set(logical_key, entry, meta)
-        # modified package should have new top hash
-        pkg._unset_tophash()
         return pkg
 
     def set(self, logical_key, entry=None, meta=None):
