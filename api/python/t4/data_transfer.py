@@ -3,6 +3,7 @@ from enum import Enum
 import hashlib
 import json
 import pathlib
+import platform
 import shutil
 from threading import Lock
 from urllib.parse import urlparse
@@ -13,13 +14,17 @@ from boto3.s3.transfer import TransferConfig, create_transfer_manager
 from s3transfer.subscribers import BaseSubscriber
 from six import BytesIO, binary_type, text_type
 from tqdm.autonotebook import tqdm
-import xattr
 
 from .util import HeliumException, split_path, parse_file_url, parse_s3_url
+from . import xattr
 
 
 HELIUM_METADATA = 'helium'
-HELIUM_XATTR = 'user.com.quiltdata.helium'
+HELIUM_XATTR = 'com.quiltdata.helium'
+
+if platform.system() == 'Linux':
+    # Linux only allows users to modify user.* xattrs.
+    HELIUM_XATTR = 'user.%s' % HELIUM_XATTR
 
 s3_client = boto3.client('s3')
 s3_transfer_config = TransferConfig()
