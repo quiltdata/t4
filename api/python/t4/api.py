@@ -15,8 +15,7 @@ from .util import (HeliumConfig, HeliumException, AWS_SEPARATOR, CONFIG_PATH,
 
 def copy(src, dest, meta=None):
     """
-    Retrieves ``src`` object from T4, and writes that to to the ``dest``
-    path.
+    Copies ``src`` object from T4 to ``dest``
 
     Either of ``src`` and ``dest`` may be S3 paths (starting with ``s3://``)
     or local file paths (starting with ``file:///``).
@@ -24,8 +23,7 @@ def copy(src, dest, meta=None):
     Parameters:
         src (str): a path to retrieve
         dest (str): a path to write to
-        snapshot (str): (optional) download from a specific snapshot
-        version (str): (optional) download a specific version
+        meta (dict): optional metadata that will be assigned to the object
     """
     all_meta = dict(
         user_meta=meta
@@ -35,6 +33,7 @@ def copy(src, dest, meta=None):
 
 def put(obj, dest, meta=None):
     """Write an in-memory object to the specified T4 ``dest``
+
     Note:
         Does not work with all objects -- object must be serializable.
 
@@ -86,7 +85,7 @@ def get(src, version=None):
 
 
 def delete(path):
-    """Delete and object from T4
+    """Delete an object from T4.
 
     Does not delete local files.
 
@@ -97,7 +96,7 @@ def delete(path):
 
 
 def ls(path, recursive=False):
-    """List data from the specified path
+    """List data from the specified path.
 
     Parameters:
         path (str): Path (including bucket name) to list
