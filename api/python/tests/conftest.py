@@ -49,8 +49,6 @@ def pytest_sessionstart(session):
     for mocker in Vars.extrasession_mockers:
         mocker.start()
 
-    print("appdirs.user_data_dir mocked to produce {!r}".format(user_data_dir()))
-
 
 def pytest_sessionfinish(session, exitstatus):
     """ pytest_sessionfinish hook
