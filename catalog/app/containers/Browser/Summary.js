@@ -19,6 +19,7 @@ import {
   withoutPrefix,
   resolveKey,
 } from 'utils/s3paths';
+import tagged from 'utils/tagged';
 
 import ContentWindow from './ContentWindow';
 
@@ -40,6 +41,53 @@ export const SummaryItem = composeComponent('Browser.SummaryItem',
     </Card>
   ));
 
+const SummaryError = tagged([
+  'Unknown',
+  'InvalidJSON',
+  'InvalidFormat',
+]);
+
+const isValidSummary = R.both(Array.isArray, R.all(R.is(String)));
+
+const loadSummary = async (s3, handle) => {
+  try {
+    const file = await s3.getObject({
+      Bucket: handle.bucket,
+      Key: handle.key,
+      // TODO: figure out caching issues
+      IfMatch: handle.etag,
+    }).promise();
+    const json = file.Body.toString('utf-8');
+    const summary = JSON.parse(json);
+    if (!isValidSummary(summary)) {
+      return AsyncResult.Err(SummaryError.InvalidFormat(summary));
+    }
+
+    const resolvePath = (path) => ({
+      bucket: handle.bucket,
+      key: resolveKey(handle.key, path),
+    });
+
+    const resolved = summary
+      .map(R.pipe(
+        Resource.parse,
+        Resource.Pointer.case({
+          Web: () => null, // web urls are not supported in this context
+          S3: R.identity,
+          S3Rel: resolvePath,
+          Path: resolvePath,
+        }),
+      ))
+      .filter((h) => h);
+    return AsyncResult.Ok(resolved);
+  } catch (e) {
+    return AsyncResult.Err(R.cond([
+      [R.is(SyntaxError), SummaryError.InvalidJSON],
+      [R.T, SummaryError.Unknown],
+    ])(e));
+  }
+};
+
 export default composeComponent('Browser.Summary',
   setPropTypes({
     /**
@@ -53,40 +101,21 @@ export default composeComponent('Browser.Summary',
   withState('state', 'setState', AsyncResult.Init()),
   withHandlers({
     loadSummary: ({ s3, handle, setState }) => async () => {
-      try {
-        setState(AsyncResult.Pending());
-        const file = await s3.getObject({
-          Bucket: handle.bucket,
-          Key: handle.key,
-          // TODO: figure out caching issues
-          IfMatch: handle.etag,
-        }).promise();
-        const json = file.Body.toString('utf-8');
-        // console.log('summarize json', json);
-        const summary = JSON.parse(json);
-        // console.log('summarize obj', summary);
-        // TODO: verify summary format
-        const resolvePath = (path) => ({
-          bucket: handle.bucket,
-          key: resolveKey(handle.key, path),
-        });
-
-        const resolved = summary
-          .map(R.pipe(
-            Resource.parse,
-            Resource.Pointer.case({
-              Web: () => null, // web urls are not supported in this context
-              S3: R.identity,
-              S3Rel: resolvePath,
-              Path: resolvePath,
-            }),
-          ))
-          .filter((h) => h);
-        setState(AsyncResult.Ok(resolved));
-      } catch (e) {
-        // console.log('loadSummary: error', ''+e, e);
-        setState(AsyncResult.Err(e));
-      }
+      setState(AsyncResult.Pending());
+      const result = await loadSummary(s3, handle);
+      AsyncResult.case({
+        Err: (e) => {
+          const msg = SummaryError.case({
+            InvalidFormat: () => 'must be a JSON array of file links',
+            InvalidJSON: R.identity,
+            Unknown: R.identity,
+          }, e);
+          // eslint-disable-next-line no-console
+          console.log('Error loading summary:', msg);
+        },
+        _: () => {},
+      }, result);
+      setState(result);
     },
   }),
   lifecycle({
@@ -95,8 +124,7 @@ export default composeComponent('Browser.Summary',
     },
   }),
   extractProp('state', AsyncResult.case({
-    // TODO
-    _: () => <h1>loading</h1>,
+    _: () => null,
     Ok: (summary, { handle }) =>
       summary.map((s) => (
         <SummaryItem
@@ -106,6 +134,4 @@ export default composeComponent('Browser.Summary',
           handle={s}
         />
       )),
-    // TODO: layout
-    Err: (e) => <h1>error: {`${e}`}</h1>,
   })));

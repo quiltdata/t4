@@ -22,6 +22,8 @@ import config from 'constants/config';
 import { S3, Signer } from 'utils/AWS';
 import AsyncResult from 'utils/AsyncResult';
 import * as Resource from 'utils/Resource';
+import Result from 'utils/Result';
+import { captureError } from 'utils/errorReporting';
 import { composeComponent } from 'utils/reactTools';
 import tagged from 'utils/tagged';
 
@@ -116,8 +118,15 @@ const signVegaSpec = memoize(({ signer, handle }) => R.evolve({
 }));
 
 // TODO: handle caching (use etag)
-const defaultLoad = ({ handle, signer }) =>
-  signer.getSignedS3URL(handle);
+const defaultLoad = ({ handle, signer }) => {
+  try {
+    return Result.Ok(signer.getSignedS3URL(handle));
+  } catch (e) {
+    return Result.Err(PreviewError.Unknown(e));
+  }
+};
+
+const VEGA_SCHEMA = 'https://vega.github.io/schema/vega/v4.json';
 
 const HANDLERS = [
   {
@@ -129,11 +138,19 @@ const HANDLERS = [
     name: 'md',
     detect: '.md',
     load: async ({ handle, s3 }) => {
-      const data = await s3.getObject({
-        Bucket: handle.bucket,
-        Key: handle.key,
-      }).promise();
-      return data.Body.toString('utf-8');
+      try {
+        const data = await s3.getObject({
+          Bucket: handle.bucket,
+          Key: handle.key,
+        }).promise();
+        return Result.Ok(data.Body.toString('utf-8'));
+      } catch (e) {
+        return Result.Err(
+          e.name === 'NoSuchKey'
+            ? PreviewError.DoesNotExist(handle)
+            : PreviewError.Unknown(e)
+        );
+      }
     },
     render: (data, { signer, handle }) => (
       <Markdown
@@ -161,16 +178,25 @@ const HANDLERS = [
     name: 'vega',
     detect: '.json',
     load: async ({ handle, s3, signer }) => {
-      const data = await s3.getObject({
-        Bucket: handle.bucket,
-        Key: handle.key,
-      }).promise();
-      const json = data.Body.toString('utf-8');
-      // console.log('vega json', json);
-      const spec = JSON.parse(json);
-      // TODO: validate json format
-      // console.log('vega spec', spec);
-      return signVegaSpec({ signer, handle })(spec);
+      try {
+        const data = await s3.getObject({
+          Bucket: handle.bucket,
+          Key: handle.key,
+        }).promise();
+        const json = data.Body.toString('utf-8');
+        const spec = JSON.parse(json);
+        if (spec.$schema !== VEGA_SCHEMA) {
+          return Result.Err(PreviewError.LoadError());
+        }
+        const signed = signVegaSpec({ signer, handle })(spec);
+        return Result.Ok(signed);
+      } catch (e) {
+        return Result.Err(R.cond([
+          [R.propEq('name', 'NoSuchKey'), () => PreviewError.DoesNotExist(handle)],
+          [R.is(SyntaxError), PreviewError.LoadError],
+          [R.T, PreviewError.Unknown],
+        ])(e));
+      }
     },
     render: (spec) => <VegaContent spec={spec} />,
   },
@@ -189,7 +215,12 @@ const getHandler = (key) =>
       .map(normalizeMatcher)
       .some((matcher) => matcher(key)));
 
-const PreviewError = tagged(['Unsupported', 'DoesNotExist', 'Unknown']);
+const PreviewError = tagged([
+  'Unsupported',
+  'DoesNotExist',
+  'Unknown',
+  'LoadError',
+]);
 
 const ErrorText = styled.p`
   color: ${colors.grey500};
@@ -218,19 +249,21 @@ export default composeComponent('Browser.ContentWindow',
       try {
         setState(AsyncResult.Pending());
 
-        // console.log('load', props);
-        const content = await (handler.load || defaultLoad)(props);
-        // console.log('load: content', content);
-        // TODO: handle errors
-        setState(AsyncResult.Ok(content));
+        const result = await (handler.load || defaultLoad)(props);
+
+        setState(Result.case({
+          Ok: AsyncResult.Ok,
+          Err: (e) => {
+            PreviewError.case({
+              Unknown: captureError,
+              _: () => {},
+              __: () => {},
+            }, e);
+            return AsyncResult.Err(e);
+          },
+        }, result));
       } catch (e) {
-        if (e.name === 'NoSuchKey') {
-          setState(AsyncResult.Err(PreviewError.DoesNotExist()));
-          return;
-        }
-        // TODO: handle error
-        // eslint-disable-next-line no-console
-        console.log('Preview error:', e);
+        captureError(e);
         setState(AsyncResult.Err(PreviewError.Unknown()));
       }
     },
