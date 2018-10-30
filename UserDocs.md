@@ -167,7 +167,7 @@ he.delete("s3://bucket-name/my-frame.csv")
 
 ### Working with memory
 
-You can commit a Python object to a T4 file using the `put` command:
+You can save a Python object to a T4 file using the `put` command:
 
 ```python
 import t4
