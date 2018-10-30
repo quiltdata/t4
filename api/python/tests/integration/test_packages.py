@@ -261,7 +261,7 @@ def test_list_local_packages(tmpdir):
     assert len(pkgs) == 3
 
     # Verify manifest is registered by hash when local path given
-    pkgs = t4.list_packages(BASE_DIR)
+    pkgs = t4.list_packages("/")
     assert "Foo" in pkgs
     assert "Bar" in pkgs
 

@@ -53,7 +53,7 @@ def get_package_registry(path=''):
         return get_local_package_registry().as_uri()
 
 def get_local_package_registry():    
-    """ Returns a local package registry Path as a string. """
+    """ Returns a local package registry Path. """
     Path(BASE_PATH, "packages").mkdir(parents=True, exist_ok=True)
     Path(BASE_PATH, "named_packages").mkdir(parents=True, exist_ok=True)
     return BASE_PATH
