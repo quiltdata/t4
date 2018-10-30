@@ -39,7 +39,7 @@ def pytest_sessionstart(session):
     Vars.tmpdir_home = pytest.ensuretemp('fake_home')
     Vars.tmpdir_data = Vars.tmpdir_home.mkdir('appdirs_datadir')
 
-    user_data_dir = lambda *x: Vars.tmpdir_data / x[0] if x else Vars.tmpdir_data
+    user_data_dir = lambda *x: str(Vars.tmpdir_data / x[0] if x else Vars.tmpdir_data)
 
     # Mockers that need to be loaded before any of our code
     Vars.extrasession_mockers.extend([
