@@ -1,4 +1,5 @@
 """ Integration tests for T4 Packages. """
+import appdirs
 import io
 import jsonlines
 import os
@@ -12,7 +13,7 @@ from pathlib import Path
 
 import t4
 from t4 import Package
-from t4.util import HeliumException, BASE_PATH
+from t4.util import HeliumException, APP_NAME, APP_AUTHOR, BASE_DIR, BASE_PATH
 
 
 LOCAL_MANIFEST = os.path.join(os.path.dirname(__file__), 'data', 'local_manifest.jsonl')
@@ -22,6 +23,9 @@ def mock_make_api_call(self, operation_name, kwarg):
     """ Mock boto3's AWS API Calls for testing. """
     if operation_name == 'GetObject':
         parsed_response = {'Body': {'foo'}}
+        return parsed_response
+    if operation_name == 'ListObjectsV2':
+        parsed_response = {'CommonPrefixes': ['foo']}
         return parsed_response
     raise NotImplementedError(operation_name)
 
@@ -161,7 +165,7 @@ def test_load_into_t4(tmpdir):
         # Data copied
         assert 's3://my_test_bucket/package_name/foo' in dest_args
 
-def test_package_get():
+def test_package_get(tmpdir):
     """ Verify loading data from a local file. """
     pkg = (
         Package()
@@ -175,7 +179,7 @@ def test_package_get():
     with pytest.raises(HeliumException):
         pkg.get('bar')
 
-def test_capture():
+def test_capture(tmpdir):
     """ Verify building a package from a directory. """
     pkg = Package()
     
@@ -216,7 +220,7 @@ def test_capture():
         == pkg._data['my_keys/baz'].physical_keys[0] # pylint: disable=W0212
 
 
-def test_updates():
+def test_updates(tmpdir):
     """ Verify building a package from a directory. """
     pkg = (
         Package()
@@ -237,3 +241,34 @@ def test_updates():
         == pkg._data['bar'].physical_keys[0] # pylint: disable=W0212
 
     assert pkg.get('foo') == ('123\n', 'blah')
+
+@patch('appdirs.user_data_dir', lambda x,y: os.path.join('test_appdir', x))
+def test_list_local_packages(tmpdir):
+    """Verify that list returns packages in the appdirs directory."""
+    # Build a new package into the local registry.
+    Package().build("Foo")
+    Package().build("Bar")
+    Package().build("Test")
+
+    # Verify packages are returned.
+    pkgs = t4.list_packages()
+    assert "Foo" in pkgs
+    assert "Bar" in pkgs
+
+    # Test unnamed packages are not added.
+    Package().build()
+    pkgs = t4.list_packages()
+    assert len(pkgs) == 3
+
+    # Verify manifest is registered by hash when local path given
+    pkgs = t4.list_packages("/")
+    assert "Foo" in pkgs
+    assert "Bar" in pkgs
+
+def test_list_remote_packages():
+    with patch('t4.api.list_objects', return_value=('foo','bar')) as mock:
+        pkgs = t4.list_packages('s3://my_test_bucket/')
+        assert mock.call_args_list[0][0][0] == \
+            'my_test_bucket/.quilt/named_packages'
+
+    assert True

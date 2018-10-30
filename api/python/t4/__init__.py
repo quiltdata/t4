@@ -9,8 +9,9 @@ from .api import (
     get,
     delete,
     ls,
+    list_packages,
     search,
     config,
 )
 
-from .packages import Package
+from .packages import Package, get_local_package_registry, get_package_registry

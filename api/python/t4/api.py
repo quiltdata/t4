@@ -1,15 +1,19 @@
 import json
+import os
 import requests
 
 from aws_requests_auth.boto_utils import BotoAWSRequestsAuth
 from elasticsearch import Elasticsearch, RequestsHttpConnection
 from six.moves import urllib
+from urllib.parse import urlparse, urlunparse
+from urllib.request import url2pathname
 
 from .data_transfer import (TargetType, copy_file, deserialize_obj, download_bytes,
-                            upload_bytes, delete_object,
+                            upload_bytes, delete_object, list_objects,
                             list_object_versions, serialize_obj)
+from .packages import get_local_package_registry, get_package_registry
 from .util import (HeliumConfig, HeliumException, AWS_SEPARATOR, CONFIG_PATH,
-                   CONFIG_TEMPLATE, fix_url, read_yaml, validate_url,
+                   CONFIG_TEMPLATE, fix_url, parse_s3_url, read_yaml, validate_url,
                    write_yaml, yaml_has_comments)
 
 
@@ -58,6 +62,34 @@ def ls(path, recursive=False):
     results = list_object_versions(path, recursive=recursive)
 
     return results
+
+
+def list_packages(registry=None):
+    """ Lists Packages in the registry.
+
+    Returns a list of all named packages in a registry.
+    If the registry is None, default to the local registry.
+
+    Args:
+        registry(string): location of registry to load package from.
+
+    Returns:
+        A list of strings containing the names of the packages        
+    """
+    if not registry:
+        registry = ''
+    registry = get_package_registry(fix_url(registry)).strip("/") + '/named_packages'
+
+    registry_url = urlparse(registry)
+    if registry_url.scheme == 'file':
+        return os.listdir(url2pathname(registry_url.path))
+    elif registry_url.scheme == 's3':
+        src_bucket, src_path, _ = parse_s3_url(registry_url)
+        prefixes, _ = list_objects(src_bucket + '/' + src_path, recursive=False)
+    else:
+        raise NotImplementedError
+
+    return prefixes
 
 
 ########################################
@@ -189,7 +221,6 @@ def log(key, pprint=False):
         return table
     except KeyError as e:
         return r
-
 
 def config(*autoconfig_url, **config_values):
     """Set or read the Helium configuration
