@@ -490,6 +490,12 @@ class Package(object):
         }
 
     def _unset_tophash(self):
+        """ 
+        Unsets the top hash
+        When a package is created from an existing package, the top hash
+            must be deleted so a correct new one can be calculated
+            when necessary
+        """
         self._meta.pop('top_hash', None)
 
     def top_hash(self):
