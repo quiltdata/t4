@@ -14,13 +14,13 @@ You may wish create a Quilt-specific [profile](https://docs.aws.amazon.com/cli/l
 Install T4: 
 
 ```
-$ pip install git+https://github.com/quiltdata/t4.git#subdirectory=ocean
+$ pip install git+https://github.com/quiltdata/t4.git#subdirectory=api/python
 ```
 
 ## User guide
 ### Creating a package
 
-To create a new in-memory package you initialize a new Package object and then call mutators on it until you have the Package you want. Note that Packages are immutable, so set, update, and delete all return new Package instances. For example:
+To create a new in-memory package you initialize a new Package object and then perform operations on it until you have the Package you want. For example:
 
 	import t4
 	# initialize a package
@@ -91,7 +91,7 @@ Especially with large data packages, there are many cases in which you might wan
 
 
 ### Moving data not on T4
-We encourage a push/pull architecture based on having data packages ultimately live on T4. But you may also use the t4 CLI to handle moving data anywhere else you can path to.
+We encourage a push/pull architecture based on having data packages ultimately live on T4. But you may also use the t4 CLI to handle moving data anywhere on your local file system.
 
 For example, suppose that you have NAS accessible on your machine from `"nas://"`. All of constructing, pushing, and pulling still work.
 
@@ -106,7 +106,7 @@ To load the contents of that package locally:
 	p.copy("/", "target/directory")
 
 
-Packages materialized on T4 guarantee the immutability of constituent nodes. Packages materialized elsewhere do not. The onus of keeping the package manifest consistent with the actual contents of the file (e.g. updating the package manifest every time the file changes) is on the package author. Additionally, even if package files get overwritten, there is no way of accessing the old files.
+Packages materialized on T4 guarantee the immutability of constituent nodes, so long as the underlying S3 bucket has versioning enabled. Packages materialized elsewhere do not. The onus of keeping the package manifest consistent with the actual contents of the file (e.g. updating the package manifest every time the file changes) is on the package author. Additionally, even if package files get overwritten, there is no way of accessing the old files.
 
 
 ### Updating a package
@@ -179,8 +179,7 @@ The above code writes `df` at the top level of `bucket-name`.
 If you `put` to a folder that doesn't exist yet, `t4` will create that folder. If you overwrite an object, and bucket versioning is enabled, the overwritten object is retained as an older version of the same path. 
 
 T4 transparently serializes and de-serializes select Python
-objects. In the above example, `df` is automatically stored as an Apache
-Parquet file. This provides [substantial performance gains](http://wesmckinney.com/blog/python-parquet-update/).
+objects. In the above example, `df` is automatically stored as an Apache Parquet file.
 
 To read `df` out of S3 and into local memory, use `get`:
 

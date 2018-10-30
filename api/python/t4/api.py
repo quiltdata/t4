@@ -61,15 +61,14 @@ def put(obj, dest, meta=None):
 def get(src, version=None):
     """Retrieves src object from T4 and loads it into memory.
 
-    An optional ``snapshot`` or ``version`` may be specified, but not both.
+    An optional ``version`` may be specified.
 
     Parameters:
         src (str): A path specifying the object to retrieve
-        snapshot (str): Optional. A specific snapshot to use (mutually exclusive with ``version``)
-        version (str): Optional. A specific version to use (mutually exclusive with ``snapshot``)
+        version (str): Optional. A specific S3 version id to use
 
     Returns:
-        tuple: ``(data, metadata)``.  Does not work on all objects, see **serialization**
+        tuple: ``(data, metadata)``.  Does not work on all objects.
     """
     data, meta = download_bytes(src, version)
 
