@@ -151,7 +151,7 @@ class Package(object):
                 latest_hash = latest_file.read()
         elif latest.scheme == 's3':
             bucket, path, vid = parse_s3_url(latest)
-            latest_bytes = download_bytes(bucket + path, version=vid)
+            latest_bytes = download_bytes(bucket + '/' + path, version=vid)
             latest_hash = latest_bytes.decode('utf-8')
         else:
             raise NotImplementedError
@@ -169,7 +169,7 @@ class Package(object):
                 pkg = self.load(open_file)
         elif src_url.scheme == 's3':
             bucket, path, vid = parse_s3_url(src_url.geturl())
-            body, _ = download_bytes(bucket + path, version=vid)
+            body, _ = download_bytes(bucket + '/' + path, version=vid)
             pkg = self.load(io.BytesIO(body))
         else:
             raise NotImplementedError
