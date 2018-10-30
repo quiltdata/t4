@@ -17,143 +17,170 @@ Install T4:
 $ pip install git+https://github.com/quiltdata/t4.git#subdirectory=ocean
 ```
 
-## API reference
-
-> T4 expects S3 paths of the form `BUCKET_NAME/path/to/dir/data.csv`.
-
-### Reading and writing data
-
-![](img/helium-api.png)
-
-
-#### `helium.get(src [, snapshot=None | version=None])`
-Retrieves `src` object from T4 and loads it into memory. Returns a `(data, metadata)` tuple.
-
-Does not work on all objects. For a list of supported objects, see [Serialization](#serialization).
-
-Pass a snapshot hash to the optional `snapshot` parameter to retrieve the state of an S3 object at a given snapshot. Pass a version hash to the optional `version` parameter to retrieve the state of an S3 object at a given version. Only one or none of these two parameters may be specified at a time.
-
-#### `helium.put(src, dest, meta={})`
-Writes the in-memory object `src` to the path `dest` in S3.
-Transparently serializes some object types.
-See [Serialization](#serialization) for details.
-
-You can annotate your object with custom metadata by passing a `dict`
-to `meta=`. Object metadata are indexed and searchable by the helium API.
-
-For more on metadata, see [Metadata and search](#metadata-and-search).
-
-#### `helium.get_file(src, dest [, snapshot=None | version=None])`
-Retrieves `src` object from T4, and writes to the `dest` file on your local disk.
-
-`snapshot=` and `version=` optional parameters, described in `helium.get()`.
-
-#### `helium.put_file(src, dest, meta={})`
-Writes the local file `src` to `dest` in S3.
-
-Writes the in-memory object `src` to the path `dest` in S3.
-Transparently serializes some object types.
-See [Serialization](#serialization) for details.
-
-You can annotate your object with custom metadata by passing a `dict`
-to `meta=`. Object metadata are indexed and searchable by the helium API.
-
-As with `helium.put`, you may specify metadata for the object by pass a dictionary of key-value pairs to the `meta` parameter. For more on metadata, see [Metadata and search](#metadata-and-search).
-
-#### `helium.delete(path)`
-Deletes the object at `path` (does not work on folders).
-
-### Snapshots and history
-
-#### `helium.snapshot(path, message)`
-Creates a snapshot of the T4 object at `path` with commit message `message`.
-
-#### `helium.list_snapshots(bucket, contains=None)`
-List all snapshots in `bucket`. `contains=` is an optional parameter that limits
-the results to snapshots that contain the specified prefix.
-
-Returns path, hash, timestamp, and snapshot message.
-
-#### `helium.diff(bucket, src, dest)`
-Returns a list of differences between the two snapshots.
-Differences are one of three types: Add, Modify, or Delete.
-
-`src` and `dest` are strings containing the snapshot's SHA-256 hash, or the string
-`"latest"`. `"latest"` signifies "what's currently in S3", but `"latest"` is not
-a proper snapshot.
-
-`bucket` may not contain a terminating `/`.
-
-`src` is the hash of the source snapshot, and `dest` is the hash of the destination snapshot.
-If `dest` contains file that `src` does not, that fill will appear as an Add.
-(If you were to swap the order of the parameters, the same file would appear as Delete.)
-
-### Configuration
-
-#### `helium.config()`
-Returns the current configuration details as an `ordereddict` subclass, `HeliumConfig`.
-`HeliumConfig` has a cleaner appearance, and includes the file path.
-
-#### `helium.config(URL)`
-Set the local configuration from the URL of a T4 instance.  Overwrites all local config 
-values if successful, but keeps a backup in the config dir.
-
-#### `helium.config(KEY=VALUE [, KEY2=VALUE2, ...])`
-Manually sets specific configuration options.
-
-### Navigation
-
-#### `helium.search(key)`
-Searches a T4 bucket for `key`. Returns a list of search results.
-
-In order for `search` to work, you must use `he.configure()` to
-point T4 to an ElasticSearch endpoint that indexes your
-T4 bucket.
-
-See [Metadata and search](#metadata-and-search) for additional syntax.
-
-#### `helium.ls(path)`
-
-Lists the contents of a path in a T4 bucket.
-<!-- TODO: for all return values, show output instead of describing it -->
-Returns a tuple whose first item is a list of sub-paths,
-and whose second item is metadata about the first item.
-Each version of an object in S3 gets its own entry in the list.
-
 ## User guide
+### Creating a package
+
+To create a new in-memory package you initialize a new Package object and then call mutators on it until you have the Package you want. Note that Packages are immutable, so set, update, and delete all return new Package instances. For example:
+
+	import t4
+	# initialize a package
+	p = t4.Package()
+
+	# add entries individually using `set`
+	p = p.set("foo.csv", "/path/to/local/disk/foo.csv")
+	p = p.set("bar.csv", "s3://bucket/path/to/cloud/bar.csv")
+
+	# add many entries at once using `update`
+	p = p.update({"baz.csv": "/path/to/baz", "bam.png": "/path/to/bam"})
+
+	# or grab everything in a directory at once using capture
+	p = p.capture("/path/to/folder/with/stuff/")
+
+	# delete entries using `delete`
+	p = p.delete("bam.png")
+
+
+### Managing a local package
+A local package is one which has not been published yet. Local packages contain local data, so they’re highly malleable and provide no inherent guarantees about the data they reference.
+
+If you would like to save or read a local package, you can use the following methods to do so.
+
+	# save an empty package to the local registry
+	p = t4.Package()
+	tophash = p.build("example-package")
+
+	# load the package from a local registry
+	p = t4.Package("example-package", hash=tophash)
+
+Packages are versioned by top hashes. Every time you build a package you are returned a top hash. To load a specific version of a package from a registry, as here, you can pass the top hash of the desired package version to the `hash` parameter. If you do not specify a top hash, the latest version will be retrieved.
+
+
+### Publishing a package to T4
+Once you have a package manifest you are happy with, you are ready to publish. To publish the package to T4, run the following command:
+
+    p.push("example-package", "s3://name-of-your-t4-bucket/my/package/path")
+
+
+This will:
+* Copy the manifest to T4. The manifest will be stored in your T4 bucket’s package registry by both its top hash and the name you provide (`"example-package"`).
+* Copy the package contents to `/my/package/path` in your bucket according to their logical keys.
+
+Once the dataset has been materialized on T4, it will be available to anyone else with access to that T4 bucket.
+
+
+### Pulling a package from T4
+To pull a package that has been published to T4:
+
+	# load the package from the registry
+	p = t4.Package("nice-name", registry="name-of-your-t4-bucket")
+
+This will find the manifest associated with the given name and registry and downloads it into memory. This will not download the actual bytes. To do that, you can use `get` or `get_file`:
+
+	# download everything from a package
+	p.copy("/", "target/directory/")
+
+	# download a specific entry from a package
+	p.copy("foo.parquet", "target/directory/foo.parquet")
+
+	# load a specific entry into memory
+    data, meta = p.get("foo.parquet")
+
+Especially with large data packages, there are many cases in which you might want to download a manifest describing a package, without downloading the actual contents of the package itself. This T4 API provides this functionality.
+
+<!-- Note that in order for `get` to work, the file must have been created by t4.put and it must be in one of the formats supported by the default T4 deserializers. -->
+
+
+### Moving data not on T4
+We encourage a push/pull architecture based on having data packages ultimately live on T4. But you may also use the t4 CLI to handle moving data anywhere else you can path to.
+
+For example, suppose that you have NAS accessible on your machine from `"nas://"`. All of constructing, pushing, and pulling still work.
+
+To create a package referencing that data and save it locally:
+
+    p = t4.Package()
+    p = p.set("foo", "nas://foo")
+    p.build("example-package")
+
+To load the contents of that package locally:
+
+	p.copy("/", "target/directory")
+
+
+Packages materialized on T4 guarantee the immutability of constituent nodes. Packages materialized elsewhere do not. The onus of keeping the package manifest consistent with the actual contents of the file (e.g. updating the package manifest every time the file changes) is on the package author. Additionally, even if package files get overwritten, there is no way of accessing the old files.
+
+
+### Updating a package
+Updating a package in a registry is a matter of pushing to it again with modified contents. For example:
+
+	# push an initial empty package to a T4 bucket
+	p = t4.Package()
+	p.build("example-package")
+	p.push("example-package", "s3://my-t4-bucket")
+	
+    # change something
+    p.set("foo", "/bar.txt")
+    
+    # push the updated package to the bucket
+    p.push("example-package", "s3://my-t4-bucket")
+
+
+### Reading and writing entry metadata
+You can see the metadata associated with individual entries in a package using `get_meta`:
+
+	p.get_meta("foo.csv")
+
+This metadata may be optionally provided to a package entry at definition time by e.g. `set`:
+
+	p.set("foo.csv", meta={"goodness": "very good"})
+
+Metadata is versioned alongside the rest of the package. So if you push a package with changes only to the metadata, e.g. with no changes to the files, you will still generate a new package version and a new tophash.
+
+
+### Viewing packages available on a registry
+In order to successfully download a package from a registry, that package must obviously exist on said registry. To see a list of packages available on a registry, using the `list_packages` command:
+
+    import t4
+	t4.list_packages()  # to see local packages
+	t4.list_packages("s3://bucket")  # to see remote packages
+
+<!-- ![](img/helium-api.png) -->
+
+
+### Managing individual files
+
+T4 provides a lower-level API for managing both local and remote files using `t4.copy`:
+
+```python
+t4.copy("file:///my-frame.csv", "s3://bucket-name/my-frame.csv")  # copy local to local
+t4.copy("s3:///my-frame.csv", "s3://bucket-name/my-frame.csv")  # copy remote to remote
+t4.copy("s3://my-frame.csv", "file:///bucket-name/my-frame.csv")  # copy remote to local
+```
+
+T4 supports files in any format, and up to 5 TB in size.
+
+To delete a remote file, use the `delete` command:
+
+```python
+he.delete("s3://bucket-name/my-frame.csv")
+```
+
 
 ### Working with memory
 
-You can commit a Python object to T4 using the `put` command:
+You can commit a Python object to a T4 file using the `put` command:
 
 ```python
-# Generate example data
-import pandas as pd
-import numpy as np
-df = pd.DataFrame(np.random.random((1000, 10)))
-
-# Put it
-import helium as he
-he.put(df, "bucket-name/my-frame.parquet")
+import t4
+t4.put(df, "bucket-name/my-frame.parquet")
 ```
 
 The above code writes `df` at the top level of `bucket-name`.
 
-> The `.parquet` file extension is for reference. T4 uses object metadata to store the object's format, and can deserialize the dataframe with or without the file extension 
-
-To create sub-folders, add the sub-folders to your path:
-
-```python
-he.put(df, "bucket-name/foo/bar/my-frame.parquet")
-```
-
-If you `put` to a folder that doesn't exist yet, `helium` will create that folder. If you overwrite an object, and bucket versioning is enabled, the overwritten object is retained as an older version of the same path.
+If you `put` to a folder that doesn't exist yet, `t4` will create that folder. If you overwrite an object, and bucket versioning is enabled, the overwritten object is retained as an older version of the same path. 
 
 T4 transparently serializes and de-serializes select Python
 objects. In the above example, `df` is automatically stored as an Apache
 Parquet file. This provides [substantial performance gains](http://wesmckinney.com/blog/python-parquet-update/).
-
-See [Serialization](#serialization) for details.
 
 To read `df` out of S3 and into local memory, use `get`:
 
@@ -163,96 +190,55 @@ df, meta = he.get("bucket-name/my-frame.parquet")
 
 `get` returns a tuple of values. The first entry is the data that you put in. The second entry is the metadata associated with the object. If no metadata exists, this value will be `None`.
 
-To learn more about metadata, skip forward to the section on [Metadata and querying](#metadata-and-querying).
 
-### Working with files
+### Metadata and search
 
-The commands for moving files and from T4 are very similar to the ones for moving objects in memory.
+T4 supports full-text search for select objects, and faceted search for metadata.
 
-To put a file to a T4 object, use the `put_file` command:
+`Package.set()` and `Package.update()` take an optional `meta={}` keyword.
+The metadata in `meta=` are stored with your data and indexed by T4's search function.
 
-```python
-# Generate example data
-import pandas as pd
-import numpy as np
-df = pd.DataFrame(np.random.random((1000, 10)))
-df.to_csv("my-frame.csv")
+T4 supports full-text search on a subset of the objects in your S3 bucket
+(T4 uses [Elasticsearch Service](https://aws.amazon.com/elasticsearch-service/)).
+By default, .md (markdown) and .ipynb (Jupyter) files are indexed.
+As a result you can search through code and markdown in notebook files.
 
-# Put it
-he.put_file("my-frame.csv", "bucket-name/my-frame.csv")
+You may search in two ways:
+* With the search bar in your T4 web catalog
+* With [`t4.search`](#`t4.search()`) command.
+
+To modify which file types are searchable, populate a `.quilt/config.json` file in your S3 bucket. Note that this file does not exist by default. The contents of the file shoud be something like this:
+
+```json
+{
+  "ipynb": true,
+  "md": true
+}
 ```
 
-This will populate a CSV file in T4. T4 supports files in any format, and up to 5 TB in size.
+By default search covers both plaintext and metadata
+(metadata are created via the `meta=` keyword in `Package/set` or `Package.update`).
 
-Similarly, to get a T4 object back, use the `get_file` command:
+To search user-defined metadata, perform a search of the form `user_meta.METADATA_KEY:"VALUE"`. For example, to get a list of objects whose metadata contains a value of `bar` for the field `foo`, search for `user_meta.foo:"bar"`.
 
-```python
-df, meta = he.get_file("bucket-name/my-frame.csv", "my-frame.csv")
-```
+T4 populates some other metadata fields automatically:
 
-This will download a `my-frame.csv` to your local disk.
+* `key` - the S3 path
+* `type` - serialization format
+* `version_id` - the object version
+* `target` - deserialization format
+* `size` - the number of bytes
+* `updated` - the current version's timestamp
 
-Just like `he.get` , this will result in a tuple whose first element is the data and the second, the metadata. If no metadata is present, `None` will be returned.
+To search automatic metadata, perform a search of the form `METADATA_KEY:"VALUE"`. For example, to get a list of objects 10 bytes in size, search for `size:"10"`.
 
+## API reference
 
-### Deleting files
-
-To delete a file that's already been committed to T4, use the `delete` command:
-
-```python
-he.delete("bucket-name/my-frame.csv")
-```
-
-### Versions
-
-In S3 buckets with object versioning enabled, object **versions** are automatic applied to every object in the bucket.
-
-You can access a specific version of an S3 object using the `version` keyword parameter in `get` or `get_file`:
-
-```python
-he.get("bucket-name/my-frame.csv", version="some_hash_here")
-```
-
-Use `helium.ls()`, or the web catalog, to display object versions.
-
-### Snapshots
-
-**Snapshots** are user-created and may apply to zero or more objects. As a
-general rule, snapshots apply to entire folders or *paths* in S3.
-
-A snapshot captures the state of an S3 bucket at a particular point in time.
-A snapshot contains a *prefix* under which all of the child object versions
-are recorded in your bucket's `.quilt/` directory.
-
-Snapshots are *immutable*. Their contents can never change
-(until and unless the underlying data or metadata are deleted). Together with versions, which are similarly immutable, snapshots are the building blocks of reproducible data pipelines.
-
-To create a snapshot use the `snapshot` command:
-
-```python
-he.snapshot("bucket-name", comment="Initial snapshot.")
-```
-
-You may snapshot individual files, folders containing files, or even entire buckets (as in the example above). To list snapshots of an S3 key, use the `list_snapshots` command:
-
-```python
-he.list_snapshots("bucket-name")
-```
-
-The `get` and `get_file` commands default to returning the current state of an S3 key. To return an S3 key as of a particular snapshot, pass the snapshot hash to the `snapshot` parameter:
-
-```python
-he.get("bucket-name/my-frame.csv", snapshot="some_hash_here")
-```
-
-#### Short hashes
-
-T4 identifies snapshots by their SHA-256 digest. When referring to snapshots
-through the API, you may use *short hashes*. Short hashes contain the first
-few characters of the digest. In practice, six characters are sufficient to
-specify a unique snapshot. 
+Coming soon! For now please see the docstrings of individual API methods.
 
 
+<!--
+## Leftovers from the old API reference
 ### Serialization
 
 #### Built-ins
@@ -281,71 +267,11 @@ To use a custom serialization format not in the built-ins,
 you can do one of the following:
 * `he.put(my_serializer.dumps(obj), "path/to/my/file.ext")`
 * Serialize the object to disk, then call `put_file()`
-
-### Metadata and search
-
-T4 supports full-text search for select objects, and faceted search for metadata.
-
-`put()` and `put_file()` take an optional `meta={}` keyword.
-The metadata in `meta=` are stored with your data and indexed by T4's search function.
-
-T4 supports full-text search on a subset of the objects in your S3 bucket
-(T4 uses [Elasticsearch Service](https://aws.amazon.com/elasticsearch-service/)).
-By default, .md (markdown) and .ipynb (Jupyter) files are indexed.
-As a result you can search through code and markdown in notebook files.
-
-You may search in two ways:
-* With the search bar in your T4 web catalog
-* With [`helium.search`](#`helium.search()`) command.
-
-<!-- 
-
-Searching for plaintext is simplest -- just type the terms you want to find into your query, and search will do its best to find matches for those terms. For example, he.search('json') will return all documents that mention json, whether in the key, body of text, or metadata.
-
-Filtering based on metadata is a powerful way to narrow your query. You can currently filter based on exact matches for specific fields in your documents. The syntax is $FIELD:"$VALUE". For example, if you want all the versions of the key example/foo.json, you could he.search('key:"example/foo.json"'). To use nested fields, just put dots between the names of the nested fields. For example, to query documents that have a user-defined metadata property called foo, and a value of 2, use the following query: he.search('user_meta.foo:2') The metadata you can query on are listed below.
-
-The metadata are laid out as follows:
-
-key: string
-user_meta: object
-type: Create | Delete
-version_id: string (S3 version ID)
-target: string (file extension of object)
-comment: string
-updated: date
-size: number (file size in bytes)
-There are other undocumented properties on documents. Please don't depend on their contents, they may change at any time.
-
 -->
-
-To modify which file types are searchable, populate a `.quilt/config.json` file in your S3 bucket. Note that this file does not exist by default. The contents of the file shoud be something like this:
-
-```json
-{
-  "ipynb": true,
-  "md": true
-}
-```
-
-By default search covers both plaintext and metadata
-(metadata are created via the `meta=` keyword in `put` or `put_file`).
-
-To search user-defined metadata, perform a search of the form `user_meta.METADATA_KEY:"VALUE"`. For example, to get a list of objects whose metadata contains a value of `bar` for the field `foo`, search for `user_meta.foo:"bar"`.
-
-T4 populates some other metadata fields automatically:
-
-* `key` - the S3 path
-* `type` - serialization format
-* `version_id` - the object version
-* `target` - deserialization format
-* `size` - the number of bytes
-* `updated` - the current version's timestamp
-
-To search automatic metadata, perform a search of the form `METADATA_KEY:"VALUE"`. For example, to get a list of objects 10 bytes in size, search for `size:"10"`.
 
 ## Known issues
 
-* To annotate objects with searchable metadata, you must use the `put` API
+* To annotate objects with searchable metadata, you must use `T4` API methods.
 * The tilde (`~`), forward slash (`/`), back slash, and angle bracket (`{`, `}`, `(`, `)`, `[`, `]`) characters will cause search to fail. If your search string includes these characters, be sure to quote your input. E.g. search for `"~aleksey"`, not `~aleksey`.
 * A tilde character (`~`) in an S3 path may cause issues with your operating system and `get_file()`. For local files, use absolute paths (like `/Users/alex/Desktop`) instead.
 * The T4 full-text search index only contains *newly written objects* with the appropriate file extensions
@@ -362,7 +288,7 @@ To search automatic metadata, perform a search of the form `METADATA_KEY:"VALUE"
 * The keys of objects in S3 should not end in `/`. Objects whose keys end in `/`
 are treated specially by some S3 tools in a way that
 is potentially dangerous, so it's best to avoid them.
-The helium API will help you avoid this rough edge by rejecting object keys that end in `/`.
+The T4 API will therefore reject object keys that end in `/`.
 Refer to [Amazon's documentation](https://docs.aws.amazon.com/AmazonS3/latest/user-guide/using-folders.html) on folder objects.
 
   ~~`he.put_file("foo.txt", "bucket/path/")`~~ - this is not supported
