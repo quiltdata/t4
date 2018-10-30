@@ -68,7 +68,7 @@ def list_packages(registry=None):
     """ Lists Packages in the registry.
 
     Returns a list of all named packages in a registry.
-    If the registry in None, default to the local registry.
+    If the registry is None, default to the local registry.
 
     Args:
         registry(string): location of registry to load package from.
