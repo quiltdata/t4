@@ -263,6 +263,7 @@ class Package(object):
             # TODO: Warn if overwritting a logical key?
             pkg = pkg.set(logical_key, entry)
 
+        # modified package should have new top hash
         pkg._unset_tophash()
         return pkg
 
@@ -404,6 +405,7 @@ class Package(object):
         pkg = self._clone()
         for logical_key, entry in new_keys_dict.items():
             pkg = pkg.set(logical_key, entry, meta)
+        # modified package should have new top hash
         pkg._unset_tophash()
         return pkg
 
@@ -441,12 +443,15 @@ class Package(object):
                 raise PackageException("Must specify metadata in the entry")
         else:
             raise NotImplementedError
+        
+        # modified package should have new top hash
         pkg._unset_tophash()
         return pkg
 
     def _update_meta(self, logical_key, meta):
         pkg = self._clone()
         pkg._data[logical_key].meta = meta
+        # modified package should have new top hash
         pkg._unset_tophash()
         return pkg
 
@@ -462,6 +467,7 @@ class Package(object):
         """
         pkg = self._clone()
         pkg._data.pop(logical_key)
+        # modified package should have new top hash
         pkg._unset_tophash()
         return pkg
 
