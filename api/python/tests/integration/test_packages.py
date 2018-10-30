@@ -261,10 +261,9 @@ def test_list_local_packages(tmpdir):
     assert len(pkgs) == 3
 
     # Verify manifest is registered by hash when local path given
-    # todo: Fix our test handling of BASE_DIR
-    # pkgs = t4.list_packages(BASE_PATH)
-    # assert "Foo" in pkgs
-    # assert "Bar" in pkgs
+    pkgs = t4.list_packages(BASE_DIR)
+    assert "Foo" in pkgs
+    assert "Bar" in pkgs
 
 def test_list_remote_packages():
     with patch('t4.api.list_objects', return_value=('foo','bar')) as mock:
