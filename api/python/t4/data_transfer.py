@@ -347,7 +347,12 @@ def delete_object(path):
         s3_client.head_object(Bucket=bucket, Key=key)  # Make sure it exists
         s3_client.delete_object(Bucket=bucket, Key=key)  # Actually delete it
 
-NO_OP_COPY_ERROR_MESSAGE = "An error occurred (InvalidRequest) when calling the CopyObject operation: This copy request is illegal because it is trying to copy an object to itself without changing the object's metadata, storage class, website redirect location or encryption attributes."
+NO_OP_COPY_ERROR_MESSAGE = ("An error occurred (InvalidRequest) when calling "
+                            "the CopyObject operation: This copy request is illegal "
+                            "because it is trying to copy an object to itself "
+                            "without changing the object's metadata, storage "
+                            "class, website redirect location or encryption "
+                            "attributes.")
 
 def copy_object(src, dest, meta, version=None):
     src_bucket, src_key = split_path(src, require_subpath=True)
