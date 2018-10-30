@@ -6,7 +6,6 @@ import pathlib
 import shutil
 from threading import Lock
 from urllib.parse import urlparse
-from urllib.request import url2pathname
 
 from botocore.exceptions import ClientError
 import boto3
@@ -15,7 +14,7 @@ from s3transfer.subscribers import BaseSubscriber
 from six import BytesIO, binary_type, text_type
 from tqdm.autonotebook import tqdm
 
-from .util import HeliumException, split_path, parse_s3_url
+from .util import HeliumException, split_path, parse_file_url, parse_s3_url
 
 
 HELIUM_METADATA = 'helium'
@@ -430,19 +429,19 @@ def copy_file(src, dest, meta):
     if src_url.scheme == 'file':
         if dest_url.scheme == 'file':
             # TODO: metadata
-            shutil.copyfile(url2pathname(src_url.path), url2pathname(dest_url.path))
+            shutil.copyfile(parse_file_url(src_url), parse_file_url(dest_url))
         elif dest_url.scheme == 's3':
             dest_bucket, dest_path, dest_version_id = parse_s3_url(dest_url)
             if dest_version_id:
                 raise ValueError("Cannot set VersionId on destination")
-            upload_file(url2pathname(src_url.path), dest_bucket + '/' + dest_path, meta)
+            upload_file(parse_file_url(src_url), dest_bucket + '/' + dest_path, meta)
         else:
             raise NotImplementedError
     elif src_url.scheme == 's3':
         src_bucket, src_path, src_version_id = parse_s3_url(src_url)
         if dest_url.scheme == 'file':
             # TODO: metadata
-            download_file(src_bucket + '/' + src_path, url2pathname(dest_url.path), src_version_id)
+            download_file(src_bucket + '/' + src_path, parse_file_url(dest_url), src_version_id)
         elif dest_url.scheme == 's3':
             dest_bucket, dest_path, dest_version_id = parse_s3_url(dest_url)
             if dest_version_id:
