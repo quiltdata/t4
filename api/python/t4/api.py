@@ -5,7 +5,7 @@ import requests
 from aws_requests_auth.boto_utils import BotoAWSRequestsAuth
 from elasticsearch import Elasticsearch, RequestsHttpConnection
 from six.moves import urllib
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlunparse
 from urllib.request import url2pathname
 
 from .data_transfer import (TargetType, copy_file, deserialize_obj, download_bytes,
@@ -83,12 +83,16 @@ def list_packages(registry=None):
         # for get_registry functions.
         registry = str(get_local_package_registry())
 
-    registry_url = urlparse(str(fix_url(registry + '/named_packages/')))
+    registry_url = urlparse(str(fix_url(registry)))
     if registry_url.scheme == 'file':
-        return os.listdir(url2pathname(registry_url.path))
+        return os.listdir(url2pathname(registry_url.path) + '/named_packages')
     elif registry_url.scheme == 's3':
+        # TODO: remove this casing once the get_local_package_registry is 
+        # integrated in get_package_registry
+        registry_url = urlparse(get_package_registry(urlunparse(registry_url)))
         src_bucket, src_path, _ = parse_s3_url(registry_url)
-        prefixes, _ = list_objects(src_bucket + '/' + src_path, recursive=False)
+        prefixes, _ = list_objects(src_bucket + '/' + src_path + '/named_packages',
+                                   recursive=False)
     else:
         raise NotImplementedError
 
