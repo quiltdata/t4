@@ -140,7 +140,9 @@ class Package(object):
             # if hash is specified, name doesn't matter
             pkg_path = '{}/packages/{}'.format(registry, pkg_hash)
             # TODO replace open with something that supports both local and s3
-            self = self._from_path(pkg_path)
+            pkg = self._from_path(pkg_path)
+            # can't assign to self, so must mutate it
+            self._set_state(pkg._data, pkg._meta)
             return
 
         pkg_path = '{}/named_packages/{}/'.format(registry, quote(name))
@@ -158,7 +160,9 @@ class Package(object):
 
         latest_hash = latest_hash.strip()
         latest_path = '{}/packages/{}'.format(registry, quote(latest_hash))
-        self = self._from_path(latest_path)
+        pkg = self._from_path(latest_path)
+        # can't assign to self, so must mutate it
+        self._set_state(pkg._data, pkg._meta)
 
     @staticmethod
     def _from_path(uri):
