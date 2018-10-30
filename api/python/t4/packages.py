@@ -141,6 +141,7 @@ class Package(object):
             pkg_path = '{}/packages/{}'.format(registry, pkg_hash)
             # TODO replace open with something that supports both local and s3
             pkg = self._from_path(pkg_path)
+            # can't assign to self, so must mutate it
             self._set_state(pkg._data, pkg._meta)
             return
 
@@ -160,6 +161,7 @@ class Package(object):
         latest_hash = latest_hash.strip()
         latest_path = '{}/packages/{}'.format(registry, quote(latest_hash))
         pkg = self._from_path(latest_path)
+        # can't assign to self, so must mutate it
         self._set_state(pkg._data, pkg._meta)
 
     @staticmethod
