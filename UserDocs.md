@@ -41,7 +41,7 @@ To create a new in-memory package you initialize a new Package object and then p
 
 
 ### Managing a local package
-A local package is one which has not been published yet. Local packages contain local data, so they’re highly malleable and provide no inherent guarantees about the data they reference.
+A local package is one which has not been published yet. Local packages contain local data, so they’re highly malleable. The data they reference may change at any time.
 
 If you would like to save or read a local package, you can use the following methods to do so.
 
@@ -85,7 +85,10 @@ This will find the manifest associated with the given name and registry and down
 	# load a specific entry into memory
     data, meta = p.get("foo.parquet")
 
-Especially with large data packages, there are many cases in which you might want to download a manifest describing a package, without downloading the actual contents of the package itself. This T4 API provides this functionality.
+Especially with large data packages, there are many cases in which you might want to download a manifest describing a package, without downloading the actual contents of the package itself. For example, you might be interested in a large package with labeled images of cats, dogs, and chickens; but only want the cat pictures. 
+
+This T4 API provides this functionality. Copying over just the files you need allows you to have these cat pictures, without the overhead of downloading the dogs and chickens, too.
+
 
 <!-- Note that in order for `get` to work, the file must have been created by t4.put and it must be in one of the formats supported by the default T4 deserializers. -->
 
@@ -106,7 +109,7 @@ To load the contents of that package locally:
 	p.copy("/", "target/directory")
 
 
-Packages materialized on T4 guarantee the immutability of constituent nodes, so long as the underlying S3 bucket has versioning enabled. Packages materialized elsewhere do not. The onus of keeping the package manifest consistent with the actual contents of the file (e.g. updating the package manifest every time the file changes) is on the package author. Additionally, even if package files get overwritten, there is no way of accessing the old files.
+Packages pushed to T4 guarantee the immutability of constituent nodes, so long as the underlying S3 bucket has versioning enabled. Packages materialized elsewhere do not. The onus of keeping the package manifest consistent with the actual contents of the file (e.g. updating the package manifest every time the file changes) is on the package author. Additionally, even if package files get overwritten, there is no way of accessing the old files.
 
 
 ### Updating a package
