@@ -370,3 +370,35 @@ Refer to [Amazon's documentation](https://docs.aws.amazon.com/AmazonS3/latest/us
   `he.put_file("local_directory/", "bucket/path/")` - this will perform a recursive copy, and is correct
 
 
+## Catalog
+
+### Summaries
+
+Quilt summaries summarize data in your bucket.
+Summaries combine several file types:
+
+* Markdown (`.md`)
+* [Vega specs](https://github.com/vega/vega) (`.json`)
+* Jupyter notebooks (`.ipynb`)
+* Images (`.jpe?g`, `.png`, `.gif`)
+* HTML (`.html`)
+
+Upload `quilt_summarize.json` to any directory where you want a summary
+to appear.
+
+`quilt_summarize.json` is a JSON list of supported files in your S3 bucket.
+All files in the list are signed (for security) and rendered in order
+when you visit the containing directory in the Quilt web catalog.
+
+Paths are resolved relative to the containing `quilt_summarize.json` file.
+
+Example:
+
+```
+[
+  "/vega_specs/chloropleth.json",
+  "./image.jpg",
+  "../notebooks/JupyterCon.ipynb",
+  "description.md"
+]
+```
