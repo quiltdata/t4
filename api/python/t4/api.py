@@ -16,7 +16,7 @@ from .util import (HeliumConfig, HeliumException, AWS_SEPARATOR, CONFIG_PATH,
                    write_yaml, yaml_has_comments)
 
 
-def copy(src, dest, meta=None):
+def copy(src, dest):
     """
     Copies ``src`` object from T4 to ``dest``
 
@@ -26,12 +26,8 @@ def copy(src, dest, meta=None):
     Parameters:
         src (str): a path to retrieve
         dest (str): a path to write to
-        meta (dict): optional metadata that will be assigned to the object
     """
-    all_meta = dict(
-        user_meta=meta
-    )
-    copy_file(fix_url(src), fix_url(dest), all_meta)
+    copy_file(fix_url(src), fix_url(dest))
 
 
 def put(obj, dest, meta=None):
