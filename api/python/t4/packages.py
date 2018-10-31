@@ -127,7 +127,7 @@ class Package(object):
             pkg_hash(string): top hash of package version to load
             registry(string): location of registry to load package from
         """
-        if name is None and pkg_hash is None and registry is None:
+        if name is None and pkg_hash is None:
             self._data = {}
             self._meta = {'version': 'v0'}
             return
