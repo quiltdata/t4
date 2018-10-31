@@ -3,6 +3,7 @@ import datetime
 import json
 import os
 from urllib.parse import parse_qs, unquote, urlparse
+from urllib.request import url2pathname
 
 # backports
 from six.moves import urllib
@@ -76,7 +77,10 @@ def fix_url(url):
     # TODO: Do something about file paths like C:\Users\foo if we care about Windows.
     parsed = urlparse(url)
     if not parsed.scheme:
-        url = pathlib.Path(url).resolve().as_uri()
+        # `resolve()` _tries_ to make the URI absolute - but doesn't guarantee anything.
+        # In particular, on Windows, non-existent files won't be resolved.
+        # `absolute()` makes the URI absolute, though it can still contain '..'
+        url = pathlib.Path(url).resolve().absolute().as_uri()
     return url
 
 
@@ -92,6 +96,17 @@ def parse_s3_url(s3_url):
     if query:
         raise ValueError("Unexpected S3 query string: %r" % s3_url.query)
     return bucket, path, version_id
+
+
+def parse_file_url(file_url):
+    if file_url.scheme != 'file':
+        raise ValueError("Invalid file URI")
+    path = url2pathname(file_url.path)
+    if file_url.netloc not in ('', 'localhost'):
+        # Windows file share
+        # TODO: Can't do anything useful on non-Windows... Return an error?
+        path = '\\\\%s%s' % (file_url.netloc, path)
+    return path
 
 
 def read_yaml(yaml_stream):
