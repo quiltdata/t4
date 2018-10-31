@@ -118,7 +118,7 @@ class PackageEntry(object):
 class Package(object):
     """ In-memory representation of a package """
 
-    def __init__(self, name=None, pkg_hash=None, registry=None):
+    def __init__(self, name=None, pkg_hash=None, registry=''):
         """
         Create a Package from scratch, or load one from a registry.
 
@@ -132,12 +132,7 @@ class Package(object):
             self._meta = {'version': 'v0'}
             return
 
-        if registry is None:
-            # default to local registry
-            registry = get_package_registry()
-
-        if registry.startswith('s3://'):
-            registry = get_package_registry(registry)
+        registry = get_package_registry(fix_url(registry))
 
         if pkg_hash is not None:
             # if hash is specified, name doesn't matter
