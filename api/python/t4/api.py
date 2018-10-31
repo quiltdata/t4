@@ -18,6 +18,17 @@ from .util import (HeliumConfig, HeliumException, AWS_SEPARATOR, CONFIG_PATH,
 
 
 def copy(src, dest, meta=None):
+    """
+    Copies ``src`` object from T4 to ``dest``
+
+    Either of ``src`` and ``dest`` may be S3 paths (starting with ``s3://``)
+    or local file paths (starting with ``file:///``).
+
+    Parameters:
+        src (str): a path to retrieve
+        dest (str): a path to write to
+        meta (dict): optional metadata that will be assigned to the object
+    """
     all_meta = dict(
         user_meta=meta
     )
@@ -25,6 +36,20 @@ def copy(src, dest, meta=None):
 
 
 def put(obj, dest, meta=None):
+    """Write an in-memory object to the specified T4 ``dest``
+
+    Note:
+        Does not work with all objects -- object must be serializable.
+
+    You may pass a dict to ``meta`` to store it with ``obj`` at ``dest``.
+
+    See User Docs for more info on object Serialization and Metadata.
+
+    Parameters:
+        obj: a serializable object
+        dest (str): path in T4
+        meta (dict): Optional. metadata dict to store with ``obj`` at ``dest``
+    """
     if dest.endswith(AWS_SEPARATOR):
         raise ValueError("Invalid path: %r; ends with a %r"
                          % (dest, AWS_SEPARATOR))
@@ -38,6 +63,17 @@ def put(obj, dest, meta=None):
 
 
 def get(src, version=None):
+    """Retrieves src object from T4 and loads it into memory.
+
+    An optional ``version`` may be specified.
+
+    Parameters:
+        src (str): A path specifying the object to retrieve
+        version (str): Optional. A specific S3 version id to use
+
+    Returns:
+        tuple: ``(data, metadata)``.  Does not work on all objects.
+    """
     data, meta = download_bytes(src, version)
 
     target_str = meta.get('target')
@@ -52,10 +88,34 @@ def get(src, version=None):
 
 
 def delete(path):
+    """Delete an object from T4.
+
+    Does not delete local files.
+
+    Parameters:
+        path (str): Path of object to delete
+    """
     delete_object(path)
 
 
 def ls(path, recursive=False):
+    """List data from the specified path.
+
+    Parameters:
+        path (str): Path (including bucket name) to list
+        recursive (bool): show subdirectories and their contents as well
+
+    Returns:
+        ``list``: Return value structure has not yet been permanently decided
+        Currently, it's a ``tuple`` of ``list`` objects, containing the
+        following:
+        result[0]
+            directory info
+        result[1]
+            file/object info
+        result[2]
+            delete markers
+    """
     if not path.endswith('/'):
         path += '/'
 
@@ -224,7 +284,7 @@ def log(key, pprint=False):
         return r
 
 def config(*autoconfig_url, **config_values):
-    """Set or read the Helium configuration
+    """Set or read the T4 configuration
 
     To retrieve the current config, call directly, without arguments:
         >>> import t4 as he
