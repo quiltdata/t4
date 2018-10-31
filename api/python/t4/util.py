@@ -102,7 +102,7 @@ def parse_file_url(file_url):
     if file_url.scheme != 'file':
         raise ValueError("Invalid file URI")
     path = url2pathname(file_url.path)
-    if file_url.netloc:
+    if file_url.netloc not in ('', 'localhost'):
         # Windows file share
         # TODO: Can't do anything useful on non-Windows... Return an error?
         path = '\\\\%s%s' % (file_url.netloc, path)
