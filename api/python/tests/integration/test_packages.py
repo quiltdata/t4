@@ -153,7 +153,7 @@ def test_load_into_t4(tmpdir):
         with open(test_file, 'w') as fd:    
             fd.write(test_file)
         new_pkg = new_pkg.set('foo', test_file)
-        new_pkg.push('package_name', 's3://my_test_bucket/')
+        new_pkg.push('s3://my_test_bucket/', name='package_name')
 
         # Get the second argument (destination) from the non-keyword args list
         dest_args = [x[0][1] for x in mock.call_args_list]

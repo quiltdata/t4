@@ -2,6 +2,7 @@ from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 import hashlib
 import json
+import os
 import pathlib
 import shutil
 from threading import Lock
@@ -430,6 +431,7 @@ def copy_file(src, dest, meta):
     if src_url.scheme == 'file':
         if dest_url.scheme == 'file':
             # TODO: metadata
+            os.makedirs(os.path.dirname(url2pathname(dest_url.path)), exist_ok=True)
             shutil.copyfile(url2pathname(src_url.path), url2pathname(dest_url.path))
         elif dest_url.scheme == 's3':
             dest_bucket, dest_path, dest_version_id = parse_s3_url(dest_url)
@@ -442,6 +444,7 @@ def copy_file(src, dest, meta):
         src_bucket, src_path, src_version_id = parse_s3_url(src_url)
         if dest_url.scheme == 'file':
             # TODO: metadata
+            os.makedirs(os.path.dirname(url2pathname(dest_url.path)), exist_ok=True)
             download_file(src_bucket + '/' + src_path, url2pathname(dest_url.path), src_version_id)
         elif dest_url.scheme == 's3':
             dest_bucket, dest_path, dest_version_id = parse_s3_url(dest_url)
