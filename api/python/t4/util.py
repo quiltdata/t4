@@ -74,14 +74,22 @@ def split_path(path, require_subpath=False):
 
 def fix_url(url):
     """Convert non-URL paths to file:// URLs"""
-    # TODO: Do something about file paths like C:\Users\foo if we care about Windows.
+    # If it has a scheme, we assume it's a URL.
+    # On Windows, we ignore schemes that look like drive letters, e.g. C:/users/foo
     parsed = urlparse(url)
-    if not parsed.scheme:
-        # `resolve()` _tries_ to make the URI absolute - but doesn't guarantee anything.
-        # In particular, on Windows, non-existent files won't be resolved.
-        # `absolute()` makes the URI absolute, though it can still contain '..'
-        url = pathlib.Path(url).resolve().absolute().as_uri()
-    return url
+    if parsed.scheme and not os.path.splitdrive(url)[0]:
+        return url
+
+    # `resolve()` _tries_ to make the URI absolute - but doesn't guarantee anything.
+    # In particular, on Windows, non-existent files won't be resolved.
+    # `absolute()` makes the URI absolute, though it can still contain '..'
+    fixed_url = pathlib.Path(url).resolve().absolute().as_uri()
+
+    # pathlib likes to remove trailing slashes, so add it back if needed.
+    if url[-1:] in (os.sep, os.altsep) and not fixed_url.endswith('/'):
+        fixed_url += '/'
+
+    return fixed_url
 
 
 def parse_s3_url(s3_url):
