@@ -490,6 +490,7 @@ def copy_file(src, dest, override_meta=None):
     if src_url.scheme == 'file':
         if dest_url.scheme == 'file':
             # TODO: metadata
+            pathlib.Path(parse_file_url(dest_url)).parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(parse_file_url(src_url), parse_file_url(dest_url))
         elif dest_url.scheme == 's3':
             dest_bucket, dest_path, dest_version_id = parse_s3_url(dest_url)
@@ -502,6 +503,7 @@ def copy_file(src, dest, override_meta=None):
         src_bucket, src_path, src_version_id = parse_s3_url(src_url)
         if dest_url.scheme == 'file':
             # TODO: metadata
+            pathlib.Path(parse_file_url(dest_url)).parent.mkdir(parents=True, exist_ok=True)
             download_file(src_bucket + '/' + src_path, parse_file_url(dest_url), src_version_id)
         elif dest_url.scheme == 's3':
             dest_bucket, dest_path, dest_version_id = parse_s3_url(dest_url)
