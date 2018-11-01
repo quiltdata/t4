@@ -21,7 +21,6 @@ import { selectSearchText } from 'containers/App/selectors';
 import { ES } from 'utils/AWS';
 import { composeComponent } from 'utils/reactTools';
 import { injectReducer } from 'utils/ReducerInjector';
-import { splitPath } from 'utils/s3paths';
 import { injectSaga } from 'utils/SagaInjector';
 import { readableBytes } from 'utils/string';
 import withParsedQuery from 'utils/withParsedQuery';
@@ -107,8 +106,7 @@ const Version = composeComponent('SearchResults.Version',
 
 const Hit = composeComponent('SearchResults.Hit',
   ({
-    prefix,
-    file,
+    path,
     timestamp,
     size,
     text,
@@ -119,7 +117,7 @@ const Hit = composeComponent('SearchResults.Hit',
     <HitCard>
       <CardText style={{ paddingBottom: 0 }}>
         <Heading>
-          {!!prefix && <Link to={`/browse/${prefix}`}>{prefix}</Link>}{file}
+          <Link to={`/browse/${path}`}>{path}</Link>
         </Heading>
         {!!text && <Text>{text}</Text>}
         {!!meta && (
@@ -218,8 +216,7 @@ export default composeComponent('SearchResults',
       <div>
         <h1><FormattedMessage {...messages.header} /></h1>
         {response.length
-          ? response.map(({ path, ...rest }) =>
-            <Hit key={path} {...rest} {...splitPath(path)} />)
+          ? response.map((result) => <Hit key={result.path} {...result} />)
           : <NothingFound />
         }
         <br />
