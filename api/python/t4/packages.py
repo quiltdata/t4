@@ -17,7 +17,7 @@ from pathlib import Path
 from .data_transfer import copy_file, deserialize_obj, download_bytes, TargetType
 
 from .exceptions import PackageException
-from .util import HeliumException, BASE_PATH, fix_url, parse_file_url, parse_s3_url
+from .util import QuiltException, BASE_PATH, fix_url, parse_file_url, parse_s3_url
 
 
 def hash_file(readable_file):
@@ -284,12 +284,12 @@ class Package(object):
 
         target_str = entry.meta.get('target')
         if target_str is None:
-            raise HeliumException("No serialization metadata")
+            raise QuiltException("No serialization metadata")
 
         try:
             target = TargetType(target_str)
         except ValueError:
-            raise HeliumException("Unknown serialization target: %r" % target_str)
+            raise QuiltException("Unknown serialization target: %r" % target_str)
 
         physical_keys = entry.physical_keys
         if len(physical_keys) > 1:

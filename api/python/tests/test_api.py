@@ -33,7 +33,7 @@ class TestAPI():
         # defined in local DNS, like 'foo' instead of 'foo.com' -- and on top
         # of that, we automatically add 'https://' to the name if no schema is
         # present.  ..but, a bad port causes an error..
-        with pytest.raises(util.HeliumException, match='Port must be a number'):
+        with pytest.raises(util.QuiltException, match='Port must be a number'):
             he.config('https://fliff:fluff')
 
     def test_put_to_directory_failure(self):
@@ -44,7 +44,7 @@ class TestAPI():
             he.put(test_object, "test/")
 
     def test_search_no_config(self):
-        with pytest.raises(util.HeliumException, match="No configured region."):
+        with pytest.raises(util.QuiltException, match="No configured region."):
             he.search('*')
 
     @patch('t4.api._create_es')
