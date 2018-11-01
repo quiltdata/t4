@@ -168,15 +168,29 @@ def test_package_get(tmpdir):
     """ Verify loading data from a local file. """
     pkg = (
         Package()
-        .set('foo', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
-             {'target': 'unicode', 'user_meta': 'blah'})
-        .set('bar', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'))
+            # specify target, with user_meta
+            .set('foo', os.path.join(os.path.dirname(__file__), 'data', 'foo.unrecognized.ext'),
+                 {'target': 'unicode', 'user_meta': 'blah'})
+            # specify target, no user_meta
+            .set('food', os.path.join(os.path.dirname(__file__), 'data', 'foo.unrecognized.ext'),
+                 {'target': 'unicode'})
+
+            # inferred target, with user_meta
+            .set('bar', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'), {'user_meta': 'blah'})
+            # inferred target, no user_meta
+            .set('bart', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'))
+
+            # no target
+            .set('baz', os.path.join(os.path.dirname(__file__), 'data', 'foo.unrecognized.ext'))
     )
 
     assert pkg.get('foo') == ('123\n', 'blah')
+    assert pkg.get('food') == ('123\n', None)
+    assert pkg.get('bar') == ('123\n', 'blah')
+    assert pkg.get('bart') == ('123\n', None)
 
     with pytest.raises(HeliumException):
-        pkg.get('bar')
+        pkg.get('baz')
 
 def test_capture(tmpdir):
     """ Verify building a package from a directory. """

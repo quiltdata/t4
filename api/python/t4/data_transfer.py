@@ -22,10 +22,14 @@ from . import xattr
 HELIUM_METADATA = 'helium'
 HELIUM_XATTR = 'com.quiltdata.helium'
 EXTENSION_TARGET_MAP = {
+    'bin': 'bytes',
+    'json': 'json',
+    'md': 'unicode',
     'npy': 'numpy',
     'npz': 'numpy',
-    'json': 'json',
     'parquet': 'pyarrow',
+    'rst': 'unicode',
+    'txt': 'unicode',
     }
 
 

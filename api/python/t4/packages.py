@@ -293,8 +293,8 @@ class Package(object):
                 if targets and all(t == targets[0] for t in targets):
                     # no conflicts -- use the found target type.
                     target_str = targets[0]
-                else:
-                    target_str = 'bytes'
+            if target_str is None:
+                HeliumException("No serialization target in metadata, and inference failed.")
         try:
             target = TargetType(target_str)
         except ValueError:
