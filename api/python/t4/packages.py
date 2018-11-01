@@ -354,7 +354,7 @@ class Package(object):
         else:
             registry = get_package_registry()
 
-        hash_string = self.top_hash()["value"]
+        hash_string = self.top_hash()
         with tempfile.NamedTemporaryFile() as manifest:
             self.dump(manifest)
             manifest.flush()
@@ -371,7 +371,7 @@ class Package(object):
             named_path = registry.strip('/') + '/named_packages/' + quote(name) + '/'
             # todo: use a float to string formater instead of double casting
             with tempfile.NamedTemporaryFile() as hash_file:
-                hash_file.write(self.top_hash()["value"].encode('utf-8'))
+                hash_file.write(self.top_hash().encode('utf-8'))
                 hash_file.flush()
                 hash_uri = pathlib.Path(hash_file.name).resolve().as_uri()
                 timestamp_path = named_path + str(int(time.time()))
@@ -529,7 +529,7 @@ class Package(object):
         """
         if 'top_hash' not in self._meta:
             self._top_hash()
-        return self._meta['top_hash']
+        return self._meta['top_hash']['value']
 
     def push(self, path, name=None):
         """
