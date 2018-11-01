@@ -6,18 +6,17 @@ from aws_requests_auth.boto_utils import BotoAWSRequestsAuth
 from elasticsearch import Elasticsearch, RequestsHttpConnection
 from six.moves import urllib
 from urllib.parse import urlparse, urlunparse
-from urllib.request import url2pathname
 
 from .data_transfer import (TargetType, copy_file, deserialize_obj, download_bytes,
                             upload_bytes, delete_object, list_objects,
                             list_object_versions, serialize_obj)
 from .packages import get_local_package_registry, get_package_registry
 from .util import (HeliumConfig, HeliumException, AWS_SEPARATOR, CONFIG_PATH,
-                   CONFIG_TEMPLATE, fix_url, parse_s3_url, read_yaml, validate_url,
+                   CONFIG_TEMPLATE, fix_url, parse_file_url, parse_s3_url, read_yaml, validate_url,
                    write_yaml, yaml_has_comments)
 
 
-def copy(src, dest, meta=None):
+def copy(src, dest):
     """
     Copies ``src`` object from T4 to ``dest``
 
@@ -27,12 +26,8 @@ def copy(src, dest, meta=None):
     Parameters:
         src (str): a path to retrieve
         dest (str): a path to write to
-        meta (dict): optional metadata that will be assigned to the object
     """
-    all_meta = dict(
-        user_meta=meta
-    )
-    copy_file(fix_url(src), fix_url(dest), all_meta)
+    copy_file(fix_url(src), fix_url(dest))
 
 
 def put(obj, dest, meta=None):
@@ -142,7 +137,7 @@ def list_packages(registry=None):
 
     registry_url = urlparse(registry)
     if registry_url.scheme == 'file':
-        return os.listdir(url2pathname(registry_url.path))
+        return os.listdir(parse_file_url(registry_url))
     elif registry_url.scheme == 's3':
         src_bucket, src_path, _ = parse_s3_url(registry_url)
         prefixes, _ = list_objects(src_bucket + '/' + src_path + '/', recursive=False)

@@ -1,287 +1,59 @@
-import { basename, extname } from 'path';
+import { basename } from 'path';
 
-import invoke from 'lodash/fp/invoke';
-import { Card, CardTitle, CardText } from 'material-ui/Card';
-import { ListItem } from 'material-ui/List';
+import { Card, CardText, CardTitle } from 'material-ui/Card';
 import RaisedButton from 'material-ui/RaisedButton';
 import PT from 'prop-types';
+import * as R from 'ramda';
 import * as React from 'react';
-import Modal from 'react-modal';
 import { connect } from 'react-redux';
 import { Link } from 'react-router-dom';
 import {
   lifecycle,
   withProps,
   withHandlers,
-  withStateHandlers,
   setPropTypes,
 } from 'recompose';
 import styled from 'styled-components';
 
-import Markdown from 'components/Markdown';
 import MIcon from 'components/MIcon';
 import Spinner from 'components/Spinner';
 import config from 'constants/config';
-import { S3 } from 'utils/AWS';
-import { composeComponent } from 'utils/reactTools';
+import { S3, Signer } from 'utils/AWS';
+import AsyncResult from 'utils/AsyncResult';
 import { injectReducer } from 'utils/ReducerInjector';
 import {
-  ensureNoSlash,
-  up,
-  splitPath,
-  withoutPrefix,
+  getBreadCrumbs,
+  isDir,
 } from 'utils/s3paths';
 import { injectSaga } from 'utils/SagaInjector';
-import { readableBytes } from 'utils/string';
+import { composeComponent, extractProp } from 'utils/reactTools';
 
-import { get } from './actions';
+import ContentWindow from './ContentWindow';
+import Listing from './Listing';
+import Summary, { SummaryItem } from './Summary';
 import { REDUX_KEY } from './constants';
 import saga from './saga';
 import selector from './selectors';
-import reducer from './reducer';
+import reducer, { Action } from './reducer';
 
 
-const IMAGE_EXTS = new Set([
-  '.jpg', '.jpeg', '.png', '.gif',
-]);
-
-const ItemName = styled.div`
-  display: flex;
-`;
-
-const ItemInfo = styled.div`
-  display: flex;
-`;
-
-const ItemRow = composeComponent('Browser.ItemRow',
-  setPropTypes({
-    icon: PT.string.isRequired,
-    text: PT.string.isRequired,
-    link: PT.string,
-    children: PT.node,
-  }),
-  ({ icon, text, link, children, ...props }) => (
-    <ListItem
-      containerElement={link ? <Link to={link} /> : undefined}
-      innerDivStyle={{
-        display: 'flex',
-        fontSize: 14,
-        justifyContent: 'space-between',
-        padding: 8,
-      }}
-      {...props}
-    >
-      <ItemName>
-        <MIcon style={{ fontSize: 16, marginRight: 4 }}>{icon}</MIcon>
-        {text}
-      </ItemName>
-      <ItemInfo>{children}</ItemInfo>
-    </ListItem>
-  ));
-
-const ItemDir = composeComponent('Browser.ItemDir',
-  setPropTypes({
-    path: PT.string.isRequired,
-    name: PT.string.isRequired,
-  }),
-  ({ path, name }) => (
-    <ItemRow
-      icon="folder_open"
-      text={name}
-      link={`/browse/${path}`}
-    />
-  ));
-
-const FileInfoSize = styled.div`
-  text-align: right;
-  width: 6em;
-`;
-
-const FileInfoModified = styled.div`
-  text-align: right;
-  width: 12em;
-`;
-
-const FileShape = {
-  path: PT.string.isRequired,
-  modified: PT.instanceOf(Date).isRequired,
-  size: PT.number.isRequired,
-};
-
-const ItemFile = composeComponent('Browser.ItemFile',
-  setPropTypes({
-    name: PT.string.isRequired,
-    modified: PT.instanceOf(Date).isRequired,
-    size: PT.number.isRequired,
-    onClick: PT.func.isRequired,
-  }),
-  ({ name, size, modified, onClick }) => (
-    <ItemRow
-      icon="insert_drive_file"
-      text={name}
-      onClick={onClick}
-    >
-      <FileInfoSize>{readableBytes(size)}</FileInfoSize>
-      <FileInfoModified>{modified.toLocaleString()}</FileInfoModified>
-    </ItemRow>
-  ));
-
-const ImagePreview = styled.img`
-  display: block;
-  margin-left: auto;
-  margin-right: auto;
-  max-height: 100%;
-  max-width: 100%;
-  min-width: 20%;
-`;
-
-const Placeholder = () => (
-  <Spinner
-    style={{
-      fontSize: '4em',
-      position: 'absolute',
-      left: 20,
-    }}
-  />
-);
-
-const PreviewDir = composeComponent('Browser.PreviewDir',
-  setPropTypes({
-    path: PT.string.isRequired,
-    directories: PT.arrayOf(PT.string.isRequired).isRequired,
-    files: PT.arrayOf(PT.shape(FileShape).isRequired).isRequired,
-    readme: PT.shape({
-      file: PT.shape(FileShape).isRequired,
-      contents: PT.string.isRequired,
-    }),
-    s3: PT.object.isRequired,
-    s3Bucket: PT.string.isRequired,
-  }),
-  withStateHandlers({
-    preview: null,
-  }, {
-    showPreview: () => (type, data) => ({ preview: { type, data } }),
-    hidePreview: () => () => ({ preview: null }),
-  }),
-  withHandlers({
-    handlePreview: ({
-      s3,
-      s3Bucket,
-      showPreview,
-    }) => async (path) => {
-      const url = s3.getSignedUrl('getObject', {
-        Bucket: s3Bucket,
-        Key: path,
-      });
-      const ext = extname(path).toLowerCase();
-      if (IMAGE_EXTS.has(ext)) {
-        showPreview('image', url);
-      } else if (ext === '.html') {
-        showPreview('iframe', url);
-      } else if (ext === '.ipynb') {
-        showPreview('iframe',
-          `${config.aws.apiGatewayUrl}/preview?url=${encodeURIComponent(url)}`);
-      } else if (ext === '.md') {
-        showPreview('placeholder');
-        // TODO: Move this to saga.js?
-        const data = await s3.getObject({
-          Bucket: s3Bucket,
-          Key: path,
-        }).promise();
-        const body = data.Body.toString('utf-8');
-        showPreview('md', body);
-      } else {
-        window.open(url, '_blank');
-      }
-    },
-  }),
-  ({
-    path,
-    directories,
-    files,
-    readme,
-    hidePreview,
-    handlePreview,
-    preview,
-  }) => (
-    <React.Fragment>
-      <Modal
-        isOpen={!!preview}
-        onRequestClose={() => hidePreview()}
-      >
-        {preview && invoke(preview.type, {
-          md: () => <Markdown data={preview.data} />,
-          placeholder: () => <Placeholder />,
-          iframe: () => (
-            <React.Fragment>
-              <iframe
-                sandbox=""
-                title="Preview"
-                src={preview.data}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  border: 'none',
-                  position: 'relative',
-                  zIndex: 1,
-                }}
-              />
-              <Placeholder />
-            </React.Fragment>
-          ),
-          image: () => <ImagePreview src={preview.data} />,
-        })}
-      </Modal>
-      <Card>
-        <CardText style={{ padding: 12 }}>
-          {path !== '' && <ItemDir path={up(path)} name=".." />}
-          {directories.map((d) => (
-            <ItemDir
-              key={d}
-              path={d}
-              name={ensureNoSlash(withoutPrefix(path, d))}
-            />
-          ))}
-          {files.map(({ path: fPath, modified, size }) => (
-            <ItemFile
-              key={fPath}
-              name={withoutPrefix(path, fPath)}
-              size={size}
-              modified={modified}
-              onClick={() => handlePreview(fPath)}
-            />
-          ))}
-        </CardText>
-      </Card>
-      {readme && (
-        <Card style={{ marginTop: 16 }}>
-          <CardTitle title={withoutPrefix(path, readme.file.path)} />
-          <CardText>
-            <Markdown data={readme.contents} />
-          </CardText>
-        </Card>
-      )}
-    </React.Fragment>
-  ));
-
-const getBreadCrumbs = (prefix) =>
-  prefix ? [...getBreadCrumbs(up(prefix)), prefix] : [];
+const MAX_THUMBNAILS = 100;
 
 const BreadCrumbs = composeComponent('Browser.BreadCrumbs',
   setPropTypes({
-    prefix: PT.string.isRequired,
+    path: PT.string.isRequired,
     root: PT.string.isRequired,
   }),
-  ({ prefix, root }) => (
-    <h3>
-      {prefix
+  ({ path, root }) => (
+    <h3 style={{ fontSize: 18, margin: 0 }}>
+      {path
         ? <Link to="/browse/">{root}</Link>
         : root
       }
-      {getBreadCrumbs(prefix).map((b) => (
+      {getBreadCrumbs(path).map((b) => (
         <span key={b}>
           <span> / </span>
-          {b === prefix
+          {b === path
             ? basename(b)
             : <Link to={`/browse/${b}`}>{basename(b)}</Link>
           }
@@ -290,20 +62,106 @@ const BreadCrumbs = composeComponent('Browser.BreadCrumbs',
     </h3>
   ));
 
+const ErrorDisplay = composeComponent('Browser.ErrorDisplay',
+  setPropTypes({
+    retry: PT.func,
+    children: PT.node,
+  }),
+  ({ retry, children }) => (
+    <h3>
+      <MIcon>warning</MIcon>
+      {children || 'Something went wrong'}
+      {!!retry && <RaisedButton label="Retry" onClick={retry} />}
+    </h3>
+  ));
 
-export default composeComponent('Browser',
-  withProps({ s3Bucket: config.aws.s3Bucket }),
+const FileDisplay = composeComponent('Browser.FileDisplay',
+  setPropTypes({
+    bucket: PT.string.isRequired,
+    path: PT.string.isRequired,
+  }),
+  ({ bucket, path }) => (
+    // TODO: meta
+    <Card style={{ marginTop: 16 }}>
+      <CardText>
+        <ContentWindow handle={{ bucket, key: path }} />
+      </CardText>
+    </Card>
+  ));
+
+const Placeholder = () => <Spinner style={{ fontSize: '3em' }} />;
+
+const ThumbnailsContainer = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+`;
+
+const ThumbnailFiller = styled.div`
+  flex-basis: 19%;
+
+  &::after {
+    content: "";
+  }
+`;
+
+const Thumbnails = composeComponent('Browser.Thumbnails',
+  Signer.inject(),
+  withProps(({ images }) => ({
+    showing: images.slice(0, MAX_THUMBNAILS),
+  })),
+  ({ images, showing, signer }) => (
+    <Card style={{ marginTop: 16 }}>
+      <CardTitle
+        title={`Images (showing ${showing.length} out of ${images.length})`}
+        titleStyle={{ fontSize: 21 }}
+      />
+      <CardText>
+        <ThumbnailsContainer>
+          {showing.map((i) => (
+            <Link
+              key={i.key}
+              to={`/browse/${i.key}`}
+              style={{
+                flexBasis: '19%',
+                marginBottom: 16,
+              }}
+            >
+              <img
+                alt={basename(i.key)}
+                title={basename(i.key)}
+                src={signer.getSignedS3URL(i)}
+                style={{
+                  display: 'block',
+                  marginLeft: 'auto',
+                  marginRight: 'auto',
+                  maxHeight: 200,
+                  maxWidth: '100%',
+                }}
+              />
+            </Link>
+          ))}
+          {R.times(
+            (i) => <ThumbnailFiller key={`__filler${i}`} />,
+            (5 - (showing.length % 5)) % 5
+          )}
+        </ThumbnailsContainer>
+      </CardText>
+    </Card>
+  ));
+
+const DirectoryDisplay = composeComponent('Browser.DirectoryDisplay',
+  setPropTypes({
+    bucket: PT.string.isRequired,
+    path: PT.string.isRequired,
+  }),
   S3.inject(),
   injectSaga(REDUX_KEY, saga),
   injectReducer(REDUX_KEY, reducer),
   connect(selector),
-  withProps(({ match: { params: { path } } }) => ({
-    path,
-    ...splitPath(path),
-  })),
   withHandlers({
     getData: ({ dispatch, path }) => () => {
-      dispatch(get(path));
+      dispatch(Action.Get({ path }));
     },
   }),
   lifecycle({
@@ -316,35 +174,63 @@ export default composeComponent('Browser',
       }
     },
   }),
-  ({
-    prefix,
-    state,
-    result,
-    getData,
-    s3,
-    s3Bucket,
-  }) => (
-    <div>
-      <BreadCrumbs prefix={prefix} root={s3Bucket} />
-      {invoke(state, {
-        FETCHING: () => (
-          <Spinner style={{ fontSize: '3em' }} />
-        ),
-        ERROR: () => (
-          <h3>
-            <MIcon>warning</MIcon>
-            Something went wrong
-            <RaisedButton label="Retry" onClick={getData} />
-          </h3>
-        ),
-        READY: () => (
-          <PreviewDir
-            path={prefix}
-            {...result}
-            s3={s3}
-            s3Bucket={s3Bucket}
+  extractProp('state', AsyncResult.case({
+    _: () => <Placeholder />,
+    // eslint-disable-next-line react/prop-types
+    Ok: ({ files, directories, images, readme, summary }, { path }) => (
+      <React.Fragment>
+        <Listing
+          prefix={path}
+          directories={directories}
+          files={files}
+        />
+        {readme && (
+          <SummaryItem
+            title={basename(readme.key)}
+            handle={readme}
           />
-        ),
-      })}
+        )}
+        {!!images.length && <Thumbnails images={images} />}
+        {summary && (
+          <Summary handle={summary} />
+        )}
+      </React.Fragment>
+    ),
+    Err: (err, { getData }) => (
+      <ErrorDisplay retry={getData} />
+    ),
+  })));
+
+const TopBar = styled.div`
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  margin-top: 4px;
+`;
+
+export default composeComponent('Browser',
+  Signer.inject(),
+  withProps(({ match: { params: { path } } }) => ({
+    bucket: config.aws.s3Bucket,
+    path,
+  })),
+  ({ bucket, path, signer }) => (
+    <div>
+      <TopBar>
+        <BreadCrumbs path={path} root={bucket} />
+        {!isDir(path) && (
+          <RaisedButton
+            href={signer.getSignedS3URL({ bucket, key: path })}
+            label="Download file"
+          />
+        )}
+      </TopBar>
+
+      {isDir(path)
+        ? <DirectoryDisplay bucket={bucket} path={path} />
+        : <FileDisplay bucket={bucket} path={path} />
+      }
     </div>
   ));

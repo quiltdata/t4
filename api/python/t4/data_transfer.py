@@ -4,10 +4,10 @@ import hashlib
 import json
 import os
 import pathlib
+import platform
 import shutil
 from threading import Lock
 from urllib.parse import urlparse
-from urllib.request import url2pathname
 
 from botocore.exceptions import ClientError
 import boto3
@@ -16,14 +16,36 @@ from s3transfer.subscribers import BaseSubscriber
 from six import BytesIO, binary_type, text_type
 from tqdm.autonotebook import tqdm
 
-from .util import HeliumException, split_path, parse_s3_url
+from .util import HeliumException, split_path, parse_file_url, parse_s3_url
+from . import xattr
 
 
 HELIUM_METADATA = 'helium'
+HELIUM_XATTR = 'com.quiltdata.helium'
+
+if platform.system() == 'Linux':
+    # Linux only allows users to modify user.* xattrs.
+    HELIUM_XATTR = 'user.%s' % HELIUM_XATTR
 
 s3_client = boto3.client('s3')
 s3_transfer_config = TransferConfig()
 s3_manager = create_transfer_manager(s3_client, s3_transfer_config)
+
+# s3transfer does not give us a way to access the metadata of an object it's downloading,
+# even though it has access to it. To get around this, we patch the s3 client to get a callback
+# with the response.
+# See https://github.com/boto/s3transfer/issues/104
+_old_get_object = s3_client.get_object
+def _get_object(self, **kwargs):
+    callback = kwargs.pop('Callback', None)
+    resp = _old_get_object(**kwargs)
+    if callback is not None:
+        callback(resp)
+    return resp
+s3_client.get_object = type(_old_get_object)(_get_object, s3_client)
+
+s3_manager.ALLOWED_DOWNLOAD_ARGS = s3_manager.ALLOWED_DOWNLOAD_ARGS + ['Callback']
+
 
 class TargetType(Enum):
     """
@@ -111,6 +133,7 @@ def serialize_obj(obj):
 
     return data, target
 
+
 class SizeCallback(BaseSubscriber):
     def __init__(self, size):
         self.size = size
@@ -157,7 +180,7 @@ def _download_single_file(bucket, key, dest_path, version=None):
         params.update(dict(VersionId=version))
     resp = s3_client.head_object(**params)
     size = resp['ContentLength']
-    # meta = _parse_metadata(resp)
+    meta = _parse_metadata(resp)
     extra = dict(VersionId=version) if version is not None else {}
 
     if dest_path.endswith('/'):
@@ -172,6 +195,7 @@ def _download_single_file(bucket, key, dest_path, version=None):
             extra_args=extra
         )
         future.result()
+        xattr.setxattr(dest_path, HELIUM_XATTR, json.dumps(meta).encode('utf-8'))
 
 
 def _download_dir(bucket, prefix, dest_path):
@@ -206,16 +230,28 @@ def _download_dir(bucket, prefix, dest_path):
     with tqdm(total=total_size, unit='B', unit_scale=True) as progress:
         callback = ProgressCallback(progress)
 
+        metadata = {}
+        lock = Lock()
+
         futures = []
         for key, dest_file, size in tuples_list:
+            def meta_callback(resp):
+                meta = _parse_metadata(resp)
+                with lock:
+                    metadata[key] = meta
             dest_file.parent.mkdir(parents=True, exist_ok=True)
             future = s3_manager.download(
-                bucket, key, str(dest_file), subscribers=[SizeCallback(size), callback]
+                bucket, key, str(dest_file),
+                extra_args=dict(Callback=meta_callback), subscribers=[SizeCallback(size), callback]
             )
             futures.append(future)
 
         for future in futures:
             future.result()
+
+        for key, dest_file, _ in tuples_list:
+            meta = metadata[key]
+            xattr.setxattr(dest_file, HELIUM_XATTR, json.dumps(meta).encode('utf-8'))
 
 
 def download_file(src_path, dest_path, version=None):
@@ -266,7 +302,7 @@ def _calculate_etag(file_obj):
     return '"%s"' % etag
 
 
-def upload_file(src_path, dest_path, meta):
+def upload_file(src_path, dest_path, override_meta=None):
     src_file = pathlib.Path(src_path)
     is_dir = src_file.is_dir()
     if src_path.endswith('/'):
@@ -278,15 +314,14 @@ def upload_file(src_path, dest_path, meta):
         if is_dir:
             raise ValueError("Source path is a directory; must end in /")
 
-    bucket, key = split_path(dest_path)
-    extra_args = dict(Metadata={HELIUM_METADATA: json.dumps(meta)})
-
     if is_dir:
         src_root = src_file
         src_file_list = list(f for f in src_file.rglob('*') if f.is_file())
     else:
         src_root = src_file.parent
         src_file_list = [src_file]
+
+    bucket, key = split_path(dest_path)
 
     total_size = sum(f.stat().st_size for f in src_file_list)
 
@@ -309,6 +344,20 @@ def upload_file(src_path, dest_path, meta):
         futures = []
         for f, etag in zip(src_file_list, src_etag_list):
             real_dest_path = key + str(f.relative_to(src_root)) if (not key or key.endswith('/')) else key
+
+            if override_meta is None:
+                try:
+                    meta_bytes = xattr.getxattr(f, HELIUM_XATTR)
+                    meta = json.loads(meta_bytes.decode('utf-8'))
+                except IOError:
+                    # No metadata
+                    meta = {}
+                except ValueError:
+                    raise ValueError("Source path contains invalid metadata")
+            else:
+                meta = override_meta
+
+            extra_args = dict(Metadata={HELIUM_METADATA: json.dumps(meta)})
             existing_src = existing_etags.get(etag)
             if existing_src is not None:
                 # We found an existing object with the same ETag, so copy it instead of uploading
@@ -355,7 +404,7 @@ NO_OP_COPY_ERROR_MESSAGE = ("An error occurred (InvalidRequest) when calling "
                             "class, website redirect location or encryption "
                             "attributes.")
 
-def copy_object(src, dest, meta, version=None):
+def copy_object(src, dest, override_meta=None, version=None):
     src_bucket, src_key = split_path(src, require_subpath=True)
     dest_bucket, dest_key = split_path(dest, require_subpath=True)
     src_params = dict(
@@ -367,18 +416,29 @@ def copy_object(src, dest, meta, version=None):
             VersionId=version
         )
 
+    params = dict(
+        CopySource=src_params,
+        Bucket=dest_bucket,
+        Key=dest_key
+    )
+    if override_meta is None:
+        params.update(dict(
+            MetadataDirective='COPY'
+        ))
+    else:
+        params.update(dict(
+            MetadataDirective='REPLACE',
+            Metadata={HELIUM_METADATA: json.dumps(override_meta)}
+        ))
+
     try:
-        s3_client.copy_object(
-            CopySource=src_params,
-            Bucket=dest_bucket,
-            Key=dest_key,
-            Metadata={HELIUM_METADATA: json.dumps(meta)}
-        )
+        s3_client.copy_object(**params)
     except ClientError as e:
         # suppress error from copying a file to itself
         if str(e) == NO_OP_COPY_ERROR_MESSAGE:
             return
         raise
+
 
 def list_object_versions(path, recursive=True):
     bucket, key = split_path(path)
@@ -425,32 +485,32 @@ def list_objects(path, recursive=True):
         return prefixes, objects
 
 
-def copy_file(src, dest, meta):
+def copy_file(src, dest, override_meta=None):
     src_url = urlparse(src)
     dest_url = urlparse(dest)
     if src_url.scheme == 'file':
         if dest_url.scheme == 'file':
             # TODO: metadata
-            os.makedirs(os.path.dirname(url2pathname(dest_url.path)), exist_ok=True)
-            shutil.copyfile(url2pathname(src_url.path), url2pathname(dest_url.path))
+            os.makedirs(os.path.dirname(parse_file_url(dest_url)), exist_ok=True)
+            shutil.copyfile(parse_file_url(src_url), parse_file_url(dest_url))
         elif dest_url.scheme == 's3':
             dest_bucket, dest_path, dest_version_id = parse_s3_url(dest_url)
             if dest_version_id:
                 raise ValueError("Cannot set VersionId on destination")
-            upload_file(url2pathname(src_url.path), dest_bucket + '/' + dest_path, meta)
+            upload_file(parse_file_url(src_url), dest_bucket + '/' + dest_path, override_meta)
         else:
             raise NotImplementedError
     elif src_url.scheme == 's3':
         src_bucket, src_path, src_version_id = parse_s3_url(src_url)
         if dest_url.scheme == 'file':
             # TODO: metadata
-            os.makedirs(os.path.dirname(url2pathname(dest_url.path)), exist_ok=True)
-            download_file(src_bucket + '/' + src_path, url2pathname(dest_url.path), src_version_id)
+            os.makedirs(os.path.dirname(parse_file_url(dest_url)), exist_ok=True)
+            download_file(src_bucket + '/' + src_path, parse_file_url(dest_url), src_version_id)
         elif dest_url.scheme == 's3':
             dest_bucket, dest_path, dest_version_id = parse_s3_url(dest_url)
             if dest_version_id:
                 raise ValueError("Cannot set VersionId on destination")
-            copy_object(src_bucket + '/' + src_path, dest_bucket + '/' + dest_path, meta, src_version_id)
+            copy_object(src_bucket + '/' + src_path, dest_bucket + '/' + dest_path, override_meta, src_version_id)
         else:
             raise NotImplementedError
     else:

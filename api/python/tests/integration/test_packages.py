@@ -6,16 +6,14 @@ import os
 import pathlib
 import pytest
 from urllib.parse import urlparse
-from urllib.request import url2pathname
 
 from mock import patch
 from pathlib import Path
 
 import t4
 from t4 import Package
-from t4.util import HeliumException, APP_NAME, APP_AUTHOR, BASE_DIR, BASE_PATH
 from t4.packages import get_local_package_registry
-
+from t4.util import HeliumException, APP_NAME, APP_AUTHOR, BASE_DIR, BASE_PATH, parse_file_url
 
 LOCAL_MANIFEST = os.path.join(os.path.dirname(__file__), 'data', 'local_manifest.jsonl')
 REMOTE_MANIFEST = os.path.join(os.path.dirname(__file__), 'data', 't4_manifest.jsonl')
@@ -121,7 +119,7 @@ def test_package_constructor_from_registry():
         with patch('t4.packages.open') as open_mock:
             open_mock.return_value = io.BytesIO(pkghash.encode('utf-8'))
             pkg = Package('nice-name')
-            assert url2pathname(urlparse(registry + '/named_packages/nice-name/latest').path) \
+            assert parse_file_url(urlparse(registry + '/named_packages/nice-name/latest')) \
                     == open_mock.call_args_list[0][0][0]
 
         assert registry + '/packages/{}'.format(pkghash) \

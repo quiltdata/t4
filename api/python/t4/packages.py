@@ -9,8 +9,7 @@ import os
 import tempfile
 import time
 
-from urllib.parse import quote, unquote, urlparse
-from urllib.request import url2pathname
+from urllib.parse import quote, urlparse
 
 import jsonlines
 
@@ -18,7 +17,7 @@ from pathlib import Path
 from .data_transfer import copy_file, deserialize_obj, download_bytes, TargetType
 
 from .exceptions import PackageException
-from .util import HeliumException, BASE_PATH, fix_url, parse_s3_url
+from .util import HeliumException, BASE_PATH, fix_url, parse_file_url, parse_s3_url
 
 
 def hash_file(readable_file):
@@ -35,7 +34,7 @@ def read_physical_key(physical_key):
     # TODO: Stream the data.
     url = urlparse(physical_key)
     if url.scheme == 'file':
-        with open(url2pathname(url.path), 'rb') as fd:
+        with open(parse_file_url(url), 'rb') as fd:
             return fd.read()
     elif url.scheme == 's3':
         bucket, path, version_id = parse_s3_url(url)
@@ -146,7 +145,7 @@ class Package(object):
         pkg_path = '{}/named_packages/{}/'.format(registry, quote(name))
         latest = urlparse(pkg_path + 'latest')
         if latest.scheme == 'file':
-            latest_path = url2pathname(latest.path)
+            latest_path = parse_file_url(latest)
             with open(latest_path) as latest_file:
                 latest_hash = latest_file.read()
         elif latest.scheme == 's3':
@@ -167,7 +166,7 @@ class Package(object):
         """ Takes a URI and returns a package loaded from that URI """
         src_url = urlparse(uri)
         if src_url.scheme == 'file':
-            with open(url2pathname(src_url.path)) as open_file:
+            with open(parse_file_url(src_url)) as open_file:
                 pkg = Package.load(open_file)
         elif src_url.scheme == 's3':
             bucket, path, vid = parse_s3_url(urlparse(src_url.geturl()))
