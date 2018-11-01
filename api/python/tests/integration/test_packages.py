@@ -26,6 +26,9 @@ def mock_make_api_call(self, operation_name, kwarg):
     if operation_name == 'ListObjectsV2':
         parsed_response = {'CommonPrefixes': ['foo']}
         return parsed_response
+    if operation_name == 'HeadObject':
+        # TODO: mock this somehow
+        raise NotImplementedError
     raise NotImplementedError(operation_name)
 
 @patch('appdirs.user_data_dir', lambda x,y: os.path.join('test_appdir', x))
