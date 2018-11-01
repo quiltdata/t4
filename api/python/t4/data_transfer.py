@@ -109,7 +109,7 @@ def _guess_target_by_ext(name, default='bytes'):
         TargetType(default)  # ..must exist as a TargetType
     if '.' not in name:
         return default
-    ext = name.rsplit('.', 1)[1]
+    ext = name.rsplit('.', 1)[1].lower()
     return EXTENSION_TARGET_MAP.get(ext, default)
 
 
