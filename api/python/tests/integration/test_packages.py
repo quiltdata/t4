@@ -28,7 +28,11 @@ def mock_make_api_call(self, operation_name, kwarg):
         return parsed_response
     if operation_name == 'HeadObject':
         # TODO: mock this somehow
-        raise NotImplementedError
+        parsed_response = {
+            'Metadata': {},
+            'ContentLength': 0
+        }
+        return parsed_response
     raise NotImplementedError(operation_name)
 
 @patch('appdirs.user_data_dir', lambda x,y: os.path.join('test_appdir', x))
@@ -89,13 +93,17 @@ def test_read_manifest(tmpdir):
     assert sorted(original_set, key=lambda k: k.get('logical_key','manifest')) \
         == sorted(written_set, key=lambda k: k.get('logical_key','manifest'))
 
+def no_op_mock(*args, **kwargs):
+    pass
+
 def test_materialize_from_remote(tmpdir):
     """ Verify loading data and mainfest transforms from S3. """
     with patch('botocore.client.BaseClient._make_api_call', new=mock_make_api_call):
         with open(REMOTE_MANIFEST) as fd:
             pkg = Package.load(fd)
-            with pytest.raises(NotImplementedError):
-                # raises because HeadObject is not mocked
+            with patch('t4.data_transfer._download_single_file', new=no_op_mock), \
+                 patch('t4.data_transfer._download_dir', new=no_op_mock), \
+                 patch('t4.Package.build', new=no_op_mock):
                 mat_pkg = pkg.push(os.path.join(tmpdir, 'pkg'), name='test_pkg_name')
 
 def test_package_constructor_from_registry():
