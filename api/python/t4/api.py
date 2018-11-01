@@ -349,12 +349,14 @@ def config(*autoconfig_url, **config_values):
     else:
         local_config = config_template
 
-    for key, value in config_values.items():
-        # No key validation, per current fast dev rate on config.json.
-        # if key not in config_template:
-        #     raise QuiltException("Unrecognized configuration key: {}".format(key))
-        if value and key.endswith('_url'):
-            validate_url(value)
-        local_config[key] = value
-    write_yaml(local_config, CONFIG_PATH, keep_backup=True)
+    if config_values:
+        for key, value in config_values.items():
+            # No key validation, per current fast dev rate on config.json.
+            # if key not in config_template:
+            #     raise QuiltException("Unrecognized configuration key: {}".format(key))
+            if value and key.endswith('_url'):
+                validate_url(value)
+            local_config[key] = value
+        write_yaml(local_config, CONFIG_PATH, keep_backup=True)
+
     return HeliumConfig(CONFIG_PATH, local_config)
