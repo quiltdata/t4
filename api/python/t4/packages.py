@@ -340,11 +340,10 @@ class Package(object):
 
     def build(self, name=None, registry=None):
         """
-        Serializes this package to a local registry.
+        Serializes this package to a registry.
 
         Args:
-            name: optional name for package in registry
-                    defaults to the textual hash of the package manifest
+            name: optional name for package
             registry: registry to build to
                     defaults to local registry
 
@@ -545,11 +544,11 @@ class Package(object):
         Returns:
             A new package that points to the copied objects
         """
-        dest = fix_url(path)
+        dest = fix_url(path).strip('/')
         if name:
-            dest = dest.strip('/') + '/' + quote(name) + '/'
+            dest = dest + '/' + quote(name)
         if dest.startswith('file://') or dest.startswith('s3://'):
-            pkg = self._materialize(dest.strip('/'))
+            pkg = self._materialize(dest)
             pkg.build(name, registry=get_package_registry(dest))
             return pkg
         else:
