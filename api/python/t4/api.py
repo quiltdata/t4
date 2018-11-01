@@ -13,7 +13,7 @@ from .data_transfer import (TargetType, copy_file, deserialize_obj, download_byt
                             upload_bytes, delete_object, list_objects,
                             list_object_versions, serialize_obj)
 from .packages import get_local_package_registry, get_package_registry
-from .util import (HeliumConfig, QuiltException, AWS_SEPARATOR, CONFIG_PATH,
+from .util import (HeliumConfig, QuiltException, CONFIG_PATH,
                    CONFIG_TEMPLATE, fix_url, parse_file_url, parse_s3_url, read_yaml, validate_url,
                    write_yaml, yaml_has_comments)
 
@@ -62,9 +62,8 @@ def put(obj, dest, meta=None):
     if version:
         raise ValueError("Cannot push to a version")
 
-    if path.endswith(AWS_SEPARATOR):
-        raise ValueError("Invalid path: %r; ends with a %r"
-                         % (path, AWS_SEPARATOR))
+    if path.endswith('/'):
+        raise ValueError("Invalid path: %r; ends with a '/'" % path)
 
     data, target = serialize_obj(obj)
     all_meta = dict(
