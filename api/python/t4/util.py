@@ -135,9 +135,6 @@ def write_yaml(data, yaml_path, keep_backup=False):
 
     backup_path = path.with_name(path.name + '.backup.' + now)
 
-    if path.exists():
-        backup_path.write_bytes(path.read_bytes())
-
     try:
         if path.exists():
             path.rename(backup_path)
