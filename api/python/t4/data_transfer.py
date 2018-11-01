@@ -2,7 +2,6 @@ from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 import hashlib
 import json
-import os
 import pathlib
 import platform
 import shutil
