@@ -21,6 +21,13 @@ from . import xattr
 
 HELIUM_METADATA = 'helium'
 HELIUM_XATTR = 'com.quiltdata.helium'
+EXTENSION_TARGET_MAP = {
+    'npy': 'numpy',
+    'npz': 'numpy',
+    'json': 'json',
+    'parquet': 'pyarrow',
+    }
+
 
 if platform.system() == 'Linux':
     # Linux only allows users to modify user.* xattrs.
@@ -57,6 +64,10 @@ class TargetType(Enum):
     NUMPY = 'numpy'
 
 
+for value in EXTENSION_TARGET_MAP.values():
+    TargetType(value)  # EXTENSION_TARGET_MAP values must be present in TargetType
+
+
 def deserialize_obj(data, target):
     if target == TargetType.BYTES:
         obj = data
@@ -86,6 +97,17 @@ def deserialize_obj(data, target):
         raise NotImplementedError
 
     return obj
+
+
+def _guess_target_by_ext(name, default='bytes'):
+    ### This *should* match get_target_for_obj as much as possible.
+    if default is not None:
+        TargetType(default)  # ..must exist as a TargetType
+    if '.' not in name:
+        return default
+    ext = name.rsplit('.', 1)[1]
+    return EXTENSION_TARGET_MAP.get(ext, default)
+
 
 def _get_target_for_object(obj):
     # TODO: Lazy loading.

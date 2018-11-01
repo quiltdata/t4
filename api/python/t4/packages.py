@@ -14,7 +14,7 @@ from urllib.parse import quote, urlparse
 import jsonlines
 
 from pathlib import Path
-from .data_transfer import copy_file, deserialize_obj, download_bytes, TargetType
+from .data_transfer import copy_file, deserialize_obj, download_bytes, TargetType, _guess_target_by_ext
 
 from .exceptions import PackageException
 from .util import HeliumException, BASE_PATH, fix_url, parse_file_url, parse_s3_url
@@ -266,7 +266,7 @@ class Package(object):
 
     def get(self, logical_key):
         """
-        Gets object from local_key and returns it as an in-memory object.
+        Gets object from logical_key and returns it as an in-memory object.
 
         Args:
             logical_key(string): logical key of the object to get
@@ -284,8 +284,17 @@ class Package(object):
 
         target_str = entry.meta.get('target')
         if target_str is None:
-            raise HeliumException("No serialization metadata")
-
+            target_str = _guess_target_by_ext(logical_key, None)
+            if target_str is None:
+                # No ext for logical key -- let's check the physical keys.
+                # to be safe, just use bytes if there's a conflict.
+                targets = [_guess_target_by_ext(k, None) for k in entry.physical_keys]
+                targets = [t for t in targets if t]
+                if targets and all(t == targets[0] for t in targets):
+                    # no conflicts -- use the found target type.
+                    target_str = targets[0]
+                else:
+                    target_str = 'bytes'
         try:
             target = TargetType(target_str)
         except ValueError:
