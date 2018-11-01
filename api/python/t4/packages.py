@@ -527,6 +527,13 @@ class Package(object):
             A new package that points to the copied objects
         """
         dest = fix_url(path)
+        if dest.startswith('file://'):
+            # local push
+            os.makedirs(path, exist_ok=True)
+            pkg = self._materialize(dest)
+            pkg.build(name)
+            return pkg
+
         if not dest.startswith('s3://'):
             raise NotImplementedError
         if not name:
