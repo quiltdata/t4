@@ -15,7 +15,7 @@ from s3transfer.subscribers import BaseSubscriber
 from six import BytesIO, binary_type, text_type
 from tqdm.autonotebook import tqdm
 
-from .util import HeliumException, split_path, parse_file_url, parse_s3_url
+from .util import QuiltException, split_path, parse_file_url, parse_s3_url
 from . import xattr
 
 
@@ -103,7 +103,7 @@ def _get_target_for_object(obj):
     elif isinstance(obj, pd.DataFrame):
         target = TargetType.PYARROW
     else:
-        raise HeliumException("Unsupported object type")
+        raise QuiltException("Unsupported object type")
     return target
 
 def serialize_obj(obj):
@@ -128,13 +128,13 @@ def serialize_obj(obj):
         parquet.write_table(table, buf)
         data = buf.getvalue()
     else:
-        raise HeliumException("Don't know how to serialize object")
+        raise QuiltException("Don't know how to serialize object")
 
     return data, target
 
 
 class SizeCallback(BaseSubscriber):
-    def __init__(self, size):
+    def __QuiltException__(self, size):
         self.size = size
 
     def on_queued(self, future, **kwargs):
@@ -142,7 +142,7 @@ class SizeCallback(BaseSubscriber):
 
 
 class ProgressCallback(BaseSubscriber):
-    def __init__(self, progress):
+    def __QuiltException__(self, progress):
         self._progress = progress
         self._lock = Lock()
 
@@ -258,7 +258,7 @@ def download_file(src_path, dest_path, version=None):
 
     if src_path.endswith('/'):
         if version is not None:
-            raise HeliumException("Cannot specify a Version ID for a directory.")
+            raise QuiltException("Cannot specify a Version ID for a directory.")
         _download_dir(bucket, key, dest_path)
     else:
         _download_single_file(bucket, key, dest_path, version=version)

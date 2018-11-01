@@ -13,7 +13,7 @@ from pathlib import Path
 import t4
 from t4 import Package
 from t4.packages import get_local_package_registry
-from t4.util import HeliumException, APP_NAME, APP_AUTHOR, BASE_DIR, BASE_PATH, parse_file_url
+from t4.util import QuiltException, APP_NAME, APP_AUTHOR, BASE_DIR, BASE_PATH, parse_file_url
 
 LOCAL_MANIFEST = os.path.join(os.path.dirname(__file__), 'data', 'local_manifest.jsonl')
 REMOTE_MANIFEST = os.path.join(os.path.dirname(__file__), 'data', 't4_manifest.jsonl')
@@ -197,7 +197,7 @@ def test_package_get(tmpdir):
 
     assert pkg.get('foo') == ('123\n', 'blah')
 
-    with pytest.raises(HeliumException):
+    with pytest.raises(QuiltException):
         pkg.get('bar')
 
 def test_capture(tmpdir):

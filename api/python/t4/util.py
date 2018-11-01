@@ -45,13 +45,13 @@ elastic_search_url:
 """
 
 
-class HeliumException(Exception):
+class QuiltException(Exception):
     def __init__(self, message, **kwargs):
         # We use NewError("Prefix: " + str(error)) a lot.
         # To be consistent across Python 2.7 and 3.x:
         # 1) This `super` call must exist, or 2.7 will have no text for str(error)
         # 2) This `super` call must have only one argument (the message) or str(error) will be a repr of args
-        super(HeliumException, self).__init__(message)
+        super(QuiltException, self).__init__(message)
         self.message = message
         for k, v in kwargs.items():
             setattr(self, k, v)
@@ -114,7 +114,7 @@ def read_yaml(yaml_stream):
     try:
         return yaml.load(yaml_stream)
     except ruamel.yaml.parser.ParserError as error:
-        raise HeliumException(str(error), original_error=error)
+        raise QuiltException(str(error), original_error=error)
 
 
 # If we won't be using YAML for anything but config.yml, we can drop keep_backup and assume True.
@@ -192,11 +192,11 @@ def validate_url(url):
 
     # require scheme and host at minimum, like config_path'http://foo'
     if not all((parsed_url.scheme, parsed_url.netloc)):
-        raise HeliumException("Invalid URL -- Requires at least scheme and host: {}".format(url))
+        raise QuiltException("Invalid URL -- Requires at least scheme and host: {}".format(url))
     try:
         parsed_url.port
     except ValueError:
-        raise HeliumException("Invalid URL -- Port must be a number: {}".format(url))
+        raise QuiltException("Invalid URL -- Port must be a number: {}".format(url))
 
 
 # Although displaying the config may seem not to warrant a class, it's pretty important
