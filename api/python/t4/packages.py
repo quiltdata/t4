@@ -348,7 +348,7 @@ class Package(object):
         Returns:
             the top hash as a string
         """
-        hash_string = self.top_hash()["value"]
+        hash_string = self.top_hash()
         with open(get_local_package_registry() / "packages" / hash_string, "w") as fh:
             self.dump(fh)
 
@@ -358,10 +358,10 @@ class Package(object):
             named_path.mkdir(parents=True, exist_ok=True)
             # todo: use a float to string formater instead of double casting
             with open(named_path / str(int(time.time())), "w") as fh:
-                fh.write(self.top_hash()["value"])
+                fh.write(self.top_hash())
             # todo: symlink when local
             with open(named_path / "latest", "w") as fh:
-                fh.write(self.top_hash()["value"])
+                fh.write(self.top_hash())
         return hash_string
 
     def dump(self, writable_file):
@@ -511,7 +511,7 @@ class Package(object):
         """
         if 'top_hash' not in self._meta:
             self._top_hash()
-        return self._meta['top_hash']
+        return self._meta['top_hash']['value']
 
     def push(self, name, path):
         """
@@ -538,7 +538,7 @@ class Package(object):
             manifest.flush()
             copy_file(
                 pathlib.Path(manifest.name).resolve().as_uri(),
-                get_package_registry(path) + "/packages/" + pkg.top_hash()["value"],
+                get_package_registry(path) + "/packages/" + pkg.top_hash(),
                 {}
             )
 
@@ -547,7 +547,7 @@ class Package(object):
             named_path = get_package_registry(path) + '/named_packages/' + name + "/"
             # todo: use a float to string formater instead of double casting
             with tempfile.NamedTemporaryFile() as hash_file:
-                hash_file.write(pkg.top_hash()["value"].encode('utf-8'))
+                hash_file.write(pkg.top_hash().encode('utf-8'))
                 hash_file.flush()
                 copy_file(
                     pathlib.Path(hash_file.name).resolve().as_uri(),

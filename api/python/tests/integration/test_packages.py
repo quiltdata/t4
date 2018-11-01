@@ -101,7 +101,7 @@ def test_package_constructor_from_registry():
         registry = BASE_PATH.as_uri()
         pkg = Package()
         pkgmock.return_value = pkg
-        pkghash = pkg.top_hash()['value']
+        pkghash = pkg.top_hash()
 
         # local load
         pkg = Package(pkg_hash=pkghash)
@@ -158,7 +158,7 @@ def test_load_into_t4(tmpdir):
         dest_args = [x[0][1] for x in mock.call_args_list]
 
         # Manifest copied
-        assert 's3://my_test_bucket/.quilt/packages/' + new_pkg.top_hash()['value'] in dest_args
+        assert 's3://my_test_bucket/.quilt/packages/' + new_pkg.top_hash() in dest_args
         assert 's3://my_test_bucket/.quilt/named_packages/package_name/latest' in dest_args
 
         # Data copied
