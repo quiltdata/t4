@@ -134,7 +134,7 @@ def serialize_obj(obj):
 
 
 class SizeCallback(BaseSubscriber):
-    def __QuiltException__(self, size):
+    def __init__(self, size):
         self.size = size
 
     def on_queued(self, future, **kwargs):
@@ -142,7 +142,7 @@ class SizeCallback(BaseSubscriber):
 
 
 class ProgressCallback(BaseSubscriber):
-    def __QuiltException__(self, progress):
+    def __init__(self, progress):
         self._progress = progress
         self._lock = Lock()
 
