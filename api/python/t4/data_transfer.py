@@ -134,7 +134,7 @@ def serialize_obj(obj):
 
 
 class SizeCallback(BaseSubscriber):
-    def __QuiltException__(self, size):
+    def __init__(self, size):
         self.size = size
 
     def on_queued(self, future, **kwargs):
