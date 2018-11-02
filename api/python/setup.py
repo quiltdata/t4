@@ -46,6 +46,7 @@ setup(
     ],
     extras_require={
         'tests': [
+            'codecov',
             'mock',   # XXX correct syntax for extras_require?
             'pytest',
             'pytest-cov',
