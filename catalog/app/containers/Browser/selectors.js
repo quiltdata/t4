@@ -1,8 +1,26 @@
+import * as R from 'ramda';
 import { createSelector } from 'reselect';
 
-import { get, toJS } from 'utils/immutableTools';
+import AsyncResult from 'utils/AsyncResult';
+import { get } from 'utils/immutableTools';
+import { getBasename } from 'utils/s3paths';
 
-import { REDUX_KEY } from './constants';
+import { REDUX_KEY, README_RE, SUMMARY_RE } from './constants';
 
 
-export default createSelector(get(REDUX_KEY), toJS());
+const findFile = (files, re) =>
+  files.find(({ key }) => re.test(getBasename(key)));
+
+export default createSelector(get(REDUX_KEY), R.pipe(
+  AsyncResult.case({
+    Ok: (result) => AsyncResult.Ok({
+      ...result,
+      readme: findFile(result.files, README_RE),
+      summary: findFile(result.files, SUMMARY_RE),
+      images: result.files.filter(({ key }) =>
+        ['.jpg', '.jpeg', '.png', '.gif'].some((ext) => key.endsWith(ext))),
+    }),
+    _: R.identity,
+  }),
+  R.objOf('state'),
+));

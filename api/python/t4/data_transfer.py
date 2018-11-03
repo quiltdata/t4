@@ -15,7 +15,7 @@ from s3transfer.subscribers import BaseSubscriber
 from six import BytesIO, binary_type, text_type
 from tqdm.autonotebook import tqdm
 
-from .util import HeliumException, split_path, parse_file_url, parse_s3_url
+from .util import QuiltException, split_path, parse_file_url, parse_s3_url
 from . import xattr
 
 
@@ -129,7 +129,7 @@ def _get_target_for_object(obj):
     elif isinstance(obj, pd.DataFrame):
         target = TargetType.PYARROW
     else:
-        raise HeliumException("Unsupported object type")
+        raise QuiltException("Unsupported object type")
     return target
 
 def serialize_obj(obj):
@@ -154,7 +154,7 @@ def serialize_obj(obj):
         parquet.write_table(table, buf)
         data = buf.getvalue()
     else:
-        raise HeliumException("Don't know how to serialize object")
+        raise QuiltException("Don't know how to serialize object")
 
     return data, target
 
@@ -284,7 +284,7 @@ def download_file(src_path, dest_path, version=None):
 
     if src_path.endswith('/'):
         if version is not None:
-            raise HeliumException("Cannot specify a Version ID for a directory.")
+            raise QuiltException("Cannot specify a Version ID for a directory.")
         _download_dir(bucket, key, dest_path)
     else:
         _download_single_file(bucket, key, dest_path, version=version)
@@ -516,6 +516,7 @@ def copy_file(src, dest, override_meta=None):
     if src_url.scheme == 'file':
         if dest_url.scheme == 'file':
             # TODO: metadata
+            pathlib.Path(parse_file_url(dest_url)).parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(parse_file_url(src_url), parse_file_url(dest_url))
         elif dest_url.scheme == 's3':
             dest_bucket, dest_path, dest_version_id = parse_s3_url(dest_url)
@@ -528,6 +529,7 @@ def copy_file(src, dest, override_meta=None):
         src_bucket, src_path, src_version_id = parse_s3_url(src_url)
         if dest_url.scheme == 'file':
             # TODO: metadata
+            pathlib.Path(parse_file_url(dest_url)).parent.mkdir(parents=True, exist_ok=True)
             download_file(src_bucket + '/' + src_path, parse_file_url(dest_url), src_version_id)
         elif dest_url.scheme == 's3':
             dest_bucket, dest_path, dest_version_id = parse_s3_url(dest_url)

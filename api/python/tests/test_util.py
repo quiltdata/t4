@@ -74,8 +74,8 @@ def test_read_yaml_exec_flaw(capfd):
 
 
 def test_validate_url():
-    with pytest.raises(util.HeliumException, match='Port must be a number'):
+    with pytest.raises(util.QuiltException, match='Port must be a number'):
         util.validate_url('http://foo:bar')
 
-    with pytest.raises(util.HeliumException, match='Requires at least scheme and host'):
+    with pytest.raises(util.QuiltException, match='Requires at least scheme and host'):
         util.validate_url('blah')

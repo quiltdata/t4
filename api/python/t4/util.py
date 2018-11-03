@@ -45,13 +45,13 @@ elastic_search_url:
 """
 
 
-class HeliumException(Exception):
+class QuiltException(Exception):
     def __init__(self, message, **kwargs):
         # We use NewError("Prefix: " + str(error)) a lot.
         # To be consistent across Python 2.7 and 3.x:
         # 1) This `super` call must exist, or 2.7 will have no text for str(error)
         # 2) This `super` call must have only one argument (the message) or str(error) will be a repr of args
-        super(HeliumException, self).__init__(message)
+        super(QuiltException, self).__init__(message)
         self.message = message
         for k, v in kwargs.items():
             setattr(self, k, v)
@@ -74,14 +74,22 @@ def split_path(path, require_subpath=False):
 
 def fix_url(url):
     """Convert non-URL paths to file:// URLs"""
-    # TODO: Do something about file paths like C:\Users\foo if we care about Windows.
+    # If it has a scheme, we assume it's a URL.
+    # On Windows, we ignore schemes that look like drive letters, e.g. C:/users/foo
     parsed = urlparse(url)
-    if not parsed.scheme:
-        # `resolve()` _tries_ to make the URI absolute - but doesn't guarantee anything.
-        # In particular, on Windows, non-existent files won't be resolved.
-        # `absolute()` makes the URI absolute, though it can still contain '..'
-        url = pathlib.Path(url).resolve().absolute().as_uri()
-    return url
+    if parsed.scheme and not os.path.splitdrive(url)[0]:
+        return url
+
+    # `resolve()` _tries_ to make the URI absolute - but doesn't guarantee anything.
+    # In particular, on Windows, non-existent files won't be resolved.
+    # `absolute()` makes the URI absolute, though it can still contain '..'
+    fixed_url = pathlib.Path(url).resolve().absolute().as_uri()
+
+    # pathlib likes to remove trailing slashes, so add it back if needed.
+    if url[-1:] in (os.sep, os.altsep) and not fixed_url.endswith('/'):
+        fixed_url += '/'
+
+    return fixed_url
 
 
 def parse_s3_url(s3_url):
@@ -114,7 +122,7 @@ def read_yaml(yaml_stream):
     try:
         return yaml.load(yaml_stream)
     except ruamel.yaml.parser.ParserError as error:
-        raise HeliumException(str(error), original_error=error)
+        raise QuiltException(str(error), original_error=error)
 
 
 # If we won't be using YAML for anything but config.yml, we can drop keep_backup and assume True.
@@ -134,9 +142,6 @@ def write_yaml(data, yaml_path, keep_backup=False):
         now = now.replace(':', '\ua789')
 
     backup_path = path.with_name(path.name + '.backup.' + now)
-
-    if path.exists():
-        backup_path.write_bytes(path.read_bytes())
 
     try:
         if path.exists():
@@ -192,11 +197,11 @@ def validate_url(url):
 
     # require scheme and host at minimum, like config_path'http://foo'
     if not all((parsed_url.scheme, parsed_url.netloc)):
-        raise HeliumException("Invalid URL -- Requires at least scheme and host: {}".format(url))
+        raise QuiltException("Invalid URL -- Requires at least scheme and host: {}".format(url))
     try:
         parsed_url.port
     except ValueError:
-        raise HeliumException("Invalid URL -- Port must be a number: {}".format(url))
+        raise QuiltException("Invalid URL -- Port must be a number: {}".format(url))
 
 
 # Although displaying the config may seem not to warrant a class, it's pretty important

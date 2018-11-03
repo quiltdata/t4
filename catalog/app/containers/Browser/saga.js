@@ -1,63 +1,64 @@
+import * as R from 'ramda';
 import { call, put, takeLatest } from 'redux-saga/effects';
 
-import { get } from './actions';
+import AsyncResult from 'utils/AsyncResult';
 
-function* getReadme({ s3, s3Bucket }, files) {
-  const readmeFile = files.find(({ path: fPath }) =>
-    /readme\.md$/i.test(fPath));
-  if (!readmeFile) return undefined;
+import { Action } from './reducer';
 
-  const readmeObject = yield s3.getObject({
-    Bucket: s3Bucket,
-    Key: readmeFile.path,
-  }).promise();
-  return {
-    file: readmeFile,
-    contents: readmeObject.Body.toString('utf-8'),
-  };
-}
 
-function* list({ s3, s3Bucket }, path) {
-  const data = yield s3.listObjectsV2({
-    Bucket: s3Bucket,
+const mkHandle = (bucket) => (i) => ({
+  bucket,
+  key: i.Key,
+  modified: i.LastModified,
+  size: i.Size,
+  etag: i.ETag,
+});
+
+const list = async ({ s3 }, bucket, prefix) => {
+  const data = await s3.listObjectsV2({
+    Bucket: bucket,
     Delimiter: '/',
-    Prefix: path,
+    Prefix: prefix,
   }).promise();
 
-  const directories = data.CommonPrefixes.map((i) => i.Prefix);
-  const files = data.Contents
-    .map((i) => ({
-      path: i.Key,
-      modified: i.LastModified,
-      size: i.Size,
-    }))
-    // filter-out "directory-files" (files that match prefixes)
-    .filter((f) => f.path !== path && !directories.includes(`${f.path}/`));
+  const directories = R.pipe(
+    R.pluck('Prefix'),
+    R.filter((d) => d !== '../'),
+    R.uniq,
+  )(data.CommonPrefixes);
 
-  return {
-    files,
-    directories,
-    readme: yield call(getReadme, { s3, s3Bucket }, files),
-  };
-}
+  const files = data.Contents
+    .map(mkHandle(bucket))
+    // filter-out "directory-files" (files that match prefixes)
+    .filter((f) => f.key !== prefix && !directories.includes(`${f.key}/`));
+
+  return { files, directories };
+};
 
 function* handleGet(
-  { s3, s3Bucket },
-  { payload: { path }, meta: { resolve, reject } },
+  { s3, bucket },
+  { path, resolver: { resolve, reject } = {} },
 ) {
   try {
-    const data = yield call(list, { s3Bucket, s3 }, path);
-    yield put(get.resolve(data));
+    const data = yield call(list, { s3 }, bucket, path);
+    yield put(Action.GetResult(AsyncResult.Ok(data)));
     if (resolve) yield call(resolve, data);
   } catch (e) {
-    yield put(get.resolve(e));
+    // TODO: handle error
+    // eslint-disable-next-line no-console
+    console.log('Error listing files:', e);
+    yield put(Action.GetResult(AsyncResult.Err(e)));
     if (reject) yield call(reject, e);
   }
 }
 
-export default function* saga({
-  s3Bucket,
-  s3,
-}) {
-  yield takeLatest(get.type, handleGet, { s3, s3Bucket });
+const mapAction = (mapping, fn) => (...args) =>
+  fn(...R.adjust(mapping, -1, args));
+
+const takeLatestTagged = (variant, fn, ...args) =>
+  // eslint-disable-next-line redux-saga/yield-effects
+  takeLatest(variant.is, mapAction(variant.unbox, fn), ...args);
+
+export default function* saga({ bucket, s3 }) {
+  yield takeLatestTagged(Action.Get, handleGet, { s3, bucket });
 }

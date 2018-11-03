@@ -11,7 +11,7 @@ from .data_transfer import (TargetType, copy_file, deserialize_obj, download_byt
                             upload_bytes, delete_object, list_objects,
                             list_object_versions, serialize_obj)
 from .packages import get_local_package_registry, get_package_registry
-from .util import (HeliumConfig, HeliumException, AWS_SEPARATOR, CONFIG_PATH,
+from .util import (HeliumConfig, QuiltException, AWS_SEPARATOR, CONFIG_PATH,
                    CONFIG_TEMPLATE, fix_url, parse_file_url, parse_s3_url, read_yaml, validate_url,
                    write_yaml, yaml_has_comments)
 
@@ -73,12 +73,12 @@ def get(src, version=None):
 
     target_str = meta.get('target')
     if target_str is None:
-        raise HeliumException("No serialization metadata")
+        raise QuiltException("No serialization metadata")
 
     try:
         target = TargetType(target_str)
     except ValueError:
-        raise HeliumException("Unknown serialization target: %r" % target_str)
+        raise QuiltException("Unknown serialization target: %r" % target_str)
     return deserialize_obj(data, target), meta.get('user_meta')
 
 
@@ -158,13 +158,13 @@ def _create_es():
     config_obj = config()
     es_url = config_obj.get('elastic_search_url', None)
     if es_url is None:
-        raise HeliumException('No configured elastic_search_url. '
+        raise QuiltException('No configured elastic_search_url. '
                               'Please use he.config')
     es_url = urllib.parse.urlparse(es_url)
 
     aws_region = config_obj.get('region')
     if aws_region is None:
-        raise HeliumException('No configured region. '
+        raise QuiltException('No configured region. '
                               'Please use he.config')
 
     auth = BotoAWSRequestsAuth(aws_host=es_url.hostname,
@@ -299,10 +299,10 @@ def config(*autoconfig_url, **config_values):
     :returns: HeliumConfig object (an ordered Mapping)
     """
     if autoconfig_url and config_values:
-        raise HeliumException("Expected either an auto-config URL or key=value pairs, but got both.")
+        raise QuiltException("Expected either an auto-config URL or key=value pairs, but got both.")
     # Total distinction of args and kwargs -- config(autoconfig_url='http://foo.com')
     if autoconfig_url and len(autoconfig_url) > 1:
-        raise HeliumException("Expected a single autoconfig URL argument, not multiple args.")
+        raise QuiltException("Expected a single autoconfig URL argument, not multiple args.")
 
     config_template = read_yaml(CONFIG_TEMPLATE)
     if autoconfig_url:
@@ -318,7 +318,7 @@ def config(*autoconfig_url, **config_values):
         response = requests.get(config_url)
         if not response.ok:
             message = "An HTTP Error ({code}) occurred: {reason}"
-            raise HeliumException(
+            raise QuiltException(
                 message.format(code=response.status_code, reason=response.reason),
                 response=response
                 )
@@ -327,7 +327,7 @@ def config(*autoconfig_url, **config_values):
         for key, value in new_config.items():
             # No key validation, per current fast dev rate on config.json.
             # if key not in config_template:
-            #     raise HeliumException("Unrecognized configuration key from {}: {}".format(config_url, key))
+            #     raise QuiltException("Unrecognized configuration key from {}: {}".format(config_url, key))
             if value and key.endswith('_url'):
                 validate_url(value)
         # Use their config + our defaults, keeping their comments
@@ -349,12 +349,14 @@ def config(*autoconfig_url, **config_values):
     else:
         local_config = config_template
 
-    for key, value in config_values.items():
-        # No key validation, per current fast dev rate on config.json.
-        # if key not in config_template:
-        #     raise HeliumException("Unrecognized configuration key: {}".format(key))
-        if value and key.endswith('_url'):
-            validate_url(value)
-        local_config[key] = value
-    write_yaml(local_config, CONFIG_PATH, keep_backup=True)
+    if config_values:
+        for key, value in config_values.items():
+            # No key validation, per current fast dev rate on config.json.
+            # if key not in config_template:
+            #     raise QuiltException("Unrecognized configuration key: {}".format(key))
+            if value and key.endswith('_url'):
+                validate_url(value)
+            local_config[key] = value
+        write_yaml(local_config, CONFIG_PATH, keep_backup=True)
+
     return HeliumConfig(CONFIG_PATH, local_config)

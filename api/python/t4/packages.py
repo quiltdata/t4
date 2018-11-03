@@ -17,7 +17,7 @@ from pathlib import Path
 from .data_transfer import copy_file, deserialize_obj, download_bytes, TargetType, _guess_target_by_ext
 
 from .exceptions import PackageException
-from .util import HeliumException, BASE_PATH, fix_url, parse_file_url, parse_s3_url
+from .util import QuiltException, BASE_PATH, fix_url, parse_file_url, parse_s3_url
 
 
 def hash_file(readable_file):
@@ -294,11 +294,11 @@ class Package(object):
                     # no conflicts -- use the found target type.
                     target_str = targets[0]
             if target_str is None:
-                HeliumException("No serialization target in metadata, and inference failed.")
+                QuiltException("No serialization target in metadata, and inference failed.")
         try:
             target = TargetType(target_str)
         except ValueError:
-            raise HeliumException("Unknown serialization target: %r" % target_str)
+            raise QuiltException("Unknown serialization target: %r" % target_str)
 
         physical_keys = entry.physical_keys
         if len(physical_keys) > 1:
@@ -346,31 +346,49 @@ class Package(object):
         entry = self._data[logical_key]
         return entry.meta
 
-    def build(self, name=None):
+    def build(self, name=None, registry=None):
         """
-        Serializes this package to a local registry.
+        Serializes this package to a registry.
 
         Args:
-            name: optional name for package in registry
-                    defaults to the textual hash of the package manifest
+            name: optional name for package
+            registry: registry to build to
+                    defaults to local registry
 
         Returns:
             the top hash as a string
         """
-        hash_string = self.top_hash()["value"]
-        with open(get_local_package_registry() / "packages" / hash_string, "w") as fh:
-            self.dump(fh)
+        if registry is not None:
+            registry = get_package_registry(fix_url(registry))
+        else:
+            registry = get_package_registry()
+
+        hash_string = self.top_hash()
+        with tempfile.NamedTemporaryFile() as manifest:
+            self.dump(manifest)
+            manifest.flush()
+            copy_file(
+                pathlib.Path(manifest.name).resolve().as_uri(),
+                registry.strip('/') + '/' + "packages/" + hash_string,
+                {}
+            )
 
         if name:
-            # Build the package directory if necessary.
-            named_path = get_local_package_registry() / "named_packages" / name
-            named_path.mkdir(parents=True, exist_ok=True)
+            # sanitize name
+            name = quote(name)
+
+            named_path = registry.strip('/') + '/named_packages/' + quote(name) + '/'
             # todo: use a float to string formater instead of double casting
-            with open(named_path / str(int(time.time())), "w") as fh:
-                fh.write(self.top_hash()["value"])
-            # todo: symlink when local
-            with open(named_path / "latest", "w") as fh:
-                fh.write(self.top_hash()["value"])
+            with tempfile.NamedTemporaryFile() as hash_file:
+                hash_file.write(self.top_hash().encode('utf-8'))
+                hash_file.flush()
+                hash_uri = pathlib.Path(hash_file.name).resolve().as_uri()
+                timestamp_path = named_path + str(int(time.time()))
+                latest_path = named_path + "latest"
+                copy_file(hash_uri, timestamp_path, {})
+                hash_file.seek(0)
+                copy_file(hash_uri, latest_path, {})
+
         return hash_string
 
     def dump(self, writable_file):
@@ -520,9 +538,9 @@ class Package(object):
         """
         if 'top_hash' not in self._meta:
             self._top_hash()
-        return self._meta['top_hash']
+        return self._meta['top_hash']['value']
 
-    def push(self, name, path):
+    def push(self, path, name=None):
         """
         Copies objects to path, then creates a new package that points to those objects.
         Copies each object in this package to path according to logical key structure,
@@ -534,42 +552,15 @@ class Package(object):
         Returns:
             A new package that points to the copied objects
         """
-        dest = fix_url(path)
-        if not dest.startswith('s3://'):
-            raise NotImplementedError
-        if not name:
-            # todo: handle where to put data for unnamed remote packages
-            raise NotImplementedError
-        pkg = self._materialize('{}/{}'.format(dest.strip("/"), quote(name)))
-
-        with tempfile.NamedTemporaryFile() as manifest:
-            pkg.dump(manifest)
-            manifest.flush()
-            copy_file(
-                pathlib.Path(manifest.name).resolve().as_uri(),
-                get_package_registry(path) + "/packages/" + pkg.top_hash()["value"],
-                {}
-            )
-
+        dest = fix_url(path).strip('/')
         if name:
-            # Build the package directory if necessary.
-            named_path = get_package_registry(path) + '/named_packages/' + name + "/"
-            # todo: use a float to string formater instead of double casting
-            with tempfile.NamedTemporaryFile() as hash_file:
-                hash_file.write(pkg.top_hash()["value"].encode('utf-8'))
-                hash_file.flush()
-                copy_file(
-                    pathlib.Path(hash_file.name).resolve().as_uri(),
-                    named_path + str(int(time.time())),
-                    {}
-                )
-                hash_file.seek(0)
-                copy_file(
-                    pathlib.Path(hash_file.name).resolve().as_uri(),
-                    named_path + "latest",
-                    {}
-                )
-        return pkg
+            dest = dest + '/' + quote(name)
+        if dest.startswith('file://') or dest.startswith('s3://'):
+            pkg = self._materialize(dest)
+            pkg.build(name, registry=get_package_registry(dest))
+            return pkg
+        else:
+            raise NotImplementedError
 
     def _materialize(self, path):
         """
