@@ -1,4 +1,3 @@
-/* SearchResults */
 import { Card, CardHeader, CardText } from 'material-ui/Card';
 import * as colors from 'material-ui/styles/colors';
 import PropTypes from 'prop-types';
@@ -13,6 +12,7 @@ import styled from 'styled-components';
 import apiStatus from 'constants/api';
 import Error from 'components/Error';
 import Help from 'components/Help';
+import Layout from 'components/Layout';
 import Tag from 'components/Tag';
 import Working from 'components/Working';
 import { ES } from 'utils/AWS';
@@ -195,40 +195,38 @@ export default composeComponent('SearchResults',
       this.props.dispatch(setSearchText(''));
     },
   }),
-  ({
-    search: {
-      error,
-      status,
-      response,
-    },
-  }) => {
-    // eslint-disable-next-line default-case
-    switch (status) {
-      case undefined:
-      case apiStatus.WAITING:
-        return <Working><FormattedMessage {...messages.header} /></Working>;
-      case apiStatus.ERROR:
-        return <Error {...error} />;
-    }
-    return (
-      <div>
-        <h1><FormattedMessage {...messages.header} /></h1>
-        {response.length
-          ? response.map((result) => <Hit key={result.path} {...result} />)
-          : <NothingFound />
+  ({ search }) => (
+    <Layout>
+      {(({ error, status, response }) => {
+        // eslint-disable-next-line default-case
+        switch (status) {
+          case undefined:
+          case apiStatus.WAITING:
+            return <Working><FormattedMessage {...messages.header} /></Working>;
+          case apiStatus.ERROR:
+            return <Error {...error} />;
         }
-        <br />
-        <Help to="/browse/">Browse registry</Help>
-        <br />
-        {/*
-        {response.length === 0 ? null : (
-          <Fragment>
-            <h1>New packages</h1>
-            <Gallery />
-          </Fragment>
-        )}
-        */}
-        <br />
-      </div>
-    );
-  });
+        return (
+          <div>
+            <h1><FormattedMessage {...messages.header} /></h1>
+            {response.length
+              ? response.map((result) => <Hit key={result.path} {...result} />)
+              : <NothingFound />
+            }
+            <br />
+            <Help to="/browse/">Browse registry</Help>
+            <br />
+            {/*
+            {response.length === 0 ? null : (
+              <Fragment>
+                <h1>New packages</h1>
+                <Gallery />
+              </Fragment>
+            )}
+            */}
+            <br />
+          </div>
+        );
+      })(search)}
+    </Layout>
+  ));

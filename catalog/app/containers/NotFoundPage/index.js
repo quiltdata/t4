@@ -1,10 +1,13 @@
-/* NotFoundPage - when no matching routes there are */
-import React from 'react';
+import * as React from 'react';
 
 import Error from 'components/Error';
+import Layout from 'components/Layout';
+import { composeComponent } from 'utils/reactTools';
 
-export default class NotFound extends React.PureComponent { // eslint-disable-line react/prefer-stateless-function
-  render() {
-    return <Error headline="Nothing here" detail="Do you need to log in?" />;
-  }
-}
+
+export default composeComponent('NotFoundPage',
+  () => (
+    <Layout>
+      <Error headline="Nothing here" detail="Do you need to log in?" />
+    </Layout>
+  ));

@@ -4,6 +4,7 @@ import 'babel-polyfill';
 import 'whatwg-fetch';
 
 // Import all the third party stuff
+import MuiThemeProvider from 'material-ui/styles/MuiThemeProvider';
 import ReactDOM from 'react-dom';
 import { LOCATION_CHANGE } from 'connected-react-router/immutable';
 import createHistory from 'history/createBrowserHistory';
@@ -14,11 +15,11 @@ import '!!style-loader!css-loader!css/bootstrap-grid.css';
 
 // Import root app
 import App from 'containers/App';
-// Import Language Provider
 import LanguageProvider from 'containers/LanguageProvider';
 import * as AWSAuth from 'containers/AWSAuth';
-import { Provider as NotificationsProvider } from 'containers/Notifications';
+import * as Notifications from 'containers/Notifications';
 import config from 'constants/config';
+import theme from 'constants/theme';
 import * as AWS from 'utils/AWS';
 import fontLoader from 'utils/fontLoader';
 import { nest } from 'utils/reactTools';
@@ -62,7 +63,7 @@ const render = (messages) => {
       [StoreProvider, { store }],
       FormProvider,
       [LanguageProvider, { messages }],
-      NotificationsProvider,
+      Notifications.Provider,
       // TODO: figure out AWS components order / race conditions
       [AWSAuth.Provider, {
         storage,
@@ -81,6 +82,8 @@ const render = (messages) => {
       }],
       SearchProvider,
       [RouterProvider, { history }],
+      [MuiThemeProvider, { muiTheme: theme }],
+      Notifications.WithNotifications,
       App,
     ),
     MOUNT_NODE

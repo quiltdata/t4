@@ -15,6 +15,7 @@ import {
 } from 'recompose';
 import styled from 'styled-components';
 
+import Layout from 'components/Layout';
 import MIcon from 'components/MIcon';
 import Spinner from 'components/Spinner';
 import config from 'constants/config';
@@ -217,7 +218,7 @@ export default composeComponent('Browser',
     path,
   })),
   ({ bucket, path, signer }) => (
-    <div>
+    <Layout>
       <TopBar>
         <BreadCrumbs path={path} root={bucket} />
         {!isDir(path) && (
@@ -232,5 +233,5 @@ export default composeComponent('Browser',
         ? <DirectoryDisplay bucket={bucket} path={path} />
         : <FileDisplay bucket={bucket} path={path} />
       }
-    </div>
+    </Layout>
   ));
