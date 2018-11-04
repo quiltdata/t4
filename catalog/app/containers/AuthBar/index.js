@@ -1,4 +1,5 @@
 /* AuthBar - app wide navigation bar and user controls */
+import { push } from 'connected-react-router/immutable';
 import FlatButton from 'material-ui/FlatButton';
 import TextField from 'material-ui/TextField';
 import PropTypes from 'prop-types';
@@ -6,7 +7,6 @@ import React from 'react';
 import { Col, Row } from 'react-bootstrap';
 import { connect } from 'react-redux';
 import { Link } from 'react-router-dom';
-import { push } from 'react-router-redux';
 import {
   setPropTypes,
   withHandlers,
