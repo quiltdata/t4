@@ -18,11 +18,9 @@ import styled from 'styled-components';
 import logo from 'img/logo/horizontal-white.png';
 
 import { backgroundColor } from 'constants/style';
-// import { blog, company, docs, jobs } from 'constants/urls';
-import { setSearchText } from 'containers/App/actions';
-import { selectSearchText } from 'containers/App/selectors';
 import * as authSelectors from 'containers/AWSAuth/selectors';
 import UserMenu from 'components/UserMenu';
+import { setSearchText, selectSearchText } from 'utils/SearchProvider';
 import { composeComponent } from 'utils/reactTools';
 
 import config from 'constants/config';

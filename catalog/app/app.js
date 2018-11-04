@@ -26,6 +26,7 @@ import FormProvider from 'utils/ReduxFormProvider';
 import RouterProvider from 'utils/router';
 import mkStorage from 'utils/storage';
 import StoreProvider from 'utils/StoreProvider';
+import SearchProvider from 'utils/SearchProvider';
 import tracking from 'utils/tracking';
 // Load the favicon, the manifest.json file and the .htaccess file
 /* eslint-disable import/no-unresolved, import/extensions */
@@ -78,6 +79,7 @@ const render = (messages) => {
         host: config.aws.elasticSearchUrl,
         log: 'trace',
       }],
+      SearchProvider,
       [RouterProvider, { history }],
       App,
     ),
