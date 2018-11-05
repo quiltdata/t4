@@ -21,6 +21,7 @@ import Spinner from 'components/Spinner';
 import config from 'constants/config';
 import { S3, Signer } from 'utils/AWS';
 import AsyncResult from 'utils/AsyncResult';
+import * as NamedRoutes from 'utils/NamedRoutes';
 import { injectReducer } from 'utils/ReducerInjector';
 import {
   getBreadCrumbs,
@@ -45,10 +46,11 @@ const BreadCrumbs = composeComponent('Browser.BreadCrumbs',
     path: PT.string.isRequired,
     root: PT.string.isRequired,
   }),
-  ({ path, root }) => (
+  NamedRoutes.inject(),
+  ({ path, root, urls }) => (
     <h3 style={{ fontSize: 18, margin: 0 }}>
       {path
-        ? <Link to="/browse/">{root}</Link>
+        ? <Link to={urls.browse()}>{root}</Link>
         : root
       }
       {getBreadCrumbs(path).map((b) => (
@@ -56,7 +58,7 @@ const BreadCrumbs = composeComponent('Browser.BreadCrumbs',
           <span> / </span>
           {b === path
             ? basename(b)
-            : <Link to={`/browse/${b}`}>{basename(b)}</Link>
+            : <Link to={urls.browse(b)}>{basename(b)}</Link>
           }
         </span>
       ))}
@@ -111,7 +113,8 @@ const Thumbnails = composeComponent('Browser.Thumbnails',
   withProps(({ images }) => ({
     showing: images.slice(0, MAX_THUMBNAILS),
   })),
-  ({ images, showing, signer }) => (
+  NamedRoutes.inject(),
+  ({ images, showing, signer, urls }) => (
     <Card style={{ marginTop: 16 }}>
       <CardTitle
         title={`Images (showing ${showing.length} out of ${images.length})`}
@@ -122,7 +125,7 @@ const Thumbnails = composeComponent('Browser.Thumbnails',
           {showing.map((i) => (
             <Link
               key={i.key}
-              to={`/browse/${i.key}`}
+              to={urls.browse(i.key)}
               style={{
                 flexBasis: '19%',
                 marginBottom: 16,
@@ -213,7 +216,7 @@ const TopBar = styled.div`
 
 export default composeComponent('Browser',
   Signer.inject(),
-  withProps(({ match: { params: { path } } }) => ({
+  withProps(({ match: { params: { path = '' } } }) => ({
     bucket: config.aws.s3Bucket,
     path,
   })),

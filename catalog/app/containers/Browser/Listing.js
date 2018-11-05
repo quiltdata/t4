@@ -13,6 +13,7 @@ import {
 import styled from 'styled-components';
 
 import MIcon from 'components/MIcon';
+import * as NamedRoutes from 'utils/NamedRoutes';
 import { composeComponent } from 'utils/reactTools';
 import {
   ensureNoSlash,
@@ -61,11 +62,12 @@ const ItemDir = composeComponent('Browser.Listing.ItemDir',
     path: PT.string.isRequired,
     name: PT.string.isRequired,
   }),
-  ({ path, name }) => (
+  NamedRoutes.inject(),
+  ({ path, name, urls }) => (
     <Item
       icon="folder_open"
       text={name}
-      link={`/browse/${path}`}
+      link={urls.browse(path)}
     />
   ));
 
@@ -85,11 +87,12 @@ const ItemFile = composeComponent('Browser.Listing.ItemFile',
     modified: PT.instanceOf(Date).isRequired,
     size: PT.number.isRequired,
   }),
-  ({ path, size, modified }) => (
+  NamedRoutes.inject(),
+  ({ path, size, modified, urls }) => (
     <Item
       icon="insert_drive_file"
       text={basename(path)}
-      link={`/browse/${path}`}
+      link={urls.browse(path)}
     >
       <FileInfoSize>{readableBytes(size)}</FileInfoSize>
       <FileInfoModified>{modified.toLocaleString()}</FileInfoModified>

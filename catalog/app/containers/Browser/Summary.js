@@ -12,6 +12,7 @@ import {
 
 import { S3 } from 'utils/AWS';
 import AsyncResult from 'utils/AsyncResult';
+import * as NamedRoutes from 'utils/NamedRoutes';
 import * as Resource from 'utils/Resource';
 import { composeComponent, extractProp } from 'utils/reactTools';
 import {
@@ -29,10 +30,11 @@ export const SummaryItem = composeComponent('Browser.SummaryItem',
     title: PT.node.isRequired,
     handle: PT.object.isRequired,
   }),
-  ({ title, handle }) => (
+  NamedRoutes.inject(),
+  ({ title, handle, urls }) => (
     <Card style={{ marginTop: 16 }}>
       <CardTitle
-        title={<Link to={`/browse/${handle.key}`}>{title}</Link>}
+        title={<Link to={urls.browse(handle.key)}>{title}</Link>}
         titleStyle={{ fontSize: 21 }}
       />
       <CardText>

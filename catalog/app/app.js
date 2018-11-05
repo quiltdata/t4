@@ -21,13 +21,14 @@ import * as Notifications from 'containers/Notifications';
 import config from 'constants/config';
 import theme from 'constants/theme';
 import * as AWS from 'utils/AWS';
-import fontLoader from 'utils/fontLoader';
-import { nest } from 'utils/reactTools';
+import * as NamedRoutes from 'utils/NamedRoutes';
 import FormProvider from 'utils/ReduxFormProvider';
-import RouterProvider from 'utils/router';
-import mkStorage from 'utils/storage';
 import StoreProvider from 'utils/StoreProvider';
 import SearchProvider from 'utils/SearchProvider';
+import fontLoader from 'utils/fontLoader';
+import { nest } from 'utils/reactTools';
+import RouterProvider from 'utils/router';
+import mkStorage from 'utils/storage';
 import tracking from 'utils/tracking';
 // Load the favicon, the manifest.json file and the .htaccess file
 /* eslint-disable import/no-unresolved, import/extensions */
@@ -49,6 +50,29 @@ fontLoader('Roboto', 'Roboto Mono').then(() => {
   document.body.classList.add('fontLoaded');
 });
 
+const routes = {
+  home: {
+    path: '/',
+    url: () => '/',
+  },
+  search: {
+    path: '/search',
+    url: (q) => `/search${NamedRoutes.mkSearch({ q })}`,
+  },
+  browse: {
+    path: '/browse/:path(.*)?',
+    url: (path = '') => `/browse/${path}`,
+  },
+  signIn: {
+    path: '/signin',
+    url: (next) => `/signin${NamedRoutes.mkSearch({ next })}`,
+  },
+  signOut: {
+    path: '/signout',
+    url: () => '/signout',
+  },
+};
+
 // Create redux store with history
 const initialState = {};
 const history = createHistory();
@@ -68,7 +92,7 @@ const render = (messages) => {
       [AWSAuth.Provider, {
         storage,
         testBucket: config.aws.s3Bucket,
-        signInRedirect: '/browse/',
+        signInRedirect: routes.browse.url(),
       }],
       [AWS.Config.Provider, {
         credentialsSelector: AWSAuth.selectors.credentials,
@@ -84,6 +108,7 @@ const render = (messages) => {
       [RouterProvider, { history }],
       [MuiThemeProvider, { muiTheme: theme }],
       Notifications.WithNotifications,
+      [NamedRoutes.Provider, { routes }],
       App,
     ),
     MOUNT_NODE

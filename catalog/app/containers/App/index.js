@@ -11,6 +11,7 @@ import Browser from 'containers/Browser';
 import HomePage from 'containers/HomePage/Loadable';
 import NotFoundPage from 'containers/NotFoundPage/Loadable';
 import SearchResults from 'containers/SearchResults/Loadable';
+import * as NamedRoutes from 'utils/NamedRoutes';
 import { injectSaga } from 'utils/SagaInjector';
 import { composeComponent } from 'utils/reactTools';
 
@@ -30,14 +31,15 @@ const redirectTo = (path) => ({ location: { search } }) =>
 
 export default composeComponent('App',
   injectSaga(REDUX_KEY, saga),
-  () => (
+  NamedRoutes.inject(),
+  ({ paths, urls }) => (
     <Switch>
-      <Route path="/" exact component={ProtectedHome} />
-      <Route path="/search" exact component={requireAuth(SearchResults)} />
-      <Route path="/browse/:path(.*)?" exact component={requireAuth(Browser)} />
-      <Route path="/signin" exact component={SignIn} />
-      <Route path="/login" exact render={redirectTo('/signin')} />
-      <Route path="/signout" exact component={SignOut} />
+      <Route path={paths.home} exact component={ProtectedHome} />
+      <Route path={paths.search} exact component={requireAuth(SearchResults)} />
+      <Route path={paths.browse} exact component={requireAuth(Browser)} />
+      <Route path={paths.signIn} exact component={SignIn} />
+      <Route path="/login" exact render={redirectTo(urls.signIn())} />
+      <Route path={paths.signOut} exact component={SignOut} />
       <Route component={ProtectedNotFound} />
     </Switch>
   ));

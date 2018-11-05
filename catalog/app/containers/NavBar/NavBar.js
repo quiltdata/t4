@@ -17,6 +17,7 @@ import Spinner from 'components/Spinner';
 import config from 'constants/config';
 import { authButtonStyle, backgroundColor } from 'constants/style';
 import * as authSelectors from 'containers/AWSAuth/selectors';
+import * as NamedRoutes from 'utils/NamedRoutes';
 import { setSearchText, selectSearchText } from 'utils/SearchProvider';
 import { composeComponent } from 'utils/reactTools';
 
@@ -143,9 +144,17 @@ const LeftGroup = composeComponent('NavBar.LeftGroup',
       }
     },
   }),
-  ({ handleChange, handleEnter, searchText, s3Bucket, signedIn }) => (
+  NamedRoutes.inject(),
+  ({
+    handleChange,
+    handleEnter,
+    searchText,
+    s3Bucket,
+    signedIn,
+    urls,
+  }) => (
     <div style={{ marginTop: '16px', display: 'flex' }}>
-      <Link to="/">
+      <Link to={urls.home()}>
         <Lockup>
           <img alt="Quilt logo" src={logo} />
         </Lockup>
@@ -163,7 +172,7 @@ const LeftGroup = composeComponent('NavBar.LeftGroup',
             value={searchText}
           />
           <FlatButton
-            containerElement={<Link to="/browse/" />}
+            containerElement={<Link to={urls.browse()} />}
             label="browse"
             style={{ ...navStyle, verticalAlign: 'middle', marginLeft: '1em' }}
           />
@@ -177,7 +186,8 @@ const SignIn = composeComponent('NavBar.SignIn',
     error: PT.object,
     waiting: PT.bool.isRequired,
   }),
-  ({ error, waiting }) => {
+  NamedRoutes.inject(),
+  ({ error, waiting, urls }) => {
     if (waiting) {
       return <Spinner className="fa-2x" />;
     }
@@ -192,7 +202,7 @@ const SignIn = composeComponent('NavBar.SignIn',
           </MIcon>
         )}
         <FlatButton
-          containerElement={<Link to="/signin" />}
+          containerElement={<Link to={urls.signIn()} />}
           style={{ ...authButtonStyle, verticalAlign: 'middle' }}
         >
           Sign In
@@ -237,7 +247,8 @@ const AuthMenu = composeComponent('NavBar.AuthMenu',
   RC.setPropTypes({
     name: PT.string,
   }),
-  ({ name }) => (
+  NamedRoutes.inject(),
+  ({ name, urls }) => (
     <IconMenu
       iconButtonElement={
         <ExtendedFlatButton
@@ -252,6 +263,6 @@ const AuthMenu = composeComponent('NavBar.AuthMenu',
       targetOrigin={{ horizontal: 'right', vertical: 'top' }}
       anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
     >
-      <MenuLink to="/signout">Sign Out</MenuLink>
+      <MenuLink to={urls.signOut()}>Sign Out</MenuLink>
     </IconMenu>
   ));
