@@ -5,6 +5,7 @@ import jsonlines
 import os
 import pathlib
 import pytest
+from tempfile import NamedTemporaryFile
 from urllib.parse import urlparse
 
 from mock import patch
@@ -298,6 +299,28 @@ def test_list_local_packages(tmpdir):
         pkgs = t4.list_packages("/")
         assert "Foo" in pkgs
         assert "Bar" in pkgs
+
+def test_tophash_changes():
+    with NamedTemporaryFile() as test_file:
+        test_file.write('asdf'.encode('utf-8'))
+        pkg = Package()
+        th1 = pkg.top_hash()
+        pkg.set('asdf', test_file.name)
+        th2 = pkg.top_hash()
+        assert th1 != th2
+
+        test_file.write('jkl'.encode('utf-8'))
+        pkg.set('jkl', test_file.name)
+        th3 = pkg.top_hash()
+        assert th1 != th3
+        assert th2 != th3
+
+        pkg.delete('jkl')
+        th4 = pkg.top_hash()
+        assert th2 == th4
+        
+        pkg.delete('asdf')
+        assert th1 == pkg.top_hash()
 
 def test_list_remote_packages():
     with patch('t4.api.list_objects',

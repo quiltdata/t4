@@ -47,7 +47,7 @@ def get_package_registry(path=''):
     if path.startswith('s3://'):
         bucket = path[5:].partition('/')[0]
         return "s3://{}/.quilt".format(bucket)
-    # default to local registry
+    # Default to the local registry.
     return get_local_package_registry().as_uri()
 
 def get_local_package_registry():
@@ -133,10 +133,10 @@ class Package(object):
         registry = get_package_registry(fix_url(registry))
 
         if pkg_hash is not None:
-            # if hash is specified, name doesn't matter
+            # If hash is specified, name doesn't matter.
             pkg_path = '{}/packages/{}'.format(registry, pkg_hash)
             pkg = self._from_path(pkg_path)
-            # can't assign to self, so must mutate it
+            # Can't assign to self, so must mutate.
             self._set_state(pkg._data, pkg._meta)
             return
 
@@ -156,7 +156,7 @@ class Package(object):
         latest_hash = latest_hash.strip()
         latest_path = '{}/packages/{}'.format(registry, quote(latest_hash))
         pkg = self._from_path(latest_path)
-        # can't assign to self, so must mutate it
+        # Can't assign to self, so must mutate.
         self._set_state(pkg._data, pkg._meta)
 
     @staticmethod
@@ -257,7 +257,7 @@ class Package(object):
             # TODO: Warn if overwritting a logical key?
             self.set(logical_key, entry)
 
-        # must unset old top hash when modifying package
+        # Must unset old top hash when modifying package.
         self._unset_tophash()
         return self
 
@@ -362,7 +362,7 @@ class Package(object):
             )
 
         if name:
-            # sanitize name
+            # Sanitize name.
             name = quote(name)
 
             named_path = registry.strip('/') + '/named_packages/' + quote(name) + '/'
@@ -393,7 +393,7 @@ class Package(object):
             fail to create file
             fail to finish write
         """
-        self.top_hash() # assure top hash is calculated
+        self.top_hash() # Assure top hash is calculated.
         writer = jsonlines.Writer(writable_file)
         writer.write(self._meta)
         for logical_key, entry in self._data.items():
@@ -454,7 +454,7 @@ class Package(object):
         else:
             raise NotImplementedError
 
-        # must unset old top hash when modifying package
+        # Must unset old top hash when modifying package
         self._unset_tophash()
         return self
 
@@ -474,7 +474,7 @@ class Package(object):
             KeyError: when logical_key is not present to be deleted
         """
         self._data.pop(logical_key)
-        # must unset old top hash when modifying package
+        # Must unset old top hash when modifying package
         self._unset_tophash()
         return self
 
@@ -566,7 +566,7 @@ class Package(object):
             fail to put package to registry
         """
         pkg = self._clone()
-        # since all that is modified is physical keys, pkg will have the same top hash
+        # Since all that is modified is physical keys, pkg will have the same top hash
         for logical_key, entry in self._data.items():
             # Copy the datafiles in the package.
             new_physical_key = path + "/" + quote(logical_key)
