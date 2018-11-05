@@ -274,28 +274,30 @@ def test_updates(tmpdir):
 
     assert pkg.get('foo') == ('123\n', 'blah')
 
-@patch('appdirs.user_data_dir', lambda x,y: os.path.join('test_appdir', x))
 def test_list_local_packages(tmpdir):
     """Verify that list returns packages in the appdirs directory."""
-    # Build a new package into the local registry.
-    Package().build("Foo")
-    Package().build("Bar")
-    Package().build("Test")
+    temp_local_registry = Path(os.path.join(tmpdir, 'test_registry'))
+    with patch('t4.packages.get_local_package_registry', lambda: temp_local_registry):
+        # Build a new package into the local registry.
+        Package().build("Foo")
+        Package().build("Bar")
+        Package().build("Test")
 
-    # Verify packages are returned.
-    pkgs = t4.list_packages()
-    assert "Foo" in pkgs
-    assert "Bar" in pkgs
+        # Verify packages are returned.
+        pkgs = t4.list_packages()
+        assert len(pkgs) == 3
+        assert "Foo" in pkgs
+        assert "Bar" in pkgs
 
-    # Test unnamed packages are not added.
-    Package().build()
-    pkgs = t4.list_packages()
-    assert len(pkgs) == 3
+        # Test unnamed packages are not added.
+        Package().build()
+        pkgs = t4.list_packages()
+        assert len(pkgs) == 3
 
-    # Verify manifest is registered by hash when local path given
-    pkgs = t4.list_packages("/")
-    assert "Foo" in pkgs
-    assert "Bar" in pkgs
+        # Verify manifest is registered by hash when local path given
+        pkgs = t4.list_packages("/")
+        assert "Foo" in pkgs
+        assert "Bar" in pkgs
 
 def test_list_remote_packages():
     with patch('t4.api.list_objects',
