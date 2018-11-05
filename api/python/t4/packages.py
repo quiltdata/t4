@@ -113,6 +113,8 @@ class PackageEntry(object):
         return PackageEntry(copy.deepcopy(self.physical_keys), self.size, \
                             copy.deepcopy(self.hash), copy.deepcopy(self.meta))
 
+    # TODO: support get for PackageEntry
+
 
 class Package(object):
     """ In-memory representation of a package """
@@ -196,6 +198,38 @@ class Package(object):
             True or False
         """
         return logical_key in self._data
+
+    def __getitem__(self, prefix):
+        """
+        Filters the package based on prefix, and returns either a new Package
+            or a PackageEntry.
+
+        Args:
+            prefix(str): prefix to filter on
+
+        Returns:
+            PackageEntry if prefix matches a logical_key exactly
+            otherwise Package
+        """
+        if prefix in self._data:
+            return self._data[prefix]
+        result = Package()
+        slash_prefix = prefix.strip('/') + '/' # ensure it ends with exactly one /
+        for key, entry in self._data:
+            if key.startswith(slash_prefix):
+                new_key = key[len(slash_prefix):]
+                result.set(new_key, entry)
+        return result
+
+    def __call__(self):
+        """
+        If self contains exactly one logical key 'lk', this is a sugar for self.get('lk')
+        """
+        keys = self_data.keys()
+        if len(keys) != 1:
+            raise PackageException(
+                "Can't use parens unless package contains exactly one logical key")
+        return self.get(keys[0])
 
     @staticmethod
     def load(readable_file):
