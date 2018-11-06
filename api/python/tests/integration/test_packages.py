@@ -335,6 +335,26 @@ def test_keys():
     pkg.delete('asdf')
     assert pkg.keys() == ['jkl;']
 
+def test_brackets():
+    pkg = Package()
+    pkg.set('asdf/jkl', LOCAL_MANIFEST)
+    pkg.set('asdf/qwer', LOCAL_MANIFEST)
+    pkg.set('qwer/asdf', LOCAL_MANIFEST)
+    assert set(pkg.keys()) == set(['asdf/jkl', 'asdf/qwer', 'qwer/asdf'])
+
+    pkg2 = pkg['asdf']
+    assert set(pkg2.keys()) == set(['jkl', 'qwer'])
+
+    pkg = (
+        Package()
+        .set('foo', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
+             {'target': 'unicode', 'user_meta': 'blah'})
+    )
+
+    assert pkg.get('foo') == ('123\n', 'blah')
+    assert pkg['foo'].get() == ('123\n', 'blah')
+    assert pkg['foo']() == '123\n'
+
 def test_list_remote_packages():
     with patch('t4.api.list_objects',
                return_value=([{'Prefix': 'foo'},{'Prefix': 'bar'}],[])) as mock:

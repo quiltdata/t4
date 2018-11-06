@@ -261,7 +261,7 @@ class Package(object):
             return self._data[prefix]
         result = Package()
         slash_prefix = prefix.strip('/') + '/' # ensure it ends with exactly one /
-        for key, entry in self._data:
+        for key, entry in self._data.items():
             if key.startswith(slash_prefix):
                 new_key = key[len(slash_prefix):]
                 result.set(new_key, entry)
