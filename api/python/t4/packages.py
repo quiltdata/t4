@@ -157,6 +157,12 @@ class PackageEntry(object):
 
         return deserialize_obj(data, target), self.meta.get('user_meta')
 
+    def __call__(self):
+        """
+        Shorthand for self.get()[0]
+        """
+        return self.get()[0]
+
 
 class Package(object):
     """ In-memory representation of a package """
@@ -262,16 +268,6 @@ class Package(object):
                 new_key = key[len(slash_prefix):]
                 result.set(new_key, entry)
         return result
-
-    def __call__(self):
-        """
-        If self contains exactly one logical key 'lk', this is a sugar for self.get('lk')
-        """
-        keys = self_data.keys()
-        if len(keys) != 1:
-            raise PackageException(
-                "Can't use parens unless package contains exactly one logical key")
-        return self.get(keys[0])
 
     @staticmethod
     def load(readable_file):
