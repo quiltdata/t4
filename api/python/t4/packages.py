@@ -124,6 +124,17 @@ class PackageEntry(object):
 
     def get(self):
         """
+        Returns the physical key of this PackageEntry.
+        """
+        if len(self.physical_keys) > 1:
+            raise NotImplementedError
+        return self.physical_keys[0]
+
+    def deserialize(self):
+        return self._get()[0]
+
+    def _get(self):
+        """
         Returns a tuple of the object this entry corresponds to and its metadata.
 
         Returns:
@@ -158,7 +169,7 @@ class PackageEntry(object):
         """
         Shorthand for self.get()[0]
         """
-        return self.get()[0]
+        return self.deserialize()
 
 
 class Package(object):

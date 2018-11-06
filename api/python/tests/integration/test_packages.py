@@ -207,10 +207,10 @@ def test_package_get(tmpdir):
         .set('bar', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'))
     )
 
-    assert pkg.get('foo') == ('123\n', 'blah')
+    assert pkg['foo']._get() == ('123\n', 'blah')
 
     with pytest.raises(QuiltException):
-        pkg.get('bar')
+        pkg['bar']._get()
 
 def test_capture(tmpdir):
     """ Verify building a package from a directory. """
@@ -262,8 +262,8 @@ def test_updates(tmpdir):
         .set('bar', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
             {'target': 'unicode', 'user_meta': 'blah'})
     )
-    assert pkg.get('foo') == ('123\n', 'blah')
-    assert pkg.get('bar') == ('123\n', 'blah')
+    assert pkg['foo']() == '123\n'
+    assert pkg['bar']() == '123\n'
 
     # Build a dummy file to add to the map.
     with open('bar.txt', "w") as fd:
@@ -273,7 +273,7 @@ def test_updates(tmpdir):
     assert test_file.resolve().as_uri() \
         == pkg._data['bar'].physical_keys[0] # pylint: disable=W0212
 
-    assert pkg.get('foo') == ('123\n', 'blah')
+    assert pkg['foo']() == '123\n'
 
 def test_list_local_packages(tmpdir):
     """Verify that list returns packages in the appdirs directory."""
@@ -351,8 +351,7 @@ def test_brackets():
              {'target': 'unicode', 'user_meta': 'blah'})
     )
 
-    assert pkg.get('foo') == ('123\n', 'blah')
-    assert pkg['foo'].get() == ('123\n', 'blah')
+    assert pkg['foo'].deserialize() == '123\n'
     assert pkg['foo']() == '123\n'
 
 def test_list_remote_packages():
