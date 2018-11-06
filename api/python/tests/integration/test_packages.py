@@ -273,6 +273,15 @@ def test_updates(tmpdir):
     assert test_file.resolve().as_uri() \
         == pkg._data['bar'].physical_keys[0] # pylint: disable=W0212
 
+    # Build a dummy file to add to the map with a prefix.
+    with open('baz.txt', "w") as fd:
+        fd.write('test_file_content_string')
+        test_file = Path(fd.name)
+    pkg = pkg.update({'baz': 'baz.txt'}, prefix='prefix/')
+    assert test_file.resolve().as_uri() \
+        == pkg._data['prefix/baz'].physical_keys[0] # pylint: disable=W0212
+
+
     assert pkg.get('foo') == ('123\n', 'blah')
 
 def test_list_local_packages(tmpdir):
