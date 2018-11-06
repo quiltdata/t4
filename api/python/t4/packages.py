@@ -117,6 +117,13 @@ class PackageEntry(object):
 class Package(object):
     """ In-memory representation of a package """
 
+    @staticmethod
+    def validate_package_name(name):
+        """ Verify that a package name is two alphanumerics strings separated by a slash."""
+        if not re.match(r"[a-zA-Z0-9_\\-]+/[a-zA-Z0-9_\\-]+$", name):
+            raise QuiltException("Invalid package name, must contain exactly one /.")
+
+
     def __init__(self, name=None, pkg_hash=None, registry=''):
         """
         Create a Package from scratch, or load one from a registry.
@@ -130,6 +137,8 @@ class Package(object):
             self._data = {}
             self._meta = {'version': 'v0'}
             return
+        elif name:
+            self.validate_package_name(name)
 
         registry = get_package_registry(fix_url(registry))
 
@@ -159,13 +168,6 @@ class Package(object):
         pkg = self._from_path(latest_path)
         # Can't assign to self, so must mutate.
         self._set_state(pkg._data, pkg._meta)
-
-
-    @staticmethod
-    def validate_package_name(name):
-        """ Verify that a package name is two alphanumerics strings separated by a slash."""
-        if not re.match(r"\w+/\w+$", name):
-            raise QuiltException("Invalid package name, must contain exactly one /.")
 
 
     @staticmethod
@@ -378,6 +380,7 @@ class Package(object):
 
         if name:
             # Sanitize name.
+            self.validate_package_name(name)
             name = quote(name)
 
             named_path = registry.strip('/') + '/named_packages/' + quote(name) + '/'
@@ -555,6 +558,7 @@ class Package(object):
         """
         dest = fix_url(path).strip('/')
         if name:
+            self.validate_package_name(name)
             dest = dest + '/' + quote(name)
         if dest.startswith('file://') or dest.startswith('s3://'):
             pkg = self._materialize(dest)

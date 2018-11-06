@@ -1,3 +1,5 @@
+import glob
+from itertools import chain
 import json
 import os
 import requests
@@ -137,7 +139,14 @@ def list_packages(registry=None):
 
     registry_url = urlparse(registry)
     if registry_url.scheme == 'file':
-        return os.listdir(parse_file_url(registry_url))
+        # There's probably a cleaner glob.glob(parse_file_url(registry_url)+'/*')
+        # approach, but the absolute paths made it tricky.
+        # TODO: Remove this comment after review.
+        return list(chain.from_iterable(
+            [[ x + '/' + y \
+                for y in os.listdir(parse_file_url(registry_url) + '/' + x)]
+                    for x in os.listdir(parse_file_url(registry_url))]))
+
     elif registry_url.scheme == 's3':
         src_bucket, src_path, _ = parse_s3_url(registry_url)
         prefixes, _ = list_objects(src_bucket + '/' + src_path + '/', recursive=False)
