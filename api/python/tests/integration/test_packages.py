@@ -352,3 +352,21 @@ def test_list_remote_packages():
             'my_test_bucket/.quilt/named_packages/'
 
     assert True
+
+
+def test_validate_package_name():
+    Package.validate_package_name("a/b")
+    Package.validate_package_name("21312/bes")
+    with pytest.raises(QuiltException):
+        Package.validate_package_name("b")
+    with pytest.raises(QuiltException):
+        Package.validate_package_name("a/b/")
+    with pytest.raises(QuiltException):
+        Package.validate_package_name("a/b/c")
+    with pytest.raises(QuiltException):
+        Package.validate_package_name("a/")
+    with pytest.raises(QuiltException):
+        Package.validate_package_name("/b")
+    with pytest.raises(QuiltException):
+        Package.validate_package_name("b")
+

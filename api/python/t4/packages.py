@@ -5,6 +5,7 @@ import json
 import pathlib
 from pathlib import Path
 import os
+import re
 
 import tempfile
 import time
@@ -158,6 +159,14 @@ class Package(object):
         pkg = self._from_path(latest_path)
         # Can't assign to self, so must mutate.
         self._set_state(pkg._data, pkg._meta)
+
+
+    @staticmethod
+    def validate_package_name(name):
+        """ Verify that a package name is two alphanumerics strings separated by a slash."""
+        if not re.match(r"\w+/\w+$", name):
+            raise QuiltException("Invalid package name, must contain exactly one /.")
+
 
     @staticmethod
     def _from_path(uri):
