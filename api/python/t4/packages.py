@@ -118,9 +118,7 @@ class PackageEntry(object):
         """
         if self.hash.get('type') != 'SHA256':
             raise NotImplementedError
-        hasher = hashlib.sha256()
-        hasher.update(read_bytes)
-        digest = hasher.hexdigest()
+        digest = hashlib.sha256(read_bytes).hexdigest()
         if digest != self.hash.get('value'):
             raise QuiltException("Hash validation failed")
 
@@ -260,7 +258,7 @@ class Package(object):
         if prefix in self._data:
             return self._data[prefix]
         result = Package()
-        slash_prefix = prefix.strip('/') + '/' # ensure it ends with exactly one /
+        slash_prefix = prefix.rstrip('/') + '/' # ensure it ends with exactly one /
         for key, entry in self._data.items():
             if key.startswith(slash_prefix):
                 new_key = key[len(slash_prefix):]
