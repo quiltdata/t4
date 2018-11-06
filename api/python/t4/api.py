@@ -150,8 +150,14 @@ def list_packages(registry=None):
     elif registry_url.scheme == 's3':
         src_bucket, src_path, _ = parse_s3_url(registry_url)
         prefixes, _ = list_objects(src_bucket + '/' + src_path + '/', recursive=False)
-        # Pull out the directory fields and remove the src_path prefix
-        return [x['Prefix'][len(src_path):].strip('/') for x in prefixes]
+        # Pull out the directory fields and remove the src_path prefix.
+        names = []
+        # Search each org directory for named packages.
+        for org in [x['Prefix'][len(src_path):].strip('/') for x in prefixes]:
+            packages, _ = list_objects(src_bucket + '/' + src_path + '/' + org, recursive=False)
+            names.append([y['Prefix'][len(src_path):].strip('/') for y in packages])
+        return names
+
     else:
         raise NotImplementedError
 
