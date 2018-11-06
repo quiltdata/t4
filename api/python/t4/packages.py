@@ -195,6 +195,12 @@ class Package(object):
         """
         return logical_key in self._data
 
+    def keys(self):
+        """
+        Returns list of logical_keys in the package.
+        """
+        return list(self._data.keys())
+
     @staticmethod
     def load(readable_file):
         """

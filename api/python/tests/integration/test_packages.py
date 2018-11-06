@@ -322,6 +322,19 @@ def test_tophash_changes():
         pkg.delete('asdf')
         assert th1 == pkg.top_hash()
 
+def test_keys():
+    pkg = Package()
+    assert pkg.keys() == []
+
+    pkg.set('asdf', LOCAL_MANIFEST)
+    assert pkg.keys() == ['asdf']
+
+    pkg.set('jkl;', REMOTE_MANIFEST)
+    assert set(pkg.keys()) == set(['asdf', 'jkl;'])
+
+    pkg.delete('asdf')
+    assert pkg.keys() == ['jkl;']
+
 def test_list_remote_packages():
     with patch('t4.api.list_objects',
                return_value=([{'Prefix': 'foo'},{'Prefix': 'bar'}],[])) as mock:
