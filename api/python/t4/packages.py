@@ -113,7 +113,49 @@ class PackageEntry(object):
         return PackageEntry(copy.deepcopy(self.physical_keys), self.size, \
                             copy.deepcopy(self.hash), copy.deepcopy(self.meta))
 
-    # TODO: support get for PackageEntry
+    def _verify_hash(self, read_bytes):
+        """
+        Verifies hash of bytes
+        """
+        if self.hash.get('type') != 'SHA256':
+            raise NotImplementedError
+        hasher = hashlib.sha256()
+        hasher.update(read_bytes)
+        digest = hasher.hexdigest()
+        if digest != self.hash.get('value'):
+            raise QuiltException("Hash validation failed")
+
+    def get(self):
+        """
+        Returns a tuple of the object this entry corresponds to and its metadata.
+
+        Returns:
+            A tuple containing the deserialized object from the logical_key and its metadata
+
+        Raises:
+            physical key failure
+            hash verification fail
+            when deserialization metadata is not present
+        """
+        target_str = self.meta.get('target')
+        if target_str is None:
+            raise QuiltException("No serialization metadata")
+
+        try:
+            target = TargetType(target_str)
+        except ValueError:
+            raise QuiltException("Unknown serialization target: %r" % target_str)
+
+        physical_keys = self.physical_keys
+        if len(physical_keys) > 1:
+            raise NotImplementedError
+        physical_key = physical_keys[0] # TODO: support multiple physical keys
+
+        data = read_physical_key(physical_key)
+
+        self._verify_hash(data)
+
+        return deserialize_obj(data, target), self.meta.get('user_meta')
 
 
 class Package(object):
@@ -316,25 +358,7 @@ class Package(object):
         """
         entry = self._data[logical_key]
 
-        target_str = entry.meta.get('target')
-        if target_str is None:
-            raise QuiltException("No serialization metadata")
-
-        try:
-            target = TargetType(target_str)
-        except ValueError:
-            raise QuiltException("Unknown serialization target: %r" % target_str)
-
-        physical_keys = entry.physical_keys
-        if len(physical_keys) > 1:
-            raise NotImplementedError
-        physical_key = physical_keys[0] # TODO: support multiple physical keys
-
-        data = read_physical_key(physical_key)
-
-        # TODO: verify hash
-
-        return deserialize_obj(data, target), entry.meta.get('user_meta')
+        return entry.get()
 
     def copy(self, logical_key, dest):
         """
