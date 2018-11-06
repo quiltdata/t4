@@ -1,6 +1,6 @@
 [run]
 branch = True
-source = __YOUR_PROJECT_FOLDER__
+source = api/python
 
 [report]
 exclude_lines =
@@ -10,4 +10,4 @@ exclude_lines =
     if __name__ == .__main__.:
 ignore_errors = True
 omit =
-    api/python/tests/*
+    api/python/tests/**/*
