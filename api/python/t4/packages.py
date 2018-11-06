@@ -132,6 +132,55 @@ class PackageEntry(object):
         result.pop('user_meta', None)
         return result
 
+    def _verify_hash(self, read_bytes):
+        """
+        Verifies hash of bytes
+        """
+        if self.hash.get('type') != 'SHA256':
+            raise NotImplementedError
+        digest = hashlib.sha256(read_bytes).hexdigest()
+        if digest != self.hash.get('value'):
+            raise QuiltException("Hash validation failed")
+
+    def get(self):
+        """
+        Returns a tuple of the object this entry corresponds to and its metadata.
+
+        Returns:
+            A tuple containing the deserialized object from the logical_key and its metadata
+
+        Raises:
+            physical key failure
+            hash verification fail
+            when deserialization metadata is not present
+        """
+        target_str = self.meta.get('target')
+        if target_str is None:
+            raise QuiltException("No serialization metadata")
+
+        try:
+            target = TargetType(target_str)
+        except ValueError:
+            raise QuiltException("Unknown serialization target: %r" % target_str)
+
+        physical_keys = self.physical_keys
+        if len(physical_keys) > 1:
+            raise NotImplementedError
+        physical_key = physical_keys[0] # TODO: support multiple physical keys
+
+        data = read_physical_key(physical_key)
+
+        self._verify_hash(data)
+
+        return deserialize_obj(data, target), self.meta.get('user_meta')
+
+    def __call__(self):
+        """
+        Shorthand for self.get()[0]
+        """
+        return self.get()[0]
+>>>>>>> brackets
+
 
 class Package(object):
     """ In-memory representation of a package """
@@ -214,6 +263,28 @@ class Package(object):
             True or False
         """
         return logical_key in self._data
+
+    def __getitem__(self, prefix):
+        """
+        Filters the package based on prefix, and returns either a new Package
+            or a PackageEntry.
+
+        Args:
+            prefix(str): prefix to filter on
+
+        Returns:
+            PackageEntry if prefix matches a logical_key exactly
+            otherwise Package
+        """
+        if prefix in self._data:
+            return self._data[prefix]
+        result = Package()
+        slash_prefix = prefix.rstrip('/') + '/' # ensure it ends with exactly one /
+        for key, entry in self._data.items():
+            if key.startswith(slash_prefix):
+                new_key = key[len(slash_prefix):]
+                result.set(new_key, entry)
+        return result
 
     def keys(self):
         """
@@ -305,25 +376,7 @@ class Package(object):
         """
         entry = self._data[logical_key]
 
-        target_str = entry.meta.get('target')
-        if target_str is None:
-            raise QuiltException("No serialization metadata")
-
-        try:
-            target = TargetType(target_str)
-        except ValueError:
-            raise QuiltException("Unknown serialization target: %r" % target_str)
-
-        physical_keys = entry.physical_keys
-        if len(physical_keys) > 1:
-            raise NotImplementedError
-        physical_key = physical_keys[0] # TODO: support multiple physical keys
-
-        data = read_physical_key(physical_key)
-
-        # TODO: verify hash
-
-        return deserialize_obj(data, target), entry.meta.get('user_meta')
+        return entry.get()
 
     def copy(self, logical_key, dest):
         """
