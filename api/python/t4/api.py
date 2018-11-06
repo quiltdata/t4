@@ -17,6 +17,13 @@ from .util import (HeliumConfig, QuiltException, AWS_SEPARATOR, CONFIG_PATH,
                    CONFIG_TEMPLATE, fix_url, parse_file_url, parse_s3_url, read_yaml, validate_url,
                    write_yaml, yaml_has_comments)
 
+# backports
+from six.moves import urllib
+try:
+    import pathlib2 as pathlib
+except ImportError:
+    import pathlib
+
 
 def copy(src, dest):
     """
@@ -139,13 +146,8 @@ def list_packages(registry=None):
 
     registry_url = urlparse(registry)
     if registry_url.scheme == 'file':
-        # There's probably a cleaner glob.glob(parse_file_url(registry_url)+'/*')
-        # approach, but the absolute paths made it tricky.
-        # TODO: Remove this comment after review.
-        return list(chain.from_iterable(
-            [[ x + '/' + y \
-                for y in os.listdir(parse_file_url(registry_url) + '/' + x)]
-                    for x in os.listdir(parse_file_url(registry_url))]))
+        registry_dir = pathlib.Path(parse_file_url(registry_url))
+        return [str(x.relative_to(registry_dir)) for x in registry_dir.glob('*/*')]
 
     elif registry_url.scheme == 's3':
         src_bucket, src_path, _ = parse_s3_url(registry_url)

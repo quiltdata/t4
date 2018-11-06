@@ -17,7 +17,8 @@ import jsonlines
 from .data_transfer import copy_file, deserialize_obj, download_bytes, TargetType
 
 from .exceptions import PackageException
-from .util import QuiltException, BASE_PATH, fix_url, parse_file_url, parse_s3_url
+from .util import QuiltException, BASE_PATH, fix_url, PACKAGE_NAME_FORMAT, parse_file_url, \
+    parse_s3_url
 
 
 def hash_file(readable_file):
@@ -120,7 +121,7 @@ class Package(object):
     @staticmethod
     def validate_package_name(name):
         """ Verify that a package name is two alphanumerics strings separated by a slash."""
-        if not re.match(r"[a-zA-Z0-9_\\-]+/[a-zA-Z0-9_\\-]+$", name):
+        if not re.match(PACKAGE_NAME_FORMAT, name):
             raise QuiltException("Invalid package name, must contain exactly one /.")
 
 

@@ -363,6 +363,8 @@ def test_validate_package_name():
     with pytest.raises(QuiltException):
         Package.validate_package_name("a/b/")
     with pytest.raises(QuiltException):
+        Package.validate_package_name("a\\/b")
+    with pytest.raises(QuiltException):
         Package.validate_package_name("a/b/c")
     with pytest.raises(QuiltException):
         Package.validate_package_name("a/")
