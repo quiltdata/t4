@@ -25,6 +25,8 @@ CONFIG_PATH = BASE_PATH / 'config.yml'
 
 AWS_SEPARATOR = '/'
 
+PACKAGE_NAME_FORMAT = r"[\w-]+/[\w-]+$"
+
 ## CONFIG_TEMPLATE
 # Must contain every permitted config key, as well as their default values (which can be 'null'/None).
 # Comments are retained and added to local config, unless overridden by autoconfig via `api.config(<url>)`
