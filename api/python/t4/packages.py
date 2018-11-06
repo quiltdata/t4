@@ -179,7 +179,6 @@ class PackageEntry(object):
         Shorthand for self.get()[0]
         """
         return self.get()[0]
->>>>>>> brackets
 
 
 class Package(object):
