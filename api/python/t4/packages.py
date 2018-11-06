@@ -112,6 +112,26 @@ class PackageEntry(object):
         return PackageEntry(copy.deepcopy(self.physical_keys), self.size, \
                             copy.deepcopy(self.hash), copy.deepcopy(self.meta))
 
+    def _set_meta(self, meta):
+        """
+        Sets the user_meta for this PackageEntry.
+        """
+        self.meta['user_meta'] = meta
+
+    def user_meta(self):
+        """
+        Returns the user metadata from this PackageEntry.
+        """
+        return self.meta.get('user_meta')
+
+    def system_meta(self):
+        """
+        Returns the system metadata from this PackageEntry.
+        """
+        result = copy.deepcopy(self.meta)
+        result.pop('user_meta', None)
+        return result
+
 
 class Package(object):
     """ In-memory representation of a package """

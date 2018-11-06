@@ -284,6 +284,15 @@ def test_updates(tmpdir):
 
     assert pkg.get('foo') == ('123\n', 'blah')
 
+def test_package_entry_meta():
+    pkg = (
+        Package()
+        .set('foo', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
+            {'target': 'unicode', 'user_meta': {'value': 'blah'}})
+        .set('bar', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
+            {'target': 'unicode', 'user_meta': {'value': 'blah2'}})
+    )
+
 def test_list_local_packages(tmpdir):
     """Verify that list returns packages in the appdirs directory."""
     temp_local_registry = Path(os.path.join(tmpdir, 'test_registry'))
