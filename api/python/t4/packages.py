@@ -1,9 +1,9 @@
 import copy
-from enum import Enum
 import hashlib
 import io
 import json
 import pathlib
+from pathlib import Path
 import os
 
 import tempfile
@@ -13,7 +13,6 @@ from urllib.parse import quote, urlparse
 
 import jsonlines
 
-from pathlib import Path
 from .data_transfer import copy_file, deserialize_obj, download_bytes, TargetType
 
 from .exceptions import PackageException
@@ -48,10 +47,10 @@ def get_package_registry(path=''):
     if path.startswith('s3://'):
         bucket = path[5:].partition('/')[0]
         return "s3://{}/.quilt".format(bucket)
-    else:
-        return get_local_package_registry().as_uri()
+    # Default to the local registry.
+    return get_local_package_registry().as_uri()
 
-def get_local_package_registry():    
+def get_local_package_registry():
     """ Returns a local package registry Path. """
     Path(BASE_PATH, "packages").mkdir(parents=True, exist_ok=True)
     Path(BASE_PATH, "named_packages").mkdir(parents=True, exist_ok=True)
@@ -134,11 +133,10 @@ class Package(object):
         registry = get_package_registry(fix_url(registry))
 
         if pkg_hash is not None:
-            # if hash is specified, name doesn't matter
+            # If hash is specified, name doesn't matter.
             pkg_path = '{}/packages/{}'.format(registry, pkg_hash)
-            # TODO replace open with something that supports both local and s3
             pkg = self._from_path(pkg_path)
-            # can't assign to self, so must mutate it
+            # Can't assign to self, so must mutate.
             self._set_state(pkg._data, pkg._meta)
             return
 
@@ -158,7 +156,7 @@ class Package(object):
         latest_hash = latest_hash.strip()
         latest_path = '{}/packages/{}'.format(registry, quote(latest_hash))
         pkg = self._from_path(latest_path)
-        # can't assign to self, so must mutate it
+        # Can't assign to self, so must mutate.
         self._set_state(pkg._data, pkg._meta)
 
     @staticmethod
@@ -206,7 +204,7 @@ class Package(object):
             readable_file: readable file-like object to deserialize package from
 
         Returns:
-            a new package object
+            a new Package object
 
         Raises:
             file not found
@@ -231,16 +229,16 @@ class Package(object):
 
     def capture(self, path, prefix=None):
         """
-        Takes a package of a provided path.
+        Adds all files from path to the package.
 
-        Recursively enumerates every file in path, and returns a new
-        package that contains all those files.
+        Recursively enumerates every file in path, and adds them to
+            the package according to their relative location to path.
 
         Args:
             path(string): path to package
 
         Returns:
-            A new Package of that path
+            self
 
         Raises:
             when path doesn't exist
@@ -251,18 +249,17 @@ class Package(object):
         # TODO: deserialization metadata
         src_path = pathlib.Path(path)
         files = src_path.rglob('*')
-        pkg = self._clone()
         for f in files:
             if not f.is_file():
                 continue
             entry = PackageEntry.from_local_path(f)
             logical_key = prefix + f.relative_to(src_path).as_posix()
             # TODO: Warn if overwritting a logical key?
-            pkg = pkg.set(logical_key, entry)
+            self.set(logical_key, entry)
 
-        # modified package should have new top hash
-        pkg._unset_tophash()
-        return pkg
+        # Must unset old top hash when modifying package.
+        self._unset_tophash()
+        return self
 
     def get(self, logical_key):
         """
@@ -365,7 +362,7 @@ class Package(object):
             )
 
         if name:
-            # sanitize name
+            # Sanitize name.
             name = quote(name)
 
             named_path = registry.strip('/') + '/named_packages/' + quote(name) + '/'
@@ -396,7 +393,7 @@ class Package(object):
             fail to create file
             fail to finish write
         """
-        self.top_hash() # assure top hash is calculated
+        self.top_hash() # Assure top hash is calculated.
         writer = jsonlines.Writer(writable_file)
         writer.write(self._meta)
         for logical_key, entry in self._data.items():
@@ -404,27 +401,28 @@ class Package(object):
 
     def update(self, new_keys_dict, meta=None):
         """
-        Returns a new package with the object at logical_key set to entry.
+        Updates the package with the keys and values in new_keys_dict.
 
-        If a metadata dict is provided, it is attached to and overwrites 
+        If a metadata dict is provided, it is attached to and overwrites
         metadata for all entries in new_keys_dict.
 
         Args:
-            new_dict(dict): dict of logical keys to 
+            new_dict(dict): dict of logical keys to update
             meta(dict): metadata dict to attach to every input entry.
 
         Returns:
-            A new package
+            self
 
         """
-        pkg = self._clone()
         for logical_key, entry in new_keys_dict.items():
-            pkg = pkg.set(logical_key, entry, meta)
-        return pkg
+            self.set(logical_key, entry, meta)
+
+        self._unset_tophash()
+        return self
 
     def set(self, logical_key, entry=None, meta=None):
         """
-        Returns a new package with the object at logical_key set to entry.
+        Returns self with the object at logical_key set to entry.
 
         Args:
             logical_key(string): logical key to update
@@ -436,7 +434,7 @@ class Package(object):
                 else in the entry
 
         Returns:
-            A new package
+            self
         """
         if entry is None and meta is None:
             raise PackageException('Must specify either entry or meta')
@@ -444,45 +442,41 @@ class Package(object):
         if entry is None:
             return self._update_meta(logical_key, meta)
 
-        pkg = self._clone()
         if isinstance(entry, str):
             entry = PackageEntry.from_local_path(entry)
             if meta is not None:
                 entry.meta = meta
-            pkg._data[logical_key] = entry
+            self._data[logical_key] = entry
         elif isinstance(entry, PackageEntry):
-            pkg._data[logical_key] = entry
             if meta is not None:
                 raise PackageException("Must specify metadata in the entry")
+            self._data[logical_key] = entry
         else:
             raise NotImplementedError
-        
-        # modified package should have new top hash
-        pkg._unset_tophash()
-        return pkg
+
+        # Must unset old top hash when modifying package
+        self._unset_tophash()
+        return self
 
     def _update_meta(self, logical_key, meta):
-        pkg = self._clone()
-        pkg._data[logical_key].meta = meta
-        # modified package should have new top hash
-        pkg._unset_tophash()
-        return pkg
+        self._data[logical_key].meta = meta
+        self._unset_tophash()
+        return self
 
     def delete(self, logical_key):
         """
-        Returns a new package with logical_key removed.
+        Returns the package with logical_key removed.
 
         Returns:
-            A new package
+            self
 
         Raises:
             KeyError: when logical_key is not present to be deleted
         """
-        pkg = self._clone()
-        pkg._data.pop(logical_key)
-        # modified package should have new top hash
-        pkg._unset_tophash()
-        return pkg
+        self._data.pop(logical_key)
+        # Must unset old top hash when modifying package
+        self._unset_tophash()
+        return self
 
     def _top_hash(self):
         """
@@ -509,7 +503,7 @@ class Package(object):
         }
 
     def _unset_tophash(self):
-        """ 
+        """
         Unsets the top hash
         When a package is created from an existing package, the top hash
             must be deleted so a correct new one can be calculated
@@ -572,6 +566,7 @@ class Package(object):
             fail to put package to registry
         """
         pkg = self._clone()
+        # Since all that is modified is physical keys, pkg will have the same top hash
         for logical_key, entry in self._data.items():
             # Copy the datafiles in the package.
             new_physical_key = path + "/" + quote(logical_key)
