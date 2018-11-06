@@ -293,6 +293,15 @@ def test_package_entry_meta():
             {'target': 'unicode', 'user_meta': {'value': 'blah2'}})
     )
 
+    assert pkg['foo'].user_meta() == {'value': 'blah'}
+    assert pkg['bar'].user_meta() == {'value': 'blah2'}
+
+    assert pkg['foo'].system_meta() == {'target': 'unicode'}
+    assert pkg['bar'].system_meta() == {'target': 'unicode'}
+
+    pkg['foo'].set_meta({'value': 'other value'})
+    assert pkg['foo'].user_meta() == {'value': 'other value'}
+
 def test_list_local_packages(tmpdir):
     """Verify that list returns packages in the appdirs directory."""
     temp_local_registry = Path(os.path.join(tmpdir, 'test_registry'))

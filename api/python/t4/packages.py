@@ -112,7 +112,7 @@ class PackageEntry(object):
         return PackageEntry(copy.deepcopy(self.physical_keys), self.size, \
                             copy.deepcopy(self.hash), copy.deepcopy(self.meta))
 
-    def _set_meta(self, meta):
+    def set_meta(self, meta):
         """
         Sets the user_meta for this PackageEntry.
         """
