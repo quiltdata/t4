@@ -468,7 +468,7 @@ class Package(object):
         for logical_key, entry in self._data.items():
             writer.write({'logical_key': logical_key, **entry.as_dict()})
 
-    def update(self, new_keys_dict, meta=None):
+    def update(self, new_keys_dict, meta=None, prefix=None):
         """
         Updates the package with the keys and values in new_keys_dict.
 
@@ -476,16 +476,17 @@ class Package(object):
         metadata for all entries in new_keys_dict.
 
         Args:
-            new_dict(dict): dict of logical keys to update
+            new_dict(dict): dict of logical keys to update.
             meta(dict): metadata dict to attach to every input entry.
+            prefix(string): a prefix string to prepend to every logical key.
 
         Returns:
             self
 
         """
+        prefix = "" if not prefix else quote(prefix).strip("/") + "/"
         for logical_key, entry in new_keys_dict.items():
-            self.set(logical_key, entry, meta)
-
+            self.set(prefix + logical_key, entry, meta)
         self._unset_tophash()
         return self
 
