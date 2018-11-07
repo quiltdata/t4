@@ -189,30 +189,29 @@ class PackageEntry(object):
 class Package(object):
     """ In-memory representation of a package """
 
+    def __init__(self):
+        self._data = {}
+        self._meta = {'version': 'v0'}
+
+
     @staticmethod
     def validate_package_name(name):
         """ Verify that a package name is two alphanumerics strings separated by a slash."""
         if not re.match(PACKAGE_NAME_FORMAT, name):
             raise QuiltException("Invalid package name, must contain exactly one /.")
 
-        
+
     @staticmethod
-    def browse(name, pkg_hash=None, registry=''):
+    def browse(name=None, pkg_hash=None, registry=''):
         """
-        Create a Package from scratch, or load one from a registry.
+        Load a package into memory from a registry without making a local copy of
+        the manifest.
 
         Args:
             name(string): name of package to load
             pkg_hash(string): top hash of package version to load
             registry(string): location of registry to load package from
         """
-        if name is None and pkg_hash is None:
-            self._data = {}
-            self._meta = {'version': 'v0'}
-            return
-        elif name:
-            self.validate_package_name(name)
-
         registry = get_package_registry(fix_url(registry))
 
         if pkg_hash is not None:
@@ -221,6 +220,8 @@ class Package(object):
             pkg = Package._from_path(pkg_path)
             # Can't assign to self, so must mutate.
             return pkg
+        else:
+            Package.validate_package_name(name)
 
         pkg_path = '{}/named_packages/{}/'.format(registry, quote(name))
         latest = urlparse(pkg_path + 'latest')
