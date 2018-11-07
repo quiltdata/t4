@@ -120,11 +120,17 @@ class PackageEntry(object):
         """
         self.meta['user_meta'] = meta
 
-    def user_meta(self):
+    def get_user_meta(self):
         """
         Returns the user metadata from this PackageEntry.
         """
         return self.meta.get('user_meta')
+
+    def get_meta(self):
+        """
+        Returns the metadata from this PackageEntry.
+        """
+        return self.meta
 
     def _verify_hash(self, read_bytes):
         """

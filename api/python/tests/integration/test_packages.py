@@ -295,14 +295,14 @@ def test_package_entry_meta():
             {'target': 'unicode', 'user_meta': {'value': 'blah2'}})
     )
 
-    assert pkg['foo'].user_meta() == {'value': 'blah'}
-    assert pkg['bar'].user_meta() == {'value': 'blah2'}
+    assert pkg['foo'].get_user_meta() == {'value': 'blah'}
+    assert pkg['bar'].get_user_meta() == {'value': 'blah2'}
 
     assert pkg['foo'].meta == {'target': 'unicode', 'user_meta': {'value': 'blah'}}
     assert pkg['bar'].meta == {'target': 'unicode', 'user_meta': {'value': 'blah2'}}
 
     pkg['foo'].set_user_meta({'value': 'other value'})
-    assert pkg['foo'].user_meta() == {'value': 'other value'}
+    assert pkg['foo'].get_user_meta() == {'value': 'other value'}
     assert pkg['foo'].meta == {'target': 'unicode', 'user_meta': {'value': 'other value'}}
 
 def test_list_local_packages(tmpdir):
