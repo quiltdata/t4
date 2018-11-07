@@ -210,7 +210,7 @@ class Package(object):
         Returns:
             A new Package that points to files on your local machine.
         """
-        pkg = Package(name=name, pkg_hash=pkg_hash, registry=registry or '')
+        pkg = Package.browse(name=name, pkg_hash=pkg_hash, registry=registry or '')
         if dest:
             return pkg.push(path=dest, name=name)
         else:
