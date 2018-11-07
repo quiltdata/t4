@@ -101,7 +101,7 @@ class PackageEntry(object):
 
     def _clone(self):
         """
-        Returns clone of this package.
+        Returns clone of this PackageEntry.
         """
         return self.__class__(copy.deepcopy(self.physical_keys), self.size, \
                               copy.deepcopy(self.hash), copy.deepcopy(self.meta))
@@ -133,6 +133,35 @@ class PackageEntry(object):
         digest = hashlib.sha256(read_bytes).hexdigest()
         if digest != self.hash.get('value'):
             raise QuiltException("Hash validation failed")
+
+    def set(self, path=None, meta=None):
+        """
+        Returns self with the physical key set to path.
+
+        Args:
+            logical_key(string): logical key to update
+            path(string): new path to place at logical_key in the package
+                Currently only supports a path on local disk
+            meta(dict): metadata dict to attach to entry. If meta is provided, set just
+                updates the meta attached to logical_key without changing anything
+                else in the entry
+
+        Returns:
+            self
+        """
+        if path is None and meta is None:
+            raise PackageException('Must specify either path or meta')
+
+        if path is None:
+            return self.set_user_meta(meta)
+
+        entry = PackageEntry.from_local_path(path)
+        self.physical_keys = entry.physical_keys
+        self.size = entry.size
+        self.hash = entry.hash
+        self.meta = entry.meta
+        if meta is not None:
+            self.set_user_meta(meta)
 
     def get(self):
         """

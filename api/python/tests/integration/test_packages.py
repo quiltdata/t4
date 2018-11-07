@@ -309,6 +309,7 @@ def test_updates(tmpdir):
 
     assert pkg['foo']() == '123\n'
 
+
 def test_package_entry_meta():
     pkg = (
         Package()
@@ -327,6 +328,7 @@ def test_package_entry_meta():
     pkg['foo'].set_user_meta({'value': 'other value'})
     assert pkg['foo'].get_user_meta() == {'value': 'other value'}
     assert pkg['foo'].meta == {'target': 'unicode', 'user_meta': {'value': 'other value'}}
+
 
 def test_list_local_packages(tmpdir):
     """Verify that list returns packages in the appdirs directory."""
@@ -353,6 +355,25 @@ def test_list_local_packages(tmpdir):
         pkgs = t4.list_packages("/")
         assert "Quilt/Foo" in pkgs
         assert "Quilt/Bar" in pkgs
+
+def test_set_package_entry(tmpdir):
+    """ Set the physical key for a PackageEntry"""
+    pkg = (
+        Package()
+        .set('foo', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
+             {'target': 'unicode', 'user_meta': 'blah'})
+        .set('bar', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
+            {'target': 'unicode', 'user_meta': 'blah'})
+    )
+
+    # Build a dummy file to add to the map.
+    with open('bar.txt', "w") as fd:
+        fd.write('test_file_content_string')
+        test_file = Path(fd.name)
+    pkg['bar'].set('bar.txt')
+
+    assert test_file.resolve().as_uri() \
+        == pkg._data['bar'].physical_keys[0] # pylint: disable=W0212
 
 def test_tophash_changes(tmpdir):
     test_file = tmpdir / 'test.txt'
@@ -389,6 +410,7 @@ def test_keys():
 
     pkg.delete('asdf')
     assert pkg.keys() == ['jkl;']
+
 
 def test_iter():
     pkg = Package()
