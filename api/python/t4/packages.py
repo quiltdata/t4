@@ -195,8 +195,9 @@ class Package(object):
         if not re.match(PACKAGE_NAME_FORMAT, name):
             raise QuiltException("Invalid package name, must contain exactly one /.")
 
-
-    def __init__(self, name=None, pkg_hash=None, registry=''):
+        
+    @staticmethod
+    def browse(name, pkg_hash=None, registry=''):
         """
         Create a Package from scratch, or load one from a registry.
 
@@ -217,10 +218,9 @@ class Package(object):
         if pkg_hash is not None:
             # If hash is specified, name doesn't matter.
             pkg_path = '{}/packages/{}'.format(registry, pkg_hash)
-            pkg = self._from_path(pkg_path)
+            pkg = Package._from_path(pkg_path)
             # Can't assign to self, so must mutate.
-            self._set_state(pkg._data, pkg._meta)
-            return
+            return pkg
 
         pkg_path = '{}/named_packages/{}/'.format(registry, quote(name))
         latest = urlparse(pkg_path + 'latest')
@@ -237,9 +237,9 @@ class Package(object):
 
         latest_hash = latest_hash.strip()
         latest_path = '{}/packages/{}'.format(registry, quote(latest_hash))
-        pkg = self._from_path(latest_path)
+        pkg = Package._from_path(latest_path)
         # Can't assign to self, so must mutate.
-        self._set_state(pkg._data, pkg._meta)
+        return pkg
 
 
     @staticmethod

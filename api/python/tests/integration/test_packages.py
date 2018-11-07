@@ -107,7 +107,7 @@ def test_materialize_from_remote(tmpdir):
                  patch('t4.Package.build', new=no_op_mock):
                 mat_pkg = pkg.push(os.path.join(tmpdir, 'pkg'), name='Quilt/test_pkg_name')
 
-def test_package_constructor_from_registry():
+def test_browse_package_from_registry():
     """ Verify loading manifest locally and from s3 """
     with patch('t4.Package._from_path') as pkgmock:
         registry = BASE_PATH.as_uri()
