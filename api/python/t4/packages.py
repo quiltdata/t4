@@ -340,7 +340,7 @@ class Package(object):
                 result.set(new_key, entry)
 
         if not result._data:
-            raise KeyError("Slice not found.")
+            raise KeyError("Package Slice not found.")
 
         return result
 
