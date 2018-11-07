@@ -621,7 +621,7 @@ class Package(object):
             self._top_hash()
         return self._meta['top_hash']['value']
 
-    def push(self, path, name=None):
+    def push(self, path, name=None, registry=None):
         """
         Copies objects to path, then creates a new package that points to those objects.
         Copies each object in this package to path according to logical key structure,
@@ -630,6 +630,7 @@ class Package(object):
         Args:
             path: where to copy the objects in the package
             name: name for package in registry
+            registry: which registry to store the manifest to
         Returns:
             A new package that points to the copied objects
         """
@@ -639,7 +640,7 @@ class Package(object):
             dest = dest + '/' + quote(name)
         if dest.startswith('file://') or dest.startswith('s3://'):
             pkg = self._materialize(dest)
-            pkg.build(name, registry=get_package_registry(dest))
+            pkg.build(name, registry=registry or get_package_registry(dest))
             return pkg
         else:
             raise NotImplementedError
