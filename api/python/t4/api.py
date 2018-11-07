@@ -1,7 +1,4 @@
-import glob
-from itertools import chain
 import json
-import os
 import requests
 
 from aws_requests_auth.boto_utils import BotoAWSRequestsAuth
@@ -182,8 +179,8 @@ def list_packages(registry=None):
         names = []
         # Search each org directory for named packages.
         for org in [x['Prefix'][len(src_path):].strip('/') for x in prefixes]:
-            packages, _ = list_objects(src_bucket + '/' + src_path + '/' + org, recursive=False)
-            names.append([y['Prefix'][len(src_path):].strip('/') for y in packages])
+            packages, _ = list_objects(src_bucket + '/' + src_path + '/' + org + '/', recursive=False)
+            names.extend(y['Prefix'][len(src_path):].strip('/') for y in packages)
         return names
 
     else:
