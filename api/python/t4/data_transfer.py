@@ -1,4 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
+from copy import deepcopy
 from enum import Enum
 import hashlib
 import json
@@ -12,25 +13,237 @@ from botocore.exceptions import ClientError
 import boto3
 from boto3.s3.transfer import TransferConfig, create_transfer_manager
 from s3transfer.subscribers import BaseSubscriber
-from six import BytesIO, binary_type, text_type
+from six import BytesIO, binary_type, text_type, string_types
 from tqdm.autonotebook import tqdm
 
-from .util import QuiltException, split_path, parse_file_url, parse_s3_url
+from .util import QuiltException, split_path, parse_file_url, parse_s3_url, package_exists
 from . import xattr
 
 
 HELIUM_METADATA = 'helium'
 HELIUM_XATTR = 'com.quiltdata.helium'
-EXTENSION_TARGET_MAP = {
-    'bin': 'bytes',
-    'json': 'json',
-    'md': 'unicode',
-    'npy': 'numpy',
-    'npz': 'numpy',
-    'parquet': 'pyarrow',
-    'rst': 'unicode',
-    'txt': 'unicode',
-    }
+
+
+# 'serializer' and 'deserializer'
+class Format:
+    formats = []
+    def __init__(self, name, serializer=None, deserializer=None, handled_extensions=None, handled_types=None):
+        self.name = name
+        if serializer:
+            self._serializer = serializer
+        if deserializer:
+            self._deserializer = deserializer
+
+        if not (getattr(self, '_serializer', None) or (self.serialize != Format.serialize)):
+            raise TypeError("A serializer is required.")
+        if not (getattr(self, '_deserializer', None) or (self.deserialize != Format.deserialize)):
+            raise TypeError("A deserializer is required.")
+
+        self.handled_extensions = [] if handled_extensions is None else handled_extensions
+        self.handled_types = [] if handled_types is None else handled_types
+
+        # for instance, override register(...) classmethod.
+        self.register = self._register_instance
+
+    def __eq__(self, other):
+        return (
+            type(self) == type(other)
+            and self.name == other.name
+            and set(self.handled_extensions) == set(other.handled_extensions)
+            and set(self.handled_types) == set(other.handled_types)
+            and self.serialize == other.serialize
+            and self._serializer == other._serializer
+            and self.deserialize == other.deserialize
+            and self._deserializer == other._deserializer
+        )
+
+    @classmethod
+    def formats_for_ext(cls, ext):
+        return [f for f in cls.formats if f.handles_ext(ext)]
+
+    @classmethod
+    def formats_for_obj(cls, obj):
+        return [f for f in cls.formats if f.handles_obj(obj)]
+
+    def handles_ext(self, ext):
+        exts = [e.lstrip().lower() for e in self.handled_extensions]
+        return ext.lstrip('.').lower() in exts
+
+    def handles_obj(self, obj):
+        # naive -- doesn't handle subtypes for dicts, lists, etc.
+        for typ in self.handled_types:
+            if isinstance(obj, typ):
+                return True
+        return False
+
+    def _register_instance(self):
+        """Register this format for automatic usage"""
+        type(self).register(self)
+
+    @classmethod
+    def register(cls, name_or_format, serializer=None, deserializer=None, handled_extensions=None,
+                 handled_types=None):
+        """Register a format for automatic usage
+
+        If a `Format` object is given for `name_or_format`, it is registered
+        directly and other args are ignored.
+
+        If a `str` is given for `name_or_format`, it is used as the name of a
+        new format, and `serializer` and `deserializer` are required.
+
+        Args:
+            name_or_format(Format | str): A Format object, if registering a
+                pre-made object. Otherwise, name of new format to create.
+            serializer(function): serializer function for new format
+            deserializer(function): deserializer for new format
+            handled_extensions(list(str)): a list of filename extensions
+                that can be deserialized by this format
+            handled_types: a list of types that can be serialized by this
+                format
+        """
+        if isinstance(name_or_format, Format):
+            obj = name_or_format
+        else:
+            obj = Format(name_or_format, serializer=serializer, deserializer=deserializer,
+                         handled_extensions=handled_extensions, handled_types=handled_types)
+        for fmt in cls.formats:
+            if obj == fmt:
+                raise QuiltException("This format is already registered.")
+        Format.formats.insert(0, obj)  # preference to the newly-inserted format.
+
+    def _update_meta(self, meta, serialization_kwargs={}):
+        if meta is not None:
+            format_meta = meta.get('format', {})
+            format_meta['name'] = self.name
+
+            if serialization_kwargs:
+                format_meta['serialization'] = deepcopy(serialization_kwargs)
+            meta['format'] = format
+
+    def serialize(self, obj, meta=None, **kwargs):
+        # inactive if overridden.
+
+        if type(self).serialize == Format.serialize:
+            # Method not overridden, so we use the configured one
+            if getattr(self, '_serializer', None) is None:
+                raise NotImplementedError()
+            serialized = self._serializer(obj, **kwargs)
+            self._update_meta(meta, kwargs)
+            return serialized
+
+    def deserialize(self, bytes_obj, meta=None):
+        # inactive if overridden.
+        meta = {} if meta is None else meta
+        if type(self).deserialize == Format.deserialize:
+            if getattr(self, '_deserializer', None) is None:
+                raise NotImplementedError()
+            format_meta = meta.get('format', {})
+            deserialization_kwargs = format_meta.get('deserialization', {})
+            return self._deserializer(bytes_obj, **deserialization_kwargs)
+
+
+Format.register('bin',
+    serializer=lambda obj: obj,
+    deserializer=lambda bytes_obj: bytes_obj,
+    handled_extensions=['bin'],
+)
+
+
+Format.register('json',
+    serializer=json.dumps,
+    deserializer=json.loads,
+    handled_extensions=['json'],
+)
+
+
+Format.register('unicode',  # utf-8 instead?
+    serializer=lambda s: s.encode('utf-8'),
+    deserializer=lambda b: b.decode('utf-8'),
+    handled_extensions=['txt', 'md', 'rst']
+)
+
+
+class NumpyFormat(Format):
+    def __init__(self, name, handled_extensions=None, **kwargs):
+        handled_extensions = [] if handled_extensions is None else handled_extensions
+
+        if package_exists('numpy'):
+            if 'npy' not in handled_extensions:
+                handled_extensions.append('npy')
+            if 'npz' not in handled_extensions:
+                handled_extensions.append('npz')
+
+        super().__init__(name, handled_extensions=handled_extensions, **kwargs)
+
+    def handles_obj(self, obj):
+        # don't load numpy until we actually have to use it..
+        if package_exists('numpy'):
+            import numpy as np
+            if np.ndarray not in self.handled_types:
+                self.handled_types.append(np.ndarray)
+        return super().handles_obj(obj)
+
+    def _deserializer(self, bytes_obj):
+        import numpy as np
+
+        buf = BytesIO(bytes_obj)
+        return np.load(buf, allow_pickle=False)
+
+    def _serializer(self, obj):
+        import numpy as np
+        buf = BytesIO()
+        np.save(buf, obj, allow_pickle=False)
+        return buf.getvalue()
+
+
+if package_exists('numpy'):
+    NumpyFormat('numpy', handled_extensions=['npy', 'npz']).register()
+
+
+class ParquetFormat(Format):
+    def __init__(self, name, handled_extensions=None, **kwargs):
+        handled_extensions = [] if handled_extensions is None else handled_extensions
+
+        if package_exists('pyarrow') and package_exists('pandas'):
+            handled_extensions.append('parquet')
+        super().__init__(name, handled_extensions=handled_extensions, **kwargs)
+
+    def handles_obj(self, obj):
+        # don't load pyarrow or pandas until we actually have to use them..
+        if package_exists('pyarrow') and package_exists('pandas'):
+            import pandas as pd
+            self.handled_types.append(pd.DataFrame)
+        return super().handles_obj(obj)
+
+    def _deserializer(self, bytes_obj):
+        import pyarrow as pa
+        from pyarrow import parquet
+
+        buf = BytesIO(bytes_obj)
+        table = parquet.read_table(buf)
+        try:
+            obj = pa.Table.to_pandas(table)
+        except AssertionError:
+            # Try again to convert the table after removing
+            # the possibly buggy Pandas-specific metadata.
+            # XXX: Can we detect this during serialization and store it separately?
+            meta = table.schema.metadata.copy()
+            meta.pop(b'pandas')
+            newtable = table.replace_schema_metadata(meta)
+            obj = newtable.to_pandas()
+        return obj
+
+    def _serializer(self, obj):
+        print('serializing pyarrow object')
+        import pyarrow as pa
+        from pyarrow import parquet
+        buf = BytesIO()
+        table = pa.Table.from_pandas(obj)
+        parquet.write_table(table, buf)
+        return buf.getvalue()
+
+if package_exists('pyarrow') and package_exists('pandas'):
+    ParquetFormat('pyarrow', handled_extensions=['parquet']).register()
 
 
 if platform.system() == 'Linux':
@@ -68,10 +281,6 @@ class TargetType(Enum):
     NUMPY = 'numpy'
 
 
-for value in EXTENSION_TARGET_MAP.values():
-    TargetType(value)  # EXTENSION_TARGET_MAP values must be present in TargetType
-
-
 def deserialize_obj(data, target):
     if target == TargetType.BYTES:
         obj = data
@@ -101,16 +310,6 @@ def deserialize_obj(data, target):
         raise NotImplementedError
 
     return obj
-
-
-def _guess_target_by_ext(name, default='bytes'):
-    ### This *should* match get_target_for_obj as much as possible.
-    if default is not None:
-        TargetType(default)  # ..must exist as a TargetType
-    if '.' not in name:
-        return default
-    ext = name.rsplit('.', 1)[1].lower()
-    return EXTENSION_TARGET_MAP.get(ext, default)
 
 
 def _get_target_for_object(obj):

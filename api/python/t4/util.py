@@ -5,7 +5,12 @@ import os
 from urllib.parse import parse_qs, unquote, urlparse
 from urllib.request import url2pathname
 
-# backports
+# backports and backwards compatibility
+try:
+    from importlib.util import find_spec
+except ImportError:
+    import imp
+
 from six.moves import urllib
 try:
     import pathlib2 as pathlib
@@ -43,6 +48,8 @@ navigator_url:
 # elastic_search_url: https://example.com/es
 elastic_search_url:
 """
+
+package_exists_cache = {}
 
 
 class QuiltException(Exception):
@@ -217,3 +224,31 @@ class HeliumConfig(OrderedDict):
     def __repr__(self):
         return "<{} at {!r} {}>".format(type(self).__name__, str(self.filepath), json.dumps(self, indent=4))
 
+
+
+def package_exists(name):
+    """Check if a package is installed, without importing it.
+
+    For use in lazy-loading situations, etc.
+
+    Args:
+        name(str): name of package.  Doesn't handle subpackages on py2.
+    """
+    # py >= 3.4
+    if 'find_spec' in globals():
+        if name in package_exists_cache:
+            return package_exists_cache[name]
+        val = bool(find_spec(name))
+        package_exists_cache[name] = val
+        return val
+    # py < 3.4
+    elif 'imp' in globals():
+        if '.' in name:
+            raise NotImplementedError(name, 'submodule installation check not implemented for Python < 3.4')
+        try:
+            info = imp.find_module(name)
+        except ImportError:
+            return False
+
+    # TODO: check for submodules, if that's ever needed.
+    return True
