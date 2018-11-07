@@ -199,7 +199,7 @@ def test_local_push(tmpdir):
         assert pathlib.Path(os.path.join(tmpdir, 'package_contents/Quilt/package/foo')).as_uri() \
             in dest_args
 
-def test_package_get(tmpdir):
+def test_package_deserialize(tmpdir):
     """ Verify loading data from a local file. """
     pkg = (
         Package()
@@ -208,10 +208,10 @@ def test_package_get(tmpdir):
         .set('bar', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'))
     )
 
-    assert pkg['foo']._get() == ('123\n', 'blah')
+    assert pkg['foo'].deserialize() == '123\n'
 
     with pytest.raises(QuiltException):
-        pkg['bar']._get()
+        pkg['bar'].deserialize()
 
 def test_set_dir(tmpdir):
     """ Verify building a package from a directory. """
