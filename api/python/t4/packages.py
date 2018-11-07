@@ -186,6 +186,11 @@ class PackageEntry(object):
 class Package(object):
     """ In-memory representation of a package """
 
+    def __init__(self):
+        self._data = {}
+        self._meta = {'version': 'v0'}
+
+
     @staticmethod
     def validate_package_name(name):
         """ Verify that a package name is two alphanumerics strings separated by a slash."""
@@ -193,31 +198,27 @@ class Package(object):
             raise QuiltException("Invalid package name, must contain exactly one /.")
 
 
-    def __init__(self, name=None, pkg_hash=None, registry=''):
+    @staticmethod
+    def browse(name=None, pkg_hash=None, registry=''):
         """
-        Create a Package from scratch, or load one from a registry.
+        Load a package into memory from a registry without making a local copy of
+        the manifest.
 
         Args:
             name(string): name of package to load
             pkg_hash(string): top hash of package version to load
             registry(string): location of registry to load package from
         """
-        if name is None and pkg_hash is None:
-            self._data = {}
-            self._meta = {'version': 'v0'}
-            return
-        elif name:
-            self.validate_package_name(name)
-
         registry = get_package_registry(fix_url(registry))
 
         if pkg_hash is not None:
             # If hash is specified, name doesn't matter.
             pkg_path = '{}/packages/{}'.format(registry, pkg_hash)
-            pkg = self._from_path(pkg_path)
+            pkg = Package._from_path(pkg_path)
             # Can't assign to self, so must mutate.
-            self._set_state(pkg._data, pkg._meta)
-            return
+            return pkg
+        else:
+            Package.validate_package_name(name)
 
         pkg_path = '{}/named_packages/{}/'.format(registry, quote(name))
         latest = urlparse(pkg_path + 'latest')
@@ -234,9 +235,9 @@ class Package(object):
 
         latest_hash = latest_hash.strip()
         latest_path = '{}/packages/{}'.format(registry, quote(latest_hash))
-        pkg = self._from_path(latest_path)
+        pkg = Package._from_path(latest_path)
         # Can't assign to self, so must mutate.
-        self._set_state(pkg._data, pkg._meta)
+        return pkg
 
 
     @staticmethod

@@ -107,7 +107,7 @@ def test_materialize_from_remote(tmpdir):
                  patch('t4.Package.build', new=no_op_mock):
                 mat_pkg = pkg.push(os.path.join(tmpdir, 'pkg'), name='Quilt/test_pkg_name')
 
-def test_package_constructor_from_registry():
+def test_browse_package_from_registry():
     """ Verify loading manifest locally and from s3 """
     with patch('t4.Package._from_path') as pkgmock:
         registry = BASE_PATH.as_uri()
@@ -116,13 +116,13 @@ def test_package_constructor_from_registry():
         pkghash = pkg.top_hash()
 
         # local load
-        pkg = Package(pkg_hash=pkghash)
+        pkg = Package.browse(pkg_hash=pkghash)
         assert registry + '/packages/{}'.format(pkghash) \
                 in [x[0][0] for x in pkgmock.call_args_list]
 
         pkgmock.reset_mock()
 
-        pkg = Package('Quilt/nice-name', pkg_hash=pkghash)
+        pkg = Package.browse('Quilt/nice-name', pkg_hash=pkghash)
         assert registry + '/packages/{}'.format(pkghash) \
                 in [x[0][0] for x in pkgmock.call_args_list]
 
@@ -130,7 +130,7 @@ def test_package_constructor_from_registry():
 
         with patch('t4.packages.open') as open_mock:
             open_mock.return_value = io.BytesIO(pkghash.encode('utf-8'))
-            pkg = Package('Quilt/nice-name')
+            pkg = Package.browse('Quilt/nice-name')
             assert parse_file_url(urlparse(registry + '/named_packages/Quilt/nice-name/latest')) \
                     == open_mock.call_args_list[0][0][0]
 
@@ -140,18 +140,18 @@ def test_package_constructor_from_registry():
 
         remote_registry = t4.packages.get_package_registry('s3://asdf/')
         # remote load
-        pkg = Package('Quilt/nice-name', registry=remote_registry, pkg_hash=pkghash)
+        pkg = Package.browse('Quilt/nice-name', registry=remote_registry, pkg_hash=pkghash)
         assert remote_registry + '/packages/{}'.format(pkghash) \
                 in [x[0][0] for x in pkgmock.call_args_list]
         pkgmock.reset_mock()
-        pkg = Package(pkg_hash=pkghash, registry=remote_registry)
+        pkg = Package.browse(pkg_hash=pkghash, registry=remote_registry)
         assert remote_registry + '/packages/{}'.format(pkghash) \
                 in [x[0][0] for x in pkgmock.call_args_list]
 
         pkgmock.reset_mock()
         with patch('t4.packages.download_bytes') as dl_mock:
             dl_mock.return_value = (pkghash.encode('utf-8'), None)
-            pkg = Package('Quilt/nice-name', registry=remote_registry)
+            pkg = Package.browse('Quilt/nice-name', registry=remote_registry)
         assert remote_registry + '/packages/{}'.format(pkghash) \
                 in [x[0][0] for x in pkgmock.call_args_list]
 
