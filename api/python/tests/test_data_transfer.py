@@ -6,7 +6,7 @@ try: import pathlib2 as pathlib
 except ImportError: import pathlib
 
 ### Project imports
-from t4.data_transfer import TargetType, deserialize_obj, Formats, Format
+from t4.data_transfer import TargetType, deserialize_obj, Formats
 
 ### Code
 def test_buggy_parquet():
