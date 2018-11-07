@@ -1,4 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
+from collections import defaultdict, OrderedDict
 from copy import deepcopy
 from enum import Enum
 import hashlib
@@ -25,60 +26,16 @@ HELIUM_XATTR = 'com.quiltdata.helium'
 
 
 # 'serializer' and 'deserializer'
-class Format:
-    formats = []
-    def __init__(self, name, serializer=None, deserializer=None, handled_extensions=None, handled_types=None):
-        self.name = name
-        if serializer:
-            self._serializer = serializer
-        if deserializer:
-            self._deserializer = deserializer
-
-        if not (getattr(self, '_serializer', None) or (self.serialize != Format.serialize)):
-            raise TypeError("A serializer is required.")
-        if not (getattr(self, '_deserializer', None) or (self.deserialize != Format.deserialize)):
-            raise TypeError("A deserializer is required.")
-
-        self.handled_extensions = [] if handled_extensions is None else handled_extensions
-        self.handled_types = [] if handled_types is None else handled_types
-
-        # for instance, override register(...) classmethod.
-        self.register = self._register_instance
-
-    def __eq__(self, other):
-        return (
-            type(self) == type(other)
-            and self.name == other.name
-            and set(self.handled_extensions) == set(other.handled_extensions)
-            and set(self.handled_types) == set(other.handled_types)
-            and self.serialize == other.serialize
-            and self._serializer == other._serializer
-            and self.deserialize == other.deserialize
-            and self._deserializer == other._deserializer
-        )
+class Formats:
+    registered_formats = OrderedDict()
+    formats_by_ext = defaultdict(list)
+    # latest adds are last, and come first in lookups by type via `for_obj`.
 
     @classmethod
-    def formats_for_ext(cls, ext):
-        return [f for f in cls.formats if f.handles_ext(ext)]
-
-    @classmethod
-    def formats_for_obj(cls, obj):
-        return [f for f in cls.formats if f.handles_obj(obj)]
-
-    def handles_ext(self, ext):
-        exts = [e.lstrip().lower() for e in self.handled_extensions]
-        return ext.lstrip('.').lower() in exts
-
-    def handles_obj(self, obj):
-        # naive -- doesn't handle subtypes for dicts, lists, etc.
-        for typ in self.handled_types:
-            if isinstance(obj, typ):
-                return True
-        return False
-
-    def _register_instance(self):
-        """Register this format for automatic usage"""
-        type(self).register(self)
+    def _register_by_format(cls, format):
+        cls.registered_formats[format.name] = format
+        for ext in format._handled_extensions:
+            cls.formats_by_ext[ext.lower().strip('. ')].insert(0, format)
 
     @classmethod
     def register(cls, name_or_format, serializer=None, deserializer=None, handled_extensions=None,
@@ -94,22 +51,110 @@ class Format:
         Args:
             name_or_format(Format | str): A Format object, if registering a
                 pre-made object. Otherwise, name of new format to create.
+
             serializer(function): serializer function for new format
             deserializer(function): deserializer for new format
+
             handled_extensions(list(str)): a list of filename extensions
                 that can be deserialized by this format
+
             handled_types: a list of types that can be serialized by this
                 format
         """
         if isinstance(name_or_format, Format):
-            obj = name_or_format
-        else:
-            obj = Format(name_or_format, serializer=serializer, deserializer=deserializer,
-                         handled_extensions=handled_extensions, handled_types=handled_types)
-        for fmt in cls.formats:
-            if obj == fmt:
-                raise QuiltException("This format is already registered.")
-        Format.formats.insert(0, obj)  # preference to the newly-inserted format.
+            return cls._register_by_format(name_or_format)
+        cls._register_by_format(Format(
+            name_or_format,
+            serializer=serializer,
+            deserializer=deserializer,
+            handled_extensions=handled_extensions,
+            handled_types=handled_types
+        ))
+
+    @classmethod
+    def for_package_entry(cls, pkgentry):
+        raise NotImplementedError()
+
+    @classmethod
+    def for_ext(cls, ext, single=True):
+        ext = ext.lower().strip('. ')
+        if single:
+            matching_formats = cls.formats_by_ext[ext]
+            return matching_formats[0] if matching_formats else None
+        return cls.formats_by_ext[ext][:]
+
+    @classmethod
+    def for_obj(cls, obj, single=True):
+        if single:
+            for format in reversed(cls.registered_formats.values()):
+                if format.handles_obj(obj):
+                    return format
+            return
+        return [format for format in reversed(cls.registered_formats.values()) if format.handles_obj(obj)]
+
+
+class Format:
+    """Binary format handler for serialization
+
+    This is a generic type that can be instantiated directly with a
+    serializer and deserializer for simple cases, or subclassed for
+    more complex cases that require special attention or metadata
+    handling.
+
+    Args:
+        name_or_format(Format | str): A Format object, if registering a
+            pre-made object. Otherwise, name of new format to create.
+
+        serializer(function): serializer function for new format
+        deserializer(function): deserializer for new format
+
+        handled_extensions(list(str)): a list of filename extensions
+            that can be deserialized by this format
+
+        handled_types: a list of types that can be serialized by this
+            format
+    """
+    def __init__(self, name, serializer=None, deserializer=None, handled_extensions=None, handled_types=None):
+        self.name = name
+        if serializer:
+            self._serializer = serializer
+        if deserializer:
+            self._deserializer = deserializer
+
+        if not (getattr(self, '_serializer', None) or (self.serialize != Format.serialize)):
+            raise TypeError("A serializer is required.")
+        if not (getattr(self, '_deserializer', None) or (self.deserialize != Format.deserialize)):
+            raise TypeError("A deserializer is required.")
+
+        self._handled_extensions = [] if handled_extensions is None else handled_extensions
+        self._handled_types = [] if handled_types is None else handled_types
+
+    def __eq__(self, other):
+        return (
+            type(self) == type(other)
+            and self.name == other.name
+            and set(self._handled_extensions) == set(other.handled_extensions)
+            and set(self._handled_types) == set(other.handled_types)
+            and self.serialize == other.serialize
+            and self._serializer == other._serializer
+            and self.deserialize == other.deserialize
+            and self._deserializer == other._deserializer
+        )
+
+    def handles_ext(self, ext):
+        exts = [e.lstrip().lower() for e in self._handled_extensions]
+        return ext.lstrip('.').lower() in exts
+
+    def handles_obj(self, obj):
+        # naive -- doesn't handle subtypes for dicts, lists, etc.
+        for typ in self._handled_types:
+            if isinstance(obj, typ):
+                return True
+        return False
+
+    def register(self):
+        """Register this format for automatic usage"""
+        Formats.register(self)
 
     def _update_meta(self, meta, serialization_kwargs={}):
         if meta is not None:
@@ -118,9 +163,29 @@ class Format:
 
             if serialization_kwargs:
                 format_meta['serialization'] = deepcopy(serialization_kwargs)
-            meta['format'] = format
+            meta['format'] = format_meta
 
     def serialize(self, obj, meta=None, **kwargs):
+        """Serialize an object using this format
+
+        Serializes `obj` using this format.  If `meta` is given, it is
+        updated at meta['format']['name'] and (for now) meta['target'].
+
+        If **kwargs are given, they are passed on to the serialization
+        function, and are added to meta['target']['serialization'].
+
+        One of the benefits of this is that once a serialization quirk has
+        been used via **kwargs, the same args are used when updating with
+        the same metadata.
+
+        This is a wrapper for lower-level serializers like `dumps` methods.
+        If overridden and then called via super(), it does nothing.
+
+        Args:
+            obj: object to serialize
+            meta: metadata to update
+            **kwargs: kwargs to send to lower-level serializer. Also included in meta
+        """
         # inactive if overridden.
 
         if type(self).serialize == Format.serialize:
@@ -131,7 +196,21 @@ class Format:
             self._update_meta(meta, kwargs)
             return serialized
 
-    def deserialize(self, bytes_obj, meta=None):
+    def deserialize(self, bytes_obj, meta=None, **kwargs):
+        """Deserialize some bytes using this format
+
+        Converts bytes into an object.
+
+        If `meta['format']['deserialization']` is given, it is passed as
+        kwargs to the lower-level deserializer.
+
+        If **kwargs is given, it overrides metadata kwargs, if present.
+
+        Args:
+            bytes_obj: bytes to deserialize
+            meta: object metadata, may contain deserialization prefs
+            **kwargs: metadata to (potentially) use.
+        """
         # inactive if overridden.
         meta = {} if meta is None else meta
         if type(self).deserialize == Format.deserialize:
@@ -139,27 +218,31 @@ class Format:
                 raise NotImplementedError()
             format_meta = meta.get('format', {})
             deserialization_kwargs = format_meta.get('deserialization', {})
+            deserialization_kwargs.update(kwargs)
             return self._deserializer(bytes_obj, **deserialization_kwargs)
 
 
-Format.register('bin',
+Formats.register('bin',
     serializer=lambda obj: obj,
     deserializer=lambda bytes_obj: bytes_obj,
     handled_extensions=['bin'],
+    handled_types=[bytes],
 )
 
 
-Format.register('json',
-    serializer=json.dumps,
-    deserializer=json.loads,
+Formats.register('json',
+    serializer=lambda obj, **kwargs: json.dumps(obj, **kwargs).encode('utf-8'),
+    deserializer=lambda bytes_obj, **kwargs: json.loads(bytes_obj.decode('utf-8'), **kwargs),
     handled_extensions=['json'],
+    handled_types=[dict, list, int, float, str]
 )
 
 
-Format.register('unicode',  # utf-8 instead?
+Formats.register('unicode',  # utf-8 instead?
     serializer=lambda s: s.encode('utf-8'),
     deserializer=lambda b: b.decode('utf-8'),
-    handled_extensions=['txt', 'md', 'rst']
+    handled_extensions=['txt', 'md', 'rst'],
+    handled_types=[text_type],
 )
 
 
@@ -167,6 +250,7 @@ class NumpyFormat(Format):
     def __init__(self, name, handled_extensions=None, **kwargs):
         handled_extensions = [] if handled_extensions is None else handled_extensions
 
+        # don't include these extensions unlss numpy is present.
         if package_exists('numpy'):
             if 'npy' not in handled_extensions:
                 handled_extensions.append('npy')
@@ -179,8 +263,8 @@ class NumpyFormat(Format):
         # don't load numpy until we actually have to use it..
         if package_exists('numpy'):
             import numpy as np
-            if np.ndarray not in self.handled_types:
-                self.handled_types.append(np.ndarray)
+            if np.ndarray not in self._handled_types:
+                self._handled_types.append(np.ndarray)
         return super().handles_obj(obj)
 
     def _deserializer(self, bytes_obj):
@@ -197,7 +281,7 @@ class NumpyFormat(Format):
 
 
 if package_exists('numpy'):
-    NumpyFormat('numpy', handled_extensions=['npy', 'npz']).register()
+    NumpyFormat('numpy').register()
 
 
 class ParquetFormat(Format):
@@ -212,7 +296,7 @@ class ParquetFormat(Format):
         # don't load pyarrow or pandas until we actually have to use them..
         if package_exists('pyarrow') and package_exists('pandas'):
             import pandas as pd
-            self.handled_types.append(pd.DataFrame)
+            self._handled_types.append(pd.DataFrame)
         return super().handles_obj(obj)
 
     def _deserializer(self, bytes_obj):

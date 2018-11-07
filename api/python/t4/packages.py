@@ -14,7 +14,7 @@ from urllib.parse import quote, urlparse
 
 import jsonlines
 
-from .data_transfer import copy_file, deserialize_obj, download_bytes, TargetType
+from .data_transfer import copy_file, deserialize_obj, download_bytes, TargetType, Formats
 
 from .exceptions import PackageException
 from .util import QuiltException, BASE_PATH, fix_url, PACKAGE_NAME_FORMAT, parse_file_url, \
@@ -157,15 +157,22 @@ class PackageEntry(object):
             when deserialization metadata is not present
         """
         target_str = self.meta.get('target')
-        if target_str is None:
-            raise QuiltException("No serialization metadata")
+        physical_keys = self.physical_keys
 
+        # try to guess by extension..
+        if target_str is None:
+            # we don't know the format, guess by physical key extension.
+            physical_key = physical_keys[0]  # TODO: support multiple physical keys
+            if '.' in physical_key:
+                ext = physical_key.rsplit('.', 1)[1].strip().lower()
+                fmt = Formats.for_ext(ext)
+                if fmt:
+                    return fmt.deserialize(read_physical_key(physical_key))
         try:
             target = TargetType(target_str)
         except ValueError:
             raise QuiltException("Unknown serialization target: %r" % target_str)
 
-        physical_keys = self.physical_keys
         if len(physical_keys) > 1:
             raise NotImplementedError
         physical_key = physical_keys[0] # TODO: support multiple physical keys

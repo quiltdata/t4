@@ -205,10 +205,12 @@ def test_package_deserialize(tmpdir):
         Package()
         .set('foo', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
              {'target': 'unicode', 'user_meta': 'blah'})
-        .set('bar', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'))
+        .set('bar', os.path.join(os.path.dirname(__file__), 'data', 'foo.unrecognized.ext'))
+        .set('baz', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'))
     )
 
     assert pkg['foo'].deserialize() == '123\n'
+    assert pkg['baz'].deserialize() == '123\n'
 
     with pytest.raises(QuiltException):
         pkg['bar'].deserialize()
