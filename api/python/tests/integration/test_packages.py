@@ -213,7 +213,7 @@ def test_package_get(tmpdir):
     with pytest.raises(QuiltException):
         pkg['bar']._get()
 
-def test_capture(tmpdir):
+def test_set_dir(tmpdir):
     """ Verify building a package from a directory. """
     pkg = Package()
     
@@ -230,7 +230,7 @@ def test_capture(tmpdir):
     with open(foodir / 'bar', 'w') as fd:
         fd.write(fd.name)
 
-    pkg = pkg.capture("")
+    pkg = pkg.set_dir("","")
 
     assert pathlib.Path('foo').resolve().as_uri() \
         == pkg._data['foo'].physical_keys[0] # pylint: disable=W0212
@@ -242,14 +242,14 @@ def test_capture(tmpdir):
         == pkg._data['foo_dir/bar'].physical_keys[0] # pylint: disable=W0212
 
     pkg = Package()
-    pkg = pkg.capture('foo_dir/baz_dir/')
-    # todo nested at capture site or relative to capture path.
+    pkg = pkg.set_dir('','foo_dir/baz_dir/')
+    # todo nested at set_dir site or relative to set_dir path.
     assert pathlib.Path(bazdir / 'baz').resolve().as_uri() \
         == pkg._data['baz'].physical_keys[0] # pylint: disable=W0212
 
     pkg = Package()
-    pkg = pkg.capture('foo_dir/baz_dir/', prefix='my_keys')
-    # todo nested at capture site or relative to capture path.
+    pkg = pkg.set_dir('my_keys', 'foo_dir/baz_dir/')
+    # todo nested at set_dir site or relative to set_dir path.
     assert pathlib.Path(bazdir / 'baz').resolve().as_uri() \
         == pkg._data['my_keys/baz'].physical_keys[0] # pylint: disable=W0212
 

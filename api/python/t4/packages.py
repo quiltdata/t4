@@ -338,7 +338,7 @@ class Package(object):
 
         return Package()._set_state(data, meta)
 
-    def capture(self, path, prefix=None):
+    def set_dir(self, lkey, path):
         """
         Adds all files from path to the package.
 
@@ -346,7 +346,9 @@ class Package(object):
             the package according to their relative location to path.
 
         Args:
-            path(string): path to package
+            lkey(string): prefix to add to every logical key, can be
+                empty or None.
+            path(string): path to add to package.
 
         Returns:
             self
@@ -354,19 +356,21 @@ class Package(object):
         Raises:
             when path doesn't exist
         """
-        prefix = "" if not prefix else quote(prefix).strip("/") + "/"
-
-        # TODO: anything but local paths
+        lkey = "" if not lkey else quote(lkey).strip("/") + "/"
         # TODO: deserialization metadata
-        src_path = pathlib.Path(path)
-        files = src_path.rglob('*')
-        for f in files:
-            if not f.is_file():
-                continue
-            entry = PackageEntry.from_local_path(f)
-            logical_key = prefix + f.relative_to(src_path).as_posix()
-            # TODO: Warn if overwritting a logical key?
-            self.set(logical_key, entry)
+        url = urlparse(fix_url(path).strip('/'))
+        if url.scheme == 'file':
+            src_path = pathlib.Path(parse_file_url(url))
+            files = src_path.rglob('*')
+            for f in files:
+                if not f.is_file():
+                    continue
+                entry = PackageEntry.from_local_path(f)
+                logical_key = lkey + f.relative_to(src_path).as_posix()
+                # TODO: Warn if overwritting a logical key?
+                self.set(logical_key, entry)
+        else:
+            raise NotImplementedError
 
         # Must unset old top hash when modifying package.
         self._unset_tophash()
