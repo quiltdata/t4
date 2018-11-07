@@ -298,11 +298,12 @@ def test_package_entry_meta():
     assert pkg['foo'].user_meta() == {'value': 'blah'}
     assert pkg['bar'].user_meta() == {'value': 'blah2'}
 
-    assert pkg['foo'].system_meta() == {'target': 'unicode'}
-    assert pkg['bar'].system_meta() == {'target': 'unicode'}
+    assert pkg['foo'].meta == {'target': 'unicode', 'user_meta': {'value': 'blah'}}
+    assert pkg['bar'].meta == {'target': 'unicode', 'user_meta': {'value': 'blah2'}}
 
-    pkg['foo'].set_meta({'value': 'other value'})
+    pkg['foo'].set_user_meta({'value': 'other value'})
     assert pkg['foo'].user_meta() == {'value': 'other value'}
+    assert pkg['foo'].meta == {'target': 'unicode', 'user_meta': {'value': 'other value'}}
 
 def test_list_local_packages(tmpdir):
     """Verify that list returns packages in the appdirs directory."""
