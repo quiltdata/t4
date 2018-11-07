@@ -7,7 +7,6 @@ from pathlib import Path
 import os
 import re
 
-import tempfile
 import time
 
 from urllib.parse import quote, urlparse
@@ -15,7 +14,7 @@ from urllib.parse import quote, urlparse
 import jsonlines
 from six import string_types
 
-from .data_transfer import copy_file, deserialize_obj, download_bytes, TargetType
+from .data_transfer import copy_bytes, copy_file, deserialize_obj, download_bytes, TargetType
 
 from .exceptions import PackageException
 from .util import QuiltException, BASE_PATH, fix_url, PACKAGE_NAME_FORMAT, parse_file_url, \
@@ -491,14 +490,12 @@ class Package(object):
         registry_prefix = get_package_registry(fix_url(registry) if registry else None)
 
         hash_string = self.top_hash()
-        with tempfile.NamedTemporaryFile() as manifest:
-            self.dump(manifest)
-            manifest.flush()
-            copy_file(
-                pathlib.Path(manifest.name).resolve().as_uri(),
-                registry_prefix + '/packages/' + hash_string,
-                {}
-            )
+        manifest = io.BytesIO()
+        self.dump(manifest)
+        copy_bytes(
+            manifest.getvalue(),
+            registry_prefix + '/packages/' + hash_string
+        )
 
         if name:
             # Sanitize name.
@@ -507,15 +504,11 @@ class Package(object):
 
             named_path = registry_prefix + '/named_packages/' + quote(name) + '/'
             # todo: use a float to string formater instead of double casting
-            with tempfile.NamedTemporaryFile() as hash_file:
-                hash_file.write(self.top_hash().encode('utf-8'))
-                hash_file.flush()
-                hash_uri = pathlib.Path(hash_file.name).resolve().as_uri()
-                timestamp_path = named_path + str(int(time.time()))
-                latest_path = named_path + "latest"
-                copy_file(hash_uri, timestamp_path, {})
-                hash_file.seek(0)
-                copy_file(hash_uri, latest_path, {})
+            hash_bytes = self.top_hash().encode('utf-8')
+            timestamp_path = named_path + str(int(time.time()))
+            latest_path = named_path + "latest"
+            copy_bytes(hash_bytes, timestamp_path)
+            copy_bytes(hash_bytes, latest_path)
 
         return hash_string
 

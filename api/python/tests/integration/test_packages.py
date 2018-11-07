@@ -6,7 +6,6 @@ import os
 import pathlib
 import pytest
 import shutil
-from tempfile import NamedTemporaryFile
 from urllib.parse import urlparse
 
 from mock import patch
@@ -178,7 +177,8 @@ def test_fetch(tmpdir):
 
 def test_load_into_t4(tmpdir):
     """ Verify loading local manifest and data into S3. """
-    with patch('t4.packages.copy_file') as mock:
+    with patch('t4.packages.copy_bytes') as bytes_mock, \
+         patch('t4.packages.copy_file') as file_mock:
         new_pkg = Package()
         # Create a dummy file to add to the package.
         test_file = os.path.join(tmpdir, 'bar')
@@ -188,18 +188,20 @@ def test_load_into_t4(tmpdir):
         new_pkg.push('Quilt/package_name', 's3://my_test_bucket/')
 
         # Get the second argument (destination) from the non-keyword args list
-        dest_args = [x[0][1] for x in mock.call_args_list]
+        bytes_dest_args = [x[0][1] for x in bytes_mock.call_args_list]
+        file_dest_args = [x[0][1] for x in file_mock.call_args_list]
 
         # Manifest copied
-        assert 's3://my_test_bucket/.quilt/packages/' + new_pkg.top_hash() in dest_args
-        assert 's3://my_test_bucket/.quilt/named_packages/Quilt/package_name/latest' in dest_args
+        assert 's3://my_test_bucket/.quilt/packages/' + new_pkg.top_hash() in bytes_dest_args
+        assert 's3://my_test_bucket/.quilt/named_packages/Quilt/package_name/latest' in bytes_dest_args
 
         # Data copied
-        assert 's3://my_test_bucket/Quilt/package_name/foo' in dest_args
+        assert 's3://my_test_bucket/Quilt/package_name/foo' in file_dest_args
 
 def test_local_push(tmpdir):
     """ Verify loading local manifest and data into S3. """
-    with patch('t4.packages.copy_file') as mock:
+    with patch('t4.packages.copy_bytes') as bytes_mock, \
+         patch('t4.packages.copy_file') as file_mock:
         new_pkg = Package()
         test_file = os.path.join(tmpdir, 'bar')
         with open(test_file, 'w') as fd:
@@ -210,14 +212,15 @@ def test_local_push(tmpdir):
         push_uri = pathlib.Path(tmpdir, 'package_contents').as_uri()
 
         # Get the second argument (destination) from the non-keyword args list
-        dest_args = [x[0][1] for x in mock.call_args_list]
+        bytes_dest_args = [x[0][1] for x in bytes_mock.call_args_list]
+        file_dest_args = [x[0][1] for x in file_mock.call_args_list]
 
         # Manifest copied
-        assert push_uri + '/.quilt/packages/' + new_pkg.top_hash() in dest_args
-        assert push_uri + '/.quilt/named_packages/Quilt/package/latest' in dest_args
+        assert push_uri + '/.quilt/packages/' + new_pkg.top_hash() in bytes_dest_args
+        assert push_uri + '/.quilt/named_packages/Quilt/package/latest' in bytes_dest_args
 
         # Data copied
-        assert push_uri + '/Quilt/package/foo' in dest_args
+        assert push_uri + '/Quilt/package/foo' in file_dest_args
 
 def test_package_deserialize(tmpdir):
     """ Verify loading data from a local file. """
@@ -351,27 +354,28 @@ def test_list_local_packages(tmpdir):
         assert "Quilt/Foo" in pkgs
         assert "Quilt/Bar" in pkgs
 
-def test_tophash_changes():
-    with NamedTemporaryFile() as test_file:
-        test_file.write('asdf'.encode('utf-8'))
-        pkg = Package()
-        th1 = pkg.top_hash()
-        pkg.set('asdf', test_file.name)
-        th2 = pkg.top_hash()
-        assert th1 != th2
+def test_tophash_changes(tmpdir):
+    test_file = tmpdir / 'test.txt'
+    test_file.write_text('asdf', 'utf-8')
 
-        test_file.write('jkl'.encode('utf-8'))
-        pkg.set('jkl', test_file.name)
-        th3 = pkg.top_hash()
-        assert th1 != th3
-        assert th2 != th3
+    pkg = Package()
+    th1 = pkg.top_hash()
+    pkg.set('asdf', str(test_file))
+    th2 = pkg.top_hash()
+    assert th1 != th2
 
-        pkg.delete('jkl')
-        th4 = pkg.top_hash()
-        assert th2 == th4
-        
-        pkg.delete('asdf')
-        assert th1 == pkg.top_hash()
+    test_file.write_text('jkl', 'utf-8')
+    pkg.set('jkl', str(test_file))
+    th3 = pkg.top_hash()
+    assert th1 != th3
+    assert th2 != th3
+
+    pkg.delete('jkl')
+    th4 = pkg.top_hash()
+    assert th2 == th4
+
+    pkg.delete('asdf')
+    assert th1 == pkg.top_hash()
 
 def test_keys():
     pkg = Package()

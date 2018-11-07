@@ -168,7 +168,7 @@ def list_packages(registry=None):
     registry_url = urlparse(registry)
     if registry_url.scheme == 'file':
         registry_dir = pathlib.Path(parse_file_url(registry_url))
-        return [str(x.relative_to(registry_dir)) for x in registry_dir.glob('*/*')]
+        return [x.relative_to(registry_dir).as_posix() for x in registry_dir.glob('*/*')]
 
     elif registry_url.scheme == 's3':
         src_bucket, src_path, _ = parse_s3_url(registry_url)
