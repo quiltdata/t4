@@ -334,7 +334,8 @@ class Package(object):
             the package according to their relative location to path.
 
         Args:
-            lkey(string): prefix to add to every logical key.
+            lkey(string): prefix to add to every logical key, can be
+                empty or None.
             path(string): path to add to package.
 
         Returns:
