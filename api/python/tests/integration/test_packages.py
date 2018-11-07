@@ -156,6 +156,22 @@ def test_browse_package_from_registry():
         assert remote_registry + '/packages/{}'.format(pkghash) \
                 in [x[0][0] for x in pkgmock.call_args_list]
 
+def test_package_fetch(tmpdir):
+    """ Package.fetch() on nested, relative keys """
+    input_dir = os.path.dirname(__file__)
+    package_ = Package().set_dir('', os.path.join(input_dir, 'data', 'nested'))
+
+    out_dir = os.path.join(tmpdir, 'output')
+    package_.fetch(out_dir)
+
+    expected = {'one.txt': '1', 'two.txt': '2', 'three.txt': '3'}
+    for dirpath, _, files in os.walk(out_dir):
+        for name in files:
+            with open(os.path.join(out_dir, dirpath, name)) as file_:
+                assert name in expected, f'unexpected file: {file_}'
+                contents = file_.read().strip()
+                assert contents == expected[name], f'unexpected contents in {name}: {contents}'
+
 def test_fetch(tmpdir):
     """ Verify fetching a package entry. """
     pkg = (

@@ -190,8 +190,6 @@ class PackageEntry(object):
         except ValueError:
             raise QuiltException("Unknown serialization target: %r" % target_str)
 
-        print('*********')
-        print(self.physical_keys)
         physical_key = _to_singleton(self.physical_keys)
         data = read_physical_key(physical_key)
         self._verify_hash(data)
@@ -347,6 +345,25 @@ class Package(object):
                 new_key = key[len(slash_prefix):]
                 result.set(new_key, entry)
         return result
+
+    def fetch(self, dest):
+        """
+        Copy all descendants to dest. Descendants are written under their logical
+        names _relative_ to self. So if p[a] has two children, p[a][b] and p[a][c],
+        then p[a].fetch("mydir") will produce the following:
+            mydir
+                b
+                c
+
+        Args:
+            dest: where to put the files (locally)
+
+        Returns:
+            None
+        """
+        # TODO: do this with improved parallelism? connections etc. could be reused
+        for key, entry in self._data.items():
+            entry.fetch(os.path.join(dest, key))
 
     def keys(self):
         """
