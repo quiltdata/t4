@@ -387,6 +387,16 @@ def test_keys():
     pkg.delete('asdf')
     assert pkg.keys() == ['jkl;']
 
+def test_iter():
+    pkg = Package()
+    assert not pkg
+
+    pkg.set('asdf', LOCAL_MANIFEST)
+    assert list(pkg) == ['asdf']
+
+    pkg.set('jkl;', REMOTE_MANIFEST)
+    assert set(pkg) == {'asdf', 'jkl;'}
+
 def test_brackets():
     pkg = Package()
     pkg.set('asdf/jkl', LOCAL_MANIFEST)
