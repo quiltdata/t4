@@ -157,13 +157,13 @@ def test_browse_package_from_registry():
                 in [x[0][0] for x in pkgmock.call_args_list]
 
 def test_fetch(tmpdir):
-    """ Verify building a package from a directory. """
+    """ Verify fetching a package entry. """
     pkg = (
         Package()
         .set('foo', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
              {'target': 'unicode', 'user_meta': 'blah'})
         .set('bar', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
-            {'target': 'unicode', 'user_meta': 'blah'})
+             {'target': 'unicode', 'user_meta': 'blah'})
     )
 
     with open(os.path.join(os.path.dirname(__file__), 'data', 'foo.txt')) as fd:
