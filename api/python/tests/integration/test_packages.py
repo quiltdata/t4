@@ -5,6 +5,7 @@ import jsonlines
 import os
 import pathlib
 import pytest
+import shutil
 from tempfile import NamedTemporaryFile
 from urllib.parse import urlparse
 
@@ -154,6 +155,27 @@ def test_browse_package_from_registry():
             pkg = Package.browse('Quilt/nice-name', registry=remote_registry)
         assert remote_registry + '/packages/{}'.format(pkghash) \
                 in [x[0][0] for x in pkgmock.call_args_list]
+
+def test_fetch(tmpdir):
+    """ Verify fetching a package entry. """
+    pkg = (
+        Package()
+        .set('foo', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
+             {'target': 'unicode', 'user_meta': 'blah'})
+        .set('bar', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
+             {'target': 'unicode', 'user_meta': 'blah'})
+    )
+
+    with open(os.path.join(os.path.dirname(__file__), 'data', 'foo.txt')) as fd:
+        assert fd.read().replace('\n', '') == '123'
+    # Copy foo.text to bar.txt
+    pkg['foo'].fetch(os.path.join(tmpdir, 'data', 'bar.txt'))
+    with open(os.path.join(tmpdir, 'data', 'bar.txt')) as fd:
+        assert fd.read().replace('\n', '') == '123'
+
+    # Raise an error if you copy to yourself.
+    with pytest.raises(shutil.SameFileError):
+        pkg['foo'].fetch(os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'))
 
 def test_load_into_t4(tmpdir):
     """ Verify loading local manifest and data into S3. """
