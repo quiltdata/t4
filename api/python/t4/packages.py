@@ -114,6 +114,18 @@ class PackageEntry(object):
         return PackageEntry(copy.deepcopy(self.physical_keys), self.size, \
                             copy.deepcopy(self.hash), copy.deepcopy(self.meta))
 
+    def set_user_meta(self, meta):
+        """
+        Sets the user_meta for this PackageEntry.
+        """
+        self.meta['user_meta'] = meta
+
+    def user_meta(self):
+        """
+        Returns the user metadata from this PackageEntry.
+        """
+        return self.meta.get('user_meta')
+
     def _verify_hash(self, read_bytes):
         """
         Verifies hash of bytes
@@ -169,7 +181,7 @@ class PackageEntry(object):
 
     def __call__(self):
         """
-        Shorthand for self.get()[0]
+        Shorthand for self.deserialize()
         """
         return self.deserialize()
 
