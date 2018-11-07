@@ -1,3 +1,5 @@
+[![codecov](https://codecov.io/gh/quiltdata/t4/branch/master/graph/badge.svg)](https://codecov.io/gh/quiltdata/t4)
+
 # Alpha - technology preview
 
 T4 is alpha software. It is not yet recommended for production use.
@@ -38,4 +40,3 @@ T4 is alpha software. It is not yet recommended for production use.
 * [User docs](./UserDocs.md)
 * [Developer docs](./DeveloperDocs.md)
 
-![](img/helium-api.png)
