@@ -182,6 +182,27 @@ class PackageEntry(object):
 
         return deserialize_obj(data, target)
 
+
+    def fetch(self, dest):
+        """
+        Gets objects from entry and saves them to dest.
+
+        Args:
+            dest: where to put the files
+
+        Returns:
+            None
+        """
+        physical_keys = self.physical_keys
+        if len(physical_keys) > 1:
+            raise NotImplementedError
+        physical_key = physical_keys[0] # TODO: support multiple physical keys
+
+        dest = fix_url(dest)
+
+        copy_file(physical_key, dest, self.meta)
+
+
     def __call__(self):
         """
         Shorthand for self.deserialize()
