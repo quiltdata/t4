@@ -13,6 +13,7 @@ import time
 from urllib.parse import quote, urlparse
 
 import jsonlines
+from six import string_types
 
 from .data_transfer import copy_file, deserialize_obj, download_bytes, TargetType
 
@@ -326,6 +327,9 @@ class Package(object):
             PackageEntry if prefix matches a logical_key exactly
             otherwise Package
         """
+        if not isinstance(prefix, string_types):
+            raise TypeError("Invalid prefix: %r" % prefix)
+
         if prefix in self._data:
             return self._data[prefix]
         result = Package()
@@ -341,6 +345,12 @@ class Package(object):
         Returns list of logical_keys in the package.
         """
         return list(self._data.keys())
+
+    def __iter__(self):
+        return iter(self._data)
+
+    def __len__(self):
+        return len(self._data)
 
     @classmethod
     def load(cls, readable_file):
