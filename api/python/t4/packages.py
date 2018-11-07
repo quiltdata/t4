@@ -95,8 +95,8 @@ class PackageEntry(object):
         }
         return copy.deepcopy(ret)
 
-    @staticmethod
-    def from_local_path(path):
+    @classmethod
+    def from_local_path(cls, path):
         with open(path, 'rb') as file_to_hash:
             hash_obj = {
                 'type': 'SHA256',
@@ -105,14 +105,14 @@ class PackageEntry(object):
 
         size = os.path.getsize(path)
         physical_keys = [pathlib.Path(path).resolve().as_uri()]
-        return PackageEntry(physical_keys, size, hash_obj, {})
+        return cls(physical_keys, size, hash_obj, {})
 
     def _clone(self):
         """
         Returns clone of this package.
         """
-        return PackageEntry(copy.deepcopy(self.physical_keys), self.size, \
-                            copy.deepcopy(self.hash), copy.deepcopy(self.meta))
+        return self.__class__(copy.deepcopy(self.physical_keys), self.size, \
+                              copy.deepcopy(self.hash), copy.deepcopy(self.meta))
 
     def set_user_meta(self, meta):
         """
@@ -213,13 +213,13 @@ class PackageEntry(object):
 class Package(object):
     """ In-memory representation of a package """
 
-    def __init__(self):
-        self._data = {}
-        self._meta = {'version': 'v0'}
+    def __init__(self, data=None, meta=None):
+        self._data = {} if data is None else data
+        self._meta = {'version': 'v0'} if meta is None else meta
 
 
-    @staticmethod
-    def validate_package_name(name):
+    @classmethod
+    def validate_package_name(cls, name):
         """ Verify that a package name is two alphanumerics strings separated by a slash."""
         if not re.match(PACKAGE_NAME_FORMAT, name):
             raise QuiltException("Invalid package name, must contain exactly one /.")
@@ -245,8 +245,8 @@ class Package(object):
         else:
             raise NotImplementedError
 
-    @staticmethod
-    def browse(name=None, pkg_hash=None, registry=''):
+    @classmethod
+    def browse(cls, name=None, pkg_hash=None, registry=''):
         """
         Load a package into memory from a registry without making a local copy of
         the manifest.
@@ -261,11 +261,9 @@ class Package(object):
         if pkg_hash is not None:
             # If hash is specified, name doesn't matter.
             pkg_path = '{}/packages/{}'.format(registry, pkg_hash)
-            pkg = Package._from_path(pkg_path)
-            # Can't assign to self, so must mutate.
-            return pkg
+            return cls._from_path(pkg_path)
         else:
-            Package.validate_package_name(name)
+            cls.validate_package_name(name)
 
         pkg_path = '{}/named_packages/{}/'.format(registry, quote(name))
         latest = urlparse(pkg_path + 'latest')
@@ -282,37 +280,30 @@ class Package(object):
 
         latest_hash = latest_hash.strip()
         latest_path = '{}/packages/{}'.format(registry, quote(latest_hash))
-        pkg = Package._from_path(latest_path)
-        # Can't assign to self, so must mutate.
-        return pkg
+        return cls._from_path(latest_path)
 
 
-    @staticmethod
-    def _from_path(uri):
+    @classmethod
+    def _from_path(cls, uri):
         """ Takes a URI and returns a package loaded from that URI """
         src_url = urlparse(uri)
         if src_url.scheme == 'file':
             with open(parse_file_url(src_url)) as open_file:
-                pkg = Package.load(open_file)
+                pkg = cls.load(open_file)
         elif src_url.scheme == 's3':
             bucket, path, vid = parse_s3_url(urlparse(src_url.geturl()))
             body, _ = download_bytes(bucket + '/' + path, version=vid)
-            pkg = Package.load(io.BytesIO(body))
+            pkg = cls.load(io.BytesIO(body))
         else:
             raise NotImplementedError
         return pkg
 
 
-    def _set_state(self, data, meta):
-        self._data = data
-        self._meta = meta
-        return self
-
     def _clone(self):
         """
         Returns clone of this package.
         """
-        return Package()._set_state(copy.deepcopy(self._data), copy.deepcopy(self._meta))
+        return self.__class__(copy.deepcopy(self._data), copy.deepcopy(self._meta))
 
     def __contains__(self, logical_key):
         """
@@ -351,8 +342,8 @@ class Package(object):
         """
         return list(self._data.keys())
 
-    @staticmethod
-    def load(readable_file):
+    @classmethod
+    def load(cls, readable_file):
         """
         Loads a package from a readable file-like object.
 
@@ -381,7 +372,7 @@ class Package(object):
                 obj['meta']
             )
 
-        return Package()._set_state(data, meta)
+        return cls(data, meta)
 
     def set_dir(self, lkey, path):
         """
@@ -721,5 +712,5 @@ class Package(object):
             new_entry = entry._clone()
             new_entry.physical_keys = [new_physical_key]
             # Treat as a local path
-            pkg = pkg.set(logical_key, new_entry)
+            pkg.set(logical_key, new_entry)
         return pkg
