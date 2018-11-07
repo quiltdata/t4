@@ -416,6 +416,9 @@ def test_brackets():
     assert pkg['foo'].deserialize() == '123\n'
     assert pkg['foo']() == '123\n'
 
+    with pytest.raises(KeyError):
+        pkg['baz']
+
 def test_list_remote_packages():
     with patch('t4.api.list_objects',
                return_value=([{'Prefix': 'foo'},{'Prefix': 'bar'}],[])) as mock:

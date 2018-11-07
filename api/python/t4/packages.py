@@ -338,6 +338,10 @@ class Package(object):
             if key.startswith(slash_prefix):
                 new_key = key[len(slash_prefix):]
                 result.set(new_key, entry)
+
+        if not result._data:
+            raise KeyError("Slice not found.")
+
         return result
 
     def keys(self):
