@@ -371,6 +371,8 @@ class Package(object):
         data = {}
         reader = jsonlines.Reader(readable_file)
         meta = reader.read()
+        # Pop the top hash -- it should only be calculated dynamically
+        meta.pop('top_hash', None)
         for obj in reader:
             lk = obj.pop('logical_key')
             if lk in data:
@@ -418,8 +420,6 @@ class Package(object):
         else:
             raise NotImplementedError
 
-        # Must unset old top hash when modifying package.
-        self._unset_tophash()
         return self
 
     def get(self, logical_key):
@@ -539,7 +539,12 @@ class Package(object):
         """
         self.top_hash() # Assure top hash is calculated.
         writer = jsonlines.Writer(writable_file)
-        writer.write(self._meta)
+        top_level_meta = self._meta
+        top_level_meta['top_hash'] = {
+            'alg': 'v0',
+            'value': self.top_hash()
+        }
+        writer.write(top_level_meta)
         for logical_key, entry in self._data.items():
             writer.write({'logical_key': logical_key, **entry.as_dict()})
 
@@ -562,7 +567,6 @@ class Package(object):
         prefix = "" if not prefix else quote(prefix).strip("/") + "/"
         for logical_key, entry in new_keys_dict.items():
             self.set(prefix + logical_key, entry, meta)
-        self._unset_tophash()
         return self
 
     def set(self, logical_key, entry=None, meta=None):
@@ -599,13 +603,10 @@ class Package(object):
         else:
             raise NotImplementedError
 
-        # Must unset old top hash when modifying package
-        self._unset_tophash()
         return self
 
     def _update_meta(self, logical_key, meta):
         self._data[logical_key].meta = meta
-        self._unset_tophash()
         return self
 
     def delete(self, logical_key):
@@ -619,16 +620,14 @@ class Package(object):
             KeyError: when logical_key is not present to be deleted
         """
         self._data.pop(logical_key)
-        # Must unset old top hash when modifying package
-        self._unset_tophash()
         return self
 
     def _top_hash(self):
         """
-        Sets the top_hash in _meta
+        Calculates the package's top hash.
 
         Returns:
-            None
+            A string containing the hex digest of the top hash.
         """
         top_hash = hashlib.sha256()
         hashable_meta = copy.deepcopy(self._meta)
@@ -642,19 +641,7 @@ class Package(object):
             entry_dict_str = json.dumps(entry_dict, sort_keys=True, separators=(',', ':'))
             top_hash.update(entry_dict_str.encode('utf-8'))
 
-        self._meta['top_hash'] = {
-            'alg': 'v0',
-            'value': top_hash.hexdigest()
-        }
-
-    def _unset_tophash(self):
-        """
-        Unsets the top hash
-        When a package is created from an existing package, the top hash
-            must be deleted so a correct new one can be calculated
-            when necessary
-        """
-        self._meta.pop('top_hash', None)
+        return top_hash.hexdigest()
 
     def top_hash(self):
         """
@@ -666,9 +653,7 @@ class Package(object):
         Returns:
             A string that represents the top hash of the package
         """
-        if 'top_hash' not in self._meta:
-            self._top_hash()
-        return self._meta['top_hash']['value']
+        return self._top_hash()
 
     def push(self, path, name=None):
         """
