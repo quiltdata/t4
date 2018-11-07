@@ -203,6 +203,26 @@ class Package(object):
         if not re.match(PACKAGE_NAME_FORMAT, name):
             raise QuiltException("Invalid package name, must contain exactly one /.")
 
+    @staticmethod
+    def install(name, dest=None, registry=None, pkg_hash=None):
+        """
+        Installs a named package to the local registry and downloads its files.
+
+        Args:
+            name(str): Name of package to install.
+            dest(str): Local path to download files to.
+                Defaults to $local_registry/files/{sha256 of file}
+            registry(str): Registry to install package to. Defaults to local registry.
+            pkg_hash(str): Hash of package to install. Defaults to latest.
+
+        Returns:
+            A new Package that points to files on your local machine.
+        """
+        pkg = Package.browse(name=name, pkg_hash=pkg_hash, registry=registry or '')
+        if dest:
+            return pkg.push(path=dest, name=name)
+        else:
+            raise NotImplementedError
 
     @staticmethod
     def browse(name=None, pkg_hash=None, registry=''):
