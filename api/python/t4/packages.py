@@ -326,7 +326,7 @@ class Package(object):
 
         return Package()._set_state(data, meta)
 
-    def set_dir(self, path, prefix=None):
+    def set_dir(self, lkey, path):
         """
         Adds all files from path to the package.
 
@@ -334,7 +334,8 @@ class Package(object):
             the package according to their relative location to path.
 
         Args:
-            path(string): path to package
+            lkey(string): prefix to add to every logical key.
+            path(string): path to add to package.
 
         Returns:
             self
@@ -342,7 +343,7 @@ class Package(object):
         Raises:
             when path doesn't exist
         """
-        prefix = "" if not prefix else quote(prefix).strip("/") + "/"
+        lkey = "" if not lkey else quote(lkey).strip("/") + "/"
         # TODO: deserialization metadata
         url = urlparse(fix_url(path).strip('/'))
         if url.scheme == 'file':
@@ -352,7 +353,7 @@ class Package(object):
                 if not f.is_file():
                     continue
                 entry = PackageEntry.from_local_path(f)
-                logical_key = prefix + f.relative_to(src_path).as_posix()
+                logical_key = lkey + f.relative_to(src_path).as_posix()
                 # TODO: Warn if overwritting a logical key?
                 self.set(logical_key, entry)
         else:

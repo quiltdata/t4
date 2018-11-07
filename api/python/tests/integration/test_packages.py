@@ -230,7 +230,7 @@ def test_set_dir(tmpdir):
     with open(foodir / 'bar', 'w') as fd:
         fd.write(fd.name)
 
-    pkg = pkg.set_dir("")
+    pkg = pkg.set_dir("","")
 
     assert pathlib.Path('foo').resolve().as_uri() \
         == pkg._data['foo'].physical_keys[0] # pylint: disable=W0212
@@ -242,13 +242,13 @@ def test_set_dir(tmpdir):
         == pkg._data['foo_dir/bar'].physical_keys[0] # pylint: disable=W0212
 
     pkg = Package()
-    pkg = pkg.set_dir('foo_dir/baz_dir/')
+    pkg = pkg.set_dir('','foo_dir/baz_dir/')
     # todo nested at set_dir site or relative to set_dir path.
     assert pathlib.Path(bazdir / 'baz').resolve().as_uri() \
         == pkg._data['baz'].physical_keys[0] # pylint: disable=W0212
 
     pkg = Package()
-    pkg = pkg.set_dir('foo_dir/baz_dir/', prefix='my_keys')
+    pkg = pkg.set_dir('my_keys', 'foo_dir/baz_dir/')
     # todo nested at set_dir site or relative to set_dir path.
     assert pathlib.Path(bazdir / 'baz').resolve().as_uri() \
         == pkg._data['my_keys/baz'].physical_keys[0] # pylint: disable=W0212
