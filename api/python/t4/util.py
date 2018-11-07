@@ -23,8 +23,6 @@ BASE_DIR = user_data_dir(APP_NAME, APP_AUTHOR)
 BASE_PATH = pathlib.Path(BASE_DIR)
 CONFIG_PATH = BASE_PATH / 'config.yml'
 
-AWS_SEPARATOR = '/'
-
 PACKAGE_NAME_FORMAT = r"[\w-]+/[\w-]+$"
 
 ## CONFIG_TEMPLATE
@@ -57,21 +55,6 @@ class QuiltException(Exception):
         self.message = message
         for k, v in kwargs.items():
             setattr(self, k, v)
-
-
-def split_path(path, require_subpath=False):
-    """
-    Split bucket name and intra-bucket path. Returns: (bucket, path)
-    """
-
-    result = path.split(AWS_SEPARATOR, 1)
-    if len(result) != 2:
-        raise ValueError("Invalid path: %r; expected BUCKET/PATH..." % path)
-    if require_subpath and not all(result):
-        raise ValueError("Invalid path: %r; expected BUCKET/PATH... (BUCKET and PATH both required)"
-                         % path)
-
-    return result
 
 
 def fix_url(url):

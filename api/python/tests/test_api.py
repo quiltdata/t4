@@ -41,7 +41,7 @@ class TestAPI():
         # and can cause issues when downloading to host machine.
         test_object = "foo"
         with pytest.raises(ValueError):
-            he.put(test_object, "test/")
+            he.put(test_object, "s3://test/")
 
     def test_search_no_config(self):
         with pytest.raises(util.QuiltException, match="No configured region."):
