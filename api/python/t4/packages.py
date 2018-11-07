@@ -622,12 +622,15 @@ class Package(object):
         self._data.pop(logical_key)
         return self
 
-    def _top_hash(self):
+    def top_hash(self):
         """
-        Calculates the package's top hash.
+        Returns the top hash of the package.
+
+        Note that physical keys are not hashed because the package has
+            the same semantics regardless of where the bytes come from.
 
         Returns:
-            A string containing the hex digest of the top hash.
+            A string that represents the top hash of the package
         """
         top_hash = hashlib.sha256()
         hashable_meta = copy.deepcopy(self._meta)
@@ -642,18 +645,6 @@ class Package(object):
             top_hash.update(entry_dict_str.encode('utf-8'))
 
         return top_hash.hexdigest()
-
-    def top_hash(self):
-        """
-        Returns the top hash of the package.
-
-        Note that physical keys are not hashed because the package has
-            the same semantics regardless of where the bytes come from.
-
-        Returns:
-            A string that represents the top hash of the package
-        """
-        return self._top_hash()
 
     def push(self, path, name=None):
         """
