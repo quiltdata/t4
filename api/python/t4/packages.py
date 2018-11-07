@@ -45,19 +45,11 @@ def read_physical_key(physical_key):
         raise NotImplementedError
 
 
-def get_package_registry(path=''):
+def get_package_registry(path=None):
     """ Returns the package registry root for a given path """
-    if path.startswith('s3://'):
-        bucket = path[5:].partition('/')[0]
-        return "s3://{}/.quilt".format(bucket)
-    # Default to the local registry.
-    return get_local_package_registry().as_uri()
-
-def get_local_package_registry():
-    """ Returns a local package registry Path. """
-    Path(BASE_PATH, "packages").mkdir(parents=True, exist_ok=True)
-    Path(BASE_PATH, "named_packages").mkdir(parents=True, exist_ok=True)
-    return BASE_PATH
+    if path is None:
+        return BASE_PATH.as_uri()
+    return path.rstrip('/') + '/.quilt'
 
 class PackageEntry(object):
     """
@@ -257,7 +249,7 @@ class Package(object):
             pkg_hash(string): top hash of package version to load
             registry(string): location of registry to load package from
         """
-        registry = get_package_registry(fix_url(registry))
+        registry = get_package_registry(fix_url(registry) if registry else None)
 
         if pkg_hash is not None:
             # If hash is specified, name doesn't matter.
@@ -489,10 +481,7 @@ class Package(object):
         Returns:
             the top hash as a string
         """
-        if registry is not None:
-            registry = get_package_registry(fix_url(registry))
-        else:
-            registry = get_package_registry()
+        registry = get_package_registry(fix_url(registry) if registry else None)
 
         hash_string = self.top_hash()
         with tempfile.NamedTemporaryFile() as manifest:
@@ -682,13 +671,13 @@ class Package(object):
         Returns:
             A new package that points to the copied objects
         """
-        dest = fix_url(path).strip('/')
+        dest = fix_url(path).rstrip('/')
         if name:
             self.validate_package_name(name)
             dest = dest + '/' + quote(name)
         if dest.startswith('file://') or dest.startswith('s3://'):
             pkg = self._materialize(dest)
-            pkg.build(name, registry=get_package_registry(dest))
+            pkg.build(name, registry=path)
             return pkg
         else:
             raise NotImplementedError
