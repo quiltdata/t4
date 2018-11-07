@@ -44,12 +44,12 @@ def read_physical_key(physical_key):
     else:
         raise NotImplementedError
 
-
 def get_package_registry(path=None):
     """ Returns the package registry root for a given path """
     if path is None:
-        return BASE_PATH.as_uri()
+        path = BASE_PATH.as_uri()
     return path.rstrip('/') + '/.quilt'
+
 
 class PackageEntry(object):
     """
@@ -218,47 +218,50 @@ class Package(object):
             raise QuiltException("Invalid package name, must contain exactly one /.")
 
     @classmethod
-    def install(cls, name, dest=None, registry=None, pkg_hash=None):
+    def install(cls, name, registry, pkg_hash=None, dest=None, dest_registry=None):
         """
         Installs a named package to the local registry and downloads its files.
 
         Args:
             name(str): Name of package to install.
-            dest(str): Local path to download files to.
-                Defaults to $local_registry/files/{sha256 of file}
-            registry(str): Registry to install package to. Defaults to local registry.
+            registry(str): Registry where package is located.
             pkg_hash(str): Hash of package to install. Defaults to latest.
+            dest(str): Local path to download files to.
+            dest_registry(str): Registry to install package to. Defaults to local registry.
 
         Returns:
             A new Package that points to files on your local machine.
         """
-        pkg = cls.browse(name=name, pkg_hash=pkg_hash, registry=registry or '')
+        if dest_registry is None:
+            dest_registry = BASE_PATH
+
+        pkg = cls.browse(name=name, registry=registry, pkg_hash=pkg_hash)
         if dest:
-            return pkg.push(path=dest, name=name)
+            return pkg.push(name=name, dest=dest, dest_registry=dest_registry)
         else:
             raise NotImplementedError
 
     @classmethod
-    def browse(cls, name=None, pkg_hash=None, registry=''):
+    def browse(cls, name=None, registry=None, pkg_hash=None):
         """
         Load a package into memory from a registry without making a local copy of
         the manifest.
 
         Args:
             name(string): name of package to load
-            pkg_hash(string): top hash of package version to load
             registry(string): location of registry to load package from
+            pkg_hash(string): top hash of package version to load
         """
-        registry = get_package_registry(fix_url(registry) if registry else None)
+        registry_prefix = get_package_registry(fix_url(registry) if registry else None)
 
         if pkg_hash is not None:
             # If hash is specified, name doesn't matter.
-            pkg_path = '{}/packages/{}'.format(registry, pkg_hash)
+            pkg_path = '{}/packages/{}'.format(registry_prefix, pkg_hash)
             return cls._from_path(pkg_path)
         else:
             cls.validate_package_name(name)
 
-        pkg_path = '{}/named_packages/{}/'.format(registry, quote(name))
+        pkg_path = '{}/named_packages/{}/'.format(registry_prefix, quote(name))
         latest = urlparse(pkg_path + 'latest')
         if latest.scheme == 'file':
             latest_path = parse_file_url(latest)
@@ -272,7 +275,7 @@ class Package(object):
             raise NotImplementedError
 
         latest_hash = latest_hash.strip()
-        latest_path = '{}/packages/{}'.format(registry, quote(latest_hash))
+        latest_path = '{}/packages/{}'.format(registry_prefix, quote(latest_hash))
         return cls._from_path(latest_path)
 
 
@@ -481,7 +484,7 @@ class Package(object):
         Returns:
             the top hash as a string
         """
-        registry = get_package_registry(fix_url(registry) if registry else None)
+        registry_prefix = get_package_registry(fix_url(registry) if registry else None)
 
         hash_string = self.top_hash()
         with tempfile.NamedTemporaryFile() as manifest:
@@ -489,7 +492,7 @@ class Package(object):
             manifest.flush()
             copy_file(
                 pathlib.Path(manifest.name).resolve().as_uri(),
-                registry.strip('/') + '/' + "packages/" + hash_string,
+                registry_prefix + '/packages/' + hash_string,
                 {}
             )
 
@@ -498,7 +501,7 @@ class Package(object):
             self.validate_package_name(name)
             name = quote(name)
 
-            named_path = registry.strip('/') + '/named_packages/' + quote(name) + '/'
+            named_path = registry_prefix + '/named_packages/' + quote(name) + '/'
             # todo: use a float to string formater instead of double casting
             with tempfile.NamedTemporaryFile() as hash_file:
                 hash_file.write(self.top_hash().encode('utf-8'))
@@ -659,25 +662,28 @@ class Package(object):
             self._top_hash()
         return self._meta['top_hash']['value']
 
-    def push(self, path, name=None):
+    def push(self, name, dest, dest_registry=None):
         """
         Copies objects to path, then creates a new package that points to those objects.
         Copies each object in this package to path according to logical key structure,
         then adds to the registry a serialized version of this package
         with physical_keys that point to the new copies.
         Args:
-            path: where to copy the objects in the package
             name: name for package in registry
+            dest: where to copy the objects in the package
+            dest_registry: registry where to create the new package
         Returns:
             A new package that points to the copied objects
         """
-        dest = fix_url(path).rstrip('/')
-        if name:
-            self.validate_package_name(name)
-            dest = dest + '/' + quote(name)
-        if dest.startswith('file://') or dest.startswith('s3://'):
-            pkg = self._materialize(dest)
-            pkg.build(name, registry=path)
+        self.validate_package_name(name)
+
+        if dest_registry is None:
+            dest_registry = dest
+
+        dest_url = fix_url(dest).rstrip('/') + '/' + quote(name)
+        if dest_url.startswith('file://') or dest_url.startswith('s3://'):
+            pkg = self._materialize(dest_url)
+            pkg.build(name, registry=dest_registry)
             return pkg
         else:
             raise NotImplementedError

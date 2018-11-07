@@ -52,14 +52,14 @@ def test_build(tmpdir):
     top_hash = new_pkg.build("Quilt/Test")
 
     # Verify manifest is registered by hash.
-    out_path = Path(BASE_PATH, "packages", top_hash)
+    out_path = Path(BASE_PATH, ".quilt/packages", top_hash)
     with open(out_path) as fd:
         pkg = Package.load(fd)
         assert test_file.resolve().as_uri() \
             == pkg._data['foo'].physical_keys[0] # pylint: disable=W0212
 
     # Verify latest points to the new location.
-    named_pointer_path = Path(BASE_PATH, "named_packages", "Quilt", "Test", "latest")
+    named_pointer_path = Path(BASE_PATH, ".quilt/named_packages/Quilt/Test/latest")
     with open(named_pointer_path) as fd:
         assert fd.read().replace('\n', '') == top_hash
 
@@ -67,7 +67,7 @@ def test_build(tmpdir):
     new_pkg = Package()
     new_pkg = new_pkg.set('bar', test_file_name)
     top_hash = new_pkg.build()
-    out_path = Path(BASE_PATH, "packages", top_hash)
+    out_path = Path(BASE_PATH, ".quilt/packages", top_hash)
     with open(out_path) as fd:
         pkg = Package.load(fd)
         assert test_file.resolve().as_uri() \
@@ -102,10 +102,10 @@ def test_materialize_from_remote(tmpdir):
     with patch('botocore.client.BaseClient._make_api_call', new=mock_make_api_call):
         with open(REMOTE_MANIFEST) as fd:
             pkg = Package.load(fd)
-            with patch('t4.data_transfer._download_single_file', new=no_op_mock), \
-                 patch('t4.data_transfer._download_dir', new=no_op_mock), \
-                 patch('t4.Package.build', new=no_op_mock):
-                mat_pkg = pkg.push(os.path.join(tmpdir, 'pkg'), name='Quilt/test_pkg_name')
+        with patch('t4.data_transfer._download_single_file', new=no_op_mock), \
+                patch('t4.data_transfer._download_dir', new=no_op_mock), \
+                patch('t4.Package.build', new=no_op_mock):
+            mat_pkg = pkg.push('Quilt/test_pkg_name', tmpdir / 'pkg')
 
 def test_browse_package_from_registry():
     """ Verify loading manifest locally and from s3 """
@@ -117,13 +117,13 @@ def test_browse_package_from_registry():
 
         # default registry load
         pkg = Package.browse(pkg_hash=pkghash)
-        assert registry + '/packages/{}'.format(pkghash) \
+        assert '{}/.quilt/packages/{}'.format(registry, pkghash) \
                 in [x[0][0] for x in pkgmock.call_args_list]
 
         pkgmock.reset_mock()
 
         pkg = Package.browse('Quilt/nice-name', pkg_hash=pkghash)
-        assert registry + '/packages/{}'.format(pkghash) \
+        assert '{}/.quilt/packages/{}'.format(registry, pkghash) \
                 in [x[0][0] for x in pkgmock.call_args_list]
 
         pkgmock.reset_mock()
@@ -131,10 +131,10 @@ def test_browse_package_from_registry():
         with patch('t4.packages.open') as open_mock:
             open_mock.return_value = io.BytesIO(pkghash.encode('utf-8'))
             pkg = Package.browse('Quilt/nice-name')
-            assert parse_file_url(urlparse(registry + '/named_packages/Quilt/nice-name/latest')) \
+            assert parse_file_url(urlparse(registry + '/.quilt/named_packages/Quilt/nice-name/latest')) \
                     == open_mock.call_args_list[0][0][0]
 
-        assert registry + '/packages/{}'.format(pkghash) \
+        assert '{}/.quilt/packages/{}'.format(registry, pkghash) \
                 in [x[0][0] for x in pkgmock.call_args_list]
         pkgmock.reset_mock()
 
@@ -185,7 +185,7 @@ def test_load_into_t4(tmpdir):
         with open(test_file, 'w') as fd:
             fd.write(test_file)
         new_pkg = new_pkg.set('foo', test_file)
-        new_pkg.push('s3://my_test_bucket/', name='Quilt/package_name')
+        new_pkg.push('Quilt/package_name', 's3://my_test_bucket/')
 
         # Get the second argument (destination) from the non-keyword args list
         dest_args = [x[0][1] for x in mock.call_args_list]
@@ -205,7 +205,7 @@ def test_local_push(tmpdir):
         with open(test_file, 'w') as fd:
             fd.write(test_file)
         new_pkg = new_pkg.set('foo', test_file)
-        new_pkg.push(os.path.join(tmpdir, 'package_contents'), name='Quilt/package')
+        new_pkg.push('Quilt/package', tmpdir / 'package_contents')
 
         push_uri = pathlib.Path(tmpdir, 'package_contents').as_uri()
 
@@ -250,7 +250,7 @@ def test_set_dir(tmpdir):
     with open(foodir / 'bar', 'w') as fd:
         fd.write(fd.name)
 
-    pkg = pkg.set_dir("","")
+    pkg = pkg.set_dir("", ".")
 
     assert pathlib.Path('foo').resolve().as_uri() \
         == pkg._data['foo'].physical_keys[0] # pylint: disable=W0212
