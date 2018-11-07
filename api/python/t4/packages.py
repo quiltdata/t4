@@ -196,7 +196,7 @@ class Package(object):
             raise QuiltException("Invalid package name, must contain exactly one /.")
 
 
-    def __init__(self, name=None, pkg_hash=None, registry=''):
+    def __init__(self, name=None, pkg_hash=None, registry='whatever'):
         """
         Create a Package from scratch, or load one from a registry.
 

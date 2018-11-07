@@ -141,7 +141,7 @@ def list_packages(registry=None):
         A list of strings containing the names of the packages        
     """
     if not registry:
-        registry = ''
+        registry = 'whatever'
     registry = get_package_registry(fix_url(registry)).strip("/") + '/named_packages'
 
     registry_url = urlparse(registry)

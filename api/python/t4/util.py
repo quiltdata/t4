@@ -76,6 +76,9 @@ def split_path(path, require_subpath=False):
 
 def fix_url(url):
     """Convert non-URL paths to file:// URLs"""
+    if not url:
+        raise ValueError("Empty URL")
+
     # If it has a scheme, we assume it's a URL.
     # On Windows, we ignore schemes that look like drive letters, e.g. C:/users/foo
     parsed = urlparse(url)
