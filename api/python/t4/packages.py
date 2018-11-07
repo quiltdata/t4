@@ -145,14 +145,11 @@ class PackageEntry(object):
         return self.physical_keys[0]
 
     def deserialize(self):
-        return self._get()[0]
-
-    def _get(self):
         """
-        Returns a tuple of the object this entry corresponds to and its metadata.
+        Returns the object this entry corresponds to.
 
         Returns:
-            A tuple containing the deserialized object from the logical_key and its metadata
+            The deserialized object from the logical_key
 
         Raises:
             physical key failure
@@ -177,7 +174,7 @@ class PackageEntry(object):
 
         self._verify_hash(data)
 
-        return deserialize_obj(data, target), self.meta.get('user_meta')
+        return deserialize_obj(data, target)
 
     def __call__(self):
         """
