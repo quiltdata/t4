@@ -161,7 +161,7 @@ class PackageEntry(object):
             raise NotImplementedError
         digest = hashlib.sha256(read_bytes).hexdigest()
         if digest != self.hash.get('value'):
-            raise QuiltException("Hash validation failed")
+            raise ouiltException("Hash validation failed")
 
     def get(self):
         """
@@ -362,9 +362,9 @@ class Package(object):
             None
         """
         # TODO: do this with improved parallelism? connections etc. could be reused
-
+        nice_dest = fix_url(dest).rstrip('/')
         for key, entry in self._data.items():
-            entry.fetch('{}/{}'.format(fix_url(dest), key))
+            entry.fetch('{}/{}'.format(nice_dest, key))
 
     def keys(self):
         """
