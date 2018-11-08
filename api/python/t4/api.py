@@ -6,8 +6,8 @@ from elasticsearch import Elasticsearch, RequestsHttpConnection
 from six.moves import urllib
 from urllib.parse import urlparse, urlunparse
 
-from .data_transfer import (TargetType, copy_file, deserialize_obj, download_bytes,
-                            upload_bytes, delete_object, list_objects,
+from .data_transfer import (TargetType, copy_file, deserialize_obj, get_bytes,
+                            put_bytes, delete_object, list_objects,
                             list_object_versions, serialize_obj)
 from .packages import get_package_registry
 from .util import (HeliumConfig, QuiltException, CONFIG_PATH,
@@ -51,24 +51,13 @@ def put(obj, dest, meta=None):
         dest (str): A URI
         meta (dict): Optional. metadata dict to store with ``obj`` at ``dest``
     """
-    url = urlparse(dest)
-    if url.scheme != 's3':
-        raise NotImplementedError
-
-    bucket, path, version = parse_s3_url(url)
-    if version:
-        raise ValueError("Cannot push to a version")
-
-    if path.endswith('/'):
-        raise ValueError("Invalid path: %r; ends with a '/'" % path)
-
     data, target = serialize_obj(obj)
     all_meta = dict(
         target=target.value,
         user_meta=meta
     )
 
-    upload_bytes(data, bucket + '/' + path, all_meta)
+    put_bytes(data, fix_url(dest), all_meta)
 
 
 def get(src):
@@ -82,12 +71,7 @@ def get(src):
     Returns:
         tuple: ``(data, metadata)``.  Does not work on all objects.
     """
-    url = urlparse(src)
-    if url.scheme != 's3':
-        raise NotImplementedError
-    bucket, path, version = parse_s3_url(url)
-
-    data, meta = download_bytes(bucket + '/' + path, version)
+    data, meta = get_bytes(fix_url(src))
 
     target_str = meta.get('target')
     if target_str is None:
