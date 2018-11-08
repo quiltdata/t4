@@ -1,4 +1,5 @@
 import copy
+from concurrent import futures
 import hashlib
 import io
 import json
@@ -688,7 +689,10 @@ class Package(object):
         """
         pkg = self._clone()
         # Since all that is modified is physical keys, pkg will have the same top hash
-        for logical_key, entry in self._data.items():
+        def _materialize_one(logical_key, entry):
+            # pkg.set() doesn't do anything when setting entry objects that isn't
+            # thread-safe.  If that changes, we'll need a lock.
+
             # Copy the datafiles in the package.
             new_physical_key = path + "/" + quote(logical_key)
 
@@ -698,4 +702,10 @@ class Package(object):
             new_entry.physical_keys = [new_physical_key]
             # Treat as a local path
             pkg.set(logical_key, new_entry)
+
+        with futures.ThreadPoolExecutor(max_workers=4) as executor:
+            threads = [executor.submit(_materialize_one, logical_key, entry)
+                       for logical_key, entry in self._data.items()]
+            for thread in threads:
+                thread.result()  # raise any exceptions that occurred.
         return pkg
