@@ -12,7 +12,7 @@ import time
 from urllib.parse import quote, urlparse
 
 import jsonlines
-from six import string_types
+from six import string_types, binary_type
 
 from .data_transfer import copy_bytes, copy_file, deserialize_obj, download_bytes, TargetType
 
@@ -580,7 +580,7 @@ class Package(object):
         if entry is None:
             return self._update_meta(logical_key, meta)
 
-        if isinstance(entry, str):
+        if isinstance(entry, (string_types, binary_type, getattr(os, 'PathLike'))):
             entry = PackageEntry.from_local_path(entry)
             if meta is not None:
                 entry.meta = meta

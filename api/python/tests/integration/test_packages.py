@@ -360,12 +360,12 @@ def test_tophash_changes(tmpdir):
 
     pkg = Package()
     th1 = pkg.top_hash()
-    pkg.set('asdf', str(test_file))
+    pkg.set('asdf', test_file)
     th2 = pkg.top_hash()
     assert th1 != th2
 
     test_file.write_text('jkl', 'utf-8')
-    pkg.set('jkl', str(test_file))
+    pkg.set('jkl', test_file)
     th3 = pkg.top_hash()
     assert th1 != th3
     assert th2 != th3
@@ -404,7 +404,7 @@ def test_invalid_set_key(tmpdir):
     """Verify an exception when setting a key with a path object."""
     pkg = Package()
     with pytest.raises(NotImplementedError):
-        pkg.set('asdf/jkl', tmpdir)
+        pkg.set('asdf/jkl', 123)
 
 def test_brackets():
     pkg = Package()
