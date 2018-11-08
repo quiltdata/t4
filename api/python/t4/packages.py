@@ -460,10 +460,7 @@ class Package(object):
             on incorrect logical key root
             when path doesn't exist
         """
-        if not lkey:
-            raise PackageException("Logical root cannot be empty string")
-
-        lkey = quote(lkey).rstrip("/") + "/"
+        lkey = quote(lkey).strip("/") + "/"
 
         if lkey == '/':
             # Prevent created logical keys from starting with '/'
