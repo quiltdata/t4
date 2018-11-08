@@ -590,7 +590,7 @@ class Package(object):
                 raise PackageException("Must specify metadata in the entry")
             self._data[logical_key] = entry
         else:
-            raise NotImplementedError
+            raise NotImplementedError("Needs to be of type str")
 
         return self
 
