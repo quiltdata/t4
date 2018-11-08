@@ -14,7 +14,6 @@ from pathlib import Path
 
 import t4
 from t4 import Package
-from t4.packages import get_local_package_registry
 from t4.util import QuiltException, APP_NAME, APP_AUTHOR, BASE_DIR, BASE_PATH, parse_file_url
 
 LOCAL_MANIFEST = os.path.join(os.path.dirname(__file__), 'data', 'local_manifest.jsonl')
@@ -53,14 +52,14 @@ def test_build(tmpdir):
     top_hash = new_pkg.build("Quilt/Test")
 
     # Verify manifest is registered by hash.
-    out_path = Path(BASE_PATH, "packages", top_hash)
+    out_path = Path(BASE_PATH, ".quilt/packages", top_hash)
     with open(out_path) as fd:
         pkg = Package.load(fd)
         assert test_file.resolve().as_uri() \
             == pkg._data['foo'].physical_keys[0] # pylint: disable=W0212
 
     # Verify latest points to the new location.
-    named_pointer_path = Path(BASE_PATH, "named_packages", "Quilt", "Test", "latest")
+    named_pointer_path = Path(BASE_PATH, ".quilt/named_packages/Quilt/Test/latest")
     with open(named_pointer_path) as fd:
         assert fd.read().replace('\n', '') == top_hash
 
@@ -68,7 +67,7 @@ def test_build(tmpdir):
     new_pkg = Package()
     new_pkg = new_pkg.set('bar', test_file_name)
     top_hash = new_pkg.build()
-    out_path = Path(BASE_PATH, "packages", top_hash)
+    out_path = Path(BASE_PATH, ".quilt/packages", top_hash)
     with open(out_path) as fd:
         pkg = Package.load(fd)
         assert test_file.resolve().as_uri() \
@@ -103,10 +102,10 @@ def test_materialize_from_remote(tmpdir):
     with patch('botocore.client.BaseClient._make_api_call', new=mock_make_api_call):
         with open(REMOTE_MANIFEST) as fd:
             pkg = Package.load(fd)
-            with patch('t4.data_transfer._download_single_file', new=no_op_mock), \
-                 patch('t4.data_transfer._download_dir', new=no_op_mock), \
-                 patch('t4.Package.build', new=no_op_mock):
-                mat_pkg = pkg.push(os.path.join(tmpdir, 'pkg'), name='Quilt/test_pkg_name')
+        with patch('t4.data_transfer._download_single_file', new=no_op_mock), \
+                patch('t4.data_transfer._download_dir', new=no_op_mock), \
+                patch('t4.Package.build', new=no_op_mock):
+            mat_pkg = pkg.push('Quilt/test_pkg_name', tmpdir / 'pkg')
 
 def test_browse_package_from_registry():
     """ Verify loading manifest locally and from s3 """
@@ -116,15 +115,15 @@ def test_browse_package_from_registry():
         pkgmock.return_value = pkg
         pkghash = pkg.top_hash()
 
-        # local load
+        # default registry load
         pkg = Package.browse(pkg_hash=pkghash)
-        assert registry + '/packages/{}'.format(pkghash) \
+        assert '{}/.quilt/packages/{}'.format(registry, pkghash) \
                 in [x[0][0] for x in pkgmock.call_args_list]
 
         pkgmock.reset_mock()
 
         pkg = Package.browse('Quilt/nice-name', pkg_hash=pkghash)
-        assert registry + '/packages/{}'.format(pkghash) \
+        assert '{}/.quilt/packages/{}'.format(registry, pkghash) \
                 in [x[0][0] for x in pkgmock.call_args_list]
 
         pkgmock.reset_mock()
@@ -132,28 +131,28 @@ def test_browse_package_from_registry():
         with patch('t4.packages.open') as open_mock:
             open_mock.return_value = io.BytesIO(pkghash.encode('utf-8'))
             pkg = Package.browse('Quilt/nice-name')
-            assert parse_file_url(urlparse(registry + '/named_packages/Quilt/nice-name/latest')) \
+            assert parse_file_url(urlparse(registry + '/.quilt/named_packages/Quilt/nice-name/latest')) \
                     == open_mock.call_args_list[0][0][0]
 
-        assert registry + '/packages/{}'.format(pkghash) \
+        assert '{}/.quilt/packages/{}'.format(registry, pkghash) \
                 in [x[0][0] for x in pkgmock.call_args_list]
         pkgmock.reset_mock()
 
-        remote_registry = t4.packages.get_package_registry('s3://asdf/')
+        remote_registry = 's3://asdf/foo'
         # remote load
         pkg = Package.browse('Quilt/nice-name', registry=remote_registry, pkg_hash=pkghash)
-        assert remote_registry + '/packages/{}'.format(pkghash) \
+        assert '{}/.quilt/packages/{}'.format(remote_registry, pkghash) \
                 in [x[0][0] for x in pkgmock.call_args_list]
         pkgmock.reset_mock()
         pkg = Package.browse(pkg_hash=pkghash, registry=remote_registry)
-        assert remote_registry + '/packages/{}'.format(pkghash) \
+        assert '{}/.quilt/packages/{}'.format(remote_registry, pkghash) \
                 in [x[0][0] for x in pkgmock.call_args_list]
 
         pkgmock.reset_mock()
         with patch('t4.packages.download_bytes') as dl_mock:
             dl_mock.return_value = (pkghash.encode('utf-8'), None)
             pkg = Package.browse('Quilt/nice-name', registry=remote_registry)
-        assert remote_registry + '/packages/{}'.format(pkghash) \
+        assert '{}/.quilt/packages/{}'.format(remote_registry, pkghash) \
                 in [x[0][0] for x in pkgmock.call_args_list]
 
 def test_fetch(tmpdir):
@@ -186,7 +185,7 @@ def test_load_into_t4(tmpdir):
         with open(test_file, 'w') as fd:
             fd.write(test_file)
         new_pkg = new_pkg.set('foo', test_file)
-        new_pkg.push('s3://my_test_bucket/', name='Quilt/package_name')
+        new_pkg.push('Quilt/package_name', 's3://my_test_bucket/')
 
         # Get the second argument (destination) from the non-keyword args list
         dest_args = [x[0][1] for x in mock.call_args_list]
@@ -206,20 +205,19 @@ def test_local_push(tmpdir):
         with open(test_file, 'w') as fd:
             fd.write(test_file)
         new_pkg = new_pkg.set('foo', test_file)
-        new_pkg.push(os.path.join(tmpdir, 'package_contents'), name='Quilt/package')
+        new_pkg.push('Quilt/package', tmpdir / 'package_contents')
+
+        push_uri = pathlib.Path(tmpdir, 'package_contents').as_uri()
 
         # Get the second argument (destination) from the non-keyword args list
         dest_args = [x[0][1] for x in mock.call_args_list]
 
         # Manifest copied
-        assert get_local_package_registry().as_uri() + '/packages/' + \
-                new_pkg.top_hash() in dest_args
-        assert get_local_package_registry().as_uri() + \
-                '/named_packages/Quilt/package/latest' in dest_args
+        assert push_uri + '/.quilt/packages/' + new_pkg.top_hash() in dest_args
+        assert push_uri + '/.quilt/named_packages/Quilt/package/latest' in dest_args
 
         # Data copied
-        assert pathlib.Path(os.path.join(tmpdir, 'package_contents/Quilt/package/foo')).as_uri() \
-            in dest_args
+        assert push_uri + '/Quilt/package/foo' in dest_args
 
 def test_package_deserialize(tmpdir):
     """ Verify loading data from a local file. """
@@ -252,7 +250,7 @@ def test_set_dir(tmpdir):
     with open(foodir / 'bar', 'w') as fd:
         fd.write(fd.name)
 
-    pkg = pkg.set_dir("","")
+    pkg = pkg.set_dir("", ".")
 
     assert pathlib.Path('foo').resolve().as_uri() \
         == pkg._data['foo'].physical_keys[0] # pylint: disable=W0212
@@ -329,8 +327,9 @@ def test_package_entry_meta():
 
 def test_list_local_packages(tmpdir):
     """Verify that list returns packages in the appdirs directory."""
-    temp_local_registry = Path(os.path.join(tmpdir, 'test_registry'))
-    with patch('t4.packages.get_local_package_registry', lambda: temp_local_registry):
+    temp_local_registry = Path(os.path.join(tmpdir, 'test_registry')).as_uri()
+    with patch('t4.packages.get_package_registry', lambda path: temp_local_registry), \
+         patch('t4.api.get_package_registry', lambda path: temp_local_registry):
         # Build a new package into the local registry.
         Package().build("Quilt/Foo")
         Package().build("Quilt/Bar")
