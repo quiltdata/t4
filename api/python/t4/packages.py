@@ -157,15 +157,12 @@ class PackageEntry(object):
         Returns:
             self
         """
-        if meta is not None:
-            self.set_user_meta(meta)
-            return
-
         if path is not None:
             self._set_path(path, meta)
-            return
-
-        raise PackageException('Must specify either path or meta')
+        elif meta is not None:
+            self.set_user_meta(meta)
+        else:
+            raise PackageException('Must specify either path or meta')
 
     def get(self):
         """
