@@ -15,7 +15,7 @@ from s3transfer.subscribers import BaseSubscriber
 from six import BytesIO, binary_type, text_type
 from tqdm.autonotebook import tqdm
 
-from .util import QuiltException, split_path, parse_file_url, parse_s3_url
+from .util import QuiltException, parse_file_url, parse_s3_url
 from . import xattr
 
 
@@ -131,6 +131,21 @@ def serialize_obj(obj):
         raise QuiltException("Don't know how to serialize object")
 
     return data, target
+
+
+def split_path(path, require_subpath=False):
+    """
+    Split bucket name and intra-bucket path. Returns: (bucket, path)
+    """
+
+    result = path.split('/', 1)
+    if len(result) != 2:
+        raise ValueError("Invalid path: %r; expected BUCKET/PATH..." % path)
+    if require_subpath and not all(result):
+        raise ValueError("Invalid path: %r; expected BUCKET/PATH... (BUCKET and PATH both required)"
+                         % path)
+
+    return result
 
 
 class SizeCallback(BaseSubscriber):
