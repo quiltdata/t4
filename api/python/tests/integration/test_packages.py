@@ -163,13 +163,17 @@ def test_package_fetch(tmpdir):
     package_.fetch(out_dir)
 
     expected = {'one.txt': '1', 'two.txt': '2', 'three.txt': '3'}
+    file_count = 0
     for dirpath, _, files in os.walk(out_dir):
         for name in files:
+            file_count += 1
             with open(os.path.join(out_dir, dirpath, name)) as file_:
                 assert name in expected, 'unexpected file: {}'.format(file_)
                 contents = file_.read().strip()
                 assert contents == expected[name], \
                     'unexpected contents in {}: {}'.format(name, contents)
+    assert file_count == 3, \
+        'fetch wrote {} files; expected: {}'.format(file_count, expected)
 
 def test_fetch(tmpdir):
     """ Verify fetching a package entry. """
