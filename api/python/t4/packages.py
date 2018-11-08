@@ -7,15 +7,14 @@ from pathlib import Path
 import os
 import re
 
-import tempfile
 import time
 
 from urllib.parse import quote, urlparse
 
 import jsonlines
-from six import string_types
+from six import string_types, binary_type
 
-from .data_transfer import copy_file, deserialize_obj, download_bytes, TargetType
+from .data_transfer import copy_bytes, copy_file, deserialize_obj, download_bytes, TargetType
 
 from .exceptions import PackageException
 from .util import QuiltException, BASE_PATH, fix_url, PACKAGE_NAME_FORMAT, parse_file_url, \
@@ -65,19 +64,12 @@ def _to_singleton(physical_keys):
 
     return physical_keys[0]
 
-def get_package_registry(path=''):
+def get_package_registry(path=None):
     """ Returns the package registry root for a given path """
-    if path.startswith('s3://'):
-        bucket = path[5:].partition('/')[0]
-        return "s3://{}/.quilt".format(bucket)
-    # Default to the local registry.
-    return get_local_package_registry().as_uri()
+    if path is None:
+        path = BASE_PATH.as_uri()
+    return path.rstrip('/') + '/.quilt'
 
-def get_local_package_registry():
-    """ Returns a local package registry Path. """
-    Path(BASE_PATH, "packages").mkdir(parents=True, exist_ok=True)
-    Path(BASE_PATH, "named_packages").mkdir(parents=True, exist_ok=True)
-    return BASE_PATH
 
 class PackageEntry(object):
     """
@@ -98,7 +90,6 @@ class PackageEntry(object):
         Returns:
             a PackageEntry
         """
-        assert physical_keys
         self.physical_keys = [fix_url(x) for x in physical_keys]
         self.size = size
         self.hash = hash_obj
@@ -118,19 +109,11 @@ class PackageEntry(object):
 
     @classmethod
     def from_local_path(cls, path):
-        with open(path, 'rb') as file_to_hash:
-            hash_obj = {
-                'type': 'SHA256',
-                'value': hash_file(file_to_hash)
-            }
-
-        size = os.path.getsize(path)
-        physical_keys = [pathlib.Path(path).resolve().as_uri()]
-        return cls(physical_keys, size, hash_obj, {})
+        return cls([], None, None, {})._set_path(path)
 
     def _clone(self):
         """
-        Returns clone of this package.
+        Returns clone of this PackageEntry.
         """
         return self.__class__(copy.deepcopy(self.physical_keys), self.size, \
                               copy.deepcopy(self.hash), copy.deepcopy(self.meta))
@@ -162,6 +145,45 @@ class PackageEntry(object):
         digest = hashlib.sha256(read_bytes).hexdigest()
         if digest != self.hash.get('value'):
             raise QuiltException("Hash validation failed")
+
+    def _set_path(self, path, meta=None):
+        """
+        Sets the path for this PackageEntry.
+        """
+        with open(path, 'rb') as file_to_hash:
+            hash_obj = {
+                'type': 'SHA256',
+                'value': hash_file(file_to_hash)
+            }
+
+        self.size = os.path.getsize(path)
+        self.physical_keys = [pathlib.Path(path).resolve().as_uri()]
+        self.hash = hash_obj
+        if meta is not None:
+            self.set_user_meta(meta)
+        return self
+
+    def set(self, path=None, meta=None):
+        """
+        Returns self with the physical key set to path.
+
+        Args:
+            logical_key(string): logical key to update
+            path(string): new path to place at logical_key in the package
+                Currently only supports a path on local disk
+            meta(dict): metadata dict to attach to entry. If meta is provided, set just
+                updates the meta attached to logical_key without changing anything
+                else in the entry
+
+        Returns:
+            self
+        """
+        if path is not None:
+            self._set_path(path, meta)
+        elif meta is not None:
+            self.set_user_meta(meta)
+        else:
+            raise PackageException('Must specify either path or meta')
 
     def get(self):
         """
@@ -231,48 +253,51 @@ class Package(object):
         if not re.match(PACKAGE_NAME_FORMAT, name):
             raise QuiltException("Invalid package name, must contain exactly one /.")
 
-    @staticmethod
-    def install(name, dest=None, registry=None, pkg_hash=None):
+    @classmethod
+    def install(cls, name, registry, pkg_hash=None, dest=None, dest_registry=None):
         """
         Installs a named package to the local registry and downloads its files.
 
         Args:
             name(str): Name of package to install.
-            dest(str): Local path to download files to.
-                Defaults to $local_registry/files/{sha256 of file}
-            registry(str): Registry to install package to. Defaults to local registry.
+            registry(str): Registry where package is located.
             pkg_hash(str): Hash of package to install. Defaults to latest.
+            dest(str): Local path to download files to.
+            dest_registry(str): Registry to install package to. Defaults to local registry.
 
         Returns:
             A new Package that points to files on your local machine.
         """
-        pkg = Package.browse(name=name, pkg_hash=pkg_hash, registry=registry or '')
+        if dest_registry is None:
+            dest_registry = BASE_PATH
+
+        pkg = cls.browse(name=name, registry=registry, pkg_hash=pkg_hash)
         if dest:
-            return pkg.push(path=dest, name=name)
+            return pkg.push(name=name, dest=dest, dest_registry=dest_registry)
         else:
             raise NotImplementedError
 
     @classmethod
-    def browse(cls, name=None, pkg_hash=None, registry=''):
+    def browse(cls, name=None, registry=None, pkg_hash=None):
         """
         Load a package into memory from a registry without making a local copy of
         the manifest.
 
         Args:
             name(string): name of package to load
-            pkg_hash(string): top hash of package version to load
             registry(string): location of registry to load package from
+            pkg_hash(string): top hash of package version to load
         """
-        registry = get_package_registry(fix_url(registry))
+        registry_prefix = get_package_registry(fix_url(registry) if registry else None)
 
         if pkg_hash is not None:
             # If hash is specified, name doesn't matter.
-            pkg_path = '{}/packages/{}'.format(registry, pkg_hash)
+            pkg_path = '{}/packages/{}'.format(registry_prefix, pkg_hash)
             return cls._from_path(pkg_path)
         else:
             cls.validate_package_name(name)
 
-        pkg_path = '{}/named_packages/{}/'.format(registry, quote(name))
+        pkg_path = '{}/named_packages/{}/'.format(registry_prefix, quote(name))
         latest = urlparse(pkg_path + 'latest')
         if latest.scheme == 'file':
             latest_path = parse_file_url(latest)
@@ -286,7 +311,7 @@ class Package(object):
             raise NotImplementedError
 
         latest_hash = latest_hash.strip()
-        latest_path = '{}/packages/{}'.format(registry, quote(latest_hash))
+        latest_path = '{}/packages/{}'.format(registry_prefix, quote(latest_hash))
         return cls._from_path(latest_path)
 
 
@@ -344,6 +369,10 @@ class Package(object):
             if key.startswith(slash_prefix):
                 new_key = key[len(slash_prefix):]
                 result.set(new_key, entry)
+
+        if not result._data:
+            raise KeyError("Package Slice not found.")
+
         return result
 
     def fetch(self, dest):
@@ -396,6 +425,8 @@ class Package(object):
         data = {}
         reader = jsonlines.Reader(readable_file)
         meta = reader.read()
+        # Pop the top hash -- it should only be calculated dynamically
+        meta.pop('top_hash', None)
         for obj in reader:
             lk = obj.pop('logical_key')
             if lk in data:
@@ -443,8 +474,6 @@ class Package(object):
         else:
             raise NotImplementedError
 
-        # Must unset old top hash when modifying package.
-        self._unset_tophash()
         return self
 
     def get(self, logical_key):
@@ -508,37 +537,28 @@ class Package(object):
         Returns:
             the top hash as a string
         """
-        if registry is not None:
-            registry = get_package_registry(fix_url(registry))
-        else:
-            registry = get_package_registry()
+        registry_prefix = get_package_registry(fix_url(registry) if registry else None)
 
         hash_string = self.top_hash()
-        with tempfile.NamedTemporaryFile() as manifest:
-            self.dump(manifest)
-            manifest.flush()
-            copy_file(
-                pathlib.Path(manifest.name).resolve().as_uri(),
-                registry.strip('/') + '/' + "packages/" + hash_string,
-                {}
-            )
+        manifest = io.BytesIO()
+        self.dump(manifest)
+        copy_bytes(
+            manifest.getvalue(),
+            registry_prefix + '/packages/' + hash_string
+        )
 
         if name:
             # Sanitize name.
             self.validate_package_name(name)
             name = quote(name)
 
-            named_path = registry.strip('/') + '/named_packages/' + quote(name) + '/'
+            named_path = registry_prefix + '/named_packages/' + quote(name) + '/'
             # todo: use a float to string formater instead of double casting
-            with tempfile.NamedTemporaryFile() as hash_file:
-                hash_file.write(self.top_hash().encode('utf-8'))
-                hash_file.flush()
-                hash_uri = pathlib.Path(hash_file.name).resolve().as_uri()
-                timestamp_path = named_path + str(int(time.time()))
-                latest_path = named_path + "latest"
-                copy_file(hash_uri, timestamp_path, {})
-                hash_file.seek(0)
-                copy_file(hash_uri, latest_path, {})
+            hash_bytes = self.top_hash().encode('utf-8')
+            timestamp_path = named_path + str(int(time.time()))
+            latest_path = named_path + "latest"
+            copy_bytes(hash_bytes, timestamp_path)
+            copy_bytes(hash_bytes, latest_path)
 
         return hash_string
 
@@ -558,7 +578,12 @@ class Package(object):
         """
         self.top_hash() # Assure top hash is calculated.
         writer = jsonlines.Writer(writable_file)
-        writer.write(self._meta)
+        top_level_meta = self._meta
+        top_level_meta['top_hash'] = {
+            'alg': 'v0',
+            'value': self.top_hash()
+        }
+        writer.write(top_level_meta)
         for logical_key, entry in self._data.items():
             writer.write({'logical_key': logical_key, **entry.as_dict()})
 
@@ -581,7 +606,6 @@ class Package(object):
         prefix = "" if not prefix else quote(prefix).strip("/") + "/"
         for logical_key, entry in new_keys_dict.items():
             self.set(prefix + logical_key, entry, meta)
-        self._unset_tophash()
         return self
 
     def set(self, logical_key, entry=None, meta=None):
@@ -606,7 +630,7 @@ class Package(object):
         if entry is None:
             return self._update_meta(logical_key, meta)
 
-        if isinstance(entry, str):
+        if isinstance(entry, (string_types, binary_type, getattr(os, 'PathLike'))):
             entry = PackageEntry.from_local_path(entry)
             if meta is not None:
                 entry.meta = meta
@@ -616,15 +640,12 @@ class Package(object):
                 raise PackageException("Must specify metadata in the entry")
             self._data[logical_key] = entry
         else:
-            raise NotImplementedError
+            raise NotImplementedError("Needs to be of type str")
 
-        # Must unset old top hash when modifying package
-        self._unset_tophash()
         return self
 
     def _update_meta(self, logical_key, meta):
         self._data[logical_key].meta = meta
-        self._unset_tophash()
         return self
 
     def delete(self, logical_key):
@@ -638,16 +659,17 @@ class Package(object):
             KeyError: when logical_key is not present to be deleted
         """
         self._data.pop(logical_key)
-        # Must unset old top hash when modifying package
-        self._unset_tophash()
         return self
 
-    def _top_hash(self):
+    def top_hash(self):
         """
-        Sets the top_hash in _meta
+        Returns the top hash of the package.
+
+        Note that physical keys are not hashed because the package has
+            the same semantics regardless of where the bytes come from.
 
         Returns:
-            None
+            A string that represents the top hash of the package
         """
         top_hash = hashlib.sha256()
         hashable_meta = copy.deepcopy(self._meta)
@@ -661,53 +683,30 @@ class Package(object):
             entry_dict_str = json.dumps(entry_dict, sort_keys=True, separators=(',', ':'))
             top_hash.update(entry_dict_str.encode('utf-8'))
 
-        self._meta['top_hash'] = {
-            'alg': 'v0',
-            'value': top_hash.hexdigest()
-        }
+        return top_hash.hexdigest()
 
-    def _unset_tophash(self):
-        """
-        Unsets the top hash
-        When a package is created from an existing package, the top hash
-            must be deleted so a correct new one can be calculated
-            when necessary
-        """
-        self._meta.pop('top_hash', None)
-
-    def top_hash(self):
-        """
-        Returns the top hash of the package.
-
-        Note that physical keys are not hashed because the package has
-            the same semantics regardless of where the bytes come from.
-
-        Returns:
-            A string that represents the top hash of the package
-        """
-        if 'top_hash' not in self._meta:
-            self._top_hash()
-        return self._meta['top_hash']['value']
-
-    def push(self, path, name=None):
+    def push(self, name, dest, dest_registry=None):
         """
         Copies objects to path, then creates a new package that points to those objects.
         Copies each object in this package to path according to logical key structure,
         then adds to the registry a serialized version of this package
         with physical_keys that point to the new copies.
         Args:
-            path: where to copy the objects in the package
             name: name for package in registry
+            dest: where to copy the objects in the package
+            dest_registry: registry where to create the new package
         Returns:
             A new package that points to the copied objects
         """
-        dest = fix_url(path).strip('/')
-        if name:
-            self.validate_package_name(name)
-            dest = dest + '/' + quote(name)
-        if dest.startswith('file://') or dest.startswith('s3://'):
-            pkg = self._materialize(dest)
-            pkg.build(name, registry=get_package_registry(dest))
+        self.validate_package_name(name)
+
+        if dest_registry is None:
+            dest_registry = dest
+
+        dest_url = fix_url(dest).rstrip('/') + '/' + quote(name)
+        if dest_url.startswith('file://') or dest_url.startswith('s3://'):
+            pkg = self._materialize(dest_url)
+            pkg.build(name, registry=dest_registry)
             return pkg
         else:
             raise NotImplementedError
