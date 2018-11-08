@@ -400,6 +400,12 @@ def test_iter():
     pkg.set('jkl;', REMOTE_MANIFEST)
     assert set(pkg) == {'asdf', 'jkl;'}
 
+def test_invalid_set_key(tmpdir):
+    """Verify an exception when setting a key with a path object."""
+    pkg = Package()
+    with pytest.raises(NotImplementedError):
+        pkg.set('asdf/jkl', tmpdir)
+
 def test_brackets():
     pkg = Package()
     pkg.set('asdf/jkl', LOCAL_MANIFEST)
