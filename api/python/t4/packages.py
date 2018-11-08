@@ -144,7 +144,7 @@ class PackageEntry(object):
             raise NotImplementedError
         digest = hashlib.sha256(read_bytes).hexdigest()
         if digest != self.hash.get('value'):
-            raise ouiltException("Hash validation failed")
+            raise QuiltException("Hash validation failed")
 
     def _set_path(self, path, meta=None):
         """
