@@ -43,6 +43,27 @@ def read_physical_key(physical_key):
     else:
         raise NotImplementedError
 
+def _to_singleton(physical_keys):
+    """
+    Ensure that there is a single physical key, throw otherwise.
+    Temporary utility method to avoid repeated, identical checks.
+
+    Args:
+        pkeys (list): list of physical keys
+    Returns:
+        A physical key
+
+    Throws:
+        NotImplementedError
+
+    TODO:
+        support multiple physical keys
+    """
+    if len(physical_keys) > 1:
+        raise NotImplementedError("Multiple physical keys not supported")
+
+    return physical_keys[0]
+
 def get_package_registry(path=None):
     """ Returns the package registry root for a given path """
     if path is None:
@@ -168,9 +189,7 @@ class PackageEntry(object):
         """
         Returns the physical key of this PackageEntry.
         """
-        if len(self.physical_keys) > 1:
-            raise NotImplementedError
-        return self.physical_keys[0]
+        return _to_singleton(self.physical_keys)
 
     def deserialize(self):
         """
@@ -193,17 +212,11 @@ class PackageEntry(object):
         except ValueError:
             raise QuiltException("Unknown serialization target: %r" % target_str)
 
-        physical_keys = self.physical_keys
-        if len(physical_keys) > 1:
-            raise NotImplementedError
-        physical_key = physical_keys[0] # TODO: support multiple physical keys
-
+        physical_key = _to_singleton(self.physical_keys)
         data = read_physical_key(physical_key)
-
         self._verify_hash(data)
 
         return deserialize_obj(data, target)
-
 
     def fetch(self, dest):
         """
@@ -215,15 +228,9 @@ class PackageEntry(object):
         Returns:
             None
         """
-        physical_keys = self.physical_keys
-        if len(physical_keys) > 1:
-            raise NotImplementedError
-        physical_key = physical_keys[0] # TODO: support multiple physical keys
-
+        physical_key = _to_singleton(self.physical_keys)
         dest = fix_url(dest)
-
         copy_file(physical_key, dest, self.meta)
-
 
     def __call__(self):
         """
@@ -368,6 +375,26 @@ class Package(object):
 
         return result
 
+    def fetch(self, dest):
+        """
+        Copy all descendants to dest. Descendants are written under their logical
+        names _relative_ to self. So if p[a] has two children, p[a][b] and p[a][c],
+        then p[a].fetch("mydir") will produce the following:
+            mydir/
+                b
+                c
+
+        Args:
+            dest: where to put the files (locally)
+
+        Returns:
+            None
+        """
+        # TODO: do this with improved parallelism? connections etc. could be reused
+        nice_dest = fix_url(dest).rstrip('/')
+        for key, entry in self._data.items():
+            entry.fetch('{}/{}'.format(nice_dest, key))
+
     def keys(self):
         """
         Returns list of logical_keys in the package.
@@ -470,7 +497,7 @@ class Package(object):
 
         return entry.get()
 
-    def copy(self, logical_key, dest):
+    def _copy(self, logical_key, dest):
         """
         Gets objects from logical_key inside the package and saves them to dest.
 
@@ -488,14 +515,8 @@ class Package(object):
             fail to finish write
         """
         entry = self._data[logical_key]
-
-        physical_keys = entry.physical_keys
-        if len(physical_keys) > 1:
-            raise NotImplementedError
-        physical_key = physical_keys[0] # TODO: support multiple physical keys
-
+        physical_key = _to_singleton(entry.physical_keys)
         dest = fix_url(dest)
-
         copy_file(physical_key, dest, entry.meta)
 
     def get_meta(self, logical_key):
@@ -715,7 +736,7 @@ class Package(object):
             # Copy the datafiles in the package.
             new_physical_key = path + "/" + quote(logical_key)
 
-            self.copy(logical_key, new_physical_key)
+            self._copy(logical_key, new_physical_key)
             # Create a new package pointing to the new remote key.
             new_entry = entry._clone()
             new_entry.physical_keys = [new_physical_key]
