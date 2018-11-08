@@ -529,3 +529,19 @@ def copy_file(src, dest, override_meta=None):
             raise NotImplementedError
     else:
         raise NotImplementedError
+
+def copy_bytes(data, dest, meta=None):
+    dest_url = urlparse(dest)
+    if dest_url.scheme == 'file':
+        dest_path = pathlib.Path(parse_file_url(dest_url))
+        dest_path.parent.mkdir(parents=True, exist_ok=True)
+        dest_path.write_bytes(data)
+        if meta is not None:
+            xattr.setxattr(dest_path, HELIUM_XATTR, json.dumps(meta).encode('utf-8'))
+    elif dest_url.scheme == 's3':
+        dest_bucket, dest_path, dest_version_id = parse_s3_url(dest_url)
+        if dest_version_id:
+            raise ValueError("Cannot set VersionId on destination")
+        upload_bytes(data, dest_bucket + '/' + dest_path, meta)
+    else:
+        raise NotImplementedError
