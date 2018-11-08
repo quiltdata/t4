@@ -351,7 +351,7 @@ class Package(object):
         Copy all descendants to dest. Descendants are written under their logical
         names _relative_ to self. So if p[a] has two children, p[a][b] and p[a][c],
         then p[a].fetch("mydir") will produce the following:
-            mydir
+            mydir/
                 b
                 c
 
@@ -362,8 +362,9 @@ class Package(object):
             None
         """
         # TODO: do this with improved parallelism? connections etc. could be reused
+
         for key, entry in self._data.items():
-            entry.fetch(os.path.join(dest, key))
+            entry.fetch('{}/{}'.format(fix_url(dest), key))
 
     def keys(self):
         """

@@ -168,9 +168,10 @@ def test_package_fetch(tmpdir):
     for dirpath, _, files in os.walk(out_dir):
         for name in files:
             with open(os.path.join(out_dir, dirpath, name)) as file_:
-                assert name in expected, f'unexpected file: {file_}'
+                assert name in expected, 'unexpected file: {}'.format(file_)
                 contents = file_.read().strip()
-                assert contents == expected[name], f'unexpected contents in {name}: {contents}'
+                assert contents == expected[name], \
+                    'unexpected contents in {}: {}'.format(name, contents)
 
 def test_fetch(tmpdir):
     """ Verify fetching a package entry. """
