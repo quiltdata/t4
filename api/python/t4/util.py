@@ -61,6 +61,11 @@ def fix_url(url):
     """Convert non-URL paths to file:// URLs"""
     # If it has a scheme, we assume it's a URL.
     # On Windows, we ignore schemes that look like drive letters, e.g. C:/users/foo
+    if not url:
+        raise ValueError("Empty URL")
+
+    url = str(url)
+
     parsed = urlparse(url)
     if parsed.scheme and not os.path.splitdrive(url)[0]:
         return url
