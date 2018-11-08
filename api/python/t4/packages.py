@@ -69,7 +69,6 @@ class PackageEntry(object):
         Returns:
             a PackageEntry
         """
-        assert physical_keys
         self.physical_keys = [fix_url(x) for x in physical_keys]
         self.size = size
         self.hash = hash_obj
@@ -89,19 +88,11 @@ class PackageEntry(object):
 
     @classmethod
     def from_local_path(cls, path):
-        with open(path, 'rb') as file_to_hash:
-            hash_obj = {
-                'type': 'SHA256',
-                'value': hash_file(file_to_hash)
-            }
-
-        size = os.path.getsize(path)
-        physical_keys = [pathlib.Path(path).resolve().as_uri()]
-        return cls(physical_keys, size, hash_obj, {})
+        return cls([], None, None, {})._set_path(path)
 
     def _clone(self):
         """
-        Returns clone of this package.
+        Returns clone of this PackageEntry.
         """
         return self.__class__(copy.deepcopy(self.physical_keys), self.size, \
                               copy.deepcopy(self.hash), copy.deepcopy(self.meta))
@@ -133,6 +124,45 @@ class PackageEntry(object):
         digest = hashlib.sha256(read_bytes).hexdigest()
         if digest != self.hash.get('value'):
             raise QuiltException("Hash validation failed")
+
+    def _set_path(self, path, meta=None):
+        """
+        Sets the path for this PackageEntry.
+        """
+        with open(path, 'rb') as file_to_hash:
+            hash_obj = {
+                'type': 'SHA256',
+                'value': hash_file(file_to_hash)
+            }
+
+        self.size = os.path.getsize(path)
+        self.physical_keys = [pathlib.Path(path).resolve().as_uri()]
+        self.hash = hash_obj
+        if meta is not None:
+            self.set_user_meta(meta)
+        return self
+
+    def set(self, path=None, meta=None):
+        """
+        Returns self with the physical key set to path.
+
+        Args:
+            logical_key(string): logical key to update
+            path(string): new path to place at logical_key in the package
+                Currently only supports a path on local disk
+            meta(dict): metadata dict to attach to entry. If meta is provided, set just
+                updates the meta attached to logical_key without changing anything
+                else in the entry
+
+        Returns:
+            self
+        """
+        if path is not None:
+            self._set_path(path, meta)
+        elif meta is not None:
+            self.set_user_meta(meta)
+        else:
+            raise PackageException('Must specify either path or meta')
 
     def get(self):
         """
