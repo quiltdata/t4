@@ -1,5 +1,6 @@
 from unittest.mock import Mock, patch
 
+import numpy as np
 import pytest
 import responses
 from ruamel.yaml import YAML
@@ -71,3 +72,14 @@ class TestAPI():
 
         assert isinstance(result, list)
         assert result == []
+
+    def test_put_copy_get(self):
+        data = np.array([1, 2, 3])
+        meta = {'foo': 'bar', 'x': 42}
+
+        he.put(data, 'file.json', meta)
+        he.copy('file.json', 'file2.json')
+        data2, meta2 = he.get('file2.json')
+
+        assert np.array_equal(data, data2)
+        assert meta == meta2

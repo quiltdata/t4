@@ -482,9 +482,18 @@ def copy_file(src, dest, override_meta=None):
     dest_url = urlparse(dest)
     if src_url.scheme == 'file':
         if dest_url.scheme == 'file':
-            # TODO: metadata
-            pathlib.Path(parse_file_url(dest_url)).parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(parse_file_url(src_url), parse_file_url(dest_url))
+            src_path = parse_file_url(src_url)
+            dest_path = parse_file_url(dest_url)
+            pathlib.Path(dest_path).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(src_path, dest_path)
+            shutil.copymode(src_path, dest_path)
+            try:
+                meta_bytes = xattr.getxattr(src_path, HELIUM_XATTR)
+            except IOError:
+                # No metadata
+                pass
+            else:
+                xattr.setxattr(dest_path, HELIUM_XATTR, meta_bytes)
         elif dest_url.scheme == 's3':
             dest_bucket, dest_path, dest_version_id = parse_s3_url(dest_url)
             if dest_version_id:
@@ -495,7 +504,6 @@ def copy_file(src, dest, override_meta=None):
     elif src_url.scheme == 's3':
         src_bucket, src_path, src_version_id = parse_s3_url(src_url)
         if dest_url.scheme == 'file':
-            # TODO: metadata
             pathlib.Path(parse_file_url(dest_url)).parent.mkdir(parents=True, exist_ok=True)
             download_file(src_bucket + '/' + src_path, parse_file_url(dest_url), src_version_id)
         elif dest_url.scheme == 's3':
