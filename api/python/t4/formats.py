@@ -38,7 +38,6 @@ Format objects can be registered directly by calling "f.register()".
 
 ### Python imports
 from collections import (
-    Counter,
     defaultdict,
     OrderedDict,
     )
@@ -49,7 +48,7 @@ import json
 from six import text_type
 
 ### Project imports
-from .util import package_exists
+from .util import package_exists, QuiltException
 
 ### Constants
 
@@ -99,6 +98,30 @@ class Formats:
             handled_extensions=handled_extensions,
             handled_types=handled_types
         ))
+
+    @classmethod
+    def serialize(cls, obj, meta):
+        # try to retain their meta-configured format.
+        meta_fmt = cls.for_meta(meta)
+        obj_fmts = cls.for_obj(obj, single=False)
+        if meta_fmt in obj_fmts:
+            assert isinstance(meta_fmt, Format)
+            return meta_fmt.serialize(obj, meta=meta)
+        elif obj_fmts:
+            return obj_fmts[0].serialize(obj, meta=meta)
+        else:
+            raise QuiltException("No Format to serialize object with")
+
+    @classmethod
+    def deserialize(cls, bytes, meta=None, ext=None):
+        meta_fmt = cls.for_meta(meta)
+        if meta_fmt:
+            assert isinstance(meta_fmt, Format)
+            return meta_fmt.deserialize(bytes, meta=meta)
+        ext_fmt = cls.for_ext(ext)
+        if ext_fmt:
+            return ext_fmt.deserialize(bytes, meta=meta)
+        raise QuiltException("No serialization metadata, and guessing by extension failed.")
 
     @classmethod
     def match(cls, name):
