@@ -3,7 +3,6 @@ import hashlib
 import io
 import json
 import pathlib
-from pathlib import Path
 import os
 import re
 
@@ -14,7 +13,7 @@ from urllib.parse import quote, urlparse
 import jsonlines
 from six import string_types, binary_type
 
-from .data_transfer import copy_bytes, copy_file, deserialize_obj, download_bytes, TargetType
+from .data_transfer import copy_bytes, copy_file, download_bytes
 from .formats import Formats
 
 from .exceptions import PackageException
@@ -204,13 +203,17 @@ class PackageEntry(object):
             hash verification fail
             when deserialization metadata is not present
         """
-        target_str = self.meta.get('target') or self.meta.get('format', {}).get('name')
-
-        fmt = Formats.for_package_entry(self)
-        if fmt is None:
-            raise QuiltException("Unknown serialization format: {!r}".format(target_str))
-
         physical_key = _to_singleton(self.physical_keys)
+
+        fmt = Formats.for_meta(self.meta)
+        if not fmt:
+            pkey_ext = pathlib.Path(urlparse(physical_key).path).suffix.lstrip('.')
+            if pkey_ext:
+                fmt = Formats.for_ext(pkey_ext)
+
+        if fmt is None:
+            raise QuiltException("No serialization metadata, and guessing by extension failed.")
+
         data = read_physical_key(physical_key)
         self._verify_hash(data)
 
