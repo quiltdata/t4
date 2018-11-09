@@ -1,5 +1,4 @@
 from concurrent.futures import ThreadPoolExecutor
-from enum import Enum
 import hashlib
 import json
 import pathlib
@@ -12,7 +11,6 @@ from botocore.exceptions import ClientError
 import boto3
 from boto3.s3.transfer import TransferConfig, create_transfer_manager
 from s3transfer.subscribers import BaseSubscriber
-from six import BytesIO, binary_type, text_type
 from tqdm.autonotebook import tqdm
 
 from .util import QuiltException, parse_file_url, parse_s3_url
@@ -45,94 +43,6 @@ def _get_object(self, **kwargs):
 s3_client.get_object = type(_old_get_object)(_get_object, s3_client)
 
 s3_manager.ALLOWED_DOWNLOAD_ARGS = s3_manager.ALLOWED_DOWNLOAD_ARGS + ['Callback']
-
-
-class TargetType(Enum):
-    """
-    Enums for target types
-    """
-    BYTES = 'bytes'
-    UNICODE = 'unicode'
-    JSON = 'json'
-    PYARROW = 'pyarrow'
-    NUMPY = 'numpy'
-
-
-def deserialize_obj(data, target):
-    if target == TargetType.BYTES:
-        obj = data
-    elif target == TargetType.UNICODE:
-        obj = data.decode('utf-8')
-    elif target == TargetType.JSON:
-        obj = json.loads(data.decode('utf-8'))
-    elif target == TargetType.NUMPY:
-        import numpy as np
-        buf = BytesIO(data)
-        obj = np.load(buf, allow_pickle=False)
-    elif target == TargetType.PYARROW:
-        import pyarrow as pa
-        from pyarrow import parquet
-        buf = BytesIO(data)
-        table = parquet.read_table(buf)
-        try:
-            obj = pa.Table.to_pandas(table)
-        except AssertionError:
-            # Try again to convert the table after removing
-            # the possibly buggy Pandas-specific metadata.
-            meta = table.schema.metadata.copy()
-            meta.pop(b'pandas')
-            newtable = table.replace_schema_metadata(meta)
-            obj = newtable.to_pandas()
-    else:
-        raise NotImplementedError
-
-    return obj
-
-
-def _get_target_for_object(obj):
-    # TODO: Lazy loading.
-    import numpy as np
-    import pandas as pd
-
-    if isinstance(obj, binary_type):
-        target = TargetType.BYTES
-    elif isinstance(obj, text_type):
-        target = TargetType.UNICODE
-    elif isinstance(obj, dict):
-        target = TargetType.JSON
-    elif isinstance(obj, np.ndarray):
-        target = TargetType.NUMPY
-    elif isinstance(obj, pd.DataFrame):
-        target = TargetType.PYARROW
-    else:
-        raise QuiltException("Unsupported object type")
-    return target
-
-def serialize_obj(obj):
-    target = _get_target_for_object(obj)
-
-    if target == TargetType.BYTES:
-        data = obj
-    elif target == TargetType.UNICODE:
-        data = obj.encode('utf-8')
-    elif target == TargetType.JSON:
-        data = json.dumps(obj).encode('utf-8')
-    elif target == TargetType.NUMPY:
-        import numpy as np
-        buf = BytesIO()
-        np.save(buf, obj, allow_pickle=False)
-        data = buf.getvalue()
-    elif target == TargetType.PYARROW:
-        import pyarrow as pa
-        from pyarrow import parquet
-        buf = BytesIO()
-        table = pa.Table.from_pandas(obj)
-        parquet.write_table(table, buf)
-        data = buf.getvalue()
-    else:
-        raise QuiltException("Don't know how to serialize object")
-
-    return data, target
 
 
 def split_path(path, require_subpath=False):

@@ -6,9 +6,9 @@ from elasticsearch import Elasticsearch, RequestsHttpConnection
 from six.moves import urllib
 from urllib.parse import urlparse, urlunparse
 
-from .data_transfer import (TargetType, copy_file, deserialize_obj, download_bytes,
-                            upload_bytes, delete_object, list_objects,
-                            list_object_versions, serialize_obj)
+from .data_transfer import (copy_file, download_bytes, upload_bytes, delete_object, list_objects,
+                            list_object_versions)
+from .formats import Formats
 from .packages import get_package_registry
 from .util import (HeliumConfig, QuiltException, CONFIG_PATH,
                    CONFIG_TEMPLATE, fix_url, parse_file_url, parse_s3_url, read_yaml, validate_url,
@@ -62,11 +62,8 @@ def put(obj, dest, meta=None):
     if path.endswith('/'):
         raise ValueError("Invalid path: %r; ends with a '/'" % path)
 
-    data, target = serialize_obj(obj)
-    all_meta = dict(
-        target=target.value,
-        user_meta=meta
-    )
+    all_meta = {'user_meta': meta}
+    data = Formats.serialize(obj, all_meta)  # adds target
 
     upload_bytes(data, bucket + '/' + path, all_meta)
 
@@ -88,16 +85,9 @@ def get(src):
     bucket, path, version = parse_s3_url(url)
 
     data, meta = download_bytes(bucket + '/' + path, version)
+    ext = pathlib.Path(path).suffix
 
-    target_str = meta.get('target')
-    if target_str is None:
-        raise QuiltException("No serialization metadata")
-
-    try:
-        target = TargetType(target_str)
-    except ValueError:
-        raise QuiltException("Unknown serialization target: %r" % target_str)
-    return deserialize_obj(data, target), meta.get('user_meta')
+    return Formats.deserialize(data, meta, ext=ext), meta.get('user_meta')
 
 
 def delete(target):

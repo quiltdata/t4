@@ -204,7 +204,7 @@ class PackageEntry(object):
             when deserialization metadata is not present
         """
         physical_key = _to_singleton(self.physical_keys)
-        pkey_ext = pathlib.Path(urlparse(physical_key).path).suffix.lstrip('.')
+        pkey_ext = pathlib.Path(urlparse(physical_key).path).suffix
 
         fmt = Formats.for_meta(self.meta) or Formats.for_ext(pkey_ext)
 
