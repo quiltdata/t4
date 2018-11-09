@@ -28,8 +28,6 @@ BASE_DIR = user_data_dir(APP_NAME, APP_AUTHOR)
 BASE_PATH = pathlib.Path(BASE_DIR)
 CONFIG_PATH = BASE_PATH / 'config.yml'
 
-AWS_SEPARATOR = '/'
-
 PACKAGE_NAME_FORMAT = r"[\w-]+/[\w-]+$"
 
 ## CONFIG_TEMPLATE
@@ -66,25 +64,15 @@ class QuiltException(Exception):
             setattr(self, k, v)
 
 
-def split_path(path, require_subpath=False):
-    """
-    Split bucket name and intra-bucket path. Returns: (bucket, path)
-    """
-
-    result = path.split(AWS_SEPARATOR, 1)
-    if len(result) != 2:
-        raise ValueError("Invalid path: %r; expected BUCKET/PATH..." % path)
-    if require_subpath and not all(result):
-        raise ValueError("Invalid path: %r; expected BUCKET/PATH... (BUCKET and PATH both required)"
-                         % path)
-
-    return result
-
-
 def fix_url(url):
     """Convert non-URL paths to file:// URLs"""
     # If it has a scheme, we assume it's a URL.
     # On Windows, we ignore schemes that look like drive letters, e.g. C:/users/foo
+    if not url:
+        raise ValueError("Empty URL")
+
+    url = str(url)
+
     parsed = urlparse(url)
     if parsed.scheme and not os.path.splitdrive(url)[0]:
         return url

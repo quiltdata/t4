@@ -36,6 +36,7 @@ from collections import (
     defaultdict,
     OrderedDict,
     )
+import io
 import json
 import pathlib
 from urllib.parse import urlparse
@@ -116,10 +117,10 @@ class Formats:
             parsed = urlparse(key)
             path = pathlib.PurePosixPath(parsed.path)   # s3 bucket not relevant here.
             if path.suffix:
-                fmts.update(cls.for_ext(path.suffix.lstrip('.')))
+                fmts.update(cls.for_ext(path.suffix.lstrip('.'), single=False))
         # popularity contest!
         # fmts has (fmt, count) pairs
-        fmts = sorted(fmts.items(), key=lambda x: x[1], reversed=True)
+        fmts = sorted(fmts.items(), key=lambda x: x[1], reverse=True)
         if single:
             return fmts[0][0] if fmts else None
         return [fmt for fmt, count in fmts]
@@ -330,12 +331,12 @@ class NumpyFormat(Format):
     def _deserializer(self, bytes_obj):
         import numpy as np
 
-        buf = BytesIO(bytes_obj)
+        buf = io.BytesIO(bytes_obj)
         return np.load(buf, allow_pickle=False)
 
     def _serializer(self, obj):
         import numpy as np
-        buf = BytesIO()
+        buf = io.BytesIO()
         np.save(buf, obj, allow_pickle=False)
         return buf.getvalue()
 
@@ -363,7 +364,7 @@ class ParquetFormat(Format):
         import pyarrow as pa
         from pyarrow import parquet
 
-        buf = BytesIO(bytes_obj)
+        buf = io.BytesIO(bytes_obj)
         table = parquet.read_table(buf)
         try:
             obj = pa.Table.to_pandas(table)
@@ -381,7 +382,7 @@ class ParquetFormat(Format):
         print('serializing pyarrow object')
         import pyarrow as pa
         from pyarrow import parquet
-        buf = BytesIO()
+        buf = io.BytesIO()
         table = pa.Table.from_pandas(obj)
         parquet.write_table(table, buf)
         return buf.getvalue()
