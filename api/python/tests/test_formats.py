@@ -1,28 +1,6 @@
 #! /usr/bin/python
 # -*- coding: utf-8 -*-
 
-""" Docstring
-
-"""
-
-### Compatibility Block
-# Make python 2.x behave as much like python3 as possible.  Ignore in python3
-from __future__ import absolute_import, division, unicode_literals, print_function, nested_scopes
-
-try:
-    # noinspection PyShadowingBuiltins,PyUnresolvedReferences
-    input = raw_input
-    # noinspection PyShadowingBuiltins,PyUnresolvedReferences
-    range = xrange
-    # noinspection PyShadowingBuiltins,PyUnresolvedReferences
-    str = unicode
-    # noinspection PyUnresolvedReferences,PyCompatibility
-    from future_builtins import *
-except (ImportError, NameError):
-    pass
-
-__author__ = 'Brian Visel <eode@eptitude.net>'
-
 ### Python imports
 import pathlib
 
@@ -35,6 +13,18 @@ from t4.formats import Formats
 
 
 ### Code
+def test_buggy_parquet():
+    """
+    Test that T4 avoids crashing on bad Pandas metadata from
+    old pyarrow libaries.
+    """
+    path = pathlib.Path(__file__).parent
+    with open(path / 'data' / 'buggy_parquet.parquet', 'rb') as bad_parq:
+        # Make sure this doesn't crash.
+        fmt = Formats.registered_formats['pyarrow']
+        fmt.deserialize(bad_parq.read())
+
+
 def test_formats():
     testdir = pathlib.Path(__file__).parent
     import numpy as np
