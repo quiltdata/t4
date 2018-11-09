@@ -5,6 +5,8 @@
 import pathlib
 
 ### Third Party imports
+import numpy as np
+import pandas as pd
 
 ### Project imports
 from t4.formats import Formats
@@ -25,8 +27,6 @@ def test_buggy_parquet():
         fmt.deserialize(bad_parq.read())
 
 def test_formats_for_obj():
-    import numpy as np
-
     arr = np.ndarray(3)
 
     fmt = Formats.for_obj(arr)
@@ -60,3 +60,25 @@ def test_formats_match():
     some_bytes = b'["phlipper", "piglet"]'
     assert bytes_fmt.serialize(some_bytes) == some_bytes
     assert json_fmt.deserialize(some_bytes) == ['phlipper', 'piglet']
+
+
+def test_formats_serdes():
+    objects = [
+        {'blah': 'foo'},
+        b'blather',
+        'blip',
+    ]
+    metadata = [{} for o in objects]
+
+    for obj, meta in zip(objects, metadata):
+        assert Formats.deserialize(Formats.serialize(obj, meta), meta) == obj
+
+    df = pd.DataFrame([[1, 2], [3, 4]])
+    meta = {}
+    assert df.equals(Formats.deserialize(Formats.serialize(df, meta), meta))
+
+
+
+
+
+
