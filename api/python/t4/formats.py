@@ -100,9 +100,10 @@ class Formats:
             handled_types=handled_types
         ))
 
-    def match(self, name):
+    @classmethod
+    def match(cls, name):
         """Match a format by exact name."""
-        return self.registered_formats.get(name)
+        return cls.registered_formats.get(name)
 
     @classmethod
     def for_ext(cls, ext, single=True):
