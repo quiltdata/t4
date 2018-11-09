@@ -217,7 +217,7 @@ class HeliumConfig(OrderedDict):
 
 
 def package_exists(name):
-    """Check if a package is installed, without importing it.
+    """Check if a Python package is installed, without importing it.
 
     For use in lazy-loading situations, etc.
 

@@ -82,5 +82,6 @@ def test_validate_url():
 
 
 def test_package_exists():
+    # Python packages, not Quilt packages
     assert util.package_exists('json')
     assert not util.package_exists('blibbety')
