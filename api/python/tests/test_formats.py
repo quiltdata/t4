@@ -24,9 +24,7 @@ def test_buggy_parquet():
         fmt = Formats.registered_formats['pyarrow']
         fmt.deserialize(bad_parq.read())
 
-
-def test_formats():
-    testdir = pathlib.Path(__file__).parent
+def test_formats_for_obj():
     import numpy as np
 
     arr = np.ndarray(3)
@@ -40,4 +38,25 @@ def test_formats():
     assert np.array_equal(fmt.deserialize(bytes_obj), arr)
 
 
+def test_formats_for_ext():
+    fmt = Formats.for_ext('json')
+    assert fmt.serialize({'blah': 'blah'}) == b'{"blah": "blah"}'
+    assert fmt.deserialize(b'{"meow": "mix"}') == {'meow': 'mix'}
 
+
+def test_formats_for_meta():
+    bytes_fmt = Formats.for_meta({'target': 'bytes'})
+    json_fmt = Formats.for_meta({'target': 'json'})
+
+    some_bytes = b'["phlipper", "piglet"]'
+    assert bytes_fmt.serialize(some_bytes) == some_bytes
+    assert json_fmt.deserialize(some_bytes) == ['phlipper', 'piglet']
+
+
+def test_formats_match():
+    bytes_fmt = Formats.match('bytes')
+    json_fmt = Formats.match('json')
+
+    some_bytes = b'["phlipper", "piglet"]'
+    assert bytes_fmt.serialize(some_bytes) == some_bytes
+    assert json_fmt.deserialize(some_bytes) == ['phlipper', 'piglet']
