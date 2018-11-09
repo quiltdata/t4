@@ -457,7 +457,6 @@ class Package(object):
             self
 
         Raises:
-            on incorrect logical key root
             when path doesn't exist
         """
         lkey = quote(lkey).strip("/") + "/"
