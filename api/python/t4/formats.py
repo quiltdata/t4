@@ -5,30 +5,36 @@
 
 This module handles binary formats, and conversion to/from objects.
 
-The primary interface when using formats is via the `Formats` class, which
-acts as a global container for registered formats, and provides a place to
-register new formats, as well as a means of acquiring formats via metadata,
+# Formats Class (plural)
+
+The `Formats` class acts as a global container for registered formats,
+and provides a place to register and discover formats.
+
+    * metadata
+    * file extension
+    * serializable object
+
+..as well as other types in the future, potentially.
+
+Format objects are registered with the Formats class by calling
+`Formats.register(format_obj)`, or `Formats.register(**new_format_args)`.
 
 
+# Format Class (singular)
+
+A Format has, at bare minimum:
+    * a name specific to the format used (NOT to the format object used)
+      * I.e., two Format objects that both handle JSON should both be
+        named 'json'
+    * a serializer
+    * a deserializer
+
+Aside from that, a format *should* have:
+    * a list of filename extensions it can (theoretically) handle
+    * a list of object types it can handle
+
+Format objects can be registered directly by calling "f.register()".
 """
-
-### Compatibility Block
-# Make python 2.x behave as much like python3 as possible.  Ignore in python3
-from __future__ import absolute_import, division, unicode_literals, print_function, nested_scopes
-
-try:
-    # noinspection PyShadowingBuiltins,PyUnresolvedReferences
-    input = raw_input
-    # noinspection PyShadowingBuiltins,PyUnresolvedReferences
-    range = xrange
-    # noinspection PyShadowingBuiltins,PyUnresolvedReferences
-    str = unicode
-    # noinspection PyUnresolvedReferences,PyCompatibility
-    from future_builtins import *
-except (ImportError, NameError):
-    pass
-
-__author__ = 'Brian Visel <eode@eptitude.net>'
 
 ### Python imports
 from collections import (
@@ -38,8 +44,6 @@ from collections import (
     )
 import io
 import json
-import pathlib
-from urllib.parse import urlparse
 
 ### Third Party imports
 from six import text_type
@@ -55,7 +59,9 @@ class Formats:
     """A collection for organizing `Format` objects.
 
     This class organizes `Format` objects for querying and general use.
-    It provides methods for
+    It provides methods for querying by format name, metadata dict, handled
+    extensions, or handled object types.  This list may expand in the future,
+    so see the actual class methods.
     """
     registered_formats = OrderedDict()
     formats_by_ext = defaultdict(list)
@@ -82,17 +88,7 @@ class Formats:
         new format, and `serializer` and `deserializer` are required.
 
         Args:
-            name_or_format(Format | str): A Format object, if registering a
-                pre-made object. Otherwise, name of new format to create.
-
-            serializer(function): serializer function for new format
-            deserializer(function): deserializer for new format
-
-            handled_extensions(list(str)): a list of filename extensions
-                that can be deserialized by this format
-
-            handled_types: a list of types that can be serialized by this
-                format
+            See creation args for `Format` for complete usage args.
         """
         if isinstance(name_or_format, Format):
             return cls._register_by_format(name_or_format)
@@ -104,29 +100,13 @@ class Formats:
             handled_types=handled_types
         ))
 
-    @classmethod
-    def for_package_entry(cls, pkgentry, single=True):
-        # if exact format known, use that.
-        result = cls.for_meta(pkgentry.meta, single=single)
-        if result:
-            return result
-
-        # if exact format not known, check formats that handle the extension(s).
-        fmts = Counter()
-        for key in pkgentry.physical_keys:
-            parsed = urlparse(key)
-            path = pathlib.PurePosixPath(parsed.path)   # s3 bucket not relevant here.
-            if path.suffix:
-                fmts.update(cls.for_ext(path.suffix.lstrip('.'), single=False))
-        # popularity contest!
-        # fmts has (fmt, count) pairs
-        fmts = sorted(fmts.items(), key=lambda x: x[1], reverse=True)
-        if single:
-            return fmts[0][0] if fmts else None
-        return [fmt for fmt, count in fmts]
+    def match(self, name):
+        """Match a format by exact name."""
+        return self.registered_formats.get(name)
 
     @classmethod
     def for_ext(cls, ext, single=True):
+        """Match a format (or formats) by extension."""
         ext = ext.lower().strip('. ')
         if single:
             matching_formats = cls.formats_by_ext[ext]
@@ -135,6 +115,7 @@ class Formats:
 
     @classmethod
     def for_obj(cls, obj, single=True):
+        """Match a format (or formats) by a (potentially) serializable object"""
         if single:
             for format in reversed(cls.registered_formats.values()):
                 if format.handles_obj(obj):
@@ -144,15 +125,14 @@ class Formats:
 
     @classmethod
     def for_meta(cls, meta, single=True):
+        """Match a format (or formats) by the given metadata"""
         # currently, this only finds one format.  We'll need to think
         # about people wanting more than one format handler for a particular
         # format.  ..someday.  ..maybe.
         name = None
         if 'format' in meta:
-            print('got by format.name')
             name = meta['format'].get('name')
         if not name:
-            print('got by target')
             name = meta.get('target')
         fmt = cls.registered_formats.get(name)
         if single:
@@ -202,10 +182,26 @@ class Format:
         self._handled_types = [] if handled_types is None else handled_types
 
     def handles_ext(self, ext):
+        """Check if this format handles the filetype indicated by an extension
+
+        Args:
+            ext: extension to check
+
+        Returns:
+            bool
+        """
         exts = [e.lstrip().lower() for e in self._handled_extensions]
         return ext.lstrip('.').lower() in exts
 
     def handles_obj(self, obj):
+        """Check if this format can serialize a given object.
+
+        Args:
+            obj: object to check
+
+        Returns:
+            bool
+        """
         # naive -- doesn't handle subtypes for dicts, lists, etc.
         for typ in self._handled_types:
             if isinstance(obj, typ):
@@ -213,7 +209,11 @@ class Format:
         return False
 
     def register(self):
-        """Register this format for automatic usage"""
+        """Register this format for automatic usage
+
+        Once registered, a format can be looked up by name, handled object
+        types, and handled filetypes as indicated by extension.
+        """
         Formats.register(self)
 
     def _update_meta(self, meta, serialization_kwargs={}):
@@ -283,7 +283,7 @@ class Format:
             return self._deserializer(bytes_obj, **deserialization_kwargs)
 
 
-Formats.register('bin',
+Formats.register('bytes',
     serializer=lambda obj: obj,
     deserializer=lambda bytes_obj: bytes_obj,
     handled_extensions=['bin'],
@@ -354,7 +354,7 @@ class ParquetFormat(Format):
         super().__init__(name, handled_extensions=handled_extensions, **kwargs)
 
     def handles_obj(self, obj):
-        # don't load pyarrow or pandas until we actually have to use them..
+        # don't load pyarrow or pandas unless we actually have to use them..
         if package_exists('pyarrow') and package_exists('pandas'):
             import pandas as pd
             self._handled_types.append(pd.DataFrame)
@@ -379,7 +379,6 @@ class ParquetFormat(Format):
         return obj
 
     def _serializer(self, obj):
-        print('serializing pyarrow object')
         import pyarrow as pa
         from pyarrow import parquet
         buf = io.BytesIO()
