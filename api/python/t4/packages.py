@@ -204,12 +204,9 @@ class PackageEntry(object):
             when deserialization metadata is not present
         """
         physical_key = _to_singleton(self.physical_keys)
+        pkey_ext = pathlib.Path(urlparse(physical_key).path).suffix.lstrip('.')
 
-        fmt = Formats.for_meta(self.meta)
-        if not fmt:
-            pkey_ext = pathlib.Path(urlparse(physical_key).path).suffix.lstrip('.')
-            if pkey_ext:
-                fmt = Formats.for_ext(pkey_ext)
+        fmt = Formats.for_meta(self.meta) or Formats.for_ext(pkey_ext)
 
         if fmt is None:
             raise QuiltException("No serialization metadata, and guessing by extension failed.")
