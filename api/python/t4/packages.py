@@ -83,6 +83,14 @@ class PackageEntry(object):
         self.hash = hash_obj
         self.meta = meta
 
+    def __eq__(self, other):
+        return (
+            self.physical_keys == other.physical_keys
+            and self.size == other.size
+            and self.hash == other.hash
+            and self.meta == other.meta
+        )
+
     def as_dict(self):
         """
         Returns dict representation of entry.
@@ -721,3 +729,34 @@ class Package(object):
             # Treat as a local path
             pkg.set(logical_key, new_entry)
         return pkg
+
+    def diff(self, other_pkg):
+        """
+        Returns three lists -- added, modified, deleted.
+
+        Added: present in other_pkg but not in self.
+        Modified: present in both, but different.
+        Deleted: present in self, but not other_pkg.
+
+        Args:
+            other_pkg: Package to diff 
+
+        Returns:
+            added, modified, deleted (all lists of logical keys)
+        """
+        added = []
+        modified = []
+        self_keys = self._data.keys()
+        other_keys = other_pkg._data.keys()
+        for lk in self_keys:
+            if lk not in other_keys:
+                added.append(lk)
+            elif not self._data[lk] == other_pkg._data[lk]:
+                modified.append(lk)
+                
+        deleted = []
+        for lk in other_keys:
+            if lk not in self_keys:
+                deleted.append(lk)
+        
+        return added, modified, deleted

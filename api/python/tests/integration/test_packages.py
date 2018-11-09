@@ -499,3 +499,19 @@ def test_validate_package_name():
     with pytest.raises(QuiltException):
         Package.validate_package_name("b")
 
+def test_diff():
+    new_pkg = Package()
+
+    # Create a dummy file to add to the package.
+    test_file_name = 'bar'
+    with open(test_file_name, "w") as fd:
+        fd.write('test_file_content_string')
+        test_file = Path(fd.name)
+
+    # Build a new package into the local registry.
+    new_pkg = new_pkg.set('foo', test_file_name)
+    top_hash = new_pkg.build("Quilt/Test")
+
+    p1 = Package.browse('Quilt/Test')
+    p2 = Package.browse('Quilt/Test')
+    assert p1.diff(p2) == ([], [], [])
