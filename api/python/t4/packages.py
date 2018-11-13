@@ -427,9 +427,9 @@ class Package(object):
             the package according to their relative location to path.
 
         Args:
-            lkey(string): prefix to add to every logical key, can be
-                empty or None.
-            path(string): path to add to package.
+            lkey(string): prefix to add to every logical key,
+                use '/' for the root of the package.
+            path(string): path to scan for files to add to package.
 
         Returns:
             self
@@ -437,7 +437,12 @@ class Package(object):
         Raises:
             when path doesn't exist
         """
-        lkey = "" if not lkey else quote(lkey).strip("/") + "/"
+        lkey = quote(lkey).strip("/") + "/"
+
+        if lkey == '/':
+            # Prevent created logical keys from starting with '/'
+            lkey = ''
+
         # TODO: deserialization metadata
         url = urlparse(fix_url(path).strip('/'))
         if url.scheme == 'file':

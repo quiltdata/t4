@@ -157,7 +157,7 @@ def test_browse_package_from_registry():
 def test_package_fetch(tmpdir):
     """ Package.fetch() on nested, relative keys """
     input_dir = os.path.dirname(__file__)
-    package_ = Package().set_dir('', os.path.join(input_dir, 'data', 'nested'))
+    package_ = Package().set_dir('/', os.path.join(input_dir, 'data', 'nested'))
 
     out_dir = os.path.join(tmpdir, 'output')
     package_.fetch(out_dir)
@@ -274,7 +274,7 @@ def test_set_dir(tmpdir):
     with open(foodir / 'bar', 'w') as fd:
         fd.write(fd.name)
 
-    pkg = pkg.set_dir("", ".")
+    pkg = pkg.set_dir("/", ".")
 
     assert pathlib.Path('foo').resolve().as_uri() \
         == pkg._data['foo'].physical_keys[0] # pylint: disable=W0212
@@ -286,7 +286,7 @@ def test_set_dir(tmpdir):
         == pkg._data['foo_dir/bar'].physical_keys[0] # pylint: disable=W0212
 
     pkg = Package()
-    pkg = pkg.set_dir('','foo_dir/baz_dir/')
+    pkg = pkg.set_dir('/','foo_dir/baz_dir/')
     # todo nested at set_dir site or relative to set_dir path.
     assert pathlib.Path(bazdir / 'baz').resolve().as_uri() \
         == pkg._data['baz'].physical_keys[0] # pylint: disable=W0212
