@@ -81,6 +81,14 @@ class ProgressCallback(BaseSubscriber):
 def _parse_metadata(resp):
     return json.loads(resp['Metadata'].get(HELIUM_METADATA, '{}'))
 
+def _parse_file_metadata(path):
+    try:
+        meta_bytes = xattr.getxattr(path, HELIUM_XATTR)
+        meta = json.loads(meta_bytes.decode('utf-8'))
+    except IOError:
+        # No metadata
+        meta = {}
+    return meta
 
 def _response_generator(func, tokens, kwargs):
     while True:
@@ -191,19 +199,6 @@ def download_file(src_path, dest_path, version=None):
         _download_single_file(bucket, key, dest_path, version=version)
 
 
-def download_bytes(path, version=None):
-    bucket, key = split_path(path, require_subpath=True)
-    params = dict(Bucket=bucket,
-                  Key=key)
-    if version is not None:
-        params.update(dict(VersionId=version))
-
-    resp = s3_client.get_object(**params)
-    meta = _parse_metadata(resp)
-    body = resp['Body'].read()
-    return body, meta
-
-
 def _calculate_etag(file_obj):
     """
     Attempts to calculate a local file's ETag the way S3 does:
@@ -272,14 +267,7 @@ def upload_file(src_path, dest_path, override_meta=None):
             real_dest_path = key + str(f.relative_to(src_root)) if (not key or key.endswith('/')) else key
 
             if override_meta is None:
-                try:
-                    meta_bytes = xattr.getxattr(f, HELIUM_XATTR)
-                    meta = json.loads(meta_bytes.decode('utf-8'))
-                except IOError:
-                    # No metadata
-                    meta = {}
-                except ValueError:
-                    raise ValueError("Source path contains invalid metadata")
+                meta = _parse_file_metadata(f)
             else:
                 meta = override_meta
 
@@ -300,16 +288,6 @@ def upload_file(src_path, dest_path, override_meta=None):
 
         for future in futures:
             future.result()
-
-
-def upload_bytes(data, path, meta):
-    bucket, key = split_path(path, require_subpath=True)
-    s3_client.put_object(
-        Bucket=bucket,
-        Key=key,
-        Body=data,
-        Metadata={HELIUM_METADATA: json.dumps(meta)}
-    )
 
 
 def delete_object(path):
@@ -416,9 +394,18 @@ def copy_file(src, dest, override_meta=None):
     dest_url = urlparse(dest)
     if src_url.scheme == 'file':
         if dest_url.scheme == 'file':
-            # TODO: metadata
-            pathlib.Path(parse_file_url(dest_url)).parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(parse_file_url(src_url), parse_file_url(dest_url))
+            src_path = parse_file_url(src_url)
+            dest_path = parse_file_url(dest_url)
+            pathlib.Path(dest_path).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(src_path, dest_path)
+            shutil.copymode(src_path, dest_path)
+            try:
+                meta_bytes = xattr.getxattr(src_path, HELIUM_XATTR)
+            except IOError:
+                # No metadata
+                pass
+            else:
+                xattr.setxattr(dest_path, HELIUM_XATTR, meta_bytes)
         elif dest_url.scheme == 's3':
             dest_bucket, dest_path, dest_version_id = parse_s3_url(dest_url)
             if dest_version_id:
@@ -429,7 +416,6 @@ def copy_file(src, dest, override_meta=None):
     elif src_url.scheme == 's3':
         src_bucket, src_path, src_version_id = parse_s3_url(src_url)
         if dest_url.scheme == 'file':
-            # TODO: metadata
             pathlib.Path(parse_file_url(dest_url)).parent.mkdir(parents=True, exist_ok=True)
             download_file(src_bucket + '/' + src_path, parse_file_url(dest_url), src_version_id)
         elif dest_url.scheme == 's3':
@@ -442,7 +428,7 @@ def copy_file(src, dest, override_meta=None):
     else:
         raise NotImplementedError
 
-def copy_bytes(data, dest, meta=None):
+def put_bytes(data, dest, meta=None):
     dest_url = urlparse(dest)
     if dest_url.scheme == 'file':
         dest_path = pathlib.Path(parse_file_url(dest_url))
@@ -452,8 +438,33 @@ def copy_bytes(data, dest, meta=None):
             xattr.setxattr(dest_path, HELIUM_XATTR, json.dumps(meta).encode('utf-8'))
     elif dest_url.scheme == 's3':
         dest_bucket, dest_path, dest_version_id = parse_s3_url(dest_url)
+        if not dest_path or dest_path.endswith('/'):
+            raise ValueError("Invalid path: %r" % dest_path)
         if dest_version_id:
             raise ValueError("Cannot set VersionId on destination")
-        upload_bytes(data, dest_bucket + '/' + dest_path, meta)
+        s3_client.put_object(
+            Bucket=dest_bucket,
+            Key=dest_path,
+            Body=data,
+            Metadata={HELIUM_METADATA: json.dumps(meta)}
+        )
     else:
         raise NotImplementedError
+
+def get_bytes(src):
+    src_url = urlparse(src)
+    if src_url.scheme == 'file':
+        src_path = pathlib.Path(parse_file_url(src_url))
+        data = src_path.read_bytes()
+        meta = _parse_file_metadata(src_path)
+    elif src_url.scheme == 's3':
+        src_bucket, src_path, src_version_id = parse_s3_url(src_url)
+        params = dict(Bucket=src_bucket, Key=src_path)
+        if src_version_id is not None:
+            params.update(dict(VersionId=src_version_id))
+        resp = s3_client.get_object(**params)
+        data = resp['Body'].read()
+        meta = _parse_metadata(resp)
+    else:
+        raise NotImplementedError
+    return data, meta

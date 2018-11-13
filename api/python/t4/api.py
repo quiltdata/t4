@@ -6,7 +6,7 @@ from elasticsearch import Elasticsearch, RequestsHttpConnection
 from six.moves import urllib
 from urllib.parse import urlparse, urlunparse
 
-from .data_transfer import (copy_file, download_bytes, upload_bytes, delete_object, list_objects,
+from .data_transfer import (copy_file, get_bytes, put_bytes, delete_object, list_objects,
                             list_object_versions)
 from .formats import Formats
 from .packages import get_package_registry
@@ -51,21 +51,10 @@ def put(obj, dest, meta=None):
         dest (str): A URI
         meta (dict): Optional. metadata dict to store with ``obj`` at ``dest``
     """
-    url = urlparse(dest)
-    if url.scheme != 's3':
-        raise NotImplementedError
-
-    bucket, path, version = parse_s3_url(url)
-    if version:
-        raise ValueError("Cannot push to a version")
-
-    if path.endswith('/'):
-        raise ValueError("Invalid path: %r; ends with a '/'" % path)
-
     all_meta = {'user_meta': meta}
     data = Formats.serialize(obj, all_meta)  # adds target
 
-    upload_bytes(data, bucket + '/' + path, all_meta)
+    put_bytes(data, fix_url(dest), all_meta)
 
 
 def get(src):
@@ -79,13 +68,8 @@ def get(src):
     Returns:
         tuple: ``(data, metadata)``.  Does not work on all objects.
     """
-    url = urlparse(src)
-    if url.scheme != 's3':
-        raise NotImplementedError
-    bucket, path, version = parse_s3_url(url)
-
-    data, meta = download_bytes(bucket + '/' + path, version)
-    ext = pathlib.Path(path).suffix
+    data, meta = get_bytes(fix_url(src))
+    ext = pathlib.Path(src).suffix
 
     return Formats.deserialize(data, meta, ext=ext), meta.get('user_meta')
 

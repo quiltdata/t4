@@ -13,7 +13,7 @@ from urllib.parse import quote, urlparse
 import jsonlines
 from six import string_types, binary_type
 
-from .data_transfer import copy_bytes, copy_file, download_bytes
+from .data_transfer import copy_file, get_bytes, put_bytes
 from .formats import Formats
 
 from .exceptions import PackageException
@@ -30,18 +30,6 @@ def hash_file(readable_file):
         buf = readable_file.read(4096)
 
     return hasher.hexdigest()
-
-def read_physical_key(physical_key):
-    # TODO: Stream the data.
-    url = urlparse(physical_key)
-    if url.scheme == 'file':
-        with open(parse_file_url(url), 'rb') as fd:
-            return fd.read()
-    elif url.scheme == 's3':
-        bucket, path, version_id = parse_s3_url(url)
-        return download_bytes(bucket + '/' + path, version_id)[0]
-    else:
-        raise NotImplementedError
 
 def _to_singleton(physical_keys):
     """
@@ -211,7 +199,7 @@ class PackageEntry(object):
         if fmt is None:
             raise QuiltException("No serialization metadata, and guessing by extension failed.")
 
-        data = read_physical_key(physical_key)
+        data, _ = get_bytes(physical_key)
         self._verify_hash(data)
 
         return fmt.deserialize(data)
@@ -295,18 +283,9 @@ class Package(object):
         else:
             cls.validate_package_name(name)
 
-        pkg_path = '{}/named_packages/{}/'.format(registry_prefix, quote(name))
-        latest = urlparse(pkg_path + 'latest')
-        if latest.scheme == 'file':
-            latest_path = parse_file_url(latest)
-            with open(latest_path) as latest_file:
-                latest_hash = latest_file.read()
-        elif latest.scheme == 's3':
-            bucket, path, vid = parse_s3_url(latest)
-            latest_bytes, _ = download_bytes(bucket + '/' + path, version=vid)
-            latest_hash = latest_bytes.decode('utf-8')
-        else:
-            raise NotImplementedError
+        pkg_path = '{}/named_packages/{}/latest'.format(registry_prefix, quote(name))
+        latest_bytes, _ = get_bytes(pkg_path)
+        latest_hash = latest_bytes.decode('utf-8')
 
         latest_hash = latest_hash.strip()
         latest_path = '{}/packages/{}'.format(registry_prefix, quote(latest_hash))
@@ -321,8 +300,7 @@ class Package(object):
             with open(parse_file_url(src_url)) as open_file:
                 pkg = cls.load(open_file)
         elif src_url.scheme == 's3':
-            bucket, path, vid = parse_s3_url(urlparse(src_url.geturl()))
-            body, _ = download_bytes(bucket + '/' + path, version=vid)
+            body, _ = get_bytes(uri)
             pkg = cls.load(io.BytesIO(body))
         else:
             raise NotImplementedError
@@ -541,7 +519,7 @@ class Package(object):
         hash_string = self.top_hash()
         manifest = io.BytesIO()
         self.dump(manifest)
-        copy_bytes(
+        put_bytes(
             manifest.getvalue(),
             registry_prefix + '/packages/' + hash_string
         )
@@ -556,8 +534,8 @@ class Package(object):
             hash_bytes = self.top_hash().encode('utf-8')
             timestamp_path = named_path + str(int(time.time()))
             latest_path = named_path + "latest"
-            copy_bytes(hash_bytes, timestamp_path)
-            copy_bytes(hash_bytes, latest_path)
+            put_bytes(hash_bytes, timestamp_path)
+            put_bytes(hash_bytes, latest_path)
 
         return hash_string
 

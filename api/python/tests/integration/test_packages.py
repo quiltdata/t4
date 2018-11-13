@@ -127,11 +127,11 @@ def test_browse_package_from_registry():
 
         pkgmock.reset_mock()
 
-        with patch('t4.packages.open') as open_mock:
-            open_mock.return_value = io.BytesIO(pkghash.encode('utf-8'))
+        with patch('t4.packages.get_bytes') as dl_mock:
+            dl_mock.return_value = (pkghash.encode('utf-8'), None)
             pkg = Package.browse('Quilt/nice-name')
-            assert parse_file_url(urlparse(registry + '/.quilt/named_packages/Quilt/nice-name/latest')) \
-                    == open_mock.call_args_list[0][0][0]
+            assert registry + '/.quilt/named_packages/Quilt/nice-name/latest' \
+                    == dl_mock.call_args_list[0][0][0]
 
         assert '{}/.quilt/packages/{}'.format(registry, pkghash) \
                 in [x[0][0] for x in pkgmock.call_args_list]
@@ -148,7 +148,7 @@ def test_browse_package_from_registry():
                 in [x[0][0] for x in pkgmock.call_args_list]
 
         pkgmock.reset_mock()
-        with patch('t4.packages.download_bytes') as dl_mock:
+        with patch('t4.packages.get_bytes') as dl_mock:
             dl_mock.return_value = (pkghash.encode('utf-8'), None)
             pkg = Package.browse('Quilt/nice-name', registry=remote_registry)
         assert '{}/.quilt/packages/{}'.format(remote_registry, pkghash) \
@@ -198,7 +198,7 @@ def test_fetch(tmpdir):
 
 def test_load_into_t4(tmpdir):
     """ Verify loading local manifest and data into S3. """
-    with patch('t4.packages.copy_bytes') as bytes_mock, \
+    with patch('t4.packages.put_bytes') as bytes_mock, \
          patch('t4.packages.copy_file') as file_mock:
         new_pkg = Package()
         # Create a dummy file to add to the package.
@@ -221,7 +221,7 @@ def test_load_into_t4(tmpdir):
 
 def test_local_push(tmpdir):
     """ Verify loading local manifest and data into S3. """
-    with patch('t4.packages.copy_bytes') as bytes_mock, \
+    with patch('t4.packages.put_bytes') as bytes_mock, \
          patch('t4.packages.copy_file') as file_mock:
         new_pkg = Package()
         test_file = os.path.join(tmpdir, 'bar')
