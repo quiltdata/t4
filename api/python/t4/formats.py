@@ -48,7 +48,7 @@ import sys
 from six import text_type
 
 ### Project imports
-from .util import package_exists, QuiltException
+from .util import QuiltException
 
 ### Constants
 
@@ -70,34 +70,10 @@ class FormatsRegistry:
                         .format(type(self).__name__))
 
     @classmethod
-    def _register_by_format(cls, format):
+    def register(cls, format):
         cls.registered_formats[format.name] = format
         for ext in format._handled_extensions:
             cls.formats_by_ext[ext.lower().strip('. ')].insert(0, format)
-
-    @classmethod
-    def register(cls, name_or_format, serializer=None, deserializer=None, handled_extensions=None,
-                 handled_types=None):
-        """Register a format for automatic usage
-
-        If a `Format` object is given for `name_or_format`, it is registered
-        directly and other args are ignored.
-
-        If a `str` is given for `name_or_format`, it is used as the name of a
-        new format, and `serializer` and `deserializer` are required.
-
-        Args:
-            See creation args for `Format` for complete usage args.
-        """
-        if isinstance(name_or_format, Format):
-            return cls._register_by_format(name_or_format)
-        cls._register_by_format(Format(
-            name_or_format,
-            serializer=serializer,
-            deserializer=deserializer,
-            handled_extensions=handled_extensions,
-            handled_types=handled_types
-        ))
 
     @classmethod
     def serialize(cls, obj, meta, ext=None):
@@ -330,28 +306,28 @@ class Format:
             return self._deserializer(bytes_obj, **deserialization_kwargs)
 
 
-FormatsRegistry.register('bytes',
-                         serializer=lambda obj: obj,
-                         deserializer=lambda bytes_obj: bytes_obj,
-                         handled_extensions=['bin'],
-                         handled_types=[bytes],
-                         )
+Format('bytes',
+        serializer=lambda obj: obj,
+        deserializer=lambda bytes_obj: bytes_obj,
+        handled_extensions=['bin'],
+        handled_types=[bytes],
+).register()
 
 
-FormatsRegistry.register('json',
-                         serializer=lambda obj, **kwargs: json.dumps(obj, **kwargs).encode('utf-8'),
-                         deserializer=lambda bytes_obj, **kwargs: json.loads(bytes_obj.decode('utf-8'), **kwargs),
-                         handled_extensions=['json'],
-                         handled_types=[dict, list, int, float, str, tuple, type(None)]
-                         )
+Format('json',
+       serializer=lambda obj, **kwargs: json.dumps(obj, **kwargs).encode('utf-8'),
+       deserializer=lambda bytes_obj, **kwargs: json.loads(bytes_obj.decode('utf-8'), **kwargs),
+       handled_extensions=['json'],
+       handled_types=[dict, list, int, float, str, tuple, type(None)]
+).register()
 
 
-FormatsRegistry.register('unicode',  # utf-8 instead?
-                         serializer=lambda s: s.encode('utf-8'),
-                         deserializer=lambda b: b.decode('utf-8'),
-                         handled_extensions=['txt', 'md', 'rst'],
-                         handled_types=[text_type],
-                         )
+Format('unicode',  # utf-8 instead?
+       serializer=lambda s: s.encode('utf-8'),
+       deserializer=lambda b: b.decode('utf-8'),
+       handled_extensions=['txt', 'md', 'rst'],
+       handled_types=[text_type],
+).register()
 
 
 class NumpyFormat(Format):
@@ -394,14 +370,16 @@ class ParquetFormat(Format):
     def __init__(self, name, handled_extensions=None, **kwargs):
         handled_extensions = [] if handled_extensions is None else handled_extensions
 
-        if package_exists('pyarrow') and package_exists('pandas'):
+        if 'parquet' not in handled_extensions:
             handled_extensions.append('parquet')
         super().__init__(name, handled_extensions=handled_extensions, **kwargs)
 
     def handles_obj(self, obj):
         # don't load pyarrow or pandas unless we actually have to use them..
-        if package_exists('pyarrow') and package_exists('pandas'):
-            import pandas as pd
+        if 'pandas' not in sys.modules:
+            return False
+        import pandas as pd
+        if pd.DataFrame not in self._handled_types:
             self._handled_types.append(pd.DataFrame)
         return super().handles_obj(obj)
 
@@ -431,6 +409,6 @@ class ParquetFormat(Format):
         parquet.write_table(table, buf)
         return buf.getvalue()
 
-if package_exists('pyarrow') and package_exists('pandas'):
-    ParquetFormat('pyarrow', handled_extensions=['parquet']).register()
+
+ParquetFormat('pyarrow', handled_extensions=['parquet']).register()
 

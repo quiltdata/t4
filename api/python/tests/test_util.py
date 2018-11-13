@@ -79,9 +79,3 @@ def test_validate_url():
 
     with pytest.raises(util.QuiltException, match='Requires at least scheme and host'):
         util.validate_url('blah')
-
-
-def test_package_exists():
-    # Python packages, not Quilt packages
-    assert util.package_exists('json')
-    assert not util.package_exists('blibbety')
