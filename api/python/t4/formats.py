@@ -21,6 +21,7 @@ Format objects are registered with the FormatsRegistry class by calling
 
 # Format Class (singular)
 
+A Format is tied to *logical key* metadata.
 A Format has, at bare minimum:
     * a name specific to the format used (NOT to the format object used)
       * I.e., two Format objects that both handle JSON should both be
@@ -82,14 +83,15 @@ class FormatsRegistry:
         ext_fmts = cls.for_ext(ext, single=False) if ext else None
         obj_fmts = cls.for_obj(obj, single=False)
 
-        if meta_fmt:  # meta_fmt should always be an exact match on what to use.
-            # Warn about a known, definitive extension / metadata format mismatch.
-            if ext_fmts and meta_fmt not in ext_fmts:
-                print("Warning: Using format specified by metadata ({!r}) but extension {!r} doesn't match."
-                      .format(meta_fmt.name, ext))
+        if meta_fmt:
+            # meta_fmt should always be an exact match on what to use.
             if meta_fmt not in obj_fmts:
                 raise QuiltException("Metadata specified the {!r} format, but it doesn't handle {!r} objects."
                                      .format(meta_fmt.name, type(obj)))
+            # Warn about a known, definitive extension / metadata format mismatch.
+            if ext_fmts and meta_fmt not in ext_fmts:
+                print("Notice: Using format specified by metadata ({!r}) but extension {!r} doesn't match."
+                      .format(meta_fmt.name, ext))
             assert isinstance(meta_fmt, Format)
             return meta_fmt.serialize(obj, meta=meta)
         # prefer a format that matches the extension.
@@ -98,10 +100,13 @@ class FormatsRegistry:
                 if fmt in obj_fmts:
                     return fmt.serialize(obj, meta=meta)
         # otherwise, just use the first format that can handle obj.
-        elif obj_fmts:
+        if obj_fmts:
+            if ext:
+                print("Notice: No matching serialization formats for extension {!r} with given object."
+                      .format(ext))
+                print("        Using {!r} format instead.".format(obj_fmts[0].name))
             return obj_fmts[0].serialize(obj, meta=meta)
-        else:
-            raise QuiltException("No Format to serialize object with")
+        raise QuiltException("No Format to serialize object with")
 
     @classmethod
     def deserialize(cls, bytes, meta=None, ext=None):
@@ -150,6 +155,7 @@ class FormatsRegistry:
         name = None
         if 'format' in meta:
             name = meta['format'].get('name')
+        # 'target': compat with older pkg structure -- can probably be removed soon.
         if not name:
             name = meta.get('target')
         return name
@@ -247,8 +253,6 @@ class Format:
             if serialization_kwargs:
                 format_meta['serialization'] = deepcopy(serialization_kwargs)
             meta['format'] = format_meta
-            # todo: can we switch to a 'format' section rather than 'target' name?
-            meta['target'] = self.name
 
     def serialize(self, obj, meta=None, **kwargs):
         """Serialize an object using this format

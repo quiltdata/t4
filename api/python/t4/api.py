@@ -53,7 +53,7 @@ def put(obj, dest, meta=None):
     """
     all_meta = {'user_meta': meta}
     ext = pathlib.PurePosixPath(dest).suffix
-    data = FormatsRegistry.serialize(obj, all_meta)  # adds target
+    data = FormatsRegistry.serialize(obj, all_meta, ext)  # adds target
 
     put_bytes(data, fix_url(dest), all_meta)
 
