@@ -1,4 +1,3 @@
-#! /usr/bin/python
 # -*- coding: utf-8 -*-
 
 """ formats.py
@@ -43,6 +42,7 @@ from collections import (
     )
 import io
 import json
+import sys
 
 ### Third Party imports
 from six import text_type
@@ -358,21 +358,20 @@ class NumpyFormat(Format):
     def __init__(self, name, handled_extensions=None, **kwargs):
         handled_extensions = [] if handled_extensions is None else handled_extensions
 
-        # don't include these extensions unlss numpy is present.
-        if package_exists('numpy'):
-            if 'npy' not in handled_extensions:
-                handled_extensions.append('npy')
-            if 'npz' not in handled_extensions:
-                handled_extensions.append('npz')
+        if 'npy' not in handled_extensions:
+            handled_extensions.append('npy')
+        if 'npz' not in handled_extensions:
+            handled_extensions.append('npz')
 
         super().__init__(name, handled_extensions=handled_extensions, **kwargs)
 
     def handles_obj(self, obj):
-        # don't load numpy until we actually have to use it..
-        if package_exists('numpy'):
-            import numpy as np
-            if np.ndarray not in self._handled_types:
-                self._handled_types.append(np.ndarray)
+        # If this is a numpy object, numpy must be loaded.
+        if 'numpy' not in sys.modules:
+            return False
+        import numpy as np
+        if np.ndarray not in self._handled_types:
+            self._handled_types.append(np.ndarray)
         return super().handles_obj(obj)
 
     def _deserializer(self, bytes_obj):
@@ -388,8 +387,7 @@ class NumpyFormat(Format):
         return buf.getvalue()
 
 
-if package_exists('numpy'):
-    NumpyFormat('numpy').register()
+NumpyFormat('numpy').register()
 
 
 class ParquetFormat(Format):
