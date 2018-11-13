@@ -5,7 +5,7 @@ import 'whatwg-fetch';
 
 // Import all the third party stuff
 import ReactDOM from 'react-dom';
-import { LOCATION_CHANGE } from 'react-router-redux';
+import { LOCATION_CHANGE } from 'connected-react-router/immutable';
 import createHistory from 'history/createBrowserHistory';
 import 'sanitize.css/sanitize.css';
 //  Need to bypass CSS modules used by standard loader
@@ -19,7 +19,6 @@ import LanguageProvider from 'containers/LanguageProvider';
 import * as AWSAuth from 'containers/AWSAuth';
 import { Provider as NotificationsProvider } from 'containers/Notifications';
 import config from 'constants/config';
-import { Provider as APIProvider } from 'utils/APIConnector';
 import * as AWS from 'utils/AWS';
 import fontLoader from 'utils/fontLoader';
 import { nest } from 'utils/reactTools';
@@ -63,7 +62,6 @@ const render = (messages) => {
       FormProvider,
       [LanguageProvider, { messages }],
       NotificationsProvider,
-      [APIProvider, { fetch, base: `${config.api}/api` }],
       // TODO: figure out AWS components order / race conditions
       [AWSAuth.Provider, {
         storage,

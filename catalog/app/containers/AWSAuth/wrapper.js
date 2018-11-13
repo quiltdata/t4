@@ -1,3 +1,4 @@
+import { getLocation } from 'connected-react-router/immutable';
 import memoize from 'lodash/memoize';
 import { stringify } from 'query-string';
 import React from 'react';
@@ -12,7 +13,6 @@ import { createStructuredSelector } from 'reselect';
 
 import Working from 'components/Working';
 import { saveProps, restoreProps, composeHOC } from 'utils/reactTools';
-import { selectLocation } from 'utils/router';
 
 import msg from './messages';
 import * as selectors from './selectors';
@@ -22,7 +22,7 @@ export default memoize(composeHOC('AWSAuth.Wrapper',
   connect(createStructuredSelector({
     authenticated: selectors.authenticated,
     waiting: selectors.waiting,
-    location: selectLocation,
+    location: getLocation,
   }), undefined, undefined, { pure: false }),
   branch((p) => p.waiting,
     renderComponent(() =>

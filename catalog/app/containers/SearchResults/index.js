@@ -12,7 +12,6 @@ import styled from 'styled-components';
 
 import apiStatus from 'constants/api';
 import Error from 'components/Error';
-// import Gallery from 'containers/Gallery';
 import Help from 'components/Help';
 import Tag from 'components/Tag';
 import Working from 'components/Working';
