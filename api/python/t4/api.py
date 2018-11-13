@@ -98,7 +98,7 @@ def delete(target):
     if version:
         raise ValueError("Cannot delete a version")
 
-    delete_object(bucket + '/' + path)
+    delete_object(bucket, path)
 
 
 def ls(target, recursive=False):
@@ -130,7 +130,7 @@ def ls(target, recursive=False):
     if path and not path.endswith('/'):
         path += '/'
 
-    results = list_object_versions(bucket + '/' + path, recursive=recursive)
+    results = list_object_versions(bucket, path, recursive=recursive)
 
     return results
 
@@ -156,12 +156,12 @@ def list_packages(registry=None):
 
     elif registry_url.scheme == 's3':
         src_bucket, src_path, _ = parse_s3_url(registry_url)
-        prefixes, _ = list_objects(src_bucket + '/' + src_path + '/', recursive=False)
+        prefixes, _ = list_objects(src_bucket, src_path + '/', recursive=False)
         # Pull out the directory fields and remove the src_path prefix.
         names = []
         # Search each org directory for named packages.
         for org in [x['Prefix'][len(src_path):].strip('/') for x in prefixes]:
-            packages, _ = list_objects(src_bucket + '/' + src_path + '/' + org + '/', recursive=False)
+            packages, _ = list_objects(src_bucket, src_path + '/' + org + '/', recursive=False)
             names.extend(y['Prefix'][len(src_path):].strip('/') for y in packages)
         return names
 

@@ -475,8 +475,7 @@ def test_list_remote_packages():
     with patch('t4.api.list_objects',
                return_value=([{'Prefix': 'foo'},{'Prefix': 'bar'}],[])) as mock:
         pkgs = t4.list_packages('s3://my_test_bucket/')
-        assert mock.call_args_list[0][0][0] == \
-            'my_test_bucket/.quilt/named_packages/'
+        assert mock.call_args_list[0][0] == ('my_test_bucket', '.quilt/named_packages/')
 
     assert True
 
