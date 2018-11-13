@@ -106,6 +106,29 @@ export const InjectReducer = composeComponent('InjectReducer',
 
 
 /**
+ * Create a HOC that creates a reducer based on props and injects it into the
+ * store on mount.
+ * InjectReducer component is used under the hood.
+ *
+ * @param {string} mount
+ *   A key under which the reducer gets injected.
+ *
+ * @param {function} reducerFactory
+ *   A function that accepts props and creates a reducer .
+ *
+ * @returns {reactTools.HOC}
+ */
+export const injectReducerFactory = (mount, reducerFactory) =>
+  composeHOC(`injectReducer(${mount})`, (Component) => (props) => (
+    <InjectReducer
+      mount={mount}
+      reducer={reducerFactory(props)}
+    >
+      <Component {...props} />
+    </InjectReducer>
+  ));
+
+/**
  * Create a HOC that injects a given reducer into the store on mount.
  * InjectReducer component is used under the hood.
  *
@@ -121,14 +144,10 @@ export const InjectReducer = composeComponent('InjectReducer',
  * @returns {reactTools.HOC}
  */
 export const injectReducer = (mount, reducer, initial) =>
-  composeHOC(`injectReducer(${mount})`, (Component) => (props) => (
-    <InjectReducer
-      mount={mount}
-      reducer={initial ? withInitialState(initial(props), reducer) : reducer}
-    >
-      <Component {...props} />
-    </InjectReducer>
-  ));
+  injectReducerFactory(mount,
+    initial
+      ? (props) => withInitialState(initial(props), reducer)
+      : () => reducer);
 
 /**
  * Create a store enhancer that attaches `injectReducer` method to the store.
