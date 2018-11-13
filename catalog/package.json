@@ -249,6 +249,7 @@
     ]
   },
   "dependencies": {
+    "@material-ui/core": "^3.4.0",
     "assert": "^1.4.1",
     "aws-sdk": "^2.348.0",
     "babel-polyfill": "^6.26.0",
