@@ -52,6 +52,7 @@ def put(obj, dest, meta=None):
         meta (dict): Optional. metadata dict to store with ``obj`` at ``dest``
     """
     all_meta = {'user_meta': meta}
+    ext = pathlib.PurePosixPath(dest).suffix
     data = Formats.serialize(obj, all_meta)  # adds target
 
     put_bytes(data, fix_url(dest), all_meta)
@@ -69,7 +70,7 @@ def get(src):
         tuple: ``(data, metadata)``.  Does not work on all objects.
     """
     data, meta = get_bytes(fix_url(src))
-    ext = pathlib.Path(src).suffix
+    ext = pathlib.PurePosixPath(src).suffix
 
     return Formats.deserialize(data, meta, ext=ext), meta.get('user_meta')
 

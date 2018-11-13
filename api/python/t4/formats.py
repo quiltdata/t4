@@ -100,13 +100,28 @@ class Formats:
         ))
 
     @classmethod
-    def serialize(cls, obj, meta):
+    def serialize(cls, obj, meta, ext=None):
         # try to retain their meta-configured format.
         meta_fmt = cls.for_meta(meta)
+        ext_fmts = cls.for_ext(ext, single=False) if ext else None
         obj_fmts = cls.for_obj(obj, single=False)
-        if meta_fmt in obj_fmts:
+
+        if meta_fmt:  # meta_fmt should always be an exact match on what to use.
+            # Warn about a known, definitive extension / metadata format mismatch.
+            if ext_fmts and meta_fmt not in ext_fmts:
+                print("Warning: Using format specified by metadata ({!r}) but extension {!r} doesn't match."
+                      .format(meta_fmt.name, ext))
+            if meta_fmt not in obj_fmts:
+                raise QuiltException("Metadata specified the {!r} format, but it doesn't handle {!r} objects."
+                                     .format(meta_fmt.name, type(obj)))
             assert isinstance(meta_fmt, Format)
             return meta_fmt.serialize(obj, meta=meta)
+        # prefer a format that matches the extension.
+        elif ext_fmts:
+            for fmt in ext_fmts:
+                if fmt in obj_fmts:
+                    return fmt.serialize(obj, meta=meta)
+        # otherwise, just use the first format that can handle obj.
         elif obj_fmts:
             return obj_fmts[0].serialize(obj, meta=meta)
         else:
@@ -114,13 +129,20 @@ class Formats:
 
     @classmethod
     def deserialize(cls, bytes, meta=None, ext=None):
+        # metadata is always an exact specification (if present)
         meta_fmt = cls.for_meta(meta)
         if meta_fmt:
             assert isinstance(meta_fmt, Format)
             return meta_fmt.deserialize(bytes, meta=meta)
+        fmt_name = cls._get_format_name_from_meta(meta)
+        if fmt_name:
+            raise QuiltException("Metadata specified the {!r} format, which isn't registered."
+                                 .format(fmt_name))
+        # Try by extension
         ext_fmt = cls.for_ext(ext)
         if ext_fmt:
             return ext_fmt.deserialize(bytes, meta=meta)
+
         raise QuiltException("No serialization metadata, and guessing by extension failed.")
 
     @classmethod
@@ -148,20 +170,21 @@ class Formats:
         return [format for format in reversed(cls.registered_formats.values()) if format.handles_obj(obj)]
 
     @classmethod
-    def for_meta(cls, meta, single=True):
-        """Match a format (or formats) by the given metadata"""
-        # currently, this only finds one format.  We'll need to think
-        # about people wanting more than one format handler for a particular
-        # format.  ..someday.  ..maybe.
+    def _get_format_name_from_meta(cls, meta):
         name = None
         if 'format' in meta:
             name = meta['format'].get('name')
         if not name:
             name = meta.get('target')
-        fmt = cls.registered_formats.get(name)
-        if single:
-            return fmt
-        return [fmt] if fmt else []
+        return name
+
+    @classmethod
+    def for_meta(cls, meta):
+        """Unambiguously match a specific format by the given metadata"""
+        # As a point of order, this must return a singular format.
+        name = cls._get_format_name_from_meta(meta)
+        fmt = cls.match(name)
+        return fmt
 
 
 class Format:
@@ -319,7 +342,7 @@ Formats.register('json',
     serializer=lambda obj, **kwargs: json.dumps(obj, **kwargs).encode('utf-8'),
     deserializer=lambda bytes_obj, **kwargs: json.loads(bytes_obj.decode('utf-8'), **kwargs),
     handled_extensions=['json'],
-    handled_types=[dict, list, int, float, str]
+    handled_types=[dict, list, int, float, str, tuple, type(None)]
 )
 
 
