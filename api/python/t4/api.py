@@ -8,7 +8,7 @@ from urllib.parse import urlparse, urlunparse
 
 from .data_transfer import (copy_file, get_bytes, put_bytes, delete_object, list_objects,
                             list_object_versions)
-from .formats import Formats
+from .formats import FormatsRegistry
 from .packages import get_package_registry
 from .util import (HeliumConfig, QuiltException, CONFIG_PATH,
                    CONFIG_TEMPLATE, fix_url, parse_file_url, parse_s3_url, read_yaml, validate_url,
@@ -53,7 +53,7 @@ def put(obj, dest, meta=None):
     """
     all_meta = {'user_meta': meta}
     ext = pathlib.PurePosixPath(dest).suffix
-    data = Formats.serialize(obj, all_meta)  # adds target
+    data = FormatsRegistry.serialize(obj, all_meta)  # adds target
 
     put_bytes(data, fix_url(dest), all_meta)
 
@@ -72,7 +72,7 @@ def get(src):
     data, meta = get_bytes(fix_url(src))
     ext = pathlib.PurePosixPath(src).suffix
 
-    return Formats.deserialize(data, meta, ext=ext), meta.get('user_meta')
+    return FormatsRegistry.deserialize(data, meta, ext=ext), meta.get('user_meta')
 
 
 def delete(target):

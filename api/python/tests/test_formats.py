@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 ### Project imports
-from t4.formats import Formats
+from t4.formats import FormatsRegistry
 
 ### Constants
 
@@ -23,30 +23,30 @@ def test_buggy_parquet():
     path = pathlib.Path(__file__).parent
     with open(path / 'data' / 'buggy_parquet.parquet', 'rb') as bad_parq:
         # Make sure this doesn't crash.
-        fmt = Formats.registered_formats['pyarrow']
+        fmt = FormatsRegistry.registered_formats['pyarrow']
         fmt.deserialize(bad_parq.read())
 
 def test_formats_for_obj():
     arr = np.ndarray(3)
 
-    fmt = Formats.for_obj(arr)
+    fmt = FormatsRegistry.for_obj(arr)
 
     assert 'npz' in fmt._handled_extensions
-    assert Formats.for_ext('npy') is fmt
-    assert len(Formats.for_obj('blah', single=False)) == 2   # json, unicode
+    assert FormatsRegistry.for_ext('npy') is fmt
+    assert len(FormatsRegistry.for_obj('blah', single=False)) == 2   # json, unicode
     bytes_obj = fmt.serialize(arr)
     assert np.array_equal(fmt.deserialize(bytes_obj), arr)
 
 
 def test_formats_for_ext():
-    fmt = Formats.for_ext('json')
+    fmt = FormatsRegistry.for_ext('json')
     assert fmt.serialize({'blah': 'blah'}) == b'{"blah": "blah"}'
     assert fmt.deserialize(b'{"meow": "mix"}') == {'meow': 'mix'}
 
 
 def test_formats_for_meta():
-    bytes_fmt = Formats.for_meta({'target': 'bytes'})
-    json_fmt = Formats.for_meta({'target': 'json'})
+    bytes_fmt = FormatsRegistry.for_meta({'target': 'bytes'})
+    json_fmt = FormatsRegistry.for_meta({'target': 'json'})
 
     some_bytes = b'["phlipper", "piglet"]'
     assert bytes_fmt.serialize(some_bytes) == some_bytes
@@ -54,8 +54,8 @@ def test_formats_for_meta():
 
 
 def test_formats_match():
-    bytes_fmt = Formats.match('bytes')
-    json_fmt = Formats.match('json')
+    bytes_fmt = FormatsRegistry.match('bytes')
+    json_fmt = FormatsRegistry.match('json')
 
     some_bytes = b'["phlipper", "piglet"]'
     assert bytes_fmt.serialize(some_bytes) == some_bytes
@@ -71,11 +71,11 @@ def test_formats_serdes():
     metadata = [{} for o in objects]
 
     for obj, meta in zip(objects, metadata):
-        assert Formats.deserialize(Formats.serialize(obj, meta), meta) == obj
+        assert FormatsRegistry.deserialize(FormatsRegistry.serialize(obj, meta), meta) == obj
 
     df = pd.DataFrame([[1, 2], [3, 4]])
     meta = {}
-    assert df.equals(Formats.deserialize(Formats.serialize(df, meta), meta))
+    assert df.equals(FormatsRegistry.deserialize(FormatsRegistry.serialize(df, meta), meta))
 
 
 

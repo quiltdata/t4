@@ -4,9 +4,9 @@
 
 This module handles binary formats, and conversion to/from objects.
 
-# Formats Class (plural)
+# FormatsRegistry Class (plural)
 
-The `Formats` class acts as a global container for registered formats,
+The `FormatsRegistry` class acts as a global container for registered formats,
 and provides a place to register and discover formats.
 
     * metadata
@@ -15,8 +15,8 @@ and provides a place to register and discover formats.
 
 ..as well as other types in the future, potentially.
 
-Format objects are registered with the Formats class by calling
-`Formats.register(format_obj)`, or `Formats.register(**new_format_args)`.
+Format objects are registered with the FormatsRegistry class by calling
+`FormatsRegistry.register(format_obj)`, or `FormatsRegistry.register(**new_format_args)`.
 
 
 # Format Class (singular)
@@ -54,7 +54,7 @@ from .util import package_exists, QuiltException
 
 
 ### Code
-class Formats:
+class FormatsRegistry:
     """A collection for organizing `Format` objects.
 
     This class organizes `Format` objects for querying and general use.
@@ -261,7 +261,7 @@ class Format:
         Once registered, a format can be looked up by name, handled object
         types, and handled filetypes as indicated by extension.
         """
-        Formats.register(self)
+        FormatsRegistry.register(self)
 
     def _update_meta(self, meta, serialization_kwargs={}):
         if meta is not None:
@@ -330,28 +330,28 @@ class Format:
             return self._deserializer(bytes_obj, **deserialization_kwargs)
 
 
-Formats.register('bytes',
-    serializer=lambda obj: obj,
-    deserializer=lambda bytes_obj: bytes_obj,
-    handled_extensions=['bin'],
-    handled_types=[bytes],
-)
+FormatsRegistry.register('bytes',
+                         serializer=lambda obj: obj,
+                         deserializer=lambda bytes_obj: bytes_obj,
+                         handled_extensions=['bin'],
+                         handled_types=[bytes],
+                         )
 
 
-Formats.register('json',
-    serializer=lambda obj, **kwargs: json.dumps(obj, **kwargs).encode('utf-8'),
-    deserializer=lambda bytes_obj, **kwargs: json.loads(bytes_obj.decode('utf-8'), **kwargs),
-    handled_extensions=['json'],
-    handled_types=[dict, list, int, float, str, tuple, type(None)]
-)
+FormatsRegistry.register('json',
+                         serializer=lambda obj, **kwargs: json.dumps(obj, **kwargs).encode('utf-8'),
+                         deserializer=lambda bytes_obj, **kwargs: json.loads(bytes_obj.decode('utf-8'), **kwargs),
+                         handled_extensions=['json'],
+                         handled_types=[dict, list, int, float, str, tuple, type(None)]
+                         )
 
 
-Formats.register('unicode',  # utf-8 instead?
-    serializer=lambda s: s.encode('utf-8'),
-    deserializer=lambda b: b.decode('utf-8'),
-    handled_extensions=['txt', 'md', 'rst'],
-    handled_types=[text_type],
-)
+FormatsRegistry.register('unicode',  # utf-8 instead?
+                         serializer=lambda s: s.encode('utf-8'),
+                         deserializer=lambda b: b.decode('utf-8'),
+                         handled_extensions=['txt', 'md', 'rst'],
+                         handled_types=[text_type],
+                         )
 
 
 class NumpyFormat(Format):

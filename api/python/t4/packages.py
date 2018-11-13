@@ -14,7 +14,7 @@ import jsonlines
 from six import string_types, binary_type
 
 from .data_transfer import copy_file, get_bytes, put_bytes
-from .formats import Formats
+from .formats import FormatsRegistry
 
 from .exceptions import PackageException
 from .util import QuiltException, BASE_PATH, fix_url, PACKAGE_NAME_FORMAT, parse_file_url, \
@@ -194,7 +194,7 @@ class PackageEntry(object):
         physical_key = _to_singleton(self.physical_keys)
         pkey_ext = pathlib.Path(urlparse(physical_key).path).suffix
 
-        fmt = Formats.for_meta(self.meta) or Formats.for_ext(pkey_ext)
+        fmt = FormatsRegistry.for_meta(self.meta) or FormatsRegistry.for_ext(pkey_ext)
 
         if fmt is None:
             raise QuiltException("No serialization metadata, and guessing by extension failed.")
