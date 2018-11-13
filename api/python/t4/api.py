@@ -127,7 +127,7 @@ def ls(target, recursive=False):
     if version:
         raise ValueError("Versions don't make sense for directories")
 
-    if not path.endswith('/'):
+    if path and not path.endswith('/'):
         path += '/'
 
     results = list_object_versions(bucket + '/' + path, recursive=recursive)
