@@ -455,6 +455,8 @@ class Package(object):
         url = urlparse(fix_url(path).strip('/'))
         if url.scheme == 'file':
             src_path = pathlib.Path(parse_file_url(url))
+            if not src_path.is_dir():
+                raise PackageException("The specified directory doesn't exist")
             files = src_path.rglob('*')
             for f in files:
                 if not f.is_file():
