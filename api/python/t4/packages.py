@@ -442,8 +442,9 @@ class Package(object):
         url = urlparse(fix_url(path).strip('/'))
         if url.scheme == 'file':
             src_path = pathlib.Path(parse_file_url(url))
+            if not src_path.is_dir():
+                raise PackageException("The specified directory doesn't exist")
             files = src_path.rglob('*')
-            has_added_file = False
             for f in files:
                 if not f.is_file():
                     continue
@@ -451,12 +452,9 @@ class Package(object):
                 logical_key = lkey + f.relative_to(src_path).as_posix()
                 # TODO: Warn if overwritting a logical key?
                 self.set(logical_key, entry)
-                has_added_file = True
         else:
             raise NotImplementedError
 
-        if not has_added_file:
-            raise PackageException("No files found at {}".format(path))
         return self
 
     def get(self, logical_key):
