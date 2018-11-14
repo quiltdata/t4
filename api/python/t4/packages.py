@@ -85,8 +85,8 @@ class PackageEntry(object):
 
     def __eq__(self, other):
         return (
-            self.physical_keys == other.physical_keys
-            and self.size == other.size
+            # Don't check physical keys.
+            self.size == other.size
             and self.hash == other.hash
             and self.meta == other.meta
         )
@@ -744,19 +744,19 @@ class Package(object):
         Returns:
             added, modified, deleted (all lists of logical keys)
         """
-        added = []
+        deleted = []
         modified = []
         self_keys = self._data.keys()
         other_keys = other_pkg._data.keys()
         for lk in self_keys:
             if lk not in other_keys:
-                added.append(lk)
+                deleted.append(lk)
             elif not self._data[lk] == other_pkg._data[lk]:
                 modified.append(lk)
                 
-        deleted = []
+        added = []
         for lk in other_keys:
             if lk not in self_keys:
-                deleted.append(lk)
+                added.append(lk)
         
         return added, modified, deleted
