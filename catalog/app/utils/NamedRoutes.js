@@ -13,9 +13,17 @@ import {
 
 const Ctx = React.createContext();
 
+// these props are being probed by react-devtools, so we shouldn't throw on them
+const IGNORE = [
+  '_reactFragment',
+  Symbol.iterator,
+  Symbol.toStringTag,
+];
+
 const ensureExists = (routes) => new Proxy(routes, {
   get: (target, name) => {
     if (name in target) return target[name];
+    if (IGNORE.includes(name)) return undefined;
     throw new Error(`Route '${name}' does not exist`);
   },
 });
