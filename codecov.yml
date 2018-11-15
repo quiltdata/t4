@@ -6,7 +6,6 @@ coverage:
     project:
       default: false
       tests:
-        target: 100%
         paths: "tests/"
       app:
         paths: "t4/"
