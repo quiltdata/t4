@@ -13,7 +13,11 @@ import boto3
 from boto3.s3.transfer import TransferConfig, create_transfer_manager
 from s3transfer.subscribers import BaseSubscriber
 from six import BytesIO, binary_type, text_type
-from tqdm.autonotebook import tqdm
+
+import warnings
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    from tqdm.autonotebook import tqdm
 
 from .util import QuiltException, parse_file_url, parse_s3_url
 from . import xattr
