@@ -187,28 +187,45 @@ class PackageEntry(object):
         """
         return _to_singleton(self.physical_keys)
 
-    def deserialize(self):
+    def deserialize(self, deserializer=None):
         """
         Returns the object this entry corresponds to.
+
+        Custom Deserializers:
+            If `deserializer` is given, it is passed the physical key
+            of the data that would have been deserialized, then its
+            return value is returned.
+
+            Example:
+                p[k](lambda k: json.loads(Path(urlparse(k).path).read_text()))
+
+        Args:
+            deserializer: use the given function for deserialization.
 
         Returns:
             The deserialized object from the logical_key
 
         Raises:
-            physical key failure
-            hash verification fail
-            when deserialization metadata is not present
+            KeyError: physical key failure
+            QuiltException: Unknown deserializer
+            QuiltException: hash validation failure
+            QuiltException: when deserialization metadata is not present
         """
+        physical_key = _to_singleton(self.physical_keys)
+        if deserializer:
+            return deserializer(physical_key)
+
         target_str = self.meta.get('target')
         if target_str is None:
-            raise QuiltException("No serialization metadata")
+            raise QuiltException("No deserialization metadata.  "
+                                 "See PackageEntry.deserialize() docs on custom deserializers.")
 
         try:
             target = TargetType(target_str)
         except ValueError:
-            raise QuiltException("Unknown serialization target: %r" % target_str)
+            raise QuiltException("Unknown serialization target: %r. " % target_str
+                                 + "See PackageEntry.deserialize() docs on custom deserializers.")
 
-        physical_key = _to_singleton(self.physical_keys)
         data, _ = get_bytes(physical_key)
         self._verify_hash(data)
 
@@ -228,11 +245,11 @@ class PackageEntry(object):
         dest = fix_url(dest)
         copy_file(physical_key, dest, self.meta)
 
-    def __call__(self):
+    def __call__(self, *args, **kwargs):
         """
         Shorthand for self.deserialize()
         """
-        return self.deserialize()
+        return self.deserialize(*args, **kwargs)
 
 
 class Package(object):
