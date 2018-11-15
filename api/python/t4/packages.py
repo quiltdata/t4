@@ -544,7 +544,6 @@ class Package(object):
         if name:
             # Sanitize name.
             self.validate_package_name(name)
-            name = quote(name)
 
             named_path = registry_prefix + '/named_packages/' + quote(name) + '/'
             # todo: use a float to string formater instead of double casting
