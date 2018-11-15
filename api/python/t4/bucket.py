@@ -168,7 +168,7 @@ class Bucket(object):
 
             relative_key = remove_prefix(okey, key)
             new_location = path + relative_key
-            copy_object(fix_url(self._uri + okey), fix_url(new_location))
+            copy_file(fix_url(self._uri + okey), fix_url(new_location))
 
     def get_meta(self, key):
         """
