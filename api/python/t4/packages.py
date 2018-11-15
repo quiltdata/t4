@@ -83,6 +83,14 @@ class PackageEntry(object):
         self.hash = hash_obj
         self.meta = meta
 
+    def __eq__(self, other):
+        return (
+            # Don't check physical keys.
+            self.size == other.size
+            and self.hash == other.hash
+            and self.meta == other.meta
+        )
+
     def as_dict(self):
         """
         Returns dict representation of entry.
@@ -427,9 +435,9 @@ class Package(object):
             the package according to their relative location to path.
 
         Args:
-            lkey(string): prefix to add to every logical key, can be
-                empty or None.
-            path(string): path to add to package.
+            lkey(string): prefix to add to every logical key,
+                use '/' for the root of the package.
+            path(string): path to scan for files to add to package.
 
         Returns:
             self
@@ -437,11 +445,18 @@ class Package(object):
         Raises:
             when path doesn't exist
         """
-        lkey = "" if not lkey else quote(lkey).strip("/") + "/"
+        lkey = quote(lkey).strip("/") + "/"
+
+        if lkey == '/':
+            # Prevent created logical keys from starting with '/'
+            lkey = ''
+
         # TODO: deserialization metadata
         url = urlparse(fix_url(path).strip('/'))
         if url.scheme == 'file':
             src_path = pathlib.Path(parse_file_url(url))
+            if not src_path.is_dir():
+                raise PackageException("The specified directory doesn't exist")
             files = src_path.rglob('*')
             for f in files:
                 if not f.is_file():
@@ -664,7 +679,7 @@ class Package(object):
 
         return top_hash.hexdigest()
 
-    def push(self, name, dest, dest_registry=None):
+    def push(self, name, dest, registry=None):
         """
         Copies objects to path, then creates a new package that points to those objects.
         Copies each object in this package to path according to logical key structure,
@@ -673,19 +688,19 @@ class Package(object):
         Args:
             name: name for package in registry
             dest: where to copy the objects in the package
-            dest_registry: registry where to create the new package
+            registry: registry where to create the new package
         Returns:
             A new package that points to the copied objects
         """
         self.validate_package_name(name)
 
-        if dest_registry is None:
-            dest_registry = dest
+        if registry is None:
+            registry = dest
 
         dest_url = fix_url(dest).rstrip('/') + '/' + quote(name)
         if dest_url.startswith('file://') or dest_url.startswith('s3://'):
             pkg = self._materialize(dest_url)
-            pkg.build(name, registry=dest_registry)
+            pkg.build(name, registry=registry)
             return pkg
         else:
             raise NotImplementedError
@@ -730,3 +745,34 @@ class Package(object):
             for thread in threads:
                 thread.result()  # raise any exceptions that occurred.
         return pkg
+
+    def diff(self, other_pkg):
+        """
+        Returns three lists -- added, modified, deleted.
+
+        Added: present in other_pkg but not in self.
+        Modified: present in both, but different.
+        Deleted: present in self, but not other_pkg.
+
+        Args:
+            other_pkg: Package to diff 
+
+        Returns:
+            added, modified, deleted (all lists of logical keys)
+        """
+        deleted = []
+        modified = []
+        self_keys = self._data.keys()
+        other_keys = other_pkg._data.keys()
+        for lk in self_keys:
+            if lk not in other_keys:
+                deleted.append(lk)
+            elif not self._data[lk] == other_pkg._data[lk]:
+                modified.append(lk)
+                
+        added = []
+        for lk in other_keys:
+            if lk not in self_keys:
+                added.append(lk)
+        
+        return added, modified, deleted

@@ -157,7 +157,7 @@ def test_browse_package_from_registry():
 def test_package_fetch(tmpdir):
     """ Package.fetch() on nested, relative keys """
     input_dir = os.path.dirname(__file__)
-    package_ = Package().set_dir('', os.path.join(input_dir, 'data', 'nested'))
+    package_ = Package().set_dir('/', os.path.join(input_dir, 'data', 'nested'))
 
     out_dir = os.path.join(tmpdir, 'output')
     package_.fetch(out_dir)
@@ -274,7 +274,7 @@ def test_set_dir(tmpdir):
     with open(foodir / 'bar', 'w') as fd:
         fd.write(fd.name)
 
-    pkg = pkg.set_dir("", ".")
+    pkg = pkg.set_dir("/", ".")
 
     assert pathlib.Path('foo').resolve().as_uri() \
         == pkg._data['foo'].physical_keys[0] # pylint: disable=W0212
@@ -286,7 +286,7 @@ def test_set_dir(tmpdir):
         == pkg._data['foo_dir/bar'].physical_keys[0] # pylint: disable=W0212
 
     pkg = Package()
-    pkg = pkg.set_dir('','foo_dir/baz_dir/')
+    pkg = pkg.set_dir('/','foo_dir/baz_dir/')
     # todo nested at set_dir site or relative to set_dir path.
     assert pathlib.Path(bazdir / 'baz').resolve().as_uri() \
         == pkg._data['baz'].physical_keys[0] # pylint: disable=W0212
@@ -475,8 +475,7 @@ def test_list_remote_packages():
     with patch('t4.api.list_objects',
                return_value=([{'Prefix': 'foo'},{'Prefix': 'bar'}],[])) as mock:
         pkgs = t4.list_packages('s3://my_test_bucket/')
-        assert mock.call_args_list[0][0][0] == \
-            'my_test_bucket/.quilt/named_packages/'
+        assert mock.call_args_list[0][0] == ('my_test_bucket', '.quilt/named_packages/')
 
     assert True
 
@@ -499,3 +498,19 @@ def test_validate_package_name():
     with pytest.raises(QuiltException):
         Package.validate_package_name("b")
 
+def test_diff():
+    new_pkg = Package()
+
+    # Create a dummy file to add to the package.
+    test_file_name = 'bar'
+    with open(test_file_name, "w") as fd:
+        fd.write('test_file_content_string')
+        test_file = Path(fd.name)
+
+    # Build a new package into the local registry.
+    new_pkg = new_pkg.set('foo', test_file_name)
+    top_hash = new_pkg.build("Quilt/Test")
+
+    p1 = Package.browse('Quilt/Test')
+    p2 = Package.browse('Quilt/Test')
+    assert p1.diff(p2) == ([], [], [])
