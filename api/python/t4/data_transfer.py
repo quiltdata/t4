@@ -300,7 +300,7 @@ def upload_file(src_path, bucket, key, override_meta=None):
     if src_path.endswith('/'):
         if not is_dir:
             raise ValueError("Source path not a directory")
-        if not dest_path.endswith('/'):
+        if not key.endswith('/'):
             raise ValueError("Destination path must end in /")
     else:
         if is_dir:
