@@ -311,7 +311,37 @@ def _calculate_etag(file_obj):
     return '"%s"' % etag
 
 
+def upload_files(transfer_info):
+    """Upload multiple files to the given destination."""
+    total_size = 0
+    jobs = []
+
+    for src_path, dest_path, override_meta in transfer_info:
+        src_file_list, src_root, job_size = _preprocess_transfer(src_path, dest_path)
+        total_size += job_size
+        jobs.append([src_root, src_file_list, dest_path, override_meta])
+
+    with tqdm(total=total_size, unit='B', unit_scale=True) as progress:
+        callback = ProgressCallback(progress)
+        futures = []
+        for job in jobs:
+            job.append(callback)
+            futures.extend(_upload_preprocessed(*job))
+        for future in futures:
+            future.result()
+
+
 def upload_file(src_path, dest_path, override_meta=None):
+    src_root, src_file_list, total_size = _preprocess_transfer(src_path, dest_path)
+
+    with tqdm(total=total_size, unit='B', unit_scale=True) as progress:
+        callback = ProgressCallback(progress)
+        futures = _upload_preprocessed(src_root, src_file_list, dest_path, override_meta, callback)
+        for future in futures:
+            future.result()
+
+
+def _preprocess_transfer(src_path, dest_path):
     src_file = pathlib.Path(src_path)
     is_dir = src_file.is_dir()
     if src_path.endswith('/'):
@@ -330,9 +360,13 @@ def upload_file(src_path, dest_path, override_meta=None):
         src_root = src_file.parent
         src_file_list = [src_file]
 
-    bucket, key = split_path(dest_path)
-
     total_size = sum(f.stat().st_size for f in src_file_list)
+
+    return src_root, src_file_list, total_size
+
+
+def _upload_preprocessed(src_root, src_file_list, dest_path, override_meta, callback):
+    bucket, key = split_path(dest_path)
 
     with ThreadPoolExecutor() as executor:
         # Calculate local ETags in parallel.
@@ -347,35 +381,30 @@ def upload_file(src_path, dest_path, override_meta=None):
 
         src_etag_list = list(src_etag_iter)
 
-    with tqdm(total=total_size, unit='B', unit_scale=True) as progress:
-        callback = ProgressCallback(progress)
+    futures = []
+    for f, etag in zip(src_file_list, src_etag_list):
+        real_dest_path = key + str(f.relative_to(src_root)) if (not key or key.endswith('/')) else key
 
-        futures = []
-        for f, etag in zip(src_file_list, src_etag_list):
-            real_dest_path = key + str(f.relative_to(src_root)) if (not key or key.endswith('/')) else key
+        if override_meta is None:
+            meta = _parse_file_metadata(f)
+        else:
+            meta = override_meta
 
-            if override_meta is None:
-                meta = _parse_file_metadata(f)
-            else:
-                meta = override_meta
-
-            extra_args = dict(Metadata={HELIUM_METADATA: json.dumps(meta)})
-            existing_src = existing_etags.get(etag)
-            if existing_src is not None:
-                # We found an existing object with the same ETag, so copy it instead of uploading
-                # the bytes. (In the common case, it's the same key - the object is already there -
-                # but we still copy it onto itself just in case the metadata has changed.)
-                future = s3_manager.copy(
-                    dict(Bucket=bucket, Key=existing_src[0], VersionId=existing_src[1]),
-                    bucket, real_dest_path, extra_args, [callback]
-                )
-            else:
-                # Upload the file.
-                future = s3_manager.upload(str(f), bucket, real_dest_path, extra_args, [callback])
-            futures.append(future)
-
-        for future in futures:
-            future.result()
+        extra_args = dict(Metadata={HELIUM_METADATA: json.dumps(meta)})
+        existing_src = existing_etags.get(etag)
+        if existing_src is not None:
+            # We found an existing object with the same ETag, so copy it instead of uploading
+            # the bytes. (In the common case, it's the same key - the object is already there -
+            # but we still copy it onto itself just in case the metadata has changed.)
+            future = s3_manager.copy(
+                dict(Bucket=bucket, Key=existing_src[0], VersionId=existing_src[1]),
+                bucket, real_dest_path, extra_args, [callback]
+            )
+        else:
+            # Upload the file.
+            future = s3_manager.upload(str(f), bucket, real_dest_path, extra_args, [callback])
+        futures.append(future)
+    return futures
 
 
 def delete_object(path):
