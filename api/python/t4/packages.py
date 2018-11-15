@@ -379,7 +379,7 @@ class Package(object):
         # TODO: do this with improved parallelism? connections etc. could be reused
         nice_dest = fix_url(dest).rstrip('/')
         for key, entry in self._data.items():
-            entry.fetch('{}/{}'.format(nice_dest, key))
+            entry.fetch('{}/{}'.format(nice_dest, quote(key)))
 
     def keys(self):
         """
