@@ -1,6 +1,7 @@
 """ Integration tests for T4 Packages. """
 import appdirs
 import io
+import json
 import jsonlines
 import os
 import pathlib
@@ -514,3 +515,18 @@ def test_diff():
     p1 = Package.browse('Quilt/Test')
     p2 = Package.browse('Quilt/Test')
     assert p1.diff(p2) == ([], [], [])
+
+
+def test_lambda_deserializers():
+    test_data = {'foo': 'bar'}
+    f = Path('test_lambda_deserializers')
+    f.write_text(json.dumps(test_data))
+
+    p = t4.Package()
+    p.set('test', 'test_lambda_deserializers')
+
+    with pytest.raises(QuiltException):
+        p['test']()
+
+    deserializer = lambda pk: json.loads(Path(urlparse(pk).path).read_text())
+    assert p['test'](deserializer) == test_data
