@@ -1,7 +1,9 @@
+import copy
+import json
 import pathlib
 
-from .data_transfer import (copy_file, delete_object, list_objects,
-                            put_bytes, serialize_obj)
+from .data_transfer import (copy_file, delete_object, _download_dir, list_objects,
+                            put_bytes, s3_client, serialize_obj)
 from .util import QuiltException, fix_url
 
 class Bucket(object):
@@ -160,15 +162,7 @@ class Bucket(object):
             copy_file(self._uri + key, fix_url(path))
             return
 
-        objects = list_objects(self._bucket, key)
-        for o in objects:
-            okey = o['Key']
-            def remove_prefix(text, prefix):
-                return text[text.startswith(prefix) and len(prefix):]
-
-            relative_key = remove_prefix(okey, key)
-            new_location = path + relative_key
-            copy_file(fix_url(self._uri + okey), fix_url(new_location))
+        _download_dir(self._bucket, key, fix_url(path))
 
     def get_meta(self, key):
         """
@@ -183,7 +177,11 @@ class Bucket(object):
         Raises:
             if download fails
         """
-        pass
+        response = s3_client.head_object(
+            Bucket=self._bucket,
+            Key=key
+        )
+        return response['Metadata']
 
     def set_meta(self, key, meta):
         """
@@ -199,4 +197,18 @@ class Bucket(object):
         Raises:
             if put to bucket fails
         """
+        meta = meta or {}
+        existing_meta = self.get_meta(key)
+        new_meta = existing_meta
+        new_meta['user_meta'] = json.dumps(meta)
+        s3_client.copy_object(
+            CopySource={
+                "Bucket": self._bucket,
+                "Key": key
+            },
+            Bucket=self._bucket,
+            Key=key,
+            MetadataDirective='REPLACE',
+            Metadata=new_meta
+        )
         pass
