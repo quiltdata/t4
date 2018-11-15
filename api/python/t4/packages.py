@@ -239,8 +239,8 @@ class Package(object):
     """ In-memory representation of a package """
 
     def __init__(self, children=None, meta=None):
-        self._children = children or {}
-        self._meta = meta or {'version': 'v0'}
+        self._children = {} if children is None else children
+        self._meta = {'version': 'v0'} if meta is None else meta
 
 
     @classmethod
@@ -601,7 +601,7 @@ class Package(object):
         elif isinstance(entry, PackageEntry):
             entry = entry._clone()
         else:
-            raise NotImplementedError("Needs to be of type str")
+            raise TypeError("Expected a string for entry")
 
         if meta is not None:
             entry.meta = meta
@@ -647,7 +647,6 @@ class Package(object):
         top_hash = hashlib.sha256()
         hashable_meta = copy.deepcopy(self._meta)
         hashable_meta.pop('top_hash', None)
-        print('%r' % hashable_meta)
         top_meta = json.dumps(hashable_meta, sort_keys=True, separators=(',', ':'))
         top_hash.update(top_meta.encode('utf-8'))
         for logical_key, entry in self._walk():
