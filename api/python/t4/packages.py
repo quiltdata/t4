@@ -91,6 +91,9 @@ class PackageEntry(object):
             and self.meta == other.meta
         )
 
+    def __repr__(self):
+        return f"PackageNode('{self.physical_keys[0]}')"
+
     def as_dict(self):
         """
         Returns dict representation of entry.
