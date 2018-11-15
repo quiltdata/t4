@@ -679,7 +679,7 @@ class Package(object):
 
         return top_hash.hexdigest()
 
-    def push(self, name, dest, dest_registry=None):
+    def push(self, name, dest, registry=None):
         """
         Copies objects to path, then creates a new package that points to those objects.
         Copies each object in this package to path according to logical key structure,
@@ -688,19 +688,19 @@ class Package(object):
         Args:
             name: name for package in registry
             dest: where to copy the objects in the package
-            dest_registry: registry where to create the new package
+            registry: registry where to create the new package
         Returns:
             A new package that points to the copied objects
         """
         self.validate_package_name(name)
 
-        if dest_registry is None:
-            dest_registry = dest
+        if registry is None:
+            registry = dest
 
         dest_url = fix_url(dest).rstrip('/') + '/' + quote(name)
         if dest_url.startswith('file://') or dest_url.startswith('s3://'):
             pkg = self._materialize(dest_url)
-            pkg.build(name, registry=dest_registry)
+            pkg.build(name, registry=registry)
             return pkg
         else:
             raise NotImplementedError
