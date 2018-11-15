@@ -445,7 +445,7 @@ class Package(object):
         Raises:
             when path doesn't exist
         """
-        lkey = quote(lkey).strip("/") + "/"
+        lkey = lkey.strip("/") + "/"
 
         if lkey == '/':
             # Prevent created logical keys from starting with '/'
@@ -597,7 +597,7 @@ class Package(object):
             self
 
         """
-        prefix = "" if not prefix else quote(prefix).strip("/") + "/"
+        prefix = "" if not prefix else prefix.strip("/") + "/"
         for logical_key, entry in new_keys_dict.items():
             self.set(prefix + logical_key, entry, meta)
         return self
