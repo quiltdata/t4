@@ -196,8 +196,12 @@ class PackageEntry(object):
             of the data that would have been deserialized, then its
             return value is returned.
 
-            Example:
-                p[k](lambda k: json.loads(Path(urlparse(k).path).read_text()))
+            Example for decoding a json blob:
+                >>> des = lambda k: json.loads(Path(urlparse(k).path).read_text())
+                >>> obj = p[k](des)  # obj is the deserialized JSON blob
+
+            This is particularly useful when a key has no metadata associated
+            with it, or when the serialization metadata needs to be overridden.
 
         Args:
             deserializer: use the given function for deserialization.
