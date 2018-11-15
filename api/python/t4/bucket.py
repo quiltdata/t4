@@ -2,8 +2,9 @@ import copy
 import json
 import pathlib
 
-from .data_transfer import (copy_file, delete_object, _download_dir, list_objects,
-                            put_bytes, s3_client, serialize_obj)
+from .data_transfer import (TargetType, copy_file, delete_object, deserialize_obj,
+                            _download_dir, get_bytes, list_objects, put_bytes,
+                            s3_client, serialize_obj)
 from .util import QuiltException, fix_url
 
 class Bucket(object):
@@ -40,7 +41,13 @@ class Bucket(object):
             KeyError if key does not exist
             if deserialization fails
         """
-        pass
+        data, meta = get_bytes(self._uri + key)
+        target = meta.get('target', None)
+        if not target:
+            raise QuiltException("No deserialization metadata, cannot deserialize object")
+
+        target = TargetType(target)
+        return deserialize_obj(data, target)
 
     def __call__(self, key):
         """
