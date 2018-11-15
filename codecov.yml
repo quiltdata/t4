@@ -7,7 +7,7 @@ coverage:
       default: false
       tests:
         target: 100%
-        paths: "api/python/tests/"
+        paths: "tests/"
       app:
-        paths: "api/python/t4/"
+        paths: "t4/"
 
