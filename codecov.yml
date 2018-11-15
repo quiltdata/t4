@@ -2,6 +2,12 @@ coverage:
   precision: 2
   round: down
   range: "60...100"
+  status:
+    project:
+      default: false
+      tests:
+        target: 100%
+        paths: "api/python/tests/"
+      app:
+        paths: "api/python/t4/"
 
-ignore:
-  - "api/python/tests"
