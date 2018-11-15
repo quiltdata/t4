@@ -299,10 +299,10 @@ def upload_files(transfer_info):
     total_size = 0
     jobs = []
 
-    for src_path, dest_path, override_meta in transfer_info:
-        src_file_list, src_root, job_size = _preprocess_transfer(src_path, dest_path)
+    for src_path, bucket, key, override_meta in transfer_info:
+        src_file_list, src_root, job_size = _preprocess_transfer(src_path, key)
         total_size += job_size
-        jobs.append([src_root, src_file_list, dest_path, override_meta])
+        jobs.append([src_root, src_file_list, bucket, key, override_meta])
 
     with tqdm(total=total_size, unit='B', unit_scale=True) as progress:
         callback = ProgressCallback(progress)
@@ -315,22 +315,16 @@ def upload_files(transfer_info):
 
 
 def upload_file(src_path, bucket, key, override_meta=None):
-    src_root, src_file_list, total_size = _preprocess_transfer(src_path, dest_path)
-
-    with tqdm(total=total_size, unit='B', unit_scale=True) as progress:
-        callback = ProgressCallback(progress)
-        futures = _upload_preprocessed(src_root, src_file_list, dest_path, override_meta, callback)
-        for future in futures:
-            future.result()
+    upload_files([(src_path, bucket, key, override_meta)])
 
 
-def _preprocess_transfer(src_path, dest_path):
+def _preprocess_transfer(src_path, key):
     src_file = pathlib.Path(src_path)
     is_dir = src_file.is_dir()
     if src_path.endswith('/'):
         if not is_dir:
             raise ValueError("Source path not a directory")
-        if not dest_path.endswith('/'):
+        if not key.endswith('/'):
             raise ValueError("Destination path must end in /")
     else:
         if is_dir:
@@ -348,7 +342,7 @@ def _preprocess_transfer(src_path, dest_path):
     return src_root, src_file_list, total_size
 
 
-def _upload_preprocessed(src_root, src_file_list, dest_path, override_meta, callback):
+def _upload_preprocessed(src_root, src_file_list, bucket, key, override_meta, callback):
     with ThreadPoolExecutor() as executor:
         # Calculate local ETags in parallel.
         src_etag_iter = executor.map(_calculate_etag, src_file_list)
