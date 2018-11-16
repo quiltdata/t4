@@ -1,15 +1,13 @@
 """ Integration tests for T4 Packages. """
-import appdirs
-import io
-import jsonlines
 import os
 import pathlib
-import pytest
+from pathlib import Path
 import shutil
 from urllib.parse import urlparse
 
+import jsonlines
 from mock import patch
-from pathlib import Path
+import pytest
 
 import t4
 from t4 import Package
@@ -435,7 +433,7 @@ def test_iter():
 def test_invalid_set_key(tmpdir):
     """Verify an exception when setting a key with a path object."""
     pkg = Package()
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(TypeError):
         pkg.set('asdf/jkl', 123)
 
 def test_brackets():
