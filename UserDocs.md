@@ -1,4 +1,4 @@
-This file documents the T4 Python API, `helium`. `helium` allows you to interact with your T4 instance in Python.
+This file documents the T4 Python API, `t4`. `t4` allows you to interact with your T4 instance in Python.
 
 ## Installation
 
@@ -76,7 +76,7 @@ To update a package, just `push` it again with new contents.
 To pull a package that has been published to T4, use `browse`:
 
 	# load the package from the registry
-	p = t4.Package.browse("nice-name", registry="s3://name-of-your-t4-bucket")
+	p = t4.Package.browse("username/packagename", registry="s3://name-of-your-t4-bucket")
 
 This will find the manifest associated with the given name and registry and downloads it into memory. This will not download the actual bytes. To do that, you can use `fetch`:
 
@@ -139,7 +139,7 @@ The `Bucket` object supports the same getters that `Package` supports: <!-- TODO
 
 You can read data right out of a `Package` or `Bucket` using `deserialize`. 
 
-    p = t4.Package.browse("my/package")
+    p = t4.Package.browse("username/packagename")
     b = t4.Bucket("s3://store")
     
     obj = b.deserialize("bucket-name/my-frame.parquet")
@@ -268,7 +268,3 @@ are treated specially by some S3 tools in a way that
 is potentially dangerous, so it's best to avoid them.
 The T4 API will therefore reject object keys that end in `/`.
 Refer to [Amazon's documentation](https://docs.aws.amazon.com/AmazonS3/latest/user-guide/using-folders.html) on folder objects.
-
-  ~~`he.put_file("foo.txt", "bucket/path/")`~~ - this is not supported
-
-  `he.put_file("local_directory/", "bucket/path/")` - this will perform a recursive copy, and is correct
