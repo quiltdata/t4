@@ -519,6 +519,24 @@ class Package(object):
         entry = self._data[logical_key]
         return entry.meta
 
+    def _set_commit_message(self, msg):
+        """
+        Sets a commit message.
+
+        Args:
+            msg: a message string
+
+        Returns:
+            None
+
+        Raises:
+            msg is not a string
+        """
+        if not isinstance(msg, str):
+            raise ValueError("The commit message must be a string.")
+
+        self._meta.update({'commit_message': msg})
+
     def build(self, name=None, registry=None, message=None):
         """
         Serializes this package to a registry.
@@ -532,7 +550,7 @@ class Package(object):
         Returns:
             the top hash as a string
         """
-        self._meta.update({'commit_message': message})
+        self._set_commit_message(message)
 
         registry_prefix = get_package_registry(fix_url(registry) if registry else None)
 
@@ -697,8 +715,7 @@ class Package(object):
             A new package that points to the copied objects
         """
         self.validate_package_name(name)
-
-        self._meta.update({'commit_message': message})
+        self._set_commit_message(message)
 
         if registry is None:
             registry = dest
