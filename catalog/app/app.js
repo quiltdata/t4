@@ -20,6 +20,7 @@ import LanguageProvider from 'containers/LanguageProvider';
 import * as AWSAuth from 'containers/AWSAuth';
 import * as Notifications from 'containers/Notifications';
 import config from 'constants/config';
+import routes from 'constants/routes';
 import * as style from 'constants/style';
 import * as AWS from 'utils/AWS';
 import * as NamedRoutes from 'utils/NamedRoutes';
@@ -51,28 +52,8 @@ fontLoader('Roboto', 'Roboto Mono').then(() => {
   document.body.classList.add('fontLoaded');
 });
 
-const routes = {
-  home: {
-    path: '/',
-    url: () => '/',
-  },
-  search: {
-    path: '/search',
-    url: (q) => `/search${NamedRoutes.mkSearch({ q })}`,
-  },
-  browse: {
-    path: '/browse/:path(.*)?',
-    url: (path = '') => `/browse/${path}`,
-  },
-  signIn: {
-    path: '/signin',
-    url: (next) => `/signin${NamedRoutes.mkSearch({ next })}`,
-  },
-  signOut: {
-    path: '/signout',
-    url: () => '/signout',
-  },
-};
+
+const DEFAULT_BUCKET = 'alpha-quilt-storage';
 
 // Create redux store with history
 const initialState = {};
@@ -93,7 +74,7 @@ const render = (messages) => {
       [AWSAuth.Provider, {
         storage,
         testBucket: config.aws.s3Bucket,
-        signInRedirect: routes.browse.url(),
+        signInRedirect: routes.bucketRoot.url(DEFAULT_BUCKET),
       }],
       [AWS.Config.Provider, {
         credentialsSelector: AWSAuth.selectors.credentials,
