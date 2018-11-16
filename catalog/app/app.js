@@ -4,7 +4,8 @@ import 'babel-polyfill';
 import 'whatwg-fetch';
 
 // Import all the third party stuff
-import MuiThemeProvider from 'material-ui/styles/MuiThemeProvider';
+import MuiThemeProviderV0 from 'material-ui/styles/MuiThemeProvider';
+import { MuiThemeProvider } from '@material-ui/core/styles';
 import ReactDOM from 'react-dom';
 import { LOCATION_CHANGE } from 'connected-react-router/immutable';
 import createHistory from 'history/createBrowserHistory';
@@ -19,7 +20,7 @@ import LanguageProvider from 'containers/LanguageProvider';
 import * as AWSAuth from 'containers/AWSAuth';
 import * as Notifications from 'containers/Notifications';
 import config from 'constants/config';
-import theme from 'constants/theme';
+import * as style from 'constants/style';
 import * as AWS from 'utils/AWS';
 import * as NamedRoutes from 'utils/NamedRoutes';
 import FormProvider from 'utils/ReduxFormProvider';
@@ -106,7 +107,8 @@ const render = (messages) => {
       }],
       SearchProvider,
       [RouterProvider, { history }],
-      [MuiThemeProvider, { muiTheme: theme }],
+      [MuiThemeProviderV0, { muiTheme: style.themeV0 }],
+      [MuiThemeProvider, { theme: style.theme }],
       Notifications.WithNotifications,
       [NamedRoutes.Provider, { routes }],
       App,

@@ -1,15 +1,13 @@
 /* constants for use in CSS. prefer integers over strings so we can do math */
-import { grey300, grey200, grey800, grey400 } from 'material-ui/styles/colors';
+import getMuiTheme from 'material-ui/styles/getMuiTheme';
+import * as colors from '@material-ui/core/colors';
+import { createMuiTheme } from '@material-ui/core/styles';
+import { fade, lighten } from '@material-ui/core/styles/colorManipulator';
 
-export const appBackgroundColor = '#fafafa';
-export const authButtonStyle = {
-  color: grey200,
-};
-const back = [16, 16, 16];
-export const backgroundColor = `rgb(${back[0]}, ${back[1]}, ${back[2]})`;
-export const backgroundColorAlpha = (alpha) =>
-  `rgba(${back[0]}, ${back[1]}, ${back[2]}, ${alpha})`;
-export const bodyColor = 'rgb(32, 32, 32)';
+
+export const appBackgroundColor = colors.grey[50];
+export const backgroundColor = 'rgb(16, 16, 16)';
+export const bodyColor = colors.grey[900];
 export const bodySize = '1em';
 //  inspiration: https://v4-alpha.getbootstrap.com/layout/overview/#responsive-breakpoints
 //  these are the bottoms of the breakpoints (min-width)
@@ -20,35 +18,53 @@ export const breaks = {
   xl: 1200,
 };
 Object.freeze(breaks);
-export const detailColorHex = '#666';
-export const fontWeightNormalStyle = {
-  fontWeight: 'normal',
-};
-export const headerColor = 'rgb(32, 32, 32)';
-export const h2HomeSize = '2em';
-export const listStyle = {
-  backgroundColor: 'white',
-  border: '1px solid #ddd',
-};
-export const palette = {
-  primary1Color: backgroundColor,
-  primary2Color: 'rgb(2, 58, 71)',
-  accent1Color: '#F88500',
-  accent2Color: grey200,
-  accent3Color: grey300,
-  textColor: grey800, // see also global-styles.js
-  borderColor: grey400,
-};
-
-export const plainTextStyle = {
-  textTransform: 'none',
-};
-
-export const radius = '16px';
+export const detailColorHex = colors.grey[700];
+export const headerColor = colors.grey[900];
 
 export const rowVSpace = '1em';
 
-export const smallest = {
-  height: '480px',
-  width: '320px',
+const paletteV0 = {
+  primary1Color: backgroundColor,
+  primary2Color: 'rgb(2, 58, 71)',
+  accent1Color: colors.orange[600],
+  accent2Color: colors.grey[200],
+  accent3Color: colors.grey[300],
+  textColor: colors.grey[800], // see also global-styles.js
+  borderColor: colors.grey[400],
 };
+
+export const themeV0 = getMuiTheme({
+  palette: paletteV0,
+  tableRow: {
+    stripeColor: fade(lighten(paletteV0.primary1Color, 0.5), 0.1),
+  },
+});
+
+export const theme = createMuiTheme({
+  palette: {
+    primary: {
+      main: colors.grey[900],
+    },
+    secondary: {
+      main: colors.orange[600],
+    },
+  },
+  typography: {
+    useNextVariants: true,
+  },
+});
+
+export const themeInverted = createMuiTheme({
+  palette: {
+    type: 'dark',
+    primary: {
+      main: colors.grey[900],
+    },
+    secondary: {
+      main: colors.orange[600],
+    },
+  },
+  typography: {
+    useNextVariants: true,
+  },
+});
