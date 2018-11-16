@@ -379,7 +379,7 @@ class Package(object):
         # TODO: do this with improved parallelism? connections etc. could be reused
         nice_dest = fix_url(dest).rstrip('/')
         for key, entry in self._data.items():
-            entry.fetch('{}/{}'.format(nice_dest, key))
+            entry.fetch('{}/{}'.format(nice_dest, quote(key)))
 
     def keys(self):
         """
@@ -445,7 +445,7 @@ class Package(object):
         Raises:
             when path doesn't exist
         """
-        lkey = quote(lkey).strip("/") + "/"
+        lkey = lkey.strip("/") + "/"
 
         if lkey == '/':
             # Prevent created logical keys from starting with '/'
@@ -544,7 +544,6 @@ class Package(object):
         if name:
             # Sanitize name.
             self.validate_package_name(name)
-            name = quote(name)
 
             named_path = registry_prefix + '/named_packages/' + quote(name) + '/'
             # todo: use a float to string formater instead of double casting
@@ -597,7 +596,7 @@ class Package(object):
             self
 
         """
-        prefix = "" if not prefix else quote(prefix).strip("/") + "/"
+        prefix = "" if not prefix else prefix.strip("/") + "/"
         for logical_key, entry in new_keys_dict.items():
             self.set(prefix + logical_key, entry, meta)
         return self
