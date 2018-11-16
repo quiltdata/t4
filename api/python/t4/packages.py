@@ -92,7 +92,7 @@ class PackageEntry(object):
         )
 
     def __repr__(self):
-        return f"PackageNode('{self.physical_keys[0]}')"
+        return f"PackageEntry('{self.physical_keys[0]}')"
 
     def as_dict(self):
         """
