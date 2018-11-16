@@ -532,7 +532,7 @@ class Package(object):
         Raises:
             msg is not a string
         """
-        if not isinstance(msg, str):
+        if msg is not None and not isinstance(msg, str):
             raise ValueError("The commit message must be a string.")
 
         self._meta.update({'commit_message': msg})
