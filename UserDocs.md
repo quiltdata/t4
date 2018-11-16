@@ -33,8 +33,8 @@ To create a new in-memory package you initialize a new Package object and then p
 	# add many entries at once using `update`
 	p = p.update({"baz.csv": "/path/to/baz", "bam.png": "/path/to/bam"})
 
-	# or grab everything in a directory at once using capture
-	p = p.capture("/path/to/folder/with/stuff/")
+	# or grab everything in a directory at once using set_dir
+	p = p.set_dir("/path/to/folder/with/stuff/")
 
 	# delete entries using `delete`
 	p = p.delete("bam.png")
@@ -47,18 +47,20 @@ If you would like to save or read a local package, you can use the following met
 
 	# save an empty package to the local registry
 	p = t4.Package()
-	tophash = p.build("example-package")
+	tophash = p.build("username/packagename")
 
 	# load the package from a local registry
-	p = t4.Package("example-package", hash=tophash)
+	p = t4.Package.browse("username/packagename", hash=tophash)
 
 Packages are versioned by top hashes. Every time you build a package you are returned a top hash. To load a specific version of a package from a registry, as here, you can pass the top hash of the desired package version to the `hash` parameter. If you do not specify a top hash, the latest version will be retrieved.
+
+To update a package, just `build` it again with new contents.
 
 
 ### Publishing a package to T4
 Once you have a package manifest you are happy with, you are ready to publish. To publish the package to T4, run the following command:
 
-    p.push("example-package", "s3://name-of-your-t4-bucket/my/package/path")
+    p.push("username/packagename", "s3://name-of-your-t4-bucket")
 
 
 This will:
@@ -67,30 +69,93 @@ This will:
 
 Once the dataset has been materialized on T4, it will be available to anyone else with access to that T4 bucket.
 
+To update a package, just `push` it again with new contents.
+
 
 ### Pulling a package from T4
-To pull a package that has been published to T4:
+To pull a package that has been published to T4, use `browse`:
 
 	# load the package from the registry
-	p = t4.Package("nice-name", registry="name-of-your-t4-bucket")
+	p = t4.Package.browse("nice-name", registry="s3://name-of-your-t4-bucket")
 
-This will find the manifest associated with the given name and registry and downloads it into memory. This will not download the actual bytes. To do that, you can use `get` or `get_file`:
+This will find the manifest associated with the given name and registry and downloads it into memory. This will not download the actual bytes. To do that, you can use `fetch`:
 
 	# download everything from a package
-	p.copy("/", "target/directory/")
+	p.fetch("/", "target/directory/")
 
 	# download a specific entry from a package
-	p.copy("foo.parquet", "target/directory/foo.parquet")
+	p.fetch("foo.parquet", "target/directory/foo.parquet")
 
-	# load a specific entry into memory
-    data, meta = p.get("foo.parquet")
-
-Especially with large data packages, there are many cases in which you might want to download a manifest describing a package, without downloading the actual contents of the package itself. For example, you might be interested in a large package with labeled images of cats, dogs, and chickens; but only want the cat pictures. 
-
-This T4 API provides this functionality. Copying over just the files you need allows you to have these cat pictures, without the overhead of downloading the dogs and chickens, too.
+Especially with large data packages, there are many cases in which you might want to download a manifest describing a package, without downloading the actual contents of the package itself. This T4 API provides this functionality.
 
 
-<!-- Note that in order for `get` to work, the file must have been created by t4.put and it must be in one of the formats supported by the default T4 deserializers. -->
+### Reading and writing entry metadata
+You can see the metadata associated with individual entries in a package using `get_meta`:
+
+	p.get_meta("foo.csv")
+
+This metadata may be optionally provided to a package entry at definition time by e.g. `set`:
+
+	p.set("foo.csv", "foo.csv", meta={"goodness": "very good"})
+
+Metadata is versioned alongside the rest of the package. So if you push a package with changes only to the metadata, e.g. with no changes to the files, you will still generate a new package version and a new tophash.
+
+
+### Viewing packages available on a registry
+In order to successfully download a package from a registry, that package must obviously exist on said registry. To see a list of packages available on a registry, using the `list_packages` command:
+
+    import t4
+	t4.list_packages()  # to see local packages
+	t4.list_packages("s3://name-of-your-t4-bucket")  # to see remote packages
+
+
+### Working with buckets
+
+You can manage individual files using the `Bucket` interface. A `Bucket` is just a wrapper on your registry:
+
+    import t4
+    b = t4.Bucket("s3://name-of-your-t4-bucket")
+
+The `Bucket` object supports the same getters that `Package` supports: <!-- TODO: potentially with the twise that set is now push -->
+
+    # download a directory or a file with fetch
+    b.fetch("path/to/directory", "path/to/local")
+    b.fetch("path/to/file", "path/to/local")
+    
+    # load an object into memory with deserialize
+    obj = b.deserialize("path/to/file")
+    obj = b("path/to/file")
+    
+    # get metadata
+    meta = b.get_meta("path/to/file")
+    
+    # delete a file
+    b.delete("path/to/file")
+    
+    # and so on...
+
+
+### Working with memory
+
+You can read data right out of a `Package` or `Bucket` using `deserialize`. 
+
+    p = t4.Package.browse("my/package")
+    b = t4.Bucket("s3://store")
+    
+    obj = b.deserialize("bucket-name/my-frame.parquet")
+    obj = b("bucket-name/my-frame.parquet")  # shortcut
+    
+    obj = p["my/package"].deserialize()
+    obj = p["my/package"]()  # shortcut
+
+On the flip side, you can serialize objects to T4 using `Bucket.put`.
+
+    b.put(obj, "bucket-name/my-frame.parquet")
+
+If you `put` to a folder that doesn't exist yet, `t4` will create that folder. If you overwrite an object, and bucket versioning is enabled, the overwritten object is retained as an older version of the same path. 
+
+T4 transparently serializes and de-serializes select Python
+objects. In the above example, `df` is automatically stored as an Apache Parquet file.
 
 
 ### Moving data not on T4
@@ -102,96 +167,11 @@ To create a package referencing that data and save it locally:
 
     p = t4.Package()
     p = p.set("foo", "nas://foo")
-    p.build("example-package")
+    p.build("username/packagename")
 
 To load the contents of that package locally:
 
-	p.copy("/", "target/directory")
-
-
-Packages pushed to T4 guarantee the immutability of constituent nodes, so long as the underlying S3 bucket has versioning enabled. Packages materialized elsewhere do not. The onus of keeping the package manifest consistent with the actual contents of the file (e.g. updating the package manifest every time the file changes) is on the package author. Additionally, even if package files get overwritten, there is no way of accessing the old files.
-
-
-### Updating a package
-Updating a package in a registry is a matter of pushing to it again with modified contents. For example:
-
-	# push an initial empty package to a T4 bucket
-	p = t4.Package()
-	p.build("example-package")
-	p.push("example-package", "s3://my-t4-bucket")
-	
-    # change something
-    p.set("foo", "/bar.txt")
-    
-    # push the updated package to the bucket
-    p.push("example-package", "s3://my-t4-bucket")
-
-
-### Reading and writing entry metadata
-You can see the metadata associated with individual entries in a package using `get_meta`:
-
-	p.get_meta("foo.csv")
-
-This metadata may be optionally provided to a package entry at definition time by e.g. `set`:
-
-	p.set("foo.csv", meta={"goodness": "very good"})
-
-Metadata is versioned alongside the rest of the package. So if you push a package with changes only to the metadata, e.g. with no changes to the files, you will still generate a new package version and a new tophash.
-
-
-### Viewing packages available on a registry
-In order to successfully download a package from a registry, that package must obviously exist on said registry. To see a list of packages available on a registry, using the `list_packages` command:
-
-    import t4
-	t4.list_packages()  # to see local packages
-	t4.list_packages("s3://bucket")  # to see remote packages
-
-<!-- ![](img/helium-api.png) -->
-
-
-### Managing individual files
-
-T4 provides a lower-level API for managing both local and remote files using `t4.copy`:
-
-```python
-t4.copy("file:///my-frame.csv", "s3://bucket-name/my-frame.csv")  # copy local to local
-t4.copy("s3:///my-frame.csv", "s3://bucket-name/my-frame.csv")  # copy remote to remote
-t4.copy("s3://my-frame.csv", "file:///bucket-name/my-frame.csv")  # copy remote to local
-```
-
-T4 supports files in any format, and up to 5 TB in size.
-
-To delete a remote file, use the `delete` command:
-
-```python
-he.delete("s3://bucket-name/my-frame.csv")
-```
-
-
-### Working with memory
-
-You can save a Python object to a T4 file using the `put` command:
-
-```python
-import t4
-t4.put(df, "bucket-name/my-frame.parquet")
-```
-
-The above code writes `df` at the top level of `bucket-name`.
-
-If you `put` to a folder that doesn't exist yet, `t4` will create that folder. If you overwrite an object, and bucket versioning is enabled, the overwritten object is retained as an older version of the same path. 
-
-T4 transparently serializes and de-serializes select Python
-objects. In the above example, `df` is automatically stored as an Apache Parquet file.
-
-To read `df` out of S3 and into local memory, use `get`:
-
-```python
-df, meta = he.get("bucket-name/my-frame.parquet")
-```
-
-`get` returns a tuple of values. The first entry is the data that you put in. The second entry is the metadata associated with the object. If no metadata exists, this value will be `None`.
-
+	p.fetch("/", "target/directory")
 
 ### Metadata and search
 
@@ -234,42 +214,38 @@ T4 populates some other metadata fields automatically:
 
 To search automatic metadata, perform a search of the form `METADATA_KEY:"VALUE"`. For example, to get a list of objects 10 bytes in size, search for `size:"10"`.
 
+### Using the catalog
+
+Quilt summaries summarize data in your bucket.
+Summaries combine several file types:
+
+* Markdown (`.md`)
+* [Vega specs](https://github.com/vega/vega) (`.json`)
+* Jupyter notebooks (`.ipynb`)
+* Images (`.jpe?g`, `.png`, `.gif`)
+* HTML (`.html`)
+
+Upload `quilt_summarize.json` to any directory where you want a summary to appear.
+
+`quilt_summarize.json` is a JSON list of supported files in your S3 bucket. All files in the list are signed (for security) and rendered in order when you visit the containing directory in the Quilt web catalog.
+
+Paths are resolved relative to the containing `quilt_summarize.json` file.
+
+Example:
+
+```
+[
+  "/vega_specs/chloropleth.json",
+  "./image.jpg",
+  "../notebooks/JupyterCon.ipynb",
+  "description.md"
+]
+```
+
 ## API reference
 
 Coming soon! For now please see the docstrings of individual API methods.
 
-
-<!--
-## Leftovers from the old API reference
-### Serialization
-
-#### Built-ins
-
-`put()` transparently serializes Python objects, and `get()` transparently de-serializes Python objects according the following table:
-
-| Python Type | Serialization format |
-| ------- | ------ |
-| `b"string"` | bytes on disk |
-| `"string"` | UTF-8 encoded string |
-| `pandas.DataFrame` | Parquet |
-| `numpy.ndarray` | .np |
-| `dict` | JSON | 
-
-
-#### No `pickle`?
-
-Since Python's `pickle` module is [slow and insecure](https://www.benfrederickson.com/dont-pickle-your-data/),
-T4 does not use `pickle` directly.
-In the next section, we'll show you how to use `pickle`
-and other custom serialization formats.
-
-#### Custom serializers
-
-To use a custom serialization format not in the built-ins,
-you can do one of the following:
-* `he.put(my_serializer.dumps(obj), "path/to/my/file.ext")`
-* Serialize the object to disk, then call `put_file()`
--->
 
 ## Known issues
 
@@ -296,37 +272,3 @@ Refer to [Amazon's documentation](https://docs.aws.amazon.com/AmazonS3/latest/us
   ~~`he.put_file("foo.txt", "bucket/path/")`~~ - this is not supported
 
   `he.put_file("local_directory/", "bucket/path/")` - this will perform a recursive copy, and is correct
-
-
-## Catalog
-
-### Summaries
-
-Quilt summaries summarize data in your bucket.
-Summaries combine several file types:
-
-* Markdown (`.md`)
-* [Vega specs](https://github.com/vega/vega) (`.json`)
-* Jupyter notebooks (`.ipynb`)
-* Images (`.jpe?g`, `.png`, `.gif`)
-* HTML (`.html`)
-
-Upload `quilt_summarize.json` to any directory where you want a summary
-to appear.
-
-`quilt_summarize.json` is a JSON list of supported files in your S3 bucket.
-All files in the list are signed (for security) and rendered in order
-when you visit the containing directory in the Quilt web catalog.
-
-Paths are resolved relative to the containing `quilt_summarize.json` file.
-
-Example:
-
-```
-[
-  "/vega_specs/chloropleth.json",
-  "./image.jpg",
-  "../notebooks/JupyterCon.ipynb",
-  "description.md"
-]
-```
