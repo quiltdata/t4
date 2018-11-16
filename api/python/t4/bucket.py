@@ -1,11 +1,10 @@
-import copy
-import json
 import pathlib
+from urllib.parse import urlparse
 
 from .data_transfer import (TargetType, copy_file, delete_object, deserialize_obj,
-                            _download_dir, get_bytes, list_objects, put_bytes,
-                            s3_client, serialize_obj)
-from .util import QuiltException, fix_url
+                            get_bytes, get_meta, list_objects, put_bytes,
+                            serialize_obj, set_meta)
+from .util import QuiltException, fix_url, parse_s3_url
 
 class Bucket(object):
     """
@@ -21,11 +20,10 @@ class Bucket(object):
         Returns:
             a new Bucket
         """
-        if not bucket_uri.startswith('s3://'):
-            raise QuiltException("Bucket URI must start with s3://")
-        self._uri = bucket_uri.strip('/') + '/'
-        self._bucket = self._uri[5:] # remove 's3://'
-        self._bucket = self._bucket.strip('/') # remove trailing '/'
+        parsed = urlparse(bucket_uri)
+        bucket, _, _ = parse_s3_url(parsed)
+        self._uri = parsed.geturl().rstrip('/') + '/' # Ensure trailing '/'
+        self._bucket = bucket
 
     def deserialize(self, key):
         """
@@ -71,7 +69,7 @@ class Bucket(object):
             target=target.value,
             user_meta=meta
         )
-        put_bytes(data, fix_url(dest), all_meta)
+        put_bytes(data, dest, all_meta)
 
     def put_file(self, key, path):
         """
@@ -114,13 +112,9 @@ class Bucket(object):
         if not src_path.is_dir():
             raise QuiltException("Provided directory does not exist")
 
-        files = src_path.rglob('*')
-        for f in files:
-            if not f.is_file():
-                continue
-            new_key = key + f.relative_to(src_path).as_posix()
-            new_path = self._uri + new_key
-            copy_file(f.resolve().as_uri(), new_path)
+        source_dir = src_path.resolve().as_uri()
+        s3_uri_prefix = self._uri + key
+        copy_file(source_dir, s3_uri_prefix)
 
     def keys(self):
         """
@@ -129,7 +123,7 @@ class Bucket(object):
         Returns:
             list of strings
         """
-        return list(map(lambda x: x.get('Key'), list_objects(self._bucket, '')))
+        return [x.get('Key') for x in list_objects(self._bucket, '')]
 
     def delete(self, key):
         """
@@ -165,11 +159,9 @@ class Bucket(object):
             if path doesn't exist
             if download fails
         """
-        if not key.endswith('/'):
-            copy_file(self._uri + key, fix_url(path))
-            return
-
-        _download_dir(self._bucket, key, fix_url(path))
+        source_uri = self._uri + key
+        dest_uri = fix_url(path)
+        copy_file(source_uri, dest_uri)
 
     def get_meta(self, key):
         """
@@ -184,11 +176,8 @@ class Bucket(object):
         Raises:
             if download fails
         """
-        response = s3_client.head_object(
-            Bucket=self._bucket,
-            Key=key
-        )
-        return response['Metadata']
+        src_uri = self._uri + key
+        return get_meta(src_uri)
 
     def set_meta(self, key, meta):
         """
@@ -204,18 +193,5 @@ class Bucket(object):
         Raises:
             if put to bucket fails
         """
-        meta = meta or {}
-        existing_meta = self.get_meta(key)
-        new_meta = existing_meta
-        new_meta['user_meta'] = json.dumps(meta)
-        s3_client.copy_object(
-            CopySource={
-                "Bucket": self._bucket,
-                "Key": key
-            },
-            Bucket=self._bucket,
-            Key=key,
-            MetadataDirective='REPLACE',
-            Metadata=new_meta
-        )
-        pass
+        dest_uri = self._uri + key
+        set_meta(dest_uri, meta)

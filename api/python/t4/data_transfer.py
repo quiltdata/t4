@@ -531,3 +531,27 @@ def get_bytes(src):
     else:
         raise NotImplementedError
     return data, meta
+
+def get_meta(src):
+    """
+    Gets S3 metadata for the object at a given S3 URI.
+    """
+    bucket, key, version_id = parse_s3_url(urlparse(src))
+    params = {
+        'Bucket': bucket,
+        'Key': key
+    }
+    if version_id:
+        params['VersionId'] = version_id
+    resp = s3_client.head_object(**params)
+    meta = _parse_metadata(resp)
+    return meta
+
+def set_meta(dest, meta):
+    """
+    Sets S3 metadata at dest URI without changing the underlying object.
+    """
+    old_meta = get_meta(dest)
+    old_meta['user_meta'] = meta
+    bucket, key, version_id = parse_s3_url(urlparse(dest))
+    copy_object(bucket, key, bucket, key, old_meta, version_id)
