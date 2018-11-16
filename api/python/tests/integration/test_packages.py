@@ -514,3 +514,19 @@ def test_diff():
     p1 = Package.browse('Quilt/Test')
     p2 = Package.browse('Quilt/Test')
     assert p1.diff(p2) == ([], [], [])
+
+
+def test_commit_message_on_push(tmpdir):
+    """ Verify commit messages populate correctly on push."""
+    with patch('botocore.client.BaseClient._make_api_call', new=mock_make_api_call):
+        with open(REMOTE_MANIFEST) as fd:
+            pkg = Package.load(fd)
+        with patch('t4.data_transfer._download_single_file', new=no_op_mock), \
+                patch('t4.data_transfer._download_dir', new=no_op_mock), \
+                patch('t4.Package.build', new=no_op_mock):
+            pkg.push('Quilt/test_pkg_name', tmpdir / 'pkg', message='test_message')
+            assert pkg._meta['commit_message'] == 'test_message'
+
+            # ensure messages are strings
+            with pytest.raises(ValueError):
+                pkg.push('Quilt/test_pkg_name', tmpdir / 'pkg', message={})
