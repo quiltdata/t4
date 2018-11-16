@@ -1,5 +1,4 @@
 import * as React from 'react';
-import { Grid } from 'react-bootstrap';
 
 import Footer from 'components/Footer';
 import { Pad } from 'components/LayoutHelpers';
@@ -9,11 +8,11 @@ import { composeComponent } from 'utils/reactTools';
 
 export default composeComponent('Layout',
   ({ children }) => (
-    <Grid fluid>
+    <React.Fragment>
       <NavBar />
       <Pad top left right bottom>
         {children}
       </Pad>
       <Footer />
-    </Grid>
+    </React.Fragment>
   ));
