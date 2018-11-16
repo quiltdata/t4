@@ -172,7 +172,7 @@ def test_package_fetch(tmpdir):
                 contents = file_.read().strip()
                 assert contents == expected[name], \
                     'unexpected contents in {}: {}'.format(name, contents)
-    assert file_count == 3, \
+    assert file_count == len(expected), \
         'fetch wrote {} files; expected: {}'.format(file_count, expected)
 
 def test_fetch(tmpdir):
