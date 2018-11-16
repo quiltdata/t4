@@ -17,4 +17,4 @@ def test_buggy_parquet():
     path = pathlib.Path(__file__).parent
     with open(path / 'data' / 'buggy_parquet.parquet', 'rb') as bad_parq:
         # Make sure this doesn't crash.
-        deserialize_obj(bad_parq.read(), TargetType.PYARROW)
+        deserialize_obj(bad_parq.read(), TargetType.PARQUET)

@@ -23,12 +23,12 @@ from .util import QuiltException, parse_file_url, parse_s3_url
 from . import xattr
 
 
-HELIUM_METADATA = 'helium'
-HELIUM_XATTR = 'com.quiltdata.helium'
+T4_METADATA = 't4'
+T4_XATTR = 'com.quiltdata.t4'
 
 if platform.system() == 'Linux':
     # Linux only allows users to modify user.* xattrs.
-    HELIUM_XATTR = 'user.%s' % HELIUM_XATTR
+    T4_XATTR = 'user.%s' % T4_XATTR
 
 s3_client = boto3.client('s3')
 s3_transfer_config = TransferConfig()
@@ -57,7 +57,7 @@ class TargetType(Enum):
     BYTES = 'bytes'
     UNICODE = 'unicode'
     JSON = 'json'
-    PYARROW = 'pyarrow'
+    PARQUET = 'parquet'
     NUMPY = 'numpy'
 
 
@@ -72,7 +72,7 @@ def deserialize_obj(data, target):
         import numpy as np
         buf = BytesIO(data)
         obj = np.load(buf, allow_pickle=False)
-    elif target == TargetType.PYARROW:
+    elif target == TargetType.PARQUET:
         import pyarrow as pa
         from pyarrow import parquet
         buf = BytesIO(data)
@@ -105,7 +105,7 @@ def _get_target_for_object(obj):
     elif isinstance(obj, np.ndarray):
         target = TargetType.NUMPY
     elif isinstance(obj, pd.DataFrame):
-        target = TargetType.PYARROW
+        target = TargetType.PARQUET
     else:
         raise QuiltException("Unsupported object type")
     return target
@@ -124,7 +124,7 @@ def serialize_obj(obj):
         buf = BytesIO()
         np.save(buf, obj, allow_pickle=False)
         data = buf.getvalue()
-    elif target == TargetType.PYARROW:
+    elif target == TargetType.PARQUET:
         import pyarrow as pa
         from pyarrow import parquet
         buf = BytesIO()
@@ -156,11 +156,11 @@ class ProgressCallback(BaseSubscriber):
 
 
 def _parse_metadata(resp):
-    return json.loads(resp['Metadata'].get(HELIUM_METADATA, '{}'))
+    return json.loads(resp['Metadata'].get(T4_METADATA, '{}'))
 
 def _parse_file_metadata(path):
     try:
-        meta_bytes = xattr.getxattr(path, HELIUM_XATTR)
+        meta_bytes = xattr.getxattr(path, T4_XATTR)
         meta = json.loads(meta_bytes.decode('utf-8'))
     except IOError:
         # No metadata
@@ -206,7 +206,7 @@ def _download_single_file(bucket, key, dest_path, version=None):
             extra_args=extra
         )
         future.result()
-        xattr.setxattr(dest_path, HELIUM_XATTR, json.dumps(meta).encode('utf-8'))
+        xattr.setxattr(dest_path, T4_XATTR, json.dumps(meta).encode('utf-8'))
 
 
 def _download_dir(bucket, prefix, dest_path):
@@ -262,7 +262,7 @@ def _download_dir(bucket, prefix, dest_path):
 
         for key, dest_file, _ in tuples_list:
             meta = metadata[key]
-            xattr.setxattr(dest_file, HELIUM_XATTR, json.dumps(meta).encode('utf-8'))
+            xattr.setxattr(dest_file, T4_XATTR, json.dumps(meta).encode('utf-8'))
 
 
 def download_file(bucket, key, dest_path, version=None):
@@ -344,7 +344,7 @@ def upload_file(src_path, bucket, key, override_meta=None):
             else:
                 meta = override_meta
 
-            extra_args = dict(Metadata={HELIUM_METADATA: json.dumps(meta)})
+            extra_args = dict(Metadata={T4_METADATA: json.dumps(meta)})
             existing_src = existing_etags.get(etag)
             if existing_src is not None:
                 # We found an existing object with the same ETag, so copy it instead of uploading
@@ -401,7 +401,7 @@ def copy_object(src_bucket, src_key, dest_bucket, dest_key, override_meta=None, 
     else:
         params.update(dict(
             MetadataDirective='REPLACE',
-            Metadata={HELIUM_METADATA: json.dumps(override_meta)}
+            Metadata={T4_METADATA: json.dumps(override_meta)}
         ))
 
     try:
@@ -467,12 +467,12 @@ def copy_file(src, dest, override_meta=None):
             shutil.copyfile(src_path, dest_path)
             shutil.copymode(src_path, dest_path)
             try:
-                meta_bytes = xattr.getxattr(src_path, HELIUM_XATTR)
+                meta_bytes = xattr.getxattr(src_path, T4_XATTR)
             except IOError:
                 # No metadata
                 pass
             else:
-                xattr.setxattr(dest_path, HELIUM_XATTR, meta_bytes)
+                xattr.setxattr(dest_path, T4_XATTR, meta_bytes)
         elif dest_url.scheme == 's3':
             dest_bucket, dest_path, dest_version_id = parse_s3_url(dest_url)
             if dest_version_id:
@@ -502,7 +502,7 @@ def put_bytes(data, dest, meta=None):
         dest_path.parent.mkdir(parents=True, exist_ok=True)
         dest_path.write_bytes(data)
         if meta is not None:
-            xattr.setxattr(dest_path, HELIUM_XATTR, json.dumps(meta).encode('utf-8'))
+            xattr.setxattr(dest_path, T4_XATTR, json.dumps(meta).encode('utf-8'))
     elif dest_url.scheme == 's3':
         dest_bucket, dest_path, dest_version_id = parse_s3_url(dest_url)
         if not dest_path or dest_path.endswith('/'):
@@ -513,7 +513,7 @@ def put_bytes(data, dest, meta=None):
             Bucket=dest_bucket,
             Key=dest_path,
             Body=data,
-            Metadata={HELIUM_METADATA: json.dumps(meta)}
+            Metadata={T4_METADATA: json.dumps(meta)}
         )
     else:
         raise NotImplementedError
