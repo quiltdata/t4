@@ -1,5 +1,6 @@
 import json
 import requests
+import re
 
 from aws_requests_auth.boto_utils import BotoAWSRequestsAuth
 from elasticsearch import Elasticsearch, RequestsHttpConnection
@@ -12,7 +13,7 @@ from .data_transfer import (TargetType, copy_file, deserialize_obj, get_bytes,
 from .packages import get_package_registry
 from .util import (HeliumConfig, QuiltException, CONFIG_PATH,
                    CONFIG_TEMPLATE, fix_url, parse_file_url, parse_s3_url, read_yaml, validate_url,
-                   write_yaml, yaml_has_comments)
+                   write_yaml, yaml_has_comments, PACKAGE_NAME_FORMAT)
 
 # backports
 from six.moves import urllib
@@ -99,6 +100,48 @@ def delete(target):
         raise ValueError("Cannot delete a version")
 
     delete_object(bucket, path)
+
+
+def delete_package(name, registry=None):
+    # TODO: pass low-level code to data_transfer.py
+    if not re.match(PACKAGE_NAME_FORMAT, name):
+        raise QuiltException("Invalid package name, must contain exactly one /.")
+
+    if not name in list_packages(registry):
+        raise QuiltException("No such package exists in the given directory.")
+
+    registry_base_path = get_package_registry(fix_url(registry) if registry else None)
+    registry_url = urlparse(registry_base_path)
+    if registry_url.scheme != 'file':
+        raise NotImplementedError
+
+    registry_dir = pathlib.Path(parse_file_url(registry_url)).as_posix()
+
+    import os
+    import shutil
+    # TODO: rebase on Dima's package tree update to include a package name splitting utility
+    # TODO: rebase on Pathlib
+    pkg_namespace, pkg_subname = name.split("/")
+    pkg_dir = registry_dir + '/named_packages/' + name + '/'
+    pkg_namespace_dir = registry_dir + '/named_packages/' + pkg_namespace + '/'
+    packages_path = registry_dir + '/packages/'
+
+    relevant_tophashes = []
+    for tophash_file in os.listdir(pkg_dir):
+        # skip latest, which always duplicates a tophashed file
+        if tophash_file == 'latest':
+            continue
+
+        with open(pkg_dir + '/' + tophash_file, 'r') as f:
+            relevant_tophashes.append(f.read())
+
+    shutil.rmtree(pkg_dir)
+    import pdb; pdb.set_trace()
+    if len(os.listdir(pkg_namespace_dir)) == 0:
+        os.rmdir(pkg_namespace_dir)
+
+    for relevant_tophash in relevant_tophashes:
+        os.remove(packages_path + relevant_tophash)
 
 
 def ls(target, recursive=False):
