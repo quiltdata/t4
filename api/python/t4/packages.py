@@ -238,10 +238,9 @@ class PackageEntry(object):
 class Package(object):
     """ In-memory representation of a package """
 
-    def __init__(self, children=None, meta=None):
-        self._children = {} if children is None else children
-        self._meta = {'version': 'v0'} if meta is None else meta
-
+    def __init__(self):
+        self._children = {}
+        self._meta = {'version': 'v0'}
 
     @classmethod
     def validate_package_name(cls, name):
@@ -318,6 +317,10 @@ class Package(object):
 
     @classmethod
     def _split_key(cls, logical_key):
+        """
+        Converts a string logical key like 'a/b/c' into a list of ['a', 'b', 'c'].
+        Returns the original key if it's already a list or a tuple.
+        """
         if isinstance(logical_key, string_types):
             path = logical_key.split('/')
         elif isinstance(logical_key, (tuple, list)):
@@ -352,8 +355,8 @@ class Package(object):
             otherwise Package
         """
         pkg = self
-        for key in self._split_key(logical_key):
-            pkg = pkg._children[key]
+        for key_fragment in self._split_key(logical_key):
+            pkg = pkg._children[key_fragment]
         return pkg
 
     def fetch(self, dest):
@@ -420,7 +423,8 @@ class Package(object):
         meta = reader.read()
         # Pop the top hash -- it should only be calculated dynamically
         meta.pop('top_hash', None)
-        pkg = cls({}, meta)
+        pkg = cls()
+        pkg._meta = meta
         for obj in reader:
             path = cls._split_key(obj.pop('logical_key'))
             subpkg = pkg._ensure_subpackage(path[:-1])
@@ -481,27 +485,32 @@ class Package(object):
 
     def get(self, logical_key):
         """
-        Gets object from local_key and returns it as an in-memory object.
+        Gets object from local_key and returns its physical path.
+        Equivalent to self[logical_key].get().
 
         Args:
             logical_key(string): logical key of the object to get
 
         Returns:
-            A tuple containing the deserialized object from the logical_key and its metadata
+            Physical path as a string.
 
         Raises:
             KeyError: when logical_key is not present in the package
-            physical key failure
-            hash verification fail
-            when deserialization metadata is not present
+            ValueError: if the logical_key points to a Package rather than PackageEntry.
         """
-        return self[logical_key].get()
+        obj = self[logical_key]
+        if not isinstance(obj, PackageEntry):
+            raise ValueError("Key does point to a PackageEntry")
+        return obj.get()
 
     def get_meta(self, logical_key):
         """
         Returns metadata for specified logical key.
         """
-        return self[logical_key].meta
+        obj = self[logical_key]
+        if not isinstance(obj, PackageEntry):
+            raise ValueError("Key does point to a PackageEntry")
+        return obj.meta
 
     def build(self, name=None, registry=None):
         """
@@ -619,9 +628,18 @@ class Package(object):
         return self
 
     def _ensure_subpackage(self, path):
+        """
+        Creates a package and any intermediate packages at the given path.
+
+        Args:
+            path(list): logical key as a list or tuple
+
+        Returns:
+            newly created or existing package at that path
+        """
         pkg = self
-        for key in path:
-            pkg = pkg._children.setdefault(key, Package())
+        for key_fragment in path:
+            pkg = pkg._children.setdefault(key_fragment, Package())
         return pkg
 
     def delete(self, logical_key):
@@ -707,7 +725,8 @@ class Package(object):
             fail to put bytes
             fail to put package to registry
         """
-        pkg = self.__class__({}, self._meta)
+        pkg = self.__class__()
+        pkg._meta = self._meta
         # Since all that is modified is physical keys, pkg will have the same top hash
         for logical_key, entry in self.walk():
             # Copy the datafiles in the package.
