@@ -2,11 +2,13 @@ import initial from 'lodash/initial';
 import last from 'lodash/last';
 import omit from 'lodash/omit';
 import pick from 'lodash/pick';
+import * as R from 'ramda';
 import React, { createElement, Fragment } from 'react';
 import {
   compose,
   hoistStatics,
   mapProps,
+  getDisplayName,
   setDisplayName,
   wrapDisplayName,
 } from 'recompose';
@@ -195,6 +197,23 @@ export const nest = (...components) =>
     const [Component, props = {}] = [].concat(comp);
     return <Component {...props}>{children}</Component>;
   }, undefined);
+
+/**
+ * Wrap component with another component.
+ *
+ * @param {react.Component} Wrapper
+ *   Wrapper component
+ *
+ * @param {function} propMapper
+ *   Prop mapper for the wrapper component. Default to identity, meaning
+ *   that the wrapper component gets the same props as wrapped component.
+ *
+ * @returns {react.Component}
+ */
+export const wrap = (Wrapper, propMapper = R.identity) =>
+  composeHOC(`wrap(${getDisplayName(Wrapper)})`,
+    (Component) => (props) =>
+      nest([Wrapper, propMapper(props)], [Component, props]));
 
 /**
  * Shorthand for creating context providers.
