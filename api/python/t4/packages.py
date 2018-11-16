@@ -373,7 +373,7 @@ class Package(object):
         """
         # TODO: do this with improved parallelism? connections etc. could be reused
         nice_dest = fix_url(dest).rstrip('/')
-        for logical_key, entry in self._walk():
+        for logical_key, entry in self.walk():
             entry.fetch('{}/{}'.format(nice_dest, quote(logical_key)))
 
     def keys(self):
@@ -388,12 +388,17 @@ class Package(object):
     def __len__(self):
         return len(self._children)
 
-    def _walk(self, prefix=''):
+    def walk(self):
+        """
+        Generator that traverses all entries in the package tree and returns tuples of (key, entry),
+        with keys in alphabetical order.
+        """
         for name, child in sorted(self._children.items()):
             if isinstance(child, PackageEntry):
-                yield prefix + name, child
+                yield name, child
             else:
-                yield from child._walk(prefix + name + '/')
+                for key, value in child.walk():
+                    yield name + '/' + key, value
 
     @classmethod
     def load(cls, readable_file):
@@ -556,7 +561,7 @@ class Package(object):
             'value': self.top_hash()
         }
         writer.write(top_level_meta)
-        for logical_key, entry in self._walk():
+        for logical_key, entry in self.walk():
             writer.write({'logical_key': logical_key, **entry.as_dict()})
 
     def update(self, new_keys_dict, meta=None, prefix=None):
@@ -649,7 +654,7 @@ class Package(object):
         hashable_meta.pop('top_hash', None)
         top_meta = json.dumps(hashable_meta, sort_keys=True, separators=(',', ':'))
         top_hash.update(top_meta.encode('utf-8'))
-        for logical_key, entry in self._walk():
+        for logical_key, entry in self.walk():
             entry_dict = entry.as_dict()
             entry_dict['logical_key'] = logical_key
             entry_dict.pop('physical_keys', None)
@@ -704,7 +709,7 @@ class Package(object):
         """
         pkg = self.__class__({}, self._meta)
         # Since all that is modified is physical keys, pkg will have the same top hash
-        for logical_key, entry in self._walk():
+        for logical_key, entry in self.walk():
             # Copy the datafiles in the package.
             physical_key = _to_singleton(entry.physical_keys)
             new_physical_key = dest_url + "/" + quote(logical_key)
@@ -732,8 +737,8 @@ class Package(object):
         """
         deleted = []
         modified = []
-        other_entries = dict(other_pkg._walk())
-        for lk, entry in self._walk():
+        other_entries = dict(other_pkg.walk())
+        for lk, entry in self.walk():
             other_entry = other_entries.pop(lk, None)
             if other_entry is None:
                 deleted.append(lk)
