@@ -103,7 +103,6 @@ def delete(target):
 
 
 def delete_package(name, registry=None):
-    # TODO: pass low-level code to data_transfer.py
     if not re.match(PACKAGE_NAME_FORMAT, name):
         raise QuiltException("Invalid package name, must contain exactly one /.")
 
@@ -115,33 +114,31 @@ def delete_package(name, registry=None):
     if registry_url.scheme != 'file':
         raise NotImplementedError
 
-    registry_dir = pathlib.Path(parse_file_url(registry_url)).as_posix()
-
-    import os
-    import shutil
     # TODO: rebase on Dima's package tree update to include a package name splitting utility
-    # TODO: rebase on Pathlib
     pkg_namespace, pkg_subname = name.split("/")
-    pkg_dir = registry_dir + '/named_packages/' + name + '/'
-    pkg_namespace_dir = registry_dir + '/named_packages/' + pkg_namespace + '/'
-    packages_path = registry_dir + '/packages/'
+
+    registry_dir = pathlib.Path(parse_file_url(registry_url)).as_posix()
+    pkg_namespace_dir = pathlib.Path(registry_dir) / 'named_packages/' / pkg_namespace
+    pkg_dir = pkg_namespace_dir / pkg_subname
+    packages_path = pathlib.Path(registry_dir) / 'packages'
 
     relevant_tophashes = []
-    for tophash_file in os.listdir(pkg_dir):
+    for tophash_file in pkg_dir.glob('*/'):
         # skip latest, which always duplicates a tophashed file
-        if tophash_file == 'latest':
-            continue
+        if tophash_file.name != 'latest':
+            with open(tophash_file, 'r') as f:
+                relevant_tophashes.append(f.read())
 
-        with open(pkg_dir + '/' + tophash_file, 'r') as f:
-            relevant_tophashes.append(f.read())
+        # remove the file
+        tophash_file.unlink()
 
-    shutil.rmtree(pkg_dir)
-    import pdb; pdb.set_trace()
-    if len(os.listdir(pkg_namespace_dir)) == 0:
-        os.rmdir(pkg_namespace_dir)
+    pkg_dir.rmdir()
+
+    if len(list(pkg_namespace_dir.glob("*/"))) == 0:
+        pkg_namespace_dir.rmdir()
 
     for relevant_tophash in relevant_tophashes:
-        os.remove(packages_path + relevant_tophash)
+        (packages_path / relevant_tophash).unlink()
 
 
 def ls(target, recursive=False):
