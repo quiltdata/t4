@@ -525,7 +525,7 @@ def test_commit_message_on_push(tmpdir):
                 patch('t4.data_transfer._download_dir', new=no_op_mock), \
                 patch('t4.Package.build', new=no_op_mock):
             pkg.push('Quilt/test_pkg_name', tmpdir / 'pkg', message='test_message')
-            assert pkg._meta['commit_message'] == 'test_message'
+            assert pkg._meta['message'] == 'test_message'
 
             # ensure messages are strings
             with pytest.raises(ValueError):

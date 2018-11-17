@@ -535,7 +535,7 @@ class Package(object):
         if msg is not None and not isinstance(msg, str):
             raise ValueError("The commit message must be a string.")
 
-        self._meta.update({'commit_message': msg})
+        self._meta.update({'message': msg})
 
     def build(self, name=None, registry=None, message=None):
         """
