@@ -197,6 +197,6 @@ class Bucket(object):
             if put to bucket fails
         """
         dest = self._uri + key
-        existing_meta = self.get_meta(dest)
+        existing_meta = self.get_meta(key)
         existing_meta['user_meta'] = meta
         copy_object(self._bucket, key, self._bucket, key, existing_meta)
