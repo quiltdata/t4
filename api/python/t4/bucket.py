@@ -1,9 +1,9 @@
 import pathlib
 from urllib.parse import urlparse
 
-from .data_transfer import (TargetType, copy_file, delete_object, deserialize_obj,
-                            get_bytes, get_meta, list_objects, put_bytes,
-                            serialize_obj, set_meta)
+from .data_transfer import (TargetType, copy_file, copy_object, delete_object,
+                            deserialize_obj, get_bytes, get_meta,
+                            list_objects, put_bytes, serialize_obj)
 from .util import QuiltException, fix_url, parse_s3_url
 
 class Bucket(object):
@@ -21,8 +21,11 @@ class Bucket(object):
             a new Bucket
         """
         parsed = urlparse(bucket_uri)
-        bucket, _, _ = parse_s3_url(parsed)
-        self._uri = parsed.geturl().rstrip('/') + '/' # Ensure trailing '/'
+        bucket, path, version_id = parse_s3_url(parsed)
+        if path or version_id:
+            raise QuiltException("Bucket URI shouldn't contain a path or a version ID")
+
+        self._uri = 's3://{}/'.format(bucket)
         self._bucket = bucket
 
     def deserialize(self, key):
@@ -193,5 +196,7 @@ class Bucket(object):
         Raises:
             if put to bucket fails
         """
-        dest_uri = self._uri + key
-        set_meta(dest_uri, meta)
+        dest = self._uri + key
+        existing_meta = self.get_meta(dest)
+        existing_meta['user_meta'] = meta
+        copy_object(self._bucket, key, self._bucket, key, existing_meta)

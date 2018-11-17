@@ -546,12 +546,3 @@ def get_meta(src):
     resp = s3_client.head_object(**params)
     meta = _parse_metadata(resp)
     return meta
-
-def set_meta(dest, meta):
-    """
-    Sets S3 metadata at dest URI without changing the underlying object.
-    """
-    old_meta = get_meta(dest)
-    old_meta['user_meta'] = meta
-    bucket, key, version_id = parse_s3_url(urlparse(dest))
-    copy_object(bucket, key, bucket, key, old_meta, version_id)
