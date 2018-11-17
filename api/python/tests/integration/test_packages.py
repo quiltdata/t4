@@ -1,15 +1,13 @@
 """ Integration tests for T4 Packages. """
-import appdirs
-import io
-import jsonlines
 import os
 import pathlib
-import pytest
+from pathlib import Path
 import shutil
 from urllib.parse import urlparse
 
+import jsonlines
 from mock import patch
-from pathlib import Path
+import pytest
 
 import t4
 from t4 import Package
@@ -54,8 +52,7 @@ def test_build(tmpdir):
     out_path = Path(BASE_PATH, ".quilt/packages", top_hash)
     with open(out_path) as fd:
         pkg = Package.load(fd)
-        assert test_file.resolve().as_uri() \
-            == pkg._data['foo'].physical_keys[0] # pylint: disable=W0212
+        assert test_file.resolve().as_uri() == pkg['foo'].physical_keys[0]
 
     # Verify latest points to the new location.
     named_pointer_path = Path(BASE_PATH, ".quilt/named_packages/Quilt/Test/latest")
@@ -69,8 +66,7 @@ def test_build(tmpdir):
     out_path = Path(BASE_PATH, ".quilt/packages", top_hash)
     with open(out_path) as fd:
         pkg = Package.load(fd)
-        assert test_file.resolve().as_uri() \
-            == pkg._data['bar'].physical_keys[0] # pylint: disable=W0212
+        assert test_file.resolve().as_uri() == pkg['bar'].physical_keys[0]
 
 
 def test_read_manifest(tmpdir):
@@ -276,26 +272,20 @@ def test_set_dir(tmpdir):
 
     pkg = pkg.set_dir("/", ".")
 
-    assert pathlib.Path('foo').resolve().as_uri() \
-        == pkg._data['foo'].physical_keys[0] # pylint: disable=W0212
-    assert pathlib.Path('bar').resolve().as_uri() \
-        == pkg._data['bar'].physical_keys[0] # pylint: disable=W0212
-    assert pathlib.Path(bazdir / 'baz').resolve().as_uri() \
-        == pkg._data['foo_dir/baz_dir/baz'].physical_keys[0] # pylint: disable=W0212
-    assert pathlib.Path(foodir / 'bar').resolve().as_uri() \
-        == pkg._data['foo_dir/bar'].physical_keys[0] # pylint: disable=W0212
+    assert pathlib.Path('foo').resolve().as_uri() == pkg['foo'].physical_keys[0]
+    assert pathlib.Path('bar').resolve().as_uri() == pkg['bar'].physical_keys[0]
+    assert (bazdir / 'baz').resolve().as_uri() == pkg['foo_dir/baz_dir/baz'].physical_keys[0]
+    assert (foodir / 'bar').resolve().as_uri() == pkg['foo_dir/bar'].physical_keys[0]
 
     pkg = Package()
     pkg = pkg.set_dir('/','foo_dir/baz_dir/')
     # todo nested at set_dir site or relative to set_dir path.
-    assert pathlib.Path(bazdir / 'baz').resolve().as_uri() \
-        == pkg._data['baz'].physical_keys[0] # pylint: disable=W0212
+    assert (bazdir / 'baz').resolve().as_uri() == pkg['baz'].physical_keys[0]
 
     pkg = Package()
     pkg = pkg.set_dir('my_keys', 'foo_dir/baz_dir/')
     # todo nested at set_dir site or relative to set_dir path.
-    assert pathlib.Path(bazdir / 'baz').resolve().as_uri() \
-        == pkg._data['my_keys/baz'].physical_keys[0] # pylint: disable=W0212
+    assert (bazdir / 'baz').resolve().as_uri() == pkg['my_keys/baz'].physical_keys[0]
 
 
 def test_updates(tmpdir):
@@ -315,8 +305,7 @@ def test_updates(tmpdir):
         fd.write('test_file_content_string')
         test_file = Path(fd.name)
     pkg = pkg.update({'bar': 'bar.txt'})
-    assert test_file.resolve().as_uri() \
-        == pkg._data['bar'].physical_keys[0] # pylint: disable=W0212
+    assert test_file.resolve().as_uri() == pkg['bar'].physical_keys[0]
 
     assert pkg['foo']() == '123\n'
 
@@ -325,8 +314,7 @@ def test_updates(tmpdir):
         fd.write('test_file_content_string')
         test_file = Path(fd.name)
     pkg = pkg.update({'baz': 'baz.txt'}, prefix='prefix/')
-    assert test_file.resolve().as_uri() \
-        == pkg._data['prefix/baz'].physical_keys[0] # pylint: disable=W0212
+    assert test_file.resolve().as_uri() == pkg['prefix/baz'].physical_keys[0]
 
     assert pkg['foo']() == '123\n'
 
@@ -393,8 +381,7 @@ def test_set_package_entry(tmpdir):
         test_file = Path(fd.name)
     pkg['bar'].set('bar.txt')
 
-    assert test_file.resolve().as_uri() \
-        == pkg._data['bar'].physical_keys[0] # pylint: disable=W0212
+    assert test_file.resolve().as_uri() == pkg['bar'].physical_keys[0]
 
 def test_tophash_changes(tmpdir):
     test_file = tmpdir / 'test.txt'
@@ -421,16 +408,16 @@ def test_tophash_changes(tmpdir):
 
 def test_keys():
     pkg = Package()
-    assert pkg.keys() == []
+    assert not pkg.keys()
 
     pkg.set('asdf', LOCAL_MANIFEST)
-    assert pkg.keys() == ['asdf']
+    assert set(pkg.keys()) == {'asdf'}
 
     pkg.set('jkl;', REMOTE_MANIFEST)
-    assert set(pkg.keys()) == set(['asdf', 'jkl;'])
+    assert set(pkg.keys()) == {'asdf', 'jkl;'}
 
     pkg.delete('asdf')
-    assert pkg.keys() == ['jkl;']
+    assert set(pkg.keys()) == {'jkl;'}
 
 
 def test_iter():
@@ -446,7 +433,7 @@ def test_iter():
 def test_invalid_set_key(tmpdir):
     """Verify an exception when setting a key with a path object."""
     pkg = Package()
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(TypeError):
         pkg.set('asdf/jkl', 123)
 
 def test_brackets():
@@ -454,10 +441,15 @@ def test_brackets():
     pkg.set('asdf/jkl', LOCAL_MANIFEST)
     pkg.set('asdf/qwer', LOCAL_MANIFEST)
     pkg.set('qwer/asdf', LOCAL_MANIFEST)
-    assert set(pkg.keys()) == set(['asdf/jkl', 'asdf/qwer', 'qwer/asdf'])
+    assert set(pkg.keys()) == {'asdf', 'qwer'}
 
     pkg2 = pkg['asdf']
-    assert set(pkg2.keys()) == set(['jkl', 'qwer'])
+    assert set(pkg2.keys()) == {'jkl', 'qwer'}
+
+    assert pkg['asdf']['qwer'].get() == pathlib.Path(LOCAL_MANIFEST).as_uri()
+
+    assert pkg['asdf']['qwer'] == pkg['asdf/qwer'] == pkg[('asdf', 'qwer')]
+    assert pkg[[]] == pkg
 
     pkg = (
         Package()
@@ -470,6 +462,12 @@ def test_brackets():
 
     with pytest.raises(KeyError):
         pkg['baz']
+
+    with pytest.raises(TypeError):
+        pkg[b'asdf']
+
+    with pytest.raises(TypeError):
+        pkg[0]
 
 def test_list_remote_packages():
     with patch('t4.api.list_objects',
