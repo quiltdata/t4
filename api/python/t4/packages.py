@@ -271,7 +271,7 @@ class Package(object):
 
         pkg = cls.browse(name=name, registry=registry, pkg_hash=pkg_hash)
         if dest:
-            return pkg.push(name=name, dest=dest, dest_registry=dest_registry)
+            return pkg.push(name=name, dest=dest, registry=dest_registry)
         else:
             raise NotImplementedError
 
