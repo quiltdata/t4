@@ -85,8 +85,6 @@ def test_read_manifest(tmpdir):
         original_set = list(jsonlines.Reader(fd))
     with open(out_path) as fd:
         written_set = list(jsonlines.Reader(fd))
-    print(original_set)
-    print(written_set)
     assert len(original_set) == len(written_set)
     assert sorted(original_set, key=lambda k: k.get('logical_key','manifest')) \
         == sorted(written_set, key=lambda k: k.get('logical_key','manifest'))
