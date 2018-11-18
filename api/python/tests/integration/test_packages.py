@@ -523,3 +523,13 @@ def test_top_hash_stable():
 
     assert pkg.top_hash() == pkg_hash, \
            "Unexpected top_hash for {}/.quilt/packages/{}".format(registry, pkg_hash)
+
+
+@patch('appdirs.user_data_dir', lambda x, y: os.path.join('test_appdir', x))
+def test_local_package_delete(tmpdir):
+    """Verify that local package delete works."""
+    top_hash = Package().build("Quilt/Test")
+    t4.delete_package('Quilt/Test', registry=BASE_PATH)
+
+    assert 'Quilt/Test' not in t4.list_packages()
+    assert top_hash not in os.listdir(Path(BASE_PATH, '.quilt/packages').as_posix())

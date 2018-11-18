@@ -106,7 +106,7 @@ def delete_package(name, registry=None):
     if not re.match(PACKAGE_NAME_FORMAT, name):
         raise QuiltException("Invalid package name, must contain exactly one /.")
 
-    if not name in list_packages(registry):
+    if name not in list_packages(registry):
         raise QuiltException("No such package exists in the given directory.")
 
     registry_base_path = get_package_registry(fix_url(registry) if registry else None)
@@ -114,7 +114,6 @@ def delete_package(name, registry=None):
     if registry_url.scheme != 'file':
         raise NotImplementedError
 
-    # TODO: rebase on Dima's package tree update to include a package name splitting utility
     pkg_namespace, pkg_subname = name.split("/")
 
     registry_dir = pathlib.Path(parse_file_url(registry_url)).as_posix()
