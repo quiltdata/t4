@@ -73,12 +73,18 @@ To update a package, just `push` it again with new contents.
 
 
 ### Pulling a package from T4
-To pull a package that has been published to T4, use `browse`:
+To pull everything in a published package onto your local machine use `install`:
+
+    t4.Package.install(
+        "username/packagename", 
+        "s3://name-of-your-t4-bucket",
+        dest="path/to/file/location"
+    )
+
+To pull just the manifest from a published package, use  `browse`. You can then download specific files and subdirectories of the package using `fetch`:
 
 	# load the package from the registry
 	p = t4.Package.browse("username/packagename", registry="s3://name-of-your-t4-bucket")
-
-This will find the manifest associated with the given name and registry and downloads it into memory. This will not download the actual bytes. To do that, you can use `fetch`:
 
 	# download everything from a package
 	p.fetch("/", "target/directory/")
@@ -86,7 +92,9 @@ This will find the manifest associated with the given name and registry and down
 	# download a specific entry from a package
 	p.fetch("foo.parquet", "target/directory/foo.parquet")
 
-Especially with large data packages, there are many cases in which you might want to download a manifest describing a package, without downloading the actual contents of the package itself. This T4 API provides this functionality.
+`install` allows you to get everything in a package all at once.
+
+`browse` plus `fetch` allows you to inspect a package before downloading just the parts that are relevant to you. This is helpful when working with large packages, which are potentially too cumbersome to download all at once.
 
 
 ### Reading and writing entry metadata
@@ -159,11 +167,9 @@ objects. In the above example, `df` is automatically stored as an Apache Parquet
 
 
 ### Moving data not on T4
-We encourage a push/pull architecture based on having data packages ultimately live on T4. But you may also use the t4 CLI to handle moving data anywhere on your local file system.
+We encourage a build-push-pull development cycle against a central registry in S3, or on a remote disk or NAS. But you may also use the T4 CLI to handle moving data anywhere on your local file system.
 
-For example, suppose that you have NAS accessible on your machine from `"nas://"`. All of constructing, pushing, and pulling still work.
-
-To create a package referencing that data and save it locally:
+For example, suppose that you have NAS accessible on your machine from `"nas://"`. To create a package referencing that data and save it locally:
 
     p = t4.Package()
     p = p.set("foo", "nas://foo")
@@ -173,23 +179,23 @@ To load the contents of that package locally:
 
 	p.fetch("/", "target/directory")
 
+
 ### Metadata and search
 
 T4 supports full-text search for select objects, and faceted search for metadata.
 
-`Package.set()` and `Package.update()` take an optional `meta={}` keyword.
-The metadata in `meta=` are stored with your data and indexed by T4's search function.
+`Package.set()` and `Package.update()` take an optional `meta={}` keyword. The metadata in `meta=` are stored with your data and indexed by T4's search function.
 
 T4 supports full-text search on a subset of the objects in your S3 bucket
 (T4 uses [Elasticsearch Service](https://aws.amazon.com/elasticsearch-service/)).
-By default, .md (markdown) and .ipynb (Jupyter) files are indexed.
+By default, `.md` (markdown) and `.ipynb` (Jupyter) files are indexed.
 As a result you can search through code and markdown in notebook files.
 
 You may search in two ways:
 * With the search bar in your T4 web catalog
 * With [`t4.search`](#`t4.search()`) command.
 
-To modify which file types are searchable, populate a `.quilt/config.json` file in your S3 bucket. Note that this file does not exist by default. The contents of the file shoud be something like this:
+To modify which file types are searchable, populate a `.quilt/config.json` file in your S3 bucket. Note that this file does not exist by default. The contents of the file should be something like this:
 
 ```json
 {
@@ -245,6 +251,8 @@ Example:
 ## API reference
 
 Coming soon! For now please see the docstrings of individual API methods.
+
+(you can print out a docstring using `help(t4.methodname)`, or `t4.methodname?` in IPython)
 
 
 ## Known issues
