@@ -530,3 +530,14 @@ def test_dir_meta(tmpdir):
     with open(dump_path) as f:
         pkg2 = Package.load(f)
     assert pkg2.get_meta('asdf') == test_meta
+
+def test_top_hash_stable():
+    """Ensure that top_hash() never changes for a given manifest"""
+
+    registry = Path(__file__).parent / 'data'
+    pkg_hash = '20de5433549a4db332a11d8d64b934a82bdea8f144b4aecd901e7d4134f8e733'
+
+    pkg = Package.browse(registry=registry, pkg_hash=pkg_hash)
+
+    assert pkg.top_hash() == pkg_hash, \
+           "Unexpected top_hash for {}/.quilt/packages/{}".format(registry, pkg_hash)
