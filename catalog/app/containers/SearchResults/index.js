@@ -12,16 +12,15 @@ import styled from 'styled-components';
 import apiStatus from 'constants/api';
 import Error from 'components/Error';
 import Help from 'components/Help';
-import Layout from 'components/Layout';
 import Tag from 'components/Tag';
 import Working from 'components/Working';
 import { ES } from 'utils/AWS';
+import * as NamedRoutes from 'utils/NamedRoutes';
 import { setSearchText, selectSearchText } from 'utils/SearchProvider';
 import { composeComponent } from 'utils/reactTools';
 import { injectReducer } from 'utils/ReducerInjector';
 import { injectSaga } from 'utils/SagaInjector';
 import { readableBytes } from 'utils/string';
-import withParsedQuery from 'utils/withParsedQuery';
 
 import { getSearch } from './actions';
 import { REDUX_KEY } from './constants';
@@ -103,7 +102,10 @@ const Version = composeComponent('SearchResults.Version',
   ));
 
 const Hit = composeComponent('SearchResults.Hit',
+  NamedRoutes.inject(),
   ({
+    bucket,
+    urls,
     path,
     timestamp,
     size,
@@ -115,7 +117,7 @@ const Hit = composeComponent('SearchResults.Hit',
     <HitCard>
       <CardText style={{ paddingBottom: 0 }}>
         <Heading>
-          <Link to={`/browse/${path}`}>{path}</Link>
+          <Link to={urls.bucketTree(bucket, path)}>{path}</Link>
         </Heading>
         {!!text && <Text>{text}</Text>}
         {!!meta && (
@@ -158,34 +160,30 @@ const NothingFound = () => (
 );
 
 export default composeComponent('SearchResults',
+  setPropTypes({
+    bucket: PropTypes.string.isRequired,
+    q: PropTypes.string.isRequired,
+  }),
   ES.inject(),
   injectReducer(REDUX_KEY, reducer),
   injectSaga(REDUX_KEY, saga),
-  withParsedQuery,
   connect(createStructuredSelector({
     search: selectSearch,
     searchText: selectSearchText,
   })),
-  setPropTypes({
-    dispatch: PropTypes.func.isRequired,
-    location: PropTypes.shape({
-      query: PropTypes.object.isRequired,
-    }).isRequired,
-    search: PropTypes.object.isRequired,
-    searchText: PropTypes.string.isRequired,
-  }),
+  NamedRoutes.inject(),
   lifecycle({
     componentWillMount() {
       const {
-        location: { query: { q } },
+        q,
         searchText,
         dispatch,
       } = this.props;
       if (q !== searchText) dispatch(setSearchText(q));
       dispatch(getSearch(q));
     },
-    componentWillReceiveProps({ dispatch, searchText, location: { query: { q } } }) {
-      const oldQ = this.props.location.query.q;
+    componentWillReceiveProps({ dispatch, searchText, q }) {
+      const oldQ = this.props.q;
       if (q !== oldQ) {
         dispatch(getSearch(q));
         if (q !== searchText) dispatch(setSearchText(q));
@@ -195,38 +193,35 @@ export default composeComponent('SearchResults',
       this.props.dispatch(setSearchText(''));
     },
   }),
-  ({ search }) => (
-    <Layout>
-      {(({ error, status, response }) => {
-        // eslint-disable-next-line default-case
-        switch (status) {
-          case undefined:
-          case apiStatus.WAITING:
-            return <Working><FormattedMessage {...messages.header} /></Working>;
-          case apiStatus.ERROR:
-            return <Error {...error} />;
+  ({ bucket, urls, search: { error, status, response } }) => {
+    // eslint-disable-next-line default-case
+    switch (status) {
+      case undefined:
+      case apiStatus.WAITING:
+        return <Working><FormattedMessage {...messages.header} /></Working>;
+      case apiStatus.ERROR:
+        return <Error {...error} />;
+    }
+    return (
+      <div>
+        <h1><FormattedMessage {...messages.header} /></h1>
+        {response.length
+          ? response.map((result) =>
+            <Hit key={result.path} bucket={bucket} {...result} />)
+          : <NothingFound />
         }
-        return (
-          <div>
-            <h1><FormattedMessage {...messages.header} /></h1>
-            {response.length
-              ? response.map((result) => <Hit key={result.path} {...result} />)
-              : <NothingFound />
-            }
-            <br />
-            <Help to="/browse/">Browse registry</Help>
-            <br />
-            {/*
-            {response.length === 0 ? null : (
-              <Fragment>
-                <h1>New packages</h1>
-                <Gallery />
-              </Fragment>
-            )}
-            */}
-            <br />
-          </div>
-        );
-      })(search)}
-    </Layout>
-  ));
+        <br />
+        <Help to={urls.bucketTree(bucket)}>Browse the bucket</Help>
+        <br />
+        {/*
+        {response.length === 0 ? null : (
+          <Fragment>
+            <h1>New packages</h1>
+            <Gallery />
+          </Fragment>
+        )}
+        */}
+        <br />
+      </div>
+    );
+  });

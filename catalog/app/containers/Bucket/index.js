@@ -1,52 +1,39 @@
 import * as React from 'react';
-// import { Link } from 'react-router-dom';
 
 import Layout from 'components/Layout';
+import SearchResults from 'containers/SearchResults';
+import * as RT from 'utils/reactTools';
+import withParsedQuery from 'utils/withParsedQuery';
+
+import Summary from './Summary';
+
+export Tree from './Tree';
 
 
 /* eslint-disable react/prop-types */
 
-export const Overview = ({ match: { params } }) => (
-  <Layout bucket={params.bucket} section="overview">
-    <div>
-      <h1>bucket overview</h1>
-      <pre>{JSON.stringify(params)}</pre>
-    </div>
+export const Overview = ({ match: { params: { bucket } } }) => (
+  <Layout>
+    <Summary bucket={bucket} path="" progress />
   </Layout>
 );
 
-export const PackageList = ({ match: { params } }) => (
-  <Layout bucket={params.bucket} section="packages">
-    <div>
-      <h1>bucket packages</h1>
-      <pre>{JSON.stringify(params)}</pre>
-    </div>
+export const PackageList = () => (
+  <Layout>
+    <h1>Packages are coming soon</h1>
   </Layout>
 );
 
-export const PackageDetail = ({ match: { params } }) => (
-  <Layout bucket={params.bucket} section="packages">
-    <div>
-      <h1>bucket package</h1>
-      <pre>{JSON.stringify(params)}</pre>
-    </div>
+export const PackageDetail = () => (
+  <Layout>
+    <h1>Packages are coming soon</h1>
   </Layout>
 );
 
-export const Tree = ({ match: { params } }) => (
-  <Layout bucket={params.bucket} section="tree">
-    <div>
-      <h1>bucket tree</h1>
-      <pre>{JSON.stringify(params)}</pre>
-    </div>
-  </Layout>
-);
-
-export const Search = ({ match: { params } }) => (
-  <Layout bucket={params.bucket}>
-    <div>
-      <h1>bucket search</h1>
-      <pre>{JSON.stringify(params)}</pre>
-    </div>
-  </Layout>
-);
+export const Search = RT.composeComponent('Bucket.Search',
+  withParsedQuery,
+  ({ location: { query: { q } }, match: { params: { bucket } } }) => (
+    <Layout>
+      <SearchResults bucket={bucket} q={q} />
+    </Layout>
+  ));

@@ -1,23 +1,16 @@
 import { extname } from 'path';
 
 import memoize from 'lodash/memoize';
-import * as colors from 'material-ui/styles/colors';
 import PT from 'prop-types';
 import * as R from 'ramda';
 import * as React from 'react';
-import {
-  lifecycle,
-  setPropTypes,
-  setStatic,
-  withHandlers,
-  withProps,
-  withState,
-} from 'recompose';
-import styled from 'styled-components';
+import * as RC from 'recompose';
 import embed from 'vega-embed';
+import CircularProgress from '@material-ui/core/CircularProgress';
+import Typography from '@material-ui/core/Typography';
+import { withStyles } from '@material-ui/core/styles';
 
 import Markdown from 'components/Markdown';
-import Spinner from 'components/Spinner';
 import config from 'constants/config';
 import { S3, Signer } from 'utils/AWS';
 import AsyncResult from 'utils/AsyncResult';
@@ -28,41 +21,59 @@ import { composeComponent } from 'utils/reactTools';
 import tagged from 'utils/tagged';
 
 
-const ImgContent = styled.img`
-  display: block;
-  margin-left: auto;
-  margin-right: auto;
-  max-height: 100%;
-  max-width: 100%;
-  min-width: 20%;
-`;
+const Placeholder = composeComponent('ContentWindow.Placeholder',
+  withStyles(() => ({
+    root: {
+      position: 'absolute',
+      left: 20,
+    },
+  })),
+  CircularProgress);
 
-const IframeContent = (props) => (
-  <React.Fragment>
-    <iframe
-      sandbox=""
-      title="Preview"
-      style={{
-        width: '100%',
-        minHeight: '80vh',
-        border: 'none',
-        position: 'relative',
-        zIndex: 1,
-      }}
-      {...props}
-    />
-    <Placeholder />
-  </React.Fragment>
-);
+const ImgContent = composeComponent('ContentWindow.ImgContent',
+  withStyles(() => ({
+    root: {
+      display: 'block',
+      marginLeft: 'auto',
+      marginRight: 'auto',
+      maxHeight: '100%',
+      maxWidth: '100%',
+      minWidth: '20%',
+    },
+  })),
+  ({ classes, ...props }) =>
+    <img className={classes.root} alt="" {...props} />);
 
-const VegaContent = composeComponent('Browser.VegaContent',
-  withState('el', 'setEl', null),
-  withHandlers({
+const IframeContent = composeComponent('ContentWindow.IframeContent',
+  withStyles(() => ({
+    iframe: {
+      border: 'none',
+      minHeight: '80vh',
+      position: 'relative',
+      width: '100%',
+      zIndex: 1,
+    },
+  })),
+  ({ classes, ...props }) => (
+    <React.Fragment>
+      <iframe
+        sandbox=""
+        title="Preview"
+        className={classes.iframe}
+        {...props}
+      />
+      <Placeholder />
+    </React.Fragment>
+  ));
+
+const VegaContent = composeComponent('ContentWindow.VegaContent',
+  RC.withState('el', 'setEl', null),
+  RC.withHandlers({
     embed: ({ el, spec }) => () => {
       if (el) embed(el, spec, { actions: false });
     },
   }),
-  lifecycle({
+  RC.lifecycle({
     componentDidMount() {
       this.props.embed();
     },
@@ -73,23 +84,6 @@ const VegaContent = composeComponent('Browser.VegaContent',
   ({ setEl }) => (
     <div ref={setEl} />
   ));
-
-const Placeholder = () => (
-  <Spinner
-    style={{
-      fontSize: '4em',
-      position: 'absolute',
-      left: 20,
-    }}
-  />
-);
-
-const Container = styled.div`
-  align-items: flex-start;
-  display: flex;
-  min-height: 84px; // for spinner
-  position: relative;
-`;
 
 const signImg = memoize(({ signer, handle }) => R.evolve({
   src: (src) =>
@@ -222,24 +216,19 @@ const PreviewError = tagged([
   'LoadError',
 ]);
 
-const ErrorText = styled.p`
-  color: ${colors.grey500};
-  font-size: 1.5em;
-  margin: 0;
-`;
-
-export default composeComponent('Browser.ContentWindow',
-  setStatic('supports', (key) => !!getHandler(key)),
-  setPropTypes({
+export default composeComponent('ContentWindow',
+  RC.setStatic('supports', (key) => !!getHandler(key)),
+  RC.setPropTypes({
     handle: PT.object.isRequired,
   }),
   S3.inject(),
   Signer.inject(),
-  withState('state', 'setState', AsyncResult.Init()),
-  withProps(({ handle }) => ({
+  RC.withState('state', 'setState', AsyncResult.Init()),
+  RC.withProps(({ handle }) => ({
     handler: getHandler(handle.key),
   })),
-  withHandlers({
+  // TODO: use withData
+  RC.withHandlers({
     load: ({ setState, handler, ...props }) => async () => {
       if (!handler) {
         setState(AsyncResult.Err(PreviewError.Unsupported()));
@@ -268,24 +257,32 @@ export default composeComponent('Browser.ContentWindow',
       }
     },
   }),
-  lifecycle({
+  RC.lifecycle({
     componentWillMount() {
       this.props.load();
     },
   }),
-  ({ state, ...props }) => (
-    <Container>
+  withStyles(() => ({
+    root: {
+      alignItems: 'flex-start',
+      display: 'flex',
+      minHeight: 40, // for spinner
+      position: 'relative',
+    },
+  })),
+  ({ classes, state, ...props }) => (
+    <div className={classes.root}>
       {AsyncResult.case({
         Err: (e) => (
-          <ErrorText>
+          <Typography color="textSecondary">
             {PreviewError.case({
               DoesNotExist: () => 'Object does not exist',
               _: () => 'Preview not available',
             }, e)}
-          </ErrorText>
+          </Typography>
         ),
         Ok: (content, { handler, ...rest }) => handler.render(content, rest),
         _: () => <Placeholder />,
       }, state, props)}
-    </Container>
+    </div>
   ));

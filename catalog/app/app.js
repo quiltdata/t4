@@ -23,6 +23,7 @@ import config from 'constants/config';
 import routes from 'constants/routes';
 import * as style from 'constants/style';
 import * as AWS from 'utils/AWS';
+import * as Data from 'utils/Data';
 import * as NamedRoutes from 'utils/NamedRoutes';
 import FormProvider from 'utils/ReduxFormProvider';
 import StoreProvider from 'utils/StoreProvider';
@@ -86,6 +87,7 @@ const render = (messages) => {
         host: config.aws.elasticSearchUrl,
         log: 'trace',
       }],
+      Data.Provider,
       SearchProvider,
       [RouterProvider, { history }],
       [MuiThemeProviderV0, { muiTheme: style.themeV0 }],
