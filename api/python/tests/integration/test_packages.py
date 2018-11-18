@@ -521,4 +521,5 @@ def test_top_hash_stable():
 
     pkg = Package.browse(registry=registry, pkg_hash=pkg_hash)
 
-    assert pkg.top_hash() == pkg_hash
+    assert pkg.top_hash() == pkg_hash, \
+           "Unexpected top_hash for {}/.quilt/packages/{}".format(registry, pkg_hash)
