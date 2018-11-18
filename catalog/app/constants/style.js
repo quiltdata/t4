@@ -54,6 +54,11 @@ export const theme = createMuiTheme({
   },
 });
 
+// expose theme for development purposes
+if (process.env.NODE_ENV === 'development') {
+  window.THEME = theme;
+}
+
 export const themeInverted = createMuiTheme({
   palette: {
     type: 'dark',
