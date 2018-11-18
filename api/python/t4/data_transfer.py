@@ -538,15 +538,54 @@ def get_bytes(src):
 
 def get_meta(src):
     """
-    Gets S3 metadata for the object at a given S3 URI.
+    Gets metadata for the object at a given URL.
     """
-    bucket, key, version_id = parse_s3_url(urlparse(src))
-    params = {
-        'Bucket': bucket,
-        'Key': key
-    }
-    if version_id:
-        params['VersionId'] = version_id
-    resp = s3_client.head_object(**params)
-    meta = _parse_metadata(resp)
+    src_url = urlparse(src)
+    if src_url.scheme == 'file':
+        src_path = pathlib.Path(parse_file_url(src_url))
+        meta = _parse_file_metadata(src_path)
+    elif src_url.scheme == 's3':
+        bucket, key, version_id = parse_s3_url(src_url)
+        params = dict(
+            Bucket=bucket,
+            Key=key
+        )
+        if version_id:
+            params.update(dict(VersionId=version_id))
+        resp = s3_client.head_object(**params)
+        meta = _parse_metadata(resp)
+    else:
+        raise NotImplementedError
     return meta
+
+def calculate_sha256_and_size(src_list):
+    def _process_url(src):
+        src_url = urlparse(src)
+        hash_obj = hashlib.sha256()
+        if src_url.scheme == 'file':
+            path = pathlib.Path(parse_file_url(src_url))
+            with open(path, 'rb') as fd:
+                while True:
+                    chunk = fd.read(1024)
+                    if not chunk:
+                        break
+                    hash_obj.update(chunk)
+            size = path.stat().st_size
+        elif src_url.scheme == 's3':
+            src_bucket, src_path, src_version_id = parse_s3_url(src_url)
+            params = dict(Bucket=src_bucket, Key=src_path)
+            if src_version_id is not None:
+                params.update(dict(VersionId=src_version_id))
+            resp = s3_client.get_object(**params)
+            body = resp['Body']
+            for chunk in body:
+                hash_obj.update(chunk)
+            size = resp['ContentLength']
+        else:
+            raise NotImplementedError
+        return hash_obj.hexdigest(), size
+
+    with ThreadPoolExecutor() as executor:
+        results = executor.map(_process_url, src_list)
+
+    return results

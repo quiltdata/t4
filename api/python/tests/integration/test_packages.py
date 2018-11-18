@@ -247,6 +247,7 @@ def test_package_deserialize(tmpdir):
              {'target': 'unicode', 'user_meta': 'blah'})
         .set('bar', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'))
     )
+    pkg.build()
 
     assert pkg['foo'].deserialize() == '123\n'
 
@@ -297,6 +298,8 @@ def test_updates(tmpdir):
         .set('bar', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
             {'target': 'unicode', 'user_meta': 'blah'})
     )
+    pkg.build()
+
     assert pkg['foo']() == '123\n'
     assert pkg['bar']() == '123\n'
 
@@ -390,11 +393,13 @@ def test_tophash_changes(tmpdir):
     pkg = Package()
     th1 = pkg.top_hash()
     pkg.set('asdf', test_file)
+    pkg.build()
     th2 = pkg.top_hash()
     assert th1 != th2
 
     test_file.write_text('jkl', 'utf-8')
     pkg.set('jkl', test_file)
+    pkg.build()
     th3 = pkg.top_hash()
     assert th1 != th3
     assert th2 != th3
@@ -456,6 +461,8 @@ def test_brackets():
         .set('foo', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
              {'target': 'unicode', 'user_meta': 'blah'})
     )
+
+    pkg.build()
 
     assert pkg['foo'].deserialize() == '123\n'
     assert pkg['foo']() == '123\n'
