@@ -406,6 +406,21 @@ class Package(object):
                 for key, value in child.walk():
                     yield name + '/' + key, value
 
+    def _walk_dir_meta(self):
+        """
+        Generator that traverses all entries in the package tree and returns
+            tuples of (key, meta) for each directory with metadata.
+        Keys will all end in '/' to indicate that they are directories.
+        """
+        for key, child in sorted(self._children.items()):
+            if isinstance(child, PackageEntry):
+                continue
+            meta = child.get_meta('')
+            if meta:
+                yield key + '/', meta
+            for key, meta in child._walk_dir_meta():
+                yield key, meta
+
     @classmethod
     def load(cls, readable_file):
         """
@@ -432,6 +447,10 @@ class Package(object):
             path = cls._split_key(obj.pop('logical_key'))
             subpkg = pkg._ensure_subpackage(path[:-1])
             key = path[-1]
+            if not obj.get('physical_keys', None):
+                # directory-level metadata
+                subpkg.set_meta('', obj['meta'])
+                continue
             if key in subpkg._children:
                 raise PackageException("Duplicate logical key while loading package")
             subpkg._children[key] = PackageEntry(
@@ -508,12 +527,31 @@ class Package(object):
 
     def get_meta(self, logical_key):
         """
-        Returns metadata for specified logical key.
+        Returns user metadata for specified logical key.
         """
+        if logical_key == '':
+            return self._meta.get('user_meta', {})
         obj = self[logical_key]
+        if isinstance(obj, Package):
+            return obj.get_meta('')
         if not isinstance(obj, PackageEntry):
             raise ValueError("Key does point to a PackageEntry")
         return obj.meta
+
+    def set_meta(self, logical_key, meta):
+        """
+        Sets user metadata on a directory or object in the Package.
+        """
+        if logical_key == '':
+            self._meta['user_meta'] = meta
+            return
+        obj = self[logical_key]
+        if isinstance(obj, Package):
+            obj.set_meta('', meta)
+        elif isinstance(obj, PackageEntry):
+            obj.meta['user_meta'] = meta
+        else:
+            raise KeyError("{} not found in this Package".format(logical_key))
 
     def build(self, name=None, registry=None):
         """
@@ -565,7 +603,6 @@ class Package(object):
             fail to create file
             fail to finish write
         """
-        self.top_hash() # Assure top hash is calculated.
         writer = jsonlines.Writer(writable_file)
         top_level_meta = self._meta
         top_level_meta['top_hash'] = {
@@ -573,6 +610,8 @@ class Package(object):
             'value': self.top_hash()
         }
         writer.write(top_level_meta)
+        for dir_key, meta in self._walk_dir_meta():
+            writer.write({'logical_key': dir_key, 'meta': meta})
         for logical_key, entry in self.walk():
             writer.write({'logical_key': logical_key, **entry.as_dict()})
 

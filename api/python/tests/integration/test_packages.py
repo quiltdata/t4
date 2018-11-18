@@ -85,6 +85,8 @@ def test_read_manifest(tmpdir):
         original_set = list(jsonlines.Reader(fd))
     with open(out_path) as fd:
         written_set = list(jsonlines.Reader(fd))
+    print(original_set)
+    print(written_set)
     assert len(original_set) == len(written_set)
     assert sorted(original_set, key=lambda k: k.get('logical_key','manifest')) \
         == sorted(written_set, key=lambda k: k.get('logical_key','manifest'))
@@ -512,3 +514,19 @@ def test_diff():
     p1 = Package.browse('Quilt/Test')
     p2 = Package.browse('Quilt/Test')
     assert p1.diff(p2) == ([], [], [])
+
+def test_dir_meta(tmpdir):
+    test_meta = {'test': 'meta'}
+    pkg = Package()
+    pkg.set('asdf/jkl', LOCAL_MANIFEST)
+    pkg.set('asdf/qwer', LOCAL_MANIFEST)
+    pkg.set('qwer/asdf', LOCAL_MANIFEST)
+    assert pkg.get_meta('asdf') == {}
+    pkg.set_meta('asdf', test_meta)
+    assert pkg.get_meta('asdf') == test_meta
+    dump_path = os.path.join(tmpdir, 'test_meta')
+    with open(dump_path, 'w') as f:
+        pkg.dump(f)
+    with open(dump_path) as f:
+        pkg2 = Package.load(f)
+    assert pkg2.get_meta('asdf') == test_meta
