@@ -163,7 +163,15 @@ On the flip side, you can serialize objects to T4 using `Bucket.put`.
 If you `put` to a folder that doesn't exist yet, `t4` will create that folder. If you overwrite an object, and bucket versioning is enabled, the overwritten object is retained as an older version of the same path. 
 
 T4 transparently serializes and de-serializes select Python
-objects. In the above example, `df` is automatically stored as an Apache Parquet file.
+objects. In the above example, `df` is automatically stored as an Apache Parquet file. Currently the types supported are:
+
+| Python Type | Serialization format |
+| ------- | ------ |
+| `b"string"` | bytes on disk |
+| `"string"` | UTF-8 encoded string |
+| `pandas.DataFrame` | Parquet |
+| `numpy.ndarray` | .np |
+| `dict` | JSON | 
 
 
 ### Moving data not on T4
