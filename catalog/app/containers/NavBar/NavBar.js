@@ -134,7 +134,7 @@ export default composeComponent('NavBar',
   })),
   NamedRoutes.inject(),
   ({ classes, paths, error, waiting, authenticated }) => (
-    <AppBar className={classes.root} color="default" position="sticky">
+    <AppBar className={classes.root} color="default" position="static">
       <Toolbar>
         <Logo />
         {authenticated && <BucketControls />}

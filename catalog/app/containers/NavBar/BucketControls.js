@@ -10,6 +10,7 @@ import { createStructuredSelector } from 'reselect';
 import Button from '@material-ui/core/Button';
 import Icon from '@material-ui/core/Icon';
 import Input from '@material-ui/core/Input';
+import InputBase from '@material-ui/core/InputBase';
 import InputAdornment from '@material-ui/core/InputAdornment';
 import MenuItem from '@material-ui/core/MenuItem';
 import MenuList from '@material-ui/core/MenuList';
@@ -18,6 +19,7 @@ import Popper from '@material-ui/core/Popper';
 import Tab from '@material-ui/core/Tab';
 import Tabs from '@material-ui/core/Tabs';
 import { MuiThemeProvider, withStyles } from '@material-ui/core/styles';
+import { fade } from '@material-ui/core/styles/colorManipulator';
 
 import * as style from 'constants/style';
 import * as NamedRoutes from 'utils/NamedRoutes';
@@ -27,7 +29,7 @@ import { composeComponent, composeHOC, wrap } from 'utils/reactTools';
 
 const BUCKETS = [
   'alpha-quilt-storage',
-  'test-bucket',
+  'quilt-test-public',
 ];
 
 const withInvertedTheme =
@@ -59,7 +61,7 @@ const BucketDisplay = composeComponent('NavBar.BucketControls.BucketDisplay',
       className={classes.root}
       onClick={select}
     >
-      <span className={classes.s3}>s3:</span>
+      <span className={classes.s3}>s3://</span>
       <span className={classes.bucket}>{bucket}</span>
       <Icon>expand_more</Icon>
     </Button>
@@ -155,10 +157,8 @@ const BucketSelect = composeComponent('NavBar.BucketControls.BucketSelect',
   RC.withState('inputRef', 'setInputRef', null),
   ({
     value,
-    go,
     inputRef,
     setInputRef,
-    cancel,
     handleKey,
     handleChange,
     suggestions,
@@ -167,7 +167,7 @@ const BucketSelect = composeComponent('NavBar.BucketControls.BucketSelect',
   }) => (
     <React.Fragment>
       <NavInput
-        startAdornment={<InputAdornment>s3:</InputAdornment>}
+        startAdornment={<InputAdornment>s3://</InputAdornment>}
         value={value}
         className={classes.input}
         autoFocus
@@ -190,28 +190,12 @@ const BucketSelect = composeComponent('NavBar.BucketControls.BucketSelect',
                 onClick={() => handleSuggestion(s)}
                 selected={s === value}
               >
-                {s}
+                s3://{s}
               </MenuItem>
             ))}
           </MenuList>
         </Paper>
       </Popper>
-      <Button
-        className={classes.button}
-        onClick={() => go(value)}
-        color="inherit"
-        variant="outlined"
-      >
-        Go
-      </Button>
-      <Button
-        className={classes.button}
-        onClick={cancel}
-        color="inherit"
-        variant="text"
-      >
-        Cancel
-      </Button>
     </React.Fragment>
   ));
 
@@ -275,17 +259,43 @@ const Search = composeComponent('NavBar.BucketControls.Search',
       }
     },
   }),
-  withStyles(({ spacing: { unit } }) => ({
+  withStyles(({ shape: { borderRadius }, spacing: { unit }, palette }) => ({
     root: {
-      marginLeft: 2 * unit,
-      width: 240,
+      background: fade(palette.common.white, 0.9),
+      borderRadius,
+      marginRight: 3 * unit,
+      '&:hover': {
+        background: palette.common.white,
+      },
+    },
+    focused: {
+      background: palette.common.white,
+    },
+    input: {
+      paddingLeft: 4 * unit,
+      textOverflow: 'ellipsis',
+    },
+    adornment: {
+      justifyContent: 'center',
+      pointerEvents: 'none',
+      position: 'absolute',
+      width: 4 * unit,
     },
   })),
-  ({ classes, bucket, handleChange, handleEnter, searchText }) => (
-    <NavInput
-      startAdornment={<InputAdornment><Icon>search</Icon></InputAdornment>}
-      className={classes.root}
-      placeholder={`Search s3:${bucket}`}
+  ({
+    classes: { adornment, ...classes },
+    handleChange,
+    handleEnter,
+    searchText,
+  }) => (
+    <InputBase
+      startAdornment={
+        <InputAdornment className={adornment}>
+          <Icon>search</Icon>
+        </InputAdornment>
+      }
+      classes={classes}
+      placeholder="Search"
       onChange={handleChange}
       onKeyPress={handleEnter}
       value={searchText}
@@ -322,14 +332,8 @@ export default composeComponent('NavBar.BucketControls',
       minWidth: 400,
       position: 'relative',
     },
-    lock: {
-      alignItems: 'center',
-      backgroundColor: palette.primary.dark,
-      display: 'flex',
-      height: '100%',
-      position: 'absolute',
-      width: '100%',
-      zIndex: 1,
+    button: {
+      borderColor: fade(palette.common.white, 0.23),
     },
   })),
   ({
@@ -342,15 +346,14 @@ export default composeComponent('NavBar.BucketControls',
     bucketSection,
   }) => (
     <div className={classes.root}>
-      {selecting && (
-        <div className={classes.lock}>
-          <BucketSelect bucket={bucket} cancel={cancel} />
-        </div>
-      )}
-      {bucket
+      {bucket // eslint-disable-line no-nested-ternary
         ? (
           <React.Fragment>
-            <BucketDisplay bucket={bucket} select={select} />
+            {selecting
+              ? <BucketSelect bucket={bucket} cancel={cancel} />
+              : <BucketDisplay bucket={bucket} select={select} />
+            }
+            <Search bucket={bucket} />
             <Tabs
               value={bucketSection}
               textColor="inherit"
@@ -371,12 +374,20 @@ export default composeComponent('NavBar.BucketControls',
                 to={urls.bucketTree(bucket)}
               />
             </Tabs>
-            <Search bucket={bucket} />
           </React.Fragment>
         )
-        : (
-          <Button onClick={select} variant="outlined">Jump to bucket</Button>
-        )
+        : selecting
+          ? <BucketSelect bucket={bucket} cancel={cancel} />
+          : (
+            <Button
+              onClick={select}
+              variant="outlined"
+              className={classes.button}
+              color="inherit"
+            >
+              Jump to bucket
+            </Button>
+          )
       }
     </div>
   ));
