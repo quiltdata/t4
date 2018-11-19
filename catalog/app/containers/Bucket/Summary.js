@@ -232,11 +232,34 @@ export default composeComponent('Bucket.Summary',
     params: R.pick(['s3', 'bucket', 'path']),
     fetch: fetchSummary,
   }),
-  ({ data: { result }, progress = false, whenEmpty = () => null }) => (
+  withStyles(({ spacing: { unit } }) => ({
+    error: {
+      marginTop: 2 * unit,
+    },
+  })),
+  ({
+    classes,
+    data: { result },
+    progress = false,
+    whenEmpty = () => null,
+  }) => (
     <React.Fragment>
       {AsyncResult.case({
         _: () => (progress && <CircularProgress />),
-        Err: () => <h1>Error</h1>, // TODO
+        Err: R.pipe(
+          R.cond([
+            [R.propEq('message', 'Network Failure'),
+              () => 'Seems like this bucket is not configured for T4'],
+            [R.propEq('message', 'Access Denied'),
+              () => "Seems like you don't have access to this bucket"],
+            [R.T, () => 'Something went wrong'],
+          ]),
+          (msg) => (
+            <Typography className={classes.error} variant="h4">
+              {msg}
+            </Typography>
+          ),
+        ),
         // eslint-disable-next-line react/prop-types
         Ok: ({ readme, images, summarize }) => (
           <React.Fragment>

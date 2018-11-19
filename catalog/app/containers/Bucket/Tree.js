@@ -47,22 +47,6 @@ const BreadCrumbs = composeComponent('Bucket.Tree.BreadCrumbs',
     </Typography>
   ));
 
-/*
-const ErrorDisplay = composeComponent('Bucket.Tree.ErrorDisplay',
-  RC.setPropTypes({
-    retry: PT.func,
-    children: PT.node,
-  }),
-  ({ retry, children }) => (
-    <h3>
-      <Icon>warning</Icon>
-      {children || 'Something went wrong'}
-      {!!retry && <Button variant="contained" onClick={retry}>Retry</Button>}
-    </h3>
-  ));
-*/
-
-
 export default composeComponent('Bucket.Tree',
   Signer.inject(),
   withStyles(({ spacing: { unit } }) => ({

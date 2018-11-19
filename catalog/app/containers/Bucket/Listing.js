@@ -9,6 +9,7 @@ import CardContent from '@material-ui/core/CardContent';
 import CircularProgress from '@material-ui/core/CircularProgress';
 import Icon from '@material-ui/core/Icon';
 import ListItem from '@material-ui/core/ListItem';
+import Typography from '@material-ui/core/Typography';
 import { withStyles } from '@material-ui/core/styles';
 
 import { S3 } from 'utils/AWS';
@@ -201,6 +202,10 @@ export default composeComponent('Bucket.Tree.Listing',
       width: '100%',
       zIndex: 1,
     },
+    error: {
+      marginLeft: 2 * unit,
+      paddingTop: 2 * unit,
+    },
   })),
   RC.withHandlers({
     // eslint-disable-next-line react/prop-types
@@ -227,9 +232,11 @@ export default composeComponent('Bucket.Tree.Listing',
         ))}
       </React.Fragment>
     ),
-    renderErr: () => () => (
+    renderErr: ({ classes }) => () => (
       // TODO: proper error display, retry
-      <h1>Error</h1>
+      <Typography className={classes.error} variant="h5">
+        Something went wrong
+      </Typography>
     ),
     renderLock: ({ classes }) => () => (
       <div className={classes.lock}>
