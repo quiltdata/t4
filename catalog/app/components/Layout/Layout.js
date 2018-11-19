@@ -7,9 +7,10 @@ import { composeComponent } from 'utils/reactTools';
 
 
 export default composeComponent('Layout',
-  ({ children }) => (
+  ({ children, pre }) => (
     <React.Fragment>
       <NavBar />
+      {!!pre && pre}
       <Pad top left right bottom>
         {children}
       </Pad>
