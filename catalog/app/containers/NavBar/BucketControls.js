@@ -38,9 +38,8 @@ const BucketDisplay = composeComponent('NavBar.BucketControls.BucketDisplay',
     bucket: PT.string.isRequired,
     select: PT.func.isRequired,
   }),
-  withStyles(({ spacing: { unit } }) => ({
+  withStyles(() => ({
     root: {
-      marginRight: unit,
       textTransform: 'none !important',
     },
     s3: {
@@ -81,13 +80,15 @@ const getCycled = (arr, value, offset) => {
 const BucketSelect = composeComponent('NavBar.BucketControls.BucketSelect',
   RC.setPropTypes({
     bucket: PT.string,
-    cancel: PT.func.isRequired,
+    cancel: PT.func,
+    autoFocus: PT.bool,
   }),
   connect(),
   NamedRoutes.inject(),
   RC.withProps({ suggestions: BUCKETS }),
   RC.withStateHandlers({
     value: '',
+    anchor: null,
   }, {
     setValue: () => (value) => ({ value }),
     nextSuggestion: ({ value }, { suggestions }) => () => ({
@@ -96,23 +97,31 @@ const BucketSelect = composeComponent('NavBar.BucketControls.BucketSelect',
     prevSuggestion: ({ value }, { suggestions }) => () => ({
       value: getCycled(suggestions, value, -1) || '',
     }),
+    setAnchor: () => (anchor) => ({ anchor }),
   }),
   RC.withHandlers({
     go: ({ bucket, urls, dispatch, cancel }) => (to) => {
       if (to && bucket !== to) {
         dispatch(push(urls.bucketRoot(to)));
       }
-      cancel();
+      if (cancel) cancel();
     },
     handleChange: ({ setValue }) => (evt) => {
       setValue(normalizeBucket(evt.target.value));
     },
+    handleFocus: ({ setAnchor }) => (evt) => {
+      setAnchor(evt.target);
+    },
+    handleBlur: ({ setAnchor, cancel }) => () => {
+      setAnchor(null);
+      if (cancel) cancel();
+    },
   }),
   RC.withHandlers({
     handleKey: ({
+      anchor,
       go,
       value,
-      cancel,
       nextSuggestion,
       prevSuggestion,
     }) => (evt) => {
@@ -122,7 +131,7 @@ const BucketSelect = composeComponent('NavBar.BucketControls.BucketSelect',
           go(value);
           break;
         case 'Escape':
-          cancel();
+          if (anchor) anchor.blur();
           break;
         case 'ArrowUp':
           prevSuggestion();
@@ -144,23 +153,20 @@ const BucketSelect = composeComponent('NavBar.BucketControls.BucketSelect',
     input: {
       marginLeft: unit * 2,
     },
-    button: {
-      borderColor: 'rgba(255, 255, 255, 0.23)',
-      marginLeft: unit,
-    },
     popper: {
       zIndex: zIndex.appBar + 1,
     },
   })),
-  RC.withState('inputRef', 'setInputRef', null),
   ({
+    anchor,
+    autoFocus = false,
     value,
-    inputRef,
-    setInputRef,
     handleKey,
     handleChange,
     suggestions,
     handleSuggestion,
+    handleFocus,
+    handleBlur,
     classes,
   }) => (
     <React.Fragment>
@@ -168,15 +174,16 @@ const BucketSelect = composeComponent('NavBar.BucketControls.BucketSelect',
         startAdornment={<InputAdornment>s3://</InputAdornment>}
         value={value}
         className={classes.input}
-        autoFocus
+        autoFocus={autoFocus}
         onKeyDown={handleKey}
         onChange={handleChange}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
         placeholder=" jump to bucket"
-        inputRef={setInputRef}
       />
       <Popper
-        open
-        anchorEl={inputRef}
+        open={!!anchor}
+        anchorEl={anchor}
         placement="bottom-end"
         className={classes.popper}
       >
@@ -185,7 +192,7 @@ const BucketSelect = composeComponent('NavBar.BucketControls.BucketSelect',
             {suggestions.map((s) => (
               <MenuItem
                 key={s}
-                onClick={() => handleSuggestion(s)}
+                onMouseDown={() => handleSuggestion(s)}
                 selected={s === value}
               >
                 s3://{s}
@@ -236,7 +243,7 @@ const Search = composeComponent('NavBar.BucketControls.Search',
     root: {
       background: fade(palette.common.white, 0.9),
       borderRadius,
-      marginRight: 3 * unit,
+      marginLeft: 2 * unit,
       minWidth: 240,
       '&:hover': {
         background: palette.common.white,
@@ -303,28 +310,23 @@ export default composeComponent('NavBar.BucketControls',
     <div className={classes.root}>
       <Route path={paths.bucketRoot}>
         {({ match }) =>
-          match // eslint-disable-line no-nested-ternary
+          match
             ? (
               <React.Fragment>
                 {selecting
-                  ? <BucketSelect bucket={match.params.bucket} cancel={cancel} />
+                  ? (
+                    <BucketSelect
+                      autoFocus
+                      bucket={match.params.bucket}
+                      cancel={cancel}
+                    />
+                  )
                   : <BucketDisplay bucket={match.params.bucket} select={select} />
                 }
                 <Search bucket={match.params.bucket} />
               </React.Fragment>
             )
-            : selecting
-              ? <BucketSelect cancel={cancel} />
-              : (
-                <Button
-                  onClick={select}
-                  variant="outlined"
-                  className={classes.button}
-                  color="inherit"
-                >
-                  Jump to bucket
-                </Button>
-              )
+            : <BucketSelect />
         }
       </Route>
     </div>
