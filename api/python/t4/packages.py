@@ -424,7 +424,7 @@ class Package(object):
         """
         reader = jsonlines.Reader(readable_file)
         meta = reader.read()
-        meta.pop('top_hash', None)  # Obsolete
+        meta.pop('top_hash', None)  # Obsolete as of PR #130
         pkg = cls()
         pkg._meta = meta
         for obj in reader:
