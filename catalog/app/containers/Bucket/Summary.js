@@ -225,13 +225,14 @@ export default composeComponent('Bucket.Summary',
     bucket: PT.string.isRequired,
     path: PT.string.isRequired,
     progress: PT.bool,
+    whenEmpty: PT.func,
   }),
   S3.inject(),
   withData({
     params: R.pick(['s3', 'bucket', 'path']),
     fetch: fetchSummary,
   }),
-  ({ data: { result }, progress = false }) => (
+  ({ data: { result }, progress = false, whenEmpty = () => null }) => (
     <React.Fragment>
       {AsyncResult.case({
         _: () => (progress && <CircularProgress />),
@@ -239,6 +240,7 @@ export default composeComponent('Bucket.Summary',
         // eslint-disable-next-line react/prop-types
         Ok: ({ readme, images, summarize }) => (
           <React.Fragment>
+            {!readme && !summarize && !images.length && whenEmpty()}
             {readme && (
               <SummaryItemFile
                 title={basename(readme.key)}

@@ -1,6 +1,6 @@
 import PT from 'prop-types';
 import * as React from 'react';
-import { Link, Route, Switch, matchPath } from 'react-router-dom';
+import { Link, Redirect, Route, Switch, matchPath } from 'react-router-dom';
 import * as RC from 'recompose';
 import AppBar from '@material-ui/core/AppBar';
 import Tab from '@material-ui/core/Tab';
@@ -87,9 +87,16 @@ const BucketLayout = RT.composeComponent('Bucket.Layout',
 
 /* eslint-disable react/prop-types */
 
-export const Overview = ({ match: { params: { bucket } } }) => (
-  <Summary bucket={bucket} path="" progress />
-);
+export const Overview = RT.composeComponent('Bucket.Overview',
+  NamedRoutes.inject(),
+  ({ urls, match: { params: { bucket } } }) => (
+    <Summary
+      bucket={bucket}
+      path=""
+      progress
+      whenEmpty={() => <Redirect to={urls.bucketTree(bucket)} />}
+    />
+  ));
 
 export const PackageList = () => (
   <h1>Packages are coming soon</h1>
