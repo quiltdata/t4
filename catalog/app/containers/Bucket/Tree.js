@@ -28,9 +28,14 @@ const BreadCrumbs = composeComponent('Bucket.Tree.BreadCrumbs',
     bucket: PT.string.isRequired,
     path: PT.string.isRequired,
   }),
+  withStyles(({ typography }) => ({
+    root: {
+      fontWeight: typography.fontWeightRegular,
+    },
+  })),
   NamedRoutes.inject(),
-  ({ bucket, path, urls }) => (
-    <Typography variant="h6">
+  ({ classes, bucket, path, urls }) => (
+    <Typography variant="h6" className={classes.root}>
       {path
         ? <Link to={urls.bucketTree(bucket)}>{bucket}</Link>
         : bucket
