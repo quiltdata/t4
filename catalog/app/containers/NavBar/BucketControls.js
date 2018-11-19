@@ -4,7 +4,7 @@ import PT from 'prop-types';
 import * as R from 'ramda';
 import * as React from 'react';
 import { connect } from 'react-redux';
-import { Link, Route, matchPath } from 'react-router-dom';
+import { Route } from 'react-router-dom';
 import * as RC from 'recompose';
 import { createStructuredSelector } from 'reselect';
 import Button from '@material-ui/core/Button';
@@ -16,15 +16,13 @@ import MenuItem from '@material-ui/core/MenuItem';
 import MenuList from '@material-ui/core/MenuList';
 import Paper from '@material-ui/core/Paper';
 import Popper from '@material-ui/core/Popper';
-import Tab from '@material-ui/core/Tab';
-import Tabs from '@material-ui/core/Tabs';
 import { MuiThemeProvider, withStyles } from '@material-ui/core/styles';
 import { fade } from '@material-ui/core/styles/colorManipulator';
 
 import * as style from 'constants/style';
 import * as NamedRoutes from 'utils/NamedRoutes';
 import { setSearchText, selectSearchText } from 'utils/SearchProvider';
-import { composeComponent, composeHOC, wrap } from 'utils/reactTools';
+import { composeComponent, wrap } from 'utils/reactTools';
 
 
 const BUCKETS = [
@@ -49,7 +47,7 @@ const BucketDisplay = composeComponent('NavBar.BucketControls.BucketDisplay',
       opacity: 0.7,
     },
     bucket: {
-      maxWidth: 200,
+      maxWidth: 320,
       overflow: 'hidden',
       textOverflow: 'ellipsis',
       whiteSpace: 'nowrap',
@@ -199,31 +197,6 @@ const BucketSelect = composeComponent('NavBar.BucketControls.BucketSelect',
     </React.Fragment>
   ));
 
-const getBucketSection = (pathname, paths) => {
-  if (matchPath(pathname, { path: paths.bucketRoot, exact: true })) {
-    return 'overview';
-  }
-  if (matchPath(pathname, { path: paths.bucketPackageList })) {
-    return 'packages';
-  }
-  if (matchPath(pathname, { path: paths.bucketTree })) {
-    return 'tree';
-  }
-  return false;
-};
-
-const NavTab = composeComponent('NavBar.BucketControls.Tab',
-  withStyles(({ spacing: { unit } }) => ({
-    root: {
-      minHeight: 8 * unit,
-      minWidth: 120,
-      color: 'inherit !important',
-      textDecoration: 'none !important',
-    },
-  })),
-  RC.withProps({ component: Link }),
-  Tab);
-
 const NavInput = composeComponent('NavBar.BucketControls.NavInput',
   withInvertedTheme,
   withStyles(({ palette }) => ({
@@ -264,6 +237,7 @@ const Search = composeComponent('NavBar.BucketControls.Search',
       background: fade(palette.common.white, 0.9),
       borderRadius,
       marginRight: 3 * unit,
+      minWidth: 240,
       '&:hover': {
         background: palette.common.white,
       },
@@ -302,23 +276,8 @@ const Search = composeComponent('NavBar.BucketControls.Search',
     />
   ));
 
-const withBucket = composeHOC('NavBar.BucketControls.withBucket',
-  NamedRoutes.inject({ urls: false }),
-  (Component) => ({ paths, ...props }) => (
-    <Route path={paths.bucketRoot}>
-      {({ location, match }) => (
-        <Component
-          bucketSection={getBucketSection(location.pathname, paths)}
-          bucket={match && match.params && match.params.bucket}
-          {...props}
-        />
-      )}
-    </Route>
-  ));
-
 export default composeComponent('NavBar.BucketControls',
-  withBucket,
-  NamedRoutes.inject({ paths: false }),
+  NamedRoutes.inject(),
   RC.withStateHandlers({
     selecting: false,
   }, {
@@ -329,8 +288,6 @@ export default composeComponent('NavBar.BucketControls',
     root: {
       alignItems: 'center',
       display: 'flex',
-      minWidth: 400,
-      position: 'relative',
     },
     button: {
       borderColor: fade(palette.common.white, 0.23),
@@ -338,56 +295,37 @@ export default composeComponent('NavBar.BucketControls',
   })),
   ({
     classes,
-    urls,
+    paths,
     selecting,
     select,
     cancel,
-    bucket,
-    bucketSection,
   }) => (
     <div className={classes.root}>
-      {bucket // eslint-disable-line no-nested-ternary
-        ? (
-          <React.Fragment>
-            {selecting
-              ? <BucketSelect bucket={bucket} cancel={cancel} />
-              : <BucketDisplay bucket={bucket} select={select} />
-            }
-            <Search bucket={bucket} />
-            <Tabs
-              value={bucketSection}
-              textColor="inherit"
-            >
-              <NavTab
-                label="Overview"
-                value="overview"
-                to={urls.bucketRoot(bucket)}
-              />
-              <NavTab
-                label="Packages"
-                value="packages"
-                to={urls.bucketPackageList(bucket)}
-              />
-              <NavTab
-                label="Files"
-                value="tree"
-                to={urls.bucketTree(bucket)}
-              />
-            </Tabs>
-          </React.Fragment>
-        )
-        : selecting
-          ? <BucketSelect bucket={bucket} cancel={cancel} />
-          : (
-            <Button
-              onClick={select}
-              variant="outlined"
-              className={classes.button}
-              color="inherit"
-            >
-              Jump to bucket
-            </Button>
-          )
-      }
+      <Route path={paths.bucketRoot}>
+        {({ match }) =>
+          match // eslint-disable-line no-nested-ternary
+            ? (
+              <React.Fragment>
+                {selecting
+                  ? <BucketSelect bucket={match.params.bucket} cancel={cancel} />
+                  : <BucketDisplay bucket={match.params.bucket} select={select} />
+                }
+                <Search bucket={match.params.bucket} />
+              </React.Fragment>
+            )
+            : selecting
+              ? <BucketSelect cancel={cancel} />
+              : (
+                <Button
+                  onClick={select}
+                  variant="outlined"
+                  className={classes.button}
+                  color="inherit"
+                >
+                  Jump to bucket
+                </Button>
+              )
+        }
+      </Route>
     </div>
   ));

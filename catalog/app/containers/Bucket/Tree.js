@@ -11,7 +11,6 @@ import Typography from '@material-ui/core/Typography';
 import { withStyles } from '@material-ui/core/styles';
 
 import ContentWindow from 'components/ContentWindow';
-import Layout from 'components/Layout';
 import { Signer } from 'utils/AWS';
 import * as NamedRoutes from 'utils/NamedRoutes';
 import {
@@ -81,7 +80,7 @@ export default composeComponent('Bucket.Tree',
     },
   })),
   ({ match: { params: { bucket, path } }, classes, signer }) => (
-    <Layout section="tree">
+    <React.Fragment>
       <div className={classes.topBar}>
         <BreadCrumbs bucket={bucket} path={path} />
         {!isDir(path) && (
@@ -110,5 +109,5 @@ export default composeComponent('Bucket.Tree',
           </Card>
         )
       }
-    </Layout>
+    </React.Fragment>
   ));

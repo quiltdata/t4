@@ -7,7 +7,7 @@ import {
   SignOut,
   requireAuth,
 } from 'containers/AWSAuth';
-import * as Bucket from 'containers/Bucket';
+import Bucket from 'containers/Bucket';
 import HomePage from 'containers/HomePage/Loadable';
 import NotFoundPage from 'containers/NotFoundPage/Loadable';
 import * as NamedRoutes from 'utils/NamedRoutes';
@@ -29,26 +29,16 @@ const ProtectedNotFound = requireAuthIfConfigured(NotFoundPage);
 const redirectTo = (path) => ({ location: { search } }) =>
   <Redirect to={`${path}${search}`} />;
 
-const renderRoutes = (pairs, fallback) => (
-  <Switch>
-    {pairs.map(([path, component]) =>
-      <Route exact key={path} {...{ path, component }} />)}
-    <Route component={fallback} />
-  </Switch>
-);
-
 export default composeComponent('App',
   injectSaga(REDUX_KEY, saga),
   NamedRoutes.inject(),
-  ({ paths, urls }) =>
-    renderRoutes([
-      [paths.home, ProtectedHome],
-      [paths.signIn, SignIn],
-      ['/login', redirectTo(urls.signIn())],
-      [paths.signOut, SignOut],
-      [paths.bucketRoot, requireAuth(Bucket.Overview)],
-      [paths.bucketTree, requireAuth(Bucket.Tree)],
-      [paths.bucketSearch, requireAuth(Bucket.Search)],
-      [paths.bucketPackageList, requireAuth(Bucket.PackageList)],
-      [paths.bucketPackageDetail, requireAuth(Bucket.PackageDetail)],
-    ], ProtectedNotFound));
+  ({ paths, urls }) => (
+    <Switch>
+      <Route path={paths.home} component={ProtectedHome} exact />
+      <Route path={paths.signIn} component={SignIn} exact />
+      <Route path="/login" component={redirectTo(urls.signIn())} exact />
+      <Route path={paths.signOut} component={SignOut} exact />
+      <Route path={paths.bucketRoot} component={requireAuth(Bucket)} />
+      <Route component={ProtectedNotFound} />
+    </Switch>
+  ));
