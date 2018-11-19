@@ -424,8 +424,7 @@ class Package(object):
         """
         reader = jsonlines.Reader(readable_file)
         meta = reader.read()
-        # Pop the top hash -- it should only be calculated dynamically
-        meta.pop('top_hash', None)
+        meta.pop('top_hash', None)  # Obsolete as of PR #130
         pkg = cls()
         pkg._meta = meta
         for obj in reader:
@@ -543,7 +542,7 @@ class Package(object):
 
             named_path = registry_prefix + '/named_packages/' + quote(name) + '/'
             # todo: use a float to string formater instead of double casting
-            hash_bytes = self.top_hash().encode('utf-8')
+            hash_bytes = hash_string.encode('utf-8')
             timestamp_path = named_path + str(int(time.time()))
             latest_path = named_path + "latest"
             put_bytes(hash_bytes, timestamp_path)
@@ -565,14 +564,8 @@ class Package(object):
             fail to create file
             fail to finish write
         """
-        self.top_hash() # Assure top hash is calculated.
         writer = jsonlines.Writer(writable_file)
-        top_level_meta = self._meta
-        top_level_meta['top_hash'] = {
-            'alg': 'v0',
-            'value': self.top_hash()
-        }
-        writer.write(top_level_meta)
+        writer.write(self._meta)
         for logical_key, entry in self.walk():
             writer.write({'logical_key': logical_key, **entry.as_dict()})
 
@@ -671,9 +664,8 @@ class Package(object):
             A string that represents the top hash of the package
         """
         top_hash = hashlib.sha256()
-        hashable_meta = copy.deepcopy(self._meta)
-        hashable_meta.pop('top_hash', None)
-        top_meta = json.dumps(hashable_meta, sort_keys=True, separators=(',', ':'))
+        assert 'top_hash' not in self._meta
+        top_meta = json.dumps(self._meta, sort_keys=True, separators=(',', ':'))
         top_hash.update(top_meta.encode('utf-8'))
         for logical_key, entry in self.walk():
             entry_dict = entry.as_dict()
