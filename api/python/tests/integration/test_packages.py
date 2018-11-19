@@ -527,19 +527,19 @@ def test_dir_meta(tmpdir):
     pkg.set('asdf/qwer', LOCAL_MANIFEST)
     pkg.set('qwer/asdf', LOCAL_MANIFEST)
     pkg.build()
-    assert pkg.get_meta('asdf') == {}
-    assert pkg.get_meta('') == {}
-    pkg.set_meta('asdf', test_meta)
-    assert pkg.get_meta('asdf') == test_meta
-    pkg.set_meta('', test_meta)
-    assert pkg.get_meta('') == test_meta
+    assert pkg['asdf'].get_meta() == {}
+    assert pkg.get_meta() == {}
+    pkg['asdf'].set_meta(test_meta)
+    assert pkg['asdf'].get_meta() == test_meta
+    pkg.set_meta(test_meta)
+    assert pkg.get_meta() == test_meta
     dump_path = os.path.join(tmpdir, 'test_meta')
     with open(dump_path, 'w') as f:
         pkg.dump(f)
     with open(dump_path) as f:
         pkg2 = Package.load(f)
-    assert pkg2.get_meta('asdf') == test_meta
-    assert pkg2.get_meta('') == test_meta
+    assert pkg2['asdf'].get_meta() == test_meta
+    assert pkg2.get_meta() == test_meta
 
 def test_top_hash_stable():
     """Ensure that top_hash() never changes for a given manifest"""

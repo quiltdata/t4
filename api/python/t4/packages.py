@@ -400,7 +400,7 @@ class Package(object):
         for key, child in sorted(self._children.items()):
             if isinstance(child, PackageEntry):
                 continue
-            meta = child.get_meta('')
+            meta = child.get_meta()
             if meta:
                 yield key + '/', meta
             for key, meta in child._walk_dir_meta():
@@ -433,7 +433,7 @@ class Package(object):
             key = path[-1]
             if not obj.get('physical_keys', None):
                 # directory-level metadata
-                subpkg.set_meta('', obj['meta'])
+                subpkg.set_meta(obj['meta'])
                 continue
             if key in subpkg._children:
                 raise PackageException("Duplicate logical key while loading package")
@@ -509,33 +509,17 @@ class Package(object):
             raise ValueError("Key does point to a PackageEntry")
         return obj.get()
 
-    def get_meta(self, logical_key):
+    def get_meta(self):
         """
-        Returns user metadata for specified logical key.
+        Returns user metadata for this Package.
         """
-        if logical_key == '':
-            return self._meta.get('user_meta', {})
-        obj = self[logical_key]
-        if isinstance(obj, Package):
-            return obj.get_meta('')
-        if not isinstance(obj, PackageEntry):
-            raise ValueError("Key does point to a PackageEntry")
-        return obj.meta
+        return self._meta.get('user_meta', {})
 
-    def set_meta(self, logical_key, meta):
+    def set_meta(self, meta):
         """
-        Sets user metadata on a directory or object in the Package.
+        Sets user metadata on this Package.
         """
-        if logical_key == '':
-            self._meta['user_meta'] = meta
-            return
-        obj = self[logical_key]
-        if isinstance(obj, Package):
-            obj.set_meta('', meta)
-        elif isinstance(obj, PackageEntry):
-            obj.meta['user_meta'] = meta
-        else:
-            raise KeyError("{} not found in this Package".format(logical_key))
+        self._meta['user_meta'] = meta
 
     def _fix_sha256_and_size(self):
         entries = [entry for key, entry in self.walk() if entry.hash is None or entry.size is None]
