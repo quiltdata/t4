@@ -391,6 +391,21 @@ class Package(object):
                 for key, value in child.walk():
                     yield name + '/' + key, value
 
+    def _walk_dir_meta(self):
+        """
+        Generator that traverses all entries in the package tree and returns
+            tuples of (key, meta) for each directory with metadata.
+        Keys will all end in '/' to indicate that they are directories.
+        """
+        for key, child in sorted(self._children.items()):
+            if isinstance(child, PackageEntry):
+                continue
+            meta = child.get_meta()
+            if meta:
+                yield key + '/', meta
+            for child_key, child_meta in child._walk_dir_meta():
+                yield key + '/' + child_key, child_meta
+
     @classmethod
     def load(cls, readable_file):
         """
@@ -416,6 +431,10 @@ class Package(object):
             path = cls._split_key(obj.pop('logical_key'))
             subpkg = pkg._ensure_subpackage(path[:-1])
             key = path[-1]
+            if not obj.get('physical_keys', None):
+                # directory-level metadata
+                subpkg.set_meta(obj['meta'])
+                continue
             if key in subpkg._children:
                 raise PackageException("Duplicate logical key while loading package")
             subpkg._children[key] = PackageEntry(
@@ -490,14 +509,17 @@ class Package(object):
             raise ValueError("Key does point to a PackageEntry")
         return obj.get()
 
-    def get_meta(self, logical_key):
+    def get_meta(self):
         """
-        Returns metadata for specified logical key.
+        Returns user metadata for this Package.
         """
-        obj = self[logical_key]
-        if not isinstance(obj, PackageEntry):
-            raise ValueError("Key does point to a PackageEntry")
-        return obj.meta
+        return self._meta.get('user_meta', {})
+
+    def set_meta(self, meta):
+        """
+        Sets user metadata on this Package.
+        """
+        self._meta['user_meta'] = meta
 
     def _fix_sha256_and_size(self):
         entries = [entry for key, entry in self.walk() if entry.hash is None or entry.size is None]
@@ -560,6 +582,8 @@ class Package(object):
         """
         writer = jsonlines.Writer(writable_file)
         writer.write(self._meta)
+        for dir_key, meta in self._walk_dir_meta():
+            writer.write({'logical_key': dir_key, 'meta': meta})
         for logical_key, entry in self.walk():
             writer.write({'logical_key': logical_key, **entry.as_dict()})
 
