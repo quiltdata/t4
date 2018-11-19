@@ -403,8 +403,8 @@ class Package(object):
             meta = child.get_meta()
             if meta:
                 yield key + '/', meta
-            for key, meta in child._walk_dir_meta():
-                yield key, meta
+            for child_key, meta in child._walk_dir_meta():
+                yield child_key, meta
 
     @classmethod
     def load(cls, readable_file):
