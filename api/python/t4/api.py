@@ -116,24 +116,23 @@ def delete_package(name, registry=None):
 
     pkg_namespace, pkg_subname = name.split("/")
 
-    registry_dir = pathlib.Path(parse_file_url(registry_url)).as_posix()
-    pkg_namespace_dir = pathlib.Path(registry_dir) / 'named_packages/' / pkg_namespace
+    registry_dir = pathlib.Path(parse_file_url(registry_url))
+    pkg_namespace_dir = registry_dir / 'named_packages/' / pkg_namespace
     pkg_dir = pkg_namespace_dir / pkg_subname
-    packages_path = pathlib.Path(registry_dir) / 'packages'
+    packages_path = registry_dir / 'packages'
 
     relevant_tophashes = []
-    for tophash_file in pkg_dir.glob('*/'):
+    for tophash_file in pkg_dir.iterdir():
         # skip latest, which always duplicates a tophashed file
         if tophash_file.name != 'latest':
-            with open(tophash_file, 'r') as f:
-                relevant_tophashes.append(f.read())
+            relevant_tophashes.append(tophash_file.read_text())
 
         # remove the file
         tophash_file.unlink()
 
     pkg_dir.rmdir()
 
-    if len(list(pkg_namespace_dir.glob("*/"))) == 0:
+    if not list(pkg_namespace_dir.iterdir()):
         pkg_namespace_dir.rmdir()
 
     for relevant_tophash in relevant_tophashes:

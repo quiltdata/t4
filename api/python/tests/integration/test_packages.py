@@ -532,4 +532,4 @@ def test_local_package_delete(tmpdir):
     t4.delete_package('Quilt/Test', registry=BASE_PATH)
 
     assert 'Quilt/Test' not in t4.list_packages()
-    assert top_hash not in os.listdir(Path(BASE_PATH, '.quilt/packages').as_posix())
+    assert top_hash not in os.listdir(Path(BASE_PATH, '.quilt/packages'))
