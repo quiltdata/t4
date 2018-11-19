@@ -1,4 +1,4 @@
-import { extname } from 'path';
+import { dirname, extname, resolve } from 'path';
 
 import memoize from 'lodash/memoize';
 import PT from 'prop-types';
@@ -14,6 +14,7 @@ import Markdown from 'components/Markdown';
 import config from 'constants/config';
 import { S3, Signer } from 'utils/AWS';
 import AsyncResult from 'utils/AsyncResult';
+import * as NamedRoutes from 'utils/NamedRoutes';
 import * as Resource from 'utils/Resource';
 import Result from 'utils/Result';
 import { captureError } from 'utils/errorReporting';
@@ -93,12 +94,23 @@ const signImg = memoize(({ signer, handle }) => R.evolve({
     }),
 }));
 
-const signLink = memoize(({ signer, handle }) => R.evolve({
-  href: (href) =>
-    signer.signResource({
-      ptr: Resource.parse(href),
-      ctx: { type: Resource.ContextType.MDLink(), handle },
+const processLink = memoize(({ urls, signer, handle }) => R.evolve({
+  href: R.pipe(
+    Resource.parse,
+    Resource.Pointer.case({
+      Path: (p) => {
+        const hasSlash = p.endsWith('/');
+        const resolved = resolve(dirname(handle.key), p).slice(1);
+        const withSlash = hasSlash ? `${resolved}/` : resolved;
+        return urls.bucketTree(handle.bucket, withSlash);
+      },
+      _: (ptr) =>
+        signer.signResource({
+          ptr,
+          ctx: { type: Resource.ContextType.MDLink(), handle },
+        }),
     }),
+  ),
 }));
 
 const signVegaSpec = memoize(({ signer, handle }) => R.evolve({
@@ -146,11 +158,11 @@ const HANDLERS = [
         );
       }
     },
-    render: (data, { signer, handle }) => (
+    render: (data, { urls, signer, handle }) => (
       <Markdown
         data={data}
         processImg={signImg({ signer, handle })}
-        processLink={signLink({ signer, handle })}
+        processLink={processLink({ urls, signer, handle })}
       />
     ),
   },
@@ -223,6 +235,7 @@ export default composeComponent('ContentWindow',
   }),
   S3.inject(),
   Signer.inject(),
+  NamedRoutes.inject(),
   RC.withState('state', 'setState', AsyncResult.Init()),
   RC.withProps(({ handle }) => ({
     handler: getHandler(handle.key),
