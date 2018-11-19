@@ -3,7 +3,6 @@ import hashlib
 import io
 import json
 import pathlib
-from pathlib import Path
 import os
 import re
 
@@ -12,13 +11,14 @@ import time
 from urllib.parse import quote, urlparse
 
 import jsonlines
-from six import string_types, binary_type
+from six import string_types
 
-from .data_transfer import copy_file, deserialize_obj, get_bytes, put_bytes, TargetType
-
+from .data_transfer import (
+    calculate_sha256_and_size, copy_file, deserialize_obj,
+    get_bytes, get_meta, put_bytes, TargetType
+)
 from .exceptions import PackageException
-from .util import QuiltException, BASE_PATH, fix_url, PACKAGE_NAME_FORMAT, parse_file_url, \
-    parse_s3_url
+from .util import QuiltException, BASE_PATH, fix_url, PACKAGE_NAME_FORMAT, parse_file_url
 
 
 def hash_file(readable_file):
@@ -81,7 +81,7 @@ class PackageEntry(object):
         self.physical_keys = [fix_url(x) for x in physical_keys]
         self.size = size
         self.hash = hash_obj
-        self.meta = meta
+        self.meta = meta or {}
 
     def __eq__(self, other):
         return (
@@ -98,6 +98,8 @@ class PackageEntry(object):
         """
         Returns dict representation of entry.
         """
+        if self.hash is None or self.size is None:
+            raise QuiltException("PackageEntry missing hash and/or size: %s" % self.physical_keys[0])
         ret = {
             'physical_keys': self.physical_keys,
             'size': self.size,
@@ -105,10 +107,6 @@ class PackageEntry(object):
             'meta': self.meta
         }
         return copy.deepcopy(ret)
-
-    @classmethod
-    def from_local_path(cls, path):
-        return cls([], None, None, {})._set_path(path)
 
     def _clone(self):
         """
@@ -139,28 +137,13 @@ class PackageEntry(object):
         """
         Verifies hash of bytes
         """
+        if self.hash is None:
+            raise QuiltException("Hash missing - need to build the package")
         if self.hash.get('type') != 'SHA256':
             raise NotImplementedError
         digest = hashlib.sha256(read_bytes).hexdigest()
         if digest != self.hash.get('value'):
             raise QuiltException("Hash validation failed")
-
-    def _set_path(self, path, meta=None):
-        """
-        Sets the path for this PackageEntry.
-        """
-        with open(path, 'rb') as file_to_hash:
-            hash_obj = {
-                'type': 'SHA256',
-                'value': hash_file(file_to_hash)
-            }
-
-        self.size = os.path.getsize(path)
-        self.physical_keys = [pathlib.Path(path).resolve().as_uri()]
-        self.hash = hash_obj
-        if meta is not None:
-            self.set_user_meta(meta)
-        return self
 
     def set(self, path=None, meta=None):
         """
@@ -178,7 +161,9 @@ class PackageEntry(object):
             self
         """
         if path is not None:
-            self._set_path(path, meta)
+            self.physical_keys = [fix_url(path)]
+            self.size = None
+            self.hash = None
         elif meta is not None:
             self.set_user_meta(meta)
         else:
@@ -476,7 +461,7 @@ class Package(object):
             for f in files:
                 if not f.is_file():
                     continue
-                entry = PackageEntry.from_local_path(f)
+                entry = PackageEntry([f], None, None, None)
                 logical_key = lkey + f.relative_to(src_path).as_posix()
                 # TODO: Warn if overwritting a logical key?
                 self.set(logical_key, entry)
@@ -514,6 +499,13 @@ class Package(object):
             raise ValueError("Key does point to a PackageEntry")
         return obj.meta
 
+    def _fix_sha256_and_size(self):
+        entries = [entry for key, entry in self.walk() if entry.hash is None or entry.size is None]
+        results = calculate_sha256_and_size((entry.physical_keys[0] for entry in entries))
+        for entry, (obj_hash, size) in zip(entries, results):
+            entry.hash = dict(type='SHA256', value=obj_hash)
+            entry.size = size
+
     def build(self, name=None, registry=None):
         """
         Serializes this package to a registry.
@@ -527,6 +519,8 @@ class Package(object):
             the top hash as a string
         """
         registry_prefix = get_package_registry(fix_url(registry) if registry else None)
+
+        self._fix_sha256_and_size()
 
         hash_string = self.top_hash()
         manifest = io.BytesIO()
@@ -597,24 +591,22 @@ class Package(object):
         Args:
             logical_key(string): logical key to update
             entry(PackageEntry OR string): new entry to place at logical_key in the package
-                if entry is a string, it is treated as a path to local disk and an entry
-                is created based on the file at that path on your local disk
-            meta(dict): metadata dict to attach to entry. If meta is provided, set just
-                updates the meta attached to logical_key without changing anything
-                else in the entry
+                if entry is a string, it is treated as a URL, and an entry is created based on it
+            meta(dict): metadata dict to attach to entry
 
         Returns:
             self
         """
-        if isinstance(entry, (string_types, binary_type, getattr(os, 'PathLike', str))):
-            entry = PackageEntry.from_local_path(entry)
+        if isinstance(entry, (string_types, getattr(os, 'PathLike', str))):
+            url = fix_url(str(entry))
+            get_meta(url)  # Unused, but ensures that the URL exists
+            entry = PackageEntry([url], None, None, meta)
         elif isinstance(entry, PackageEntry):
             entry = entry._clone()
+            if meta is not None:
+                entry.meta = meta
         else:
             raise TypeError("Expected a string for entry")
-
-        if meta is not None:
-            entry.meta = meta
 
         path = self._split_key(logical_key)
 
@@ -693,6 +685,8 @@ class Package(object):
 
         if registry is None:
             registry = dest
+
+        self._fix_sha256_and_size()
 
         dest_url = fix_url(dest).rstrip('/') + '/' + quote(name)
         if dest_url.startswith('file://') or dest_url.startswith('s3://'):
