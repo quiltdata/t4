@@ -526,11 +526,15 @@ def test_dir_meta(tmpdir):
     pkg.set('asdf/jkl', LOCAL_MANIFEST)
     pkg.set('asdf/qwer', LOCAL_MANIFEST)
     pkg.set('qwer/asdf', LOCAL_MANIFEST)
+    pkg.set('qwer/as/df', LOCAL_MANIFEST)
     pkg.build()
     assert pkg['asdf'].get_meta() == {}
     assert pkg.get_meta() == {}
+    assert pkg['qwer']['as'].get_meta() == {}
     pkg['asdf'].set_meta(test_meta)
     assert pkg['asdf'].get_meta() == test_meta
+    pkg['qwer']['as'].set_meta(test_meta)
+    assert pkg['qwer']['as'].get_meta() == test_meta
     pkg.set_meta(test_meta)
     assert pkg.get_meta() == test_meta
     dump_path = os.path.join(tmpdir, 'test_meta')
@@ -539,6 +543,7 @@ def test_dir_meta(tmpdir):
     with open(dump_path) as f:
         pkg2 = Package.load(f)
     assert pkg2['asdf'].get_meta() == test_meta
+    assert pkg2['qwer']['as'].get_meta() == test_meta
     assert pkg2.get_meta() == test_meta
 
 def test_top_hash_stable():

@@ -404,7 +404,7 @@ class Package(object):
             if meta:
                 yield key + '/', meta
             for child_key, child_meta in child._walk_dir_meta():
-                yield child_key, child_meta
+                yield key + '/' + child_key, child_meta
 
     @classmethod
     def load(cls, readable_file):
