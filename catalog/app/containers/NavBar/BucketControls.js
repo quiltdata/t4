@@ -179,7 +179,7 @@ const BucketSelect = composeComponent('NavBar.BucketControls.BucketSelect',
         onChange={handleChange}
         onFocus={handleFocus}
         onBlur={handleBlur}
-        placeholder=" jump to bucket"
+        placeholder=" Enter bucket name"
       />
       <Popper
         open={!!anchor}
