@@ -254,8 +254,8 @@ def test_package_deserialize(tmpdir):
     with pytest.raises(QuiltException):
         pkg['bar'].deserialize()
 
-def test_set_dir(tmpdir):
-    """ Verify building a package from a directory. """
+def test_local_set_dir(tmpdir):
+    """ Verify building a package from a local directory. """
     pkg = Package()
     
     # Create some nested example files that contain their names.
@@ -288,6 +288,32 @@ def test_set_dir(tmpdir):
     # todo nested at set_dir site or relative to set_dir path.
     assert (bazdir / 'baz').resolve().as_uri() == pkg['my_keys/baz'].physical_keys[0]
 
+
+def test_s3_set_dir(tmpdir):
+    """ Verify building a package from an S3 directory. """
+    with patch('t4.packages.list_objects') as list_objects_mock:
+        pkg = Package()
+
+        list_objects_mock.return_value = [
+            dict(Key='foo/a.txt'),
+            dict(Key='foo/x/y.txt'),
+        ]
+
+        pkg.set_dir('', 's3://bucket/foo/')
+
+        assert pkg['a.txt'].physical_keys[0] == 's3://bucket/foo/a.txt'
+        assert pkg['x']['y.txt'].physical_keys[0] == 's3://bucket/foo/x/y.txt'
+
+        list_objects_mock.assert_called_with('bucket', 'foo')
+
+        list_objects_mock.reset_mock()
+
+        pkg.set_dir('bar', 's3://bucket/foo')
+
+        assert pkg['bar']['a.txt'].physical_keys[0] == 's3://bucket/foo/a.txt'
+        assert pkg['bar']['x']['y.txt'].physical_keys[0] == 's3://bucket/foo/x/y.txt'
+
+        list_objects_mock.assert_called_with('bucket', 'foo')
 
 def test_updates(tmpdir):
     """ Verify building a package from a directory. """

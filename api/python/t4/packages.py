@@ -15,10 +15,13 @@ from six import string_types
 
 from .data_transfer import (
     calculate_sha256_and_size, copy_file, deserialize_obj,
-    get_bytes, get_meta, put_bytes, TargetType
+    get_bytes, get_meta, list_objects, put_bytes, TargetType
 )
 from .exceptions import PackageException
-from .util import QuiltException, BASE_PATH, fix_url, PACKAGE_NAME_FORMAT, parse_file_url
+from .util import (
+    QuiltException, BASE_PATH, fix_url, PACKAGE_NAME_FORMAT,
+    parse_file_url, parse_s3_url
+)
 
 
 def hash_file(readable_file):
@@ -461,8 +464,19 @@ class Package(object):
             for f in files:
                 if not f.is_file():
                     continue
-                entry = PackageEntry([f], None, None, None)
+                entry = PackageEntry([f.as_uri()], None, None, None)
                 logical_key = lkey + f.relative_to(src_path).as_posix()
+                # TODO: Warn if overwritting a logical key?
+                self.set(logical_key, entry)
+        elif url.scheme == 's3':
+            src_bucket, src_key, src_version = parse_s3_url(url)
+            if src_version:
+                raise PackageException("Directories cannot have versions")
+            objects = list_objects(src_bucket, src_key)
+            for obj in objects:
+                obj_url = 's3://%s/%s' % (src_bucket, quote(obj['Key']))
+                entry = PackageEntry([obj_url], None, None, None)
+                logical_key = lkey + obj['Key'][len(src_key) + 1:]
                 # TODO: Warn if overwritting a logical key?
                 self.set(logical_key, entry)
         else:
