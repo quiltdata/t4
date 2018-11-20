@@ -203,6 +203,17 @@ class Bucket(object):
         copy_object(self._bucket, key, self._bucket, key, existing_meta)
 
     def select(self, key, query, query_type="SQL", raw=False):
+        """
+        Selects data from an S3 object.
+
+        Args:
+            key(str): key to query in bucket
+            query(str): query to execute (SQL by default)
+            query_type(str): other query type accepted by S3 service
+            raw(bool): return the raw (but parsed) response
+        Returns:
+            pandas.DataFrame with results of query
+        """
         uri = self._uri + key
         meta = self.get_meta(uri)
         return select(uri, query, query_type="SQL", meta=meta, s3client=None, raw=raw)
