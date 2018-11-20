@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 """ formats.py
 
 This module handles binary formats, and conversion to/from objects.
@@ -135,20 +133,21 @@ class FormatsRegistry:
     def for_ext(cls, ext, single=True):
         """Match a format (or formats) by extension."""
         ext = ext.lower().strip('. ')
+        matching_formats = cls.formats_by_ext[ext]
         if single:
-            matching_formats = cls.formats_by_ext[ext]
             return matching_formats[0] if matching_formats else None
-        return cls.formats_by_ext[ext][:]
+        return matching_formats[:]
 
     @classmethod
     def for_obj(cls, obj, single=True):
         """Match a format (or formats) by a (potentially) serializable object"""
+        formats = reversed(cls.registered_formats.values())
         if single:
-            for format in reversed(cls.registered_formats.values()):
+            for format in formats:
                 if format.handles_obj(obj):
                     return format
             return
-        return [format for format in reversed(cls.registered_formats.values()) if format.handles_obj(obj)]
+        return [format for format in formats if format.handles_obj(obj)]
 
     @classmethod
     def _get_format_name_from_meta(cls, meta):
@@ -245,13 +244,13 @@ class Format:
         """
         FormatsRegistry.register(self)
 
-    def _update_meta(self, meta, serialization_kwargs={}):
+    def _update_meta(self, meta, additions={}):
         if meta is not None:
             format_meta = meta.get('format', {})
             format_meta['name'] = self.name
 
-            if serialization_kwargs:
-                format_meta['serialization'] = deepcopy(serialization_kwargs)
+            if additions:
+                format_meta.update(additions)
             meta['format'] = format_meta
 
     def serialize(self, obj, meta=None, **kwargs):
@@ -259,9 +258,6 @@ class Format:
 
         Serializes `obj` using this format.  If `meta` is given, it is
         updated at meta['format']['name'] and (for now) meta['target'].
-
-        If **kwargs are given, they are passed on to the serialization
-        function, and are added to meta['target']['serialization'].
 
         One of the benefits of this is that once a serialization quirk has
         been used via **kwargs, the same args are used when updating with
@@ -273,7 +269,9 @@ class Format:
         Args:
             obj: object to serialize
             meta: metadata to update
-            **kwargs: kwargs to send to lower-level serializer. Also included in meta
+            **kwargs: passed to serializer.  Be cautious about passing args
+                to the serializer -- the object should still be capable of
+                deserialization using defaults.
         """
         # deactivated if this method is overridden.
         if type(self).serialize == Format.serialize:
@@ -281,7 +279,7 @@ class Format:
             if getattr(self, '_serializer', None) is None:
                 raise NotImplementedError()
             serialized = self._serializer(obj, **kwargs)
-            self._update_meta(meta, kwargs)
+            self._update_meta(meta)
             return serialized
 
     def deserialize(self, bytes_obj, meta=None, **kwargs):
@@ -289,15 +287,12 @@ class Format:
 
         Converts bytes into an object.
 
-        If `meta['format']['deserialization']` is given, it is passed as
-        kwargs to the lower-level deserializer.
-
-        If **kwargs is given, it overrides metadata kwargs, if present.
+        If **kwargs is given, the kwargs are passed to the deserializer.
 
         Args:
             bytes_obj: bytes to deserialize
             meta: object metadata, may contain deserialization prefs
-            **kwargs: metadata to (potentially) use.
+            **kwargs: passed directly to deserializer, if given.
         """
         # deactivated if this method is overridden.
         if type(self).deserialize == Format.deserialize:
@@ -305,9 +300,7 @@ class Format:
             if getattr(self, '_deserializer', None) is None:
                 raise NotImplementedError()
             format_meta = meta.get('format', {})
-            deserialization_kwargs = format_meta.get('deserialization', {})
-            deserialization_kwargs.update(kwargs)
-            return self._deserializer(bytes_obj, **deserialization_kwargs)
+            return self._deserializer(bytes_obj)
 
 
 Format('bytes',
@@ -398,7 +391,6 @@ class ParquetFormat(Format):
         except AssertionError:
             # Try again to convert the table after removing
             # the possibly buggy Pandas-specific metadata.
-            # XXX: Can we detect this during serialization and store it separately?
             meta = table.schema.metadata.copy()
             meta.pop(b'pandas')
             newtable = table.replace_schema_metadata(meta)
