@@ -568,3 +568,8 @@ def test_overwrite_entry_fails():
         pkg = Package()
         pkg.set('asdf', LOCAL_MANIFEST)
         pkg.set('asdf/jkl', LOCAL_MANIFEST)
+
+def test_siblings_succeed():
+    pkg = Package()
+    pkg.set('as/df', LOCAL_MANIFEST)
+    pkg.set('as/qw', LOCAL_MANIFEST)

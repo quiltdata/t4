@@ -647,6 +647,8 @@ class Package(object):
 
         Args:
             path(list): logical key as a list or tuple
+            ensure_no_entry(boolean): if True, throws if this would overwrite
+                a PackageEntry that already exists in the tree.
 
         Returns:
             newly created or existing package at that path
