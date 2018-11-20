@@ -151,9 +151,7 @@ class FormatsRegistry:
 
     @classmethod
     def _get_format_name_from_meta(cls, meta):
-        name = None
-        if 'format' in meta:
-            name = meta['format'].get('name')
+        name = meta.get('format', {}).get('name')
         # 'target': compat with older pkg structure -- can probably be removed soon.
         if not name:
             name = meta.get('target')
