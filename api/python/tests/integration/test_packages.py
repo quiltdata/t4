@@ -521,7 +521,7 @@ def test_diff():
     assert p1.diff(p2) == ([], [], [])
 
 
-    def test_dir_meta(tmpdir):
+def test_dir_meta(tmpdir):
     test_meta = {'test': 'meta'}
     pkg = Package()
     pkg.set('asdf/jkl', LOCAL_MANIFEST)
