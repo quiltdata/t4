@@ -1,6 +1,7 @@
 import pathlib
 from urllib.parse import urlparse
 
+from .api import select
 from .data_transfer import (TargetType, copy_file, copy_object, delete_object,
                             deserialize_obj, get_bytes, get_meta,
                             list_objects, put_bytes, serialize_obj)
@@ -200,3 +201,8 @@ class Bucket(object):
         existing_meta = self.get_meta(key)
         existing_meta['user_meta'] = meta
         copy_object(self._bucket, key, self._bucket, key, existing_meta)
+
+    def select(self, key, query, query_type="SQL", raw=False):
+        uri = self._uri + key
+        meta = self.get_meta(uri)
+        return select(uri, query, query_type="SQL", meta=meta, s3client=None, raw=False)

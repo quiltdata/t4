@@ -472,6 +472,15 @@ def select(url, query, query_type="SQL", meta=None, s3client=None, raw=False, **
     response = s3.select_object_content(Bucket=bucket, Key=path, Expression=query, ExpressionType=query_type,
                                         **kwargs)
 
+
+
+
+
+!! Need amazon credz.
+
+
+
+
     # we don't want multiple copies of large chunks of data hanging around.
     # ..iteration ftw.  It's what we get from amazon, anyways..
     def iter_chunks(resp):
