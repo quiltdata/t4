@@ -76,9 +76,3 @@ def test_formats_serdes():
     df = pd.DataFrame([[1, 2], [3, 4]])
     meta = {}
     assert df.equals(FormatsRegistry.deserialize(FormatsRegistry.serialize(df, meta), meta))
-
-
-
-
-
-
