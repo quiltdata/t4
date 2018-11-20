@@ -408,9 +408,6 @@ def test_tophash_changes(tmpdir):
     th4 = pkg.top_hash()
     assert th2 == th4
 
-    pkg.delete('asdf')
-    assert th1 == pkg.top_hash()
-
 def test_keys():
     pkg = Package()
     assert not pkg.keys()
