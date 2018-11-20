@@ -634,12 +634,14 @@ class Package(object):
 
         path = self._split_key(logical_key)
 
-        pkg = self._ensure_subpackage(path[:-1])
+        pkg = self._ensure_subpackage(path[:-1], ensure_no_entry=True)
+        if path[-1] in pkg and isinstance(pkg[path[-1]], Package):
+            raise QuiltException("Cannot overwrite directory with PackageEntry")
         pkg._children[path[-1]] = entry
 
         return self
 
-    def _ensure_subpackage(self, path):
+    def _ensure_subpackage(self, path, ensure_no_entry=False):
         """
         Creates a package and any intermediate packages at the given path.
 
@@ -651,6 +653,9 @@ class Package(object):
         """
         pkg = self
         for key_fragment in path:
+            if ensure_no_entry and key_fragment in pkg \
+                    and isinstance(pkg[key_fragment], PackageEntry):
+                raise QuiltException("Already a PackageEntry along the path.")
             pkg = pkg._children.setdefault(key_fragment, Package())
         return pkg
 
