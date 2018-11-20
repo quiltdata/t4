@@ -3,7 +3,6 @@ import hashlib
 import io
 import json
 import pathlib
-from pathlib import Path
 import os
 import re
 
@@ -12,13 +11,14 @@ import time
 from urllib.parse import quote, urlparse
 
 import jsonlines
-from six import string_types, binary_type
+from six import string_types
 
-from .data_transfer import copy_file, deserialize_obj, get_bytes, put_bytes, TargetType
-
+from .data_transfer import (
+    calculate_sha256_and_size, copy_file, deserialize_obj,
+    get_bytes, get_meta, put_bytes, TargetType
+)
 from .exceptions import PackageException
-from .util import QuiltException, BASE_PATH, fix_url, PACKAGE_NAME_FORMAT, parse_file_url, \
-    parse_s3_url
+from .util import QuiltException, BASE_PATH, fix_url, PACKAGE_NAME_FORMAT, parse_file_url
 
 
 def hash_file(readable_file):
@@ -81,7 +81,7 @@ class PackageEntry(object):
         self.physical_keys = [fix_url(x) for x in physical_keys]
         self.size = size
         self.hash = hash_obj
-        self.meta = meta
+        self.meta = meta or {}
 
     def __eq__(self, other):
         return (
@@ -91,10 +91,15 @@ class PackageEntry(object):
             and self.meta == other.meta
         )
 
+    def __repr__(self):
+        return f"PackageEntry('{self.physical_keys[0]}')"
+
     def as_dict(self):
         """
         Returns dict representation of entry.
         """
+        if self.hash is None or self.size is None:
+            raise QuiltException("PackageEntry missing hash and/or size: %s" % self.physical_keys[0])
         ret = {
             'physical_keys': self.physical_keys,
             'size': self.size,
@@ -102,10 +107,6 @@ class PackageEntry(object):
             'meta': self.meta
         }
         return copy.deepcopy(ret)
-
-    @classmethod
-    def from_local_path(cls, path):
-        return cls([], None, None, {})._set_path(path)
 
     def _clone(self):
         """
@@ -136,28 +137,13 @@ class PackageEntry(object):
         """
         Verifies hash of bytes
         """
+        if self.hash is None:
+            raise QuiltException("Hash missing - need to build the package")
         if self.hash.get('type') != 'SHA256':
             raise NotImplementedError
         digest = hashlib.sha256(read_bytes).hexdigest()
         if digest != self.hash.get('value'):
             raise QuiltException("Hash validation failed")
-
-    def _set_path(self, path, meta=None):
-        """
-        Sets the path for this PackageEntry.
-        """
-        with open(path, 'rb') as file_to_hash:
-            hash_obj = {
-                'type': 'SHA256',
-                'value': hash_file(file_to_hash)
-            }
-
-        self.size = os.path.getsize(path)
-        self.physical_keys = [pathlib.Path(path).resolve().as_uri()]
-        self.hash = hash_obj
-        if meta is not None:
-            self.set_user_meta(meta)
-        return self
 
     def set(self, path=None, meta=None):
         """
@@ -175,7 +161,9 @@ class PackageEntry(object):
             self
         """
         if path is not None:
-            self._set_path(path, meta)
+            self.physical_keys = [fix_url(path)]
+            self.size = None
+            self.hash = None
         elif meta is not None:
             self.set_user_meta(meta)
         else:
@@ -238,10 +226,9 @@ class PackageEntry(object):
 class Package(object):
     """ In-memory representation of a package """
 
-    def __init__(self, data=None, meta=None):
-        self._data = {} if data is None else data
-        self._meta = {'version': 'v0'} if meta is None else meta
-
+    def __init__(self):
+        self._children = {}
+        self._meta = {'version': 'v0'}
 
     @classmethod
     def validate_package_name(cls, name):
@@ -269,7 +256,7 @@ class Package(object):
 
         pkg = cls.browse(name=name, registry=registry, pkg_hash=pkg_hash)
         if dest:
-            return pkg.push(name=name, dest=dest, dest_registry=dest_registry)
+            return pkg.push(name=name, dest=dest, registry=dest_registry)
         else:
             raise NotImplementedError
 
@@ -316,12 +303,19 @@ class Package(object):
             raise NotImplementedError
         return pkg
 
-
-    def _clone(self):
+    @classmethod
+    def _split_key(cls, logical_key):
         """
-        Returns clone of this package.
+        Converts a string logical key like 'a/b/c' into a list of ['a', 'b', 'c'].
+        Returns the original key if it's already a list or a tuple.
         """
-        return self.__class__(copy.deepcopy(self._data), copy.deepcopy(self._meta))
+        if isinstance(logical_key, string_types):
+            path = logical_key.split('/')
+        elif isinstance(logical_key, (tuple, list)):
+            path = logical_key
+        else:
+            raise TypeError('Invalid logical_key: %r' % logical_key)
+        return path
 
     def __contains__(self, logical_key):
         """
@@ -330,9 +324,13 @@ class Package(object):
         Returns:
             True or False
         """
-        return logical_key in self._data
+        try:
+            self[logical_key]
+            return True
+        except KeyError:
+            return False
 
-    def __getitem__(self, prefix):
+    def __getitem__(self, logical_key):
         """
         Filters the package based on prefix, and returns either a new Package
             or a PackageEntry.
@@ -344,22 +342,10 @@ class Package(object):
             PackageEntry if prefix matches a logical_key exactly
             otherwise Package
         """
-        if not isinstance(prefix, string_types):
-            raise TypeError("Invalid prefix: %r" % prefix)
-
-        if prefix in self._data:
-            return self._data[prefix]
-        result = Package()
-        slash_prefix = prefix.rstrip('/') + '/' # ensure it ends with exactly one /
-        for key, entry in self._data.items():
-            if key.startswith(slash_prefix):
-                new_key = key[len(slash_prefix):]
-                result.set(new_key, entry)
-
-        if not result._data:
-            raise KeyError("Package Slice not found.")
-
-        return result
+        pkg = self
+        for key_fragment in self._split_key(logical_key):
+            pkg = pkg._children[key_fragment]
+        return pkg
 
     def fetch(self, dest):
         """
@@ -378,20 +364,47 @@ class Package(object):
         """
         # TODO: do this with improved parallelism? connections etc. could be reused
         nice_dest = fix_url(dest).rstrip('/')
-        for key, entry in self._data.items():
-            entry.fetch('{}/{}'.format(nice_dest, key))
+        for logical_key, entry in self.walk():
+            entry.fetch('{}/{}'.format(nice_dest, quote(logical_key)))
 
     def keys(self):
         """
-        Returns list of logical_keys in the package.
+        Returns logical keys in the package.
         """
-        return list(self._data.keys())
+        return self._children.keys()
 
     def __iter__(self):
-        return iter(self._data)
+        return iter(self._children)
 
     def __len__(self):
-        return len(self._data)
+        return len(self._children)
+
+    def walk(self):
+        """
+        Generator that traverses all entries in the package tree and returns tuples of (key, entry),
+        with keys in alphabetical order.
+        """
+        for name, child in sorted(self._children.items()):
+            if isinstance(child, PackageEntry):
+                yield name, child
+            else:
+                for key, value in child.walk():
+                    yield name + '/' + key, value
+
+    def _walk_dir_meta(self):
+        """
+        Generator that traverses all entries in the package tree and returns
+            tuples of (key, meta) for each directory with metadata.
+        Keys will all end in '/' to indicate that they are directories.
+        """
+        for key, child in sorted(self._children.items()):
+            if isinstance(child, PackageEntry):
+                continue
+            meta = child.get_meta()
+            if meta:
+                yield key + '/', meta
+            for child_key, child_meta in child._walk_dir_meta():
+                yield key + '/' + child_key, child_meta
 
     @classmethod
     def load(cls, readable_file):
@@ -409,23 +422,29 @@ class Package(object):
             json decode error
             invalid package exception
         """
-        data = {}
         reader = jsonlines.Reader(readable_file)
         meta = reader.read()
-        # Pop the top hash -- it should only be calculated dynamically
-        meta.pop('top_hash', None)
+        meta.pop('top_hash', None)  # Obsolete as of PR #130
+        pkg = cls()
+        pkg._meta = meta
         for obj in reader:
-            lk = obj.pop('logical_key')
-            if lk in data:
+            path = cls._split_key(obj.pop('logical_key'))
+            subpkg = pkg._ensure_subpackage(path[:-1])
+            key = path[-1]
+            if not obj.get('physical_keys', None):
+                # directory-level metadata
+                subpkg.set_meta(obj['meta'])
+                continue
+            if key in subpkg._children:
                 raise PackageException("Duplicate logical key while loading package")
-            data[lk] = PackageEntry(
+            subpkg._children[key] = PackageEntry(
                 obj['physical_keys'],
                 obj['size'],
                 obj['hash'],
                 obj['meta']
             )
 
-        return cls(data, meta)
+        return pkg
 
     def set_dir(self, lkey, path):
         """
@@ -445,7 +464,7 @@ class Package(object):
         Raises:
             when path doesn't exist
         """
-        lkey = quote(lkey).strip("/") + "/"
+        lkey = lkey.strip("/") + "/"
 
         if lkey == '/':
             # Prevent created logical keys from starting with '/'
@@ -461,7 +480,7 @@ class Package(object):
             for f in files:
                 if not f.is_file():
                     continue
-                entry = PackageEntry.from_local_path(f)
+                entry = PackageEntry([f], None, None, None)
                 logical_key = lkey + f.relative_to(src_path).as_posix()
                 # TODO: Warn if overwritting a logical key?
                 self.set(logical_key, entry)
@@ -472,52 +491,42 @@ class Package(object):
 
     def get(self, logical_key):
         """
-        Gets object from local_key and returns it as an in-memory object.
+        Gets object from local_key and returns its physical path.
+        Equivalent to self[logical_key].get().
 
         Args:
             logical_key(string): logical key of the object to get
 
         Returns:
-            A tuple containing the deserialized object from the logical_key and its metadata
+            Physical path as a string.
 
         Raises:
             KeyError: when logical_key is not present in the package
-            physical key failure
-            hash verification fail
-            when deserialization metadata is not present
+            ValueError: if the logical_key points to a Package rather than PackageEntry.
         """
-        entry = self._data[logical_key]
+        obj = self[logical_key]
+        if not isinstance(obj, PackageEntry):
+            raise ValueError("Key does point to a PackageEntry")
+        return obj.get()
 
-        return entry.get()
-
-    def _copy(self, logical_key, dest):
+    def get_meta(self):
         """
-        Gets objects from logical_key inside the package and saves them to dest.
-
-        Args:
-            logical_key: logical key inside package to get
-            dest: where to put the files
-
-        Returns:
-            None
-
-        Raises:
-            logical key not found
-            physical key failure
-            fail to create file
-            fail to finish write
+        Returns user metadata for this Package.
         """
-        entry = self._data[logical_key]
-        physical_key = _to_singleton(entry.physical_keys)
-        dest = fix_url(dest)
-        copy_file(physical_key, dest, entry.meta)
+        return self._meta.get('user_meta', {})
 
-    def get_meta(self, logical_key):
+    def set_meta(self, meta):
         """
-        Returns metadata for specified logical key.
+        Sets user metadata on this Package.
         """
-        entry = self._data[logical_key]
-        return entry.meta
+        self._meta['user_meta'] = meta
+
+    def _fix_sha256_and_size(self):
+        entries = [entry for key, entry in self.walk() if entry.hash is None or entry.size is None]
+        results = calculate_sha256_and_size((entry.physical_keys[0] for entry in entries))
+        for entry, (obj_hash, size) in zip(entries, results):
+            entry.hash = dict(type='SHA256', value=obj_hash)
+            entry.size = size
 
     def _set_commit_message(self, msg):
         """
@@ -554,6 +563,8 @@ class Package(object):
 
         registry_prefix = get_package_registry(fix_url(registry) if registry else None)
 
+        self._fix_sha256_and_size()
+
         hash_string = self.top_hash()
         manifest = io.BytesIO()
         self.dump(manifest)
@@ -565,11 +576,10 @@ class Package(object):
         if name:
             # Sanitize name.
             self.validate_package_name(name)
-            name = quote(name)
 
             named_path = registry_prefix + '/named_packages/' + quote(name) + '/'
             # todo: use a float to string formater instead of double casting
-            hash_bytes = self.top_hash().encode('utf-8')
+            hash_bytes = hash_string.encode('utf-8')
             timestamp_path = named_path + str(int(time.time()))
             latest_path = named_path + "latest"
             put_bytes(hash_bytes, timestamp_path)
@@ -591,15 +601,11 @@ class Package(object):
             fail to create file
             fail to finish write
         """
-        self.top_hash() # Assure top hash is calculated.
         writer = jsonlines.Writer(writable_file)
-        top_level_meta = self._meta
-        top_level_meta['top_hash'] = {
-            'alg': 'v0',
-            'value': self.top_hash()
-        }
-        writer.write(top_level_meta)
-        for logical_key, entry in self._data.items():
+        writer.write(self._meta)
+        for dir_key, meta in self._walk_dir_meta():
+            writer.write({'logical_key': dir_key, 'meta': meta})
+        for logical_key, entry in self.walk():
             writer.write({'logical_key': logical_key, **entry.as_dict()})
 
     def update(self, new_keys_dict, meta=None, prefix=None):
@@ -618,50 +624,56 @@ class Package(object):
             self
 
         """
-        prefix = "" if not prefix else quote(prefix).strip("/") + "/"
+        prefix = "" if not prefix else prefix.strip("/") + "/"
         for logical_key, entry in new_keys_dict.items():
             self.set(prefix + logical_key, entry, meta)
         return self
 
-    def set(self, logical_key, entry=None, meta=None):
+    def set(self, logical_key, entry, meta=None):
         """
         Returns self with the object at logical_key set to entry.
 
         Args:
             logical_key(string): logical key to update
             entry(PackageEntry OR string): new entry to place at logical_key in the package
-                if entry is a string, it is treated as a path to local disk and an entry
-                is created based on the file at that path on your local disk
-            meta(dict): metadata dict to attach to entry. If meta is provided, set just
-                updates the meta attached to logical_key without changing anything
-                else in the entry
+                if entry is a string, it is treated as a URL, and an entry is created based on it
+            meta(dict): metadata dict to attach to entry
 
         Returns:
             self
         """
-        if entry is None and meta is None:
-            raise PackageException('Must specify either entry or meta')
-
-        if entry is None:
-            return self._update_meta(logical_key, meta)
-
-        if isinstance(entry, (string_types, binary_type, getattr(os, 'PathLike'))):
-            entry = PackageEntry.from_local_path(entry)
+        if isinstance(entry, (string_types, getattr(os, 'PathLike', str))):
+            url = fix_url(str(entry))
+            get_meta(url)  # Unused, but ensures that the URL exists
+            entry = PackageEntry([url], None, None, meta)
+        elif isinstance(entry, PackageEntry):
+            entry = entry._clone()
             if meta is not None:
                 entry.meta = meta
-            self._data[logical_key] = entry
-        elif isinstance(entry, PackageEntry):
-            if meta is not None:
-                raise PackageException("Must specify metadata in the entry")
-            self._data[logical_key] = entry
         else:
-            raise NotImplementedError("Needs to be of type str")
+            raise TypeError("Expected a string for entry")
+
+        path = self._split_key(logical_key)
+
+        pkg = self._ensure_subpackage(path[:-1])
+        pkg._children[path[-1]] = entry
 
         return self
 
-    def _update_meta(self, logical_key, meta):
-        self._data[logical_key].meta = meta
-        return self
+    def _ensure_subpackage(self, path):
+        """
+        Creates a package and any intermediate packages at the given path.
+
+        Args:
+            path(list): logical key as a list or tuple
+
+        Returns:
+            newly created or existing package at that path
+        """
+        pkg = self
+        for key_fragment in path:
+            pkg = pkg._children.setdefault(key_fragment, Package())
+        return pkg
 
     def delete(self, logical_key):
         """
@@ -673,7 +685,9 @@ class Package(object):
         Raises:
             KeyError: when logical_key is not present to be deleted
         """
-        self._data.pop(logical_key)
+        path = self._split_key(logical_key)
+        pkg = self[path[:-1]]
+        del pkg._children[path[-1]]
         return self
 
     def top_hash(self):
@@ -687,11 +701,10 @@ class Package(object):
             A string that represents the top hash of the package
         """
         top_hash = hashlib.sha256()
-        hashable_meta = copy.deepcopy(self._meta)
-        hashable_meta.pop('top_hash', None)
-        top_meta = json.dumps(hashable_meta, sort_keys=True, separators=(',', ':'))
+        assert 'top_hash' not in self._meta
+        top_meta = json.dumps(self._meta, sort_keys=True, separators=(',', ':'))
         top_hash.update(top_meta.encode('utf-8'))
-        for logical_key, entry in sorted(list(self._data.items())):
+        for logical_key, entry in self.walk():
             entry_dict = entry.as_dict()
             entry_dict['logical_key'] = logical_key
             entry_dict.pop('physical_keys', None)
@@ -720,6 +733,8 @@ class Package(object):
         if registry is None:
             registry = dest
 
+        self._fix_sha256_and_size()
+
         dest_url = fix_url(dest).rstrip('/') + '/' + quote(name)
         if dest_url.startswith('file://') or dest_url.startswith('s3://'):
             pkg = self._materialize(dest_url)
@@ -728,7 +743,7 @@ class Package(object):
         else:
             raise NotImplementedError
 
-    def _materialize(self, path):
+    def _materialize(self, dest_url):
         """
         Copies objects to path, then creates a new package that points to those objects.
 
@@ -746,17 +761,18 @@ class Package(object):
             fail to put bytes
             fail to put package to registry
         """
-        pkg = self._clone()
+        pkg = self.__class__()
+        pkg._meta = self._meta
         # Since all that is modified is physical keys, pkg will have the same top hash
-        for logical_key, entry in self._data.items():
+        for logical_key, entry in self.walk():
             # Copy the datafiles in the package.
-            new_physical_key = path + "/" + quote(logical_key)
+            physical_key = _to_singleton(entry.physical_keys)
+            new_physical_key = dest_url + "/" + quote(logical_key)
+            copy_file(physical_key, new_physical_key, entry.meta)
 
-            self._copy(logical_key, new_physical_key)
-            # Create a new package pointing to the new remote key.
+            # Create a new package entry pointing to the new remote key.
             new_entry = entry._clone()
             new_entry.physical_keys = [new_physical_key]
-            # Treat as a local path
             pkg.set(logical_key, new_entry)
         return pkg
 
@@ -776,17 +792,14 @@ class Package(object):
         """
         deleted = []
         modified = []
-        self_keys = self._data.keys()
-        other_keys = other_pkg._data.keys()
-        for lk in self_keys:
-            if lk not in other_keys:
+        other_entries = dict(other_pkg.walk())
+        for lk, entry in self.walk():
+            other_entry = other_entries.pop(lk, None)
+            if other_entry is None:
                 deleted.append(lk)
-            elif not self._data[lk] == other_pkg._data[lk]:
+            elif entry != other_entry:
                 modified.append(lk)
-                
-        added = []
-        for lk in other_keys:
-            if lk not in self_keys:
-                added.append(lk)
+
+        added = list(sorted(other_entries))
         
         return added, modified, deleted
