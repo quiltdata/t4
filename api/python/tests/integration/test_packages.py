@@ -555,7 +555,6 @@ def test_top_hash_stable():
     assert pkg.top_hash() == pkg_hash, \
            "Unexpected top_hash for {}/.quilt/packages/{}".format(registry, pkg_hash)
 
-
 def test_commit_message_on_push(tmpdir):
     """ Verify commit messages populate correctly on push."""
     with patch('botocore.client.BaseClient._make_api_call', new=mock_make_api_call):
@@ -570,3 +569,20 @@ def test_commit_message_on_push(tmpdir):
             # ensure messages are strings
             with pytest.raises(ValueError):
                 pkg.push('Quilt/test_pkg_name', tmpdir / 'pkg', message={})
+
+def test_overwrite_dir_fails():
+    with pytest.raises(QuiltException):
+        pkg = Package()
+        pkg.set('asdf/jkl', LOCAL_MANIFEST)
+        pkg.set('asdf', LOCAL_MANIFEST)
+
+def test_overwrite_entry_fails():
+    with pytest.raises(QuiltException):
+        pkg = Package()
+        pkg.set('asdf', LOCAL_MANIFEST)
+        pkg.set('asdf/jkl', LOCAL_MANIFEST)
+
+def test_siblings_succeed():
+    pkg = Package()
+    pkg.set('as/df', LOCAL_MANIFEST)
+    pkg.set('as/qw', LOCAL_MANIFEST)
