@@ -246,14 +246,16 @@ def _download_dir(bucket, prefix, dest_path):
 
         futures = []
         for key, dest_file, size in tuples_list:
-            def meta_callback(resp):
-                meta = _parse_metadata(resp)
-                with lock:
-                    metadata[key] = meta
+            def meta_callback(key):
+                def cb(resp):
+                    meta = _parse_metadata(resp)
+                    with lock:
+                        metadata[key] = meta
+                return cb
             dest_file.parent.mkdir(parents=True, exist_ok=True)
             future = s3_manager.download(
                 bucket, key, str(dest_file),
-                extra_args=dict(Callback=meta_callback), subscribers=[SizeCallback(size), callback]
+                extra_args=dict(Callback=meta_callback(key)), subscribers=[SizeCallback(size), callback]
             )
             futures.append(future)
 
