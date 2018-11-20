@@ -11,7 +11,12 @@ from botocore.exceptions import ClientError
 import boto3
 from boto3.s3.transfer import TransferConfig, create_transfer_manager
 from s3transfer.subscribers import BaseSubscriber
-from tqdm.autonotebook import tqdm
+from six import BytesIO, binary_type, text_type
+
+import warnings
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    from tqdm.autonotebook import tqdm
 
 from .util import QuiltException, parse_file_url, parse_s3_url
 from . import xattr
@@ -45,19 +50,6 @@ s3_client.get_object = type(_old_get_object)(_get_object, s3_client)
 s3_manager.ALLOWED_DOWNLOAD_ARGS = s3_manager.ALLOWED_DOWNLOAD_ARGS + ['Callback']
 
 
-def split_path(path, require_subpath=False):
-    """
-    Split bucket name and intra-bucket path. Returns: (bucket, path)
-    """
-
-    result = path.split('/', 1)
-    if len(result) != 2:
-        raise ValueError("Invalid path: %r; expected BUCKET/PATH..." % path)
-    if require_subpath and not all(result):
-        raise ValueError("Invalid path: %r; expected BUCKET/PATH... (BUCKET and PATH both required)"
-                         % path)
-
-    return result
 
 
 class SizeCallback(BaseSubscriber):
@@ -188,10 +180,8 @@ def _download_dir(bucket, prefix, dest_path):
             xattr.setxattr(dest_file, HELIUM_XATTR, json.dumps(meta).encode('utf-8'))
 
 
-def download_file(src_path, dest_path, version=None):
-    bucket, key = split_path(src_path)
-
-    if src_path.endswith('/'):
+def download_file(bucket, key, dest_path, version=None):
+    if key.endswith('/'):
         if version is not None:
             raise QuiltException("Cannot specify a Version ID for a directory.")
         _download_dir(bucket, key, dest_path)
@@ -223,13 +213,13 @@ def _calculate_etag(file_obj):
     return '"%s"' % etag
 
 
-def upload_file(src_path, dest_path, override_meta=None):
+def upload_file(src_path, bucket, key, override_meta=None):
     src_file = pathlib.Path(src_path)
     is_dir = src_file.is_dir()
     if src_path.endswith('/'):
         if not is_dir:
             raise ValueError("Source path not a directory")
-        if not dest_path.endswith('/'):
+        if not key.endswith('/'):
             raise ValueError("Destination path must end in /")
     else:
         if is_dir:
@@ -241,8 +231,6 @@ def upload_file(src_path, dest_path, override_meta=None):
     else:
         src_root = src_file.parent
         src_file_list = [src_file]
-
-    bucket, key = split_path(dest_path)
 
     total_size = sum(f.stat().st_size for f in src_file_list)
 
@@ -290,10 +278,8 @@ def upload_file(src_path, dest_path, override_meta=None):
             future.result()
 
 
-def delete_object(path):
-    bucket, key = split_path(path, require_subpath=True)
-
-    if path.endswith('/'):
+def delete_object(bucket, key):
+    if key.endswith('/'):
         for response in _list_objects(Bucket=bucket, Prefix=key):
             for obj in response.get('Contents', []):
                 s3_client.delete_object(Bucket=bucket, Key=obj['Key'])
@@ -308,9 +294,7 @@ NO_OP_COPY_ERROR_MESSAGE = ("An error occurred (InvalidRequest) when calling "
                             "class, website redirect location or encryption "
                             "attributes.")
 
-def copy_object(src, dest, override_meta=None, version=None):
-    src_bucket, src_key = split_path(src, require_subpath=True)
-    dest_bucket, dest_key = split_path(dest, require_subpath=True)
+def copy_object(src_bucket, src_key, dest_bucket, dest_key, override_meta=None, version=None):
     src_params = dict(
         Bucket=src_bucket,
         Key=src_key
@@ -344,10 +328,9 @@ def copy_object(src, dest, override_meta=None, version=None):
         raise
 
 
-def list_object_versions(path, recursive=True):
-    bucket, key = split_path(path)
+def list_object_versions(bucket, prefix, recursive=True):
     list_obj_params = dict(Bucket=bucket,
-                           Prefix=key
+                           Prefix=prefix
                           )
     if not recursive:
         # Treat '/' as a directory separator and only return one level of files instead of everything.
@@ -369,8 +352,7 @@ def list_object_versions(path, recursive=True):
         return prefixes, versions, delete_markers
 
 
-def list_objects(path, recursive=True):
-    bucket, prefix = split_path(path)
+def list_objects(bucket, prefix, recursive=True):
     objects = []
     prefixes = []
     list_obj_params = dict(Bucket=bucket,
@@ -410,19 +392,19 @@ def copy_file(src, dest, override_meta=None):
             dest_bucket, dest_path, dest_version_id = parse_s3_url(dest_url)
             if dest_version_id:
                 raise ValueError("Cannot set VersionId on destination")
-            upload_file(parse_file_url(src_url), dest_bucket + '/' + dest_path, override_meta)
+            upload_file(parse_file_url(src_url), dest_bucket, dest_path, override_meta)
         else:
             raise NotImplementedError
     elif src_url.scheme == 's3':
         src_bucket, src_path, src_version_id = parse_s3_url(src_url)
         if dest_url.scheme == 'file':
             pathlib.Path(parse_file_url(dest_url)).parent.mkdir(parents=True, exist_ok=True)
-            download_file(src_bucket + '/' + src_path, parse_file_url(dest_url), src_version_id)
+            download_file(src_bucket, src_path, parse_file_url(dest_url), src_version_id)
         elif dest_url.scheme == 's3':
             dest_bucket, dest_path, dest_version_id = parse_s3_url(dest_url)
             if dest_version_id:
                 raise ValueError("Cannot set VersionId on destination")
-            copy_object(src_bucket + '/' + src_path, dest_bucket + '/' + dest_path, override_meta, src_version_id)
+            copy_object(src_bucket, src_path, dest_bucket, dest_path, override_meta, src_version_id)
         else:
             raise NotImplementedError
     else:
@@ -468,3 +450,57 @@ def get_bytes(src):
     else:
         raise NotImplementedError
     return data, meta
+
+def get_meta(src):
+    """
+    Gets metadata for the object at a given URL.
+    """
+    src_url = urlparse(src)
+    if src_url.scheme == 'file':
+        src_path = pathlib.Path(parse_file_url(src_url))
+        meta = _parse_file_metadata(src_path)
+    elif src_url.scheme == 's3':
+        bucket, key, version_id = parse_s3_url(src_url)
+        params = dict(
+            Bucket=bucket,
+            Key=key
+        )
+        if version_id:
+            params.update(dict(VersionId=version_id))
+        resp = s3_client.head_object(**params)
+        meta = _parse_metadata(resp)
+    else:
+        raise NotImplementedError
+    return meta
+
+def calculate_sha256_and_size(src_list):
+    def _process_url(src):
+        src_url = urlparse(src)
+        hash_obj = hashlib.sha256()
+        if src_url.scheme == 'file':
+            path = pathlib.Path(parse_file_url(src_url))
+            with open(path, 'rb') as fd:
+                while True:
+                    chunk = fd.read(1024)
+                    if not chunk:
+                        break
+                    hash_obj.update(chunk)
+            size = path.stat().st_size
+        elif src_url.scheme == 's3':
+            src_bucket, src_path, src_version_id = parse_s3_url(src_url)
+            params = dict(Bucket=src_bucket, Key=src_path)
+            if src_version_id is not None:
+                params.update(dict(VersionId=src_version_id))
+            resp = s3_client.get_object(**params)
+            body = resp['Body']
+            for chunk in body:
+                hash_obj.update(chunk)
+            size = resp['ContentLength']
+        else:
+            raise NotImplementedError
+        return hash_obj.hexdigest(), size
+
+    with ThreadPoolExecutor() as executor:
+        results = executor.map(_process_url, src_list)
+
+    return results
