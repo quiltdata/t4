@@ -238,6 +238,9 @@ def _download_dir(bucket, prefix, dest_path):
 
             tuples_list.append((key, dest_file, size))
 
+    if not tuples_list:
+        raise QuiltException("No objects to download.")
+
     with tqdm(total=total_size, unit='B', unit_scale=True) as progress:
         callback = ProgressCallback(progress)
 
