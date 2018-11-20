@@ -149,22 +149,21 @@ def delete_package(name, registry=None):
     pkg_dir = pkg_namespace_dir / pkg_subname
     packages_path = registry_dir / 'packages'
 
-    relevant_tophashes = []
+    tophashes_with_packages = _tophashes_with_packages(registry)
+
     for tophash_file in pkg_dir.iterdir():
         # skip latest, which always duplicates a tophashed file
-        if tophash_file.name != 'latest':
-            relevant_tophashes.append(tophash_file.read_text())
+        tophash = tophash_file.name
 
-        # remove the file
+        if tophash != 'latest' and len(tophashes_with_packages[tophash]) == 1:
+            (packages_path / tophash_file.read_text()).unlink()
+
         tophash_file.unlink()
 
     pkg_dir.rmdir()
 
     if not list(pkg_namespace_dir.iterdir()):
         pkg_namespace_dir.rmdir()
-
-    for relevant_tophash in relevant_tophashes:
-        (packages_path / relevant_tophash).unlink()
 
 
 def ls(target, recursive=False):
