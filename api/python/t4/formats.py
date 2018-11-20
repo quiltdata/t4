@@ -326,16 +326,6 @@ Format('unicode',  # utf-8 instead?
 
 
 class NumpyFormat(Format):
-    def __init__(self, name, handled_extensions=None, **kwargs):
-        handled_extensions = [] if handled_extensions is None else handled_extensions
-
-        if 'npy' not in handled_extensions:
-            handled_extensions.append('npy')
-        if 'npz' not in handled_extensions:
-            handled_extensions.append('npz')
-
-        super().__init__(name, handled_extensions=handled_extensions, **kwargs)
-
     def handles_obj(self, obj):
         # If this is a numpy object, numpy must be loaded.
         if 'numpy' not in sys.modules:
@@ -358,17 +348,10 @@ class NumpyFormat(Format):
         return buf.getvalue()
 
 
-NumpyFormat('numpy').register()
+NumpyFormat('numpy', handled_extensions=['npy', 'npz']).register()
 
 
 class ParquetFormat(Format):
-    def __init__(self, name, handled_extensions=None, **kwargs):
-        handled_extensions = [] if handled_extensions is None else handled_extensions
-
-        if 'parquet' not in handled_extensions:
-            handled_extensions.append('parquet')
-        super().__init__(name, handled_extensions=handled_extensions, **kwargs)
-
     def handles_obj(self, obj):
         # don't load pyarrow or pandas unless we actually have to use them..
         if 'pandas' not in sys.modules:
