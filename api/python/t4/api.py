@@ -102,6 +102,34 @@ def delete(target):
     delete_object(bucket, path)
 
 
+def _tophashes_with_packages(registry=None):
+    registry_base_path = get_package_registry(fix_url(registry) if registry else None)
+    registry_url = urlparse(registry_base_path)
+    if registry_url.scheme != 'file':
+        raise NotImplementedError
+
+    registry_dir = pathlib.Path(parse_file_url(registry_url))
+
+    out = {}
+    for pkg_namespace_path in (registry_dir / 'named_packages').iterdir():
+        pkg_namespace = pkg_namespace_path.name
+
+        for pkg_subname_path in pkg_namespace_path.iterdir():
+            pkg_subname = pkg_subname_path.name
+            pkg_name = pkg_namespace + '/' + pkg_subname
+
+            package_tophashes = [tophash.name for tophash in pkg_subname_path.iterdir()
+                                 if tophash.name != 'latest']
+
+            for tophash in package_tophashes:
+                if tophash in out:
+                    out[tophash].append(pkg_name)
+                else:
+                    out[tophash] = [pkg_name]
+
+    return out
+
+
 def delete_package(name, registry=None):
     if not re.match(PACKAGE_NAME_FORMAT, name):
         raise QuiltException("Invalid package name, must contain exactly one /.")
