@@ -230,6 +230,18 @@ class Package(object):
         self._children = {}
         self._meta = {'version': 'v0'}
 
+    def __repr__(self, level=0, indent='  '):
+        """
+        String representation of the Package.
+        """
+        self_repr = ''
+        for child_key in self.keys():
+            child_entry = indent*level + child_key + '\n'
+            self_repr += child_entry
+            if isinstance(self[child_key], Package):
+                self_repr += self[child_key].__repr__(level+1, indent)
+        return self_repr
+
     @classmethod
     def validate_package_name(cls, name):
         """ Verify that a package name is two alphanumerics strings separated by a slash."""
