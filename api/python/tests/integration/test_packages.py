@@ -547,7 +547,6 @@ def test_local_package_delete_overlapping(tmpdir):
     t4.delete_package('Quilt/Test1', registry=BASE_PATH)
 
     assert 'Quilt/Test1' not in t4.list_packages()
-    import pdb; pdb.set_trace()
     assert top_hash in [p.name for p in
                         Path(BASE_PATH, '.quilt/packages').iterdir()]
 
