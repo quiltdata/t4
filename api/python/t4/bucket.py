@@ -205,4 +205,4 @@ class Bucket(object):
     def select(self, key, query, query_type="SQL", raw=False):
         uri = self._uri + key
         meta = self.get_meta(uri)
-        return select(uri, query, query_type="SQL", meta=meta, s3client=None, raw=False)
+        return select(uri, query, query_type="SQL", meta=meta, s3client=None, raw=raw)
