@@ -408,9 +408,6 @@ def test_tophash_changes(tmpdir):
     th4 = pkg.top_hash()
     assert th2 == th4
 
-    pkg.delete('asdf')
-    assert th1 == pkg.top_hash()
-
 def test_keys():
     pkg = Package()
     assert not pkg.keys()
@@ -520,6 +517,7 @@ def test_diff():
     p2 = Package.browse('Quilt/Test')
     assert p1.diff(p2) == ([], [], [])
 
+
 def test_dir_meta(tmpdir):
     test_meta = {'test': 'meta'}
     pkg = Package()
@@ -545,7 +543,7 @@ def test_dir_meta(tmpdir):
     assert pkg2['asdf'].get_meta() == test_meta
     assert pkg2['qwer']['as'].get_meta() == test_meta
     assert pkg2.get_meta() == test_meta
-
+    
 def test_top_hash_stable():
     """Ensure that top_hash() never changes for a given manifest"""
 
@@ -556,6 +554,21 @@ def test_top_hash_stable():
 
     assert pkg.top_hash() == pkg_hash, \
            "Unexpected top_hash for {}/.quilt/packages/{}".format(registry, pkg_hash)
+
+def test_commit_message_on_push(tmpdir):
+    """ Verify commit messages populate correctly on push."""
+    with patch('botocore.client.BaseClient._make_api_call', new=mock_make_api_call):
+        with open(REMOTE_MANIFEST) as fd:
+            pkg = Package.load(fd)
+        with patch('t4.data_transfer._download_single_file', new=no_op_mock), \
+                patch('t4.data_transfer._download_dir', new=no_op_mock), \
+                patch('t4.Package.build', new=no_op_mock):
+            pkg.push('Quilt/test_pkg_name', tmpdir / 'pkg', message='test_message')
+            assert pkg._meta['message'] == 'test_message'
+
+            # ensure messages are strings
+            with pytest.raises(ValueError):
+                pkg.push('Quilt/test_pkg_name', tmpdir / 'pkg', message={})
 
 def test_overwrite_dir_fails():
     with pytest.raises(QuiltException):

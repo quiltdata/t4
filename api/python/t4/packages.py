@@ -528,7 +528,25 @@ class Package(object):
             entry.hash = dict(type='SHA256', value=obj_hash)
             entry.size = size
 
-    def build(self, name=None, registry=None):
+    def _set_commit_message(self, msg):
+        """
+        Sets a commit message.
+
+        Args:
+            msg: a message string
+
+        Returns:
+            None
+
+        Raises:
+            a ValueError if msg is not a string
+        """
+        if msg is not None and not isinstance(msg, str):
+            raise ValueError("The package message must be a string.")
+
+        self._meta.update({'message': msg})
+
+    def build(self, name=None, registry=None, message=None):
         """
         Serializes this package to a registry.
 
@@ -536,10 +554,13 @@ class Package(object):
             name: optional name for package
             registry: registry to build to
                     defaults to local registry
+            message: the commit message of the package
 
         Returns:
             the top hash as a string
         """
+        self._set_commit_message(message)
+
         registry_prefix = get_package_registry(fix_url(registry) if registry else None)
 
         self._fix_sha256_and_size()
@@ -699,7 +720,7 @@ class Package(object):
 
         return top_hash.hexdigest()
 
-    def push(self, name, dest, registry=None):
+    def push(self, name, dest, registry=None, message=None):
         """
         Copies objects to path, then creates a new package that points to those objects.
         Copies each object in this package to path according to logical key structure,
@@ -709,10 +730,12 @@ class Package(object):
             name: name for package in registry
             dest: where to copy the objects in the package
             registry: registry where to create the new package
+            message: the commit message for the new package
         Returns:
             A new package that points to the copied objects
         """
         self.validate_package_name(name)
+        self._set_commit_message(message)
 
         if registry is None:
             registry = dest
