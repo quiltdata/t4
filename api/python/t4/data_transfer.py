@@ -238,6 +238,9 @@ def _download_dir(bucket, prefix, dest_path):
 
             tuples_list.append((key, dest_file, size))
 
+    if not tuples_list:
+        raise QuiltException("No objects to download.")
+
     with tqdm(total=total_size, unit='B', unit_scale=True) as progress:
         callback = ProgressCallback(progress)
 
@@ -246,14 +249,16 @@ def _download_dir(bucket, prefix, dest_path):
 
         futures = []
         for key, dest_file, size in tuples_list:
-            def meta_callback(resp):
-                meta = _parse_metadata(resp)
-                with lock:
-                    metadata[key] = meta
+            def meta_callback(key):
+                def cb(resp):
+                    meta = _parse_metadata(resp)
+                    with lock:
+                        metadata[key] = meta
+                return cb
             dest_file.parent.mkdir(parents=True, exist_ok=True)
             future = s3_manager.download(
                 bucket, key, str(dest_file),
-                extra_args=dict(Callback=meta_callback), subscribers=[SizeCallback(size), callback]
+                extra_args=dict(Callback=meta_callback(key)), subscribers=[SizeCallback(size), callback]
             )
             futures.append(future)
 
@@ -535,3 +540,57 @@ def get_bytes(src):
     else:
         raise NotImplementedError
     return data, meta
+
+def get_meta(src):
+    """
+    Gets metadata for the object at a given URL.
+    """
+    src_url = urlparse(src)
+    if src_url.scheme == 'file':
+        src_path = pathlib.Path(parse_file_url(src_url))
+        meta = _parse_file_metadata(src_path)
+    elif src_url.scheme == 's3':
+        bucket, key, version_id = parse_s3_url(src_url)
+        params = dict(
+            Bucket=bucket,
+            Key=key
+        )
+        if version_id:
+            params.update(dict(VersionId=version_id))
+        resp = s3_client.head_object(**params)
+        meta = _parse_metadata(resp)
+    else:
+        raise NotImplementedError
+    return meta
+
+def calculate_sha256_and_size(src_list):
+    def _process_url(src):
+        src_url = urlparse(src)
+        hash_obj = hashlib.sha256()
+        if src_url.scheme == 'file':
+            path = pathlib.Path(parse_file_url(src_url))
+            with open(path, 'rb') as fd:
+                while True:
+                    chunk = fd.read(1024)
+                    if not chunk:
+                        break
+                    hash_obj.update(chunk)
+            size = path.stat().st_size
+        elif src_url.scheme == 's3':
+            src_bucket, src_path, src_version_id = parse_s3_url(src_url)
+            params = dict(Bucket=src_bucket, Key=src_path)
+            if src_version_id is not None:
+                params.update(dict(VersionId=src_version_id))
+            resp = s3_client.get_object(**params)
+            body = resp['Body']
+            for chunk in body:
+                hash_obj.update(chunk)
+            size = resp['ContentLength']
+        else:
+            raise NotImplementedError
+        return hash_obj.hexdigest(), size
+
+    with ThreadPoolExecutor() as executor:
+        results = executor.map(_process_url, src_list)
+
+    return results

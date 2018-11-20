@@ -83,6 +83,9 @@ def fix_url(url):
 
 
 def parse_s3_url(s3_url):
+    """
+    Takes in the result of urlparse, and returns a tuple (bucket, path, version_id)
+    """
     if s3_url.scheme != 's3' or not s3_url.netloc or (s3_url.path and not s3_url.path.startswith('/')):
         raise ValueError("Malformed S3 URI")
     bucket = s3_url.netloc
