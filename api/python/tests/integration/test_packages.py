@@ -586,3 +586,25 @@ def test_siblings_succeed():
     pkg = Package()
     pkg.set('as/df', LOCAL_MANIFEST)
     pkg.set('as/qw', LOCAL_MANIFEST)
+
+
+def test_map():
+    pkg = Package()
+    pkg.set('as/df', LOCAL_MANIFEST)
+    pkg.set('as/qw', LOCAL_MANIFEST)
+    assert set(pkg.map(lambda lk, entry: lk)) == {'as/df', 'as/qw'}
+
+
+def test_filter():
+    pkg = Package()
+    pkg.set('as/df', LOCAL_MANIFEST)
+    pkg.set('as/qw', LOCAL_MANIFEST)
+    assert pkg.filter(lambda lk, entry: lk == 'as/df') == [('as/df', pkg['as/df'])]
+
+
+# TODO
+# def test_reduce():
+#     pkg = Package()
+#     pkg.set('as/df', LOCAL_MANIFEST)
+#     pkg.set('as/qw', LOCAL_MANIFEST)
+#     assert set(pkg.reduce(lambda a, b: a + [b])) == [('as/df', pkg['as/df'])]

@@ -823,12 +823,13 @@ class Package(object):
 
         return [(lk, entity) for lk, entity in self.walk() if f(lk, entity)]
 
+    # TODO: have reduce operate on both logical keys and entries
     def reduce(self, f, default=None, include_directories=False):
         if include_directories:
             raise NotImplementedError
 
         entities = list(self.walk())
-        out = default if default else entities[0]
+        out = default if default is not None else entities[0]
         first_idx = 0 if default else 1
 
         for i in range(first_idx, len(entities)):
