@@ -13,6 +13,9 @@ import * as NamedRoutes from 'utils/NamedRoutes';
 import * as RT from 'utils/reactTools';
 import withParsedQuery from 'utils/withParsedQuery';
 
+import PackageDetail from './PackageDetail';
+import PackageList from './PackageList';
+import PackageTree from './PackageTree';
 import Summary from './Summary';
 import Tree from './Tree';
 
@@ -98,19 +101,14 @@ export const Overview = RT.composeComponent('Bucket.Overview',
     />
   ));
 
-export const PackageList = () => (
-  <h1>Packages are coming soon</h1>
-);
-
-export const PackageDetail = () => (
-  <h1>Packages are coming soon</h1>
-);
-
 export const Search = RT.composeComponent('Bucket.Search',
   withParsedQuery,
   ({ location: { query: { q } }, match: { params: { bucket } } }) => (
     <SearchResults bucket={bucket} q={q} />
   ));
+
+// TODO: create an error boundary to catch NotFound
+const NotFound = () => { throw new Error('Not found'); };
 
 export default RT.composeComponent('Bucket',
   NamedRoutes.inject(),
@@ -125,6 +123,8 @@ export default RT.composeComponent('Bucket',
         <Route path={paths.bucketSearch} component={Search} exact />
         <Route path={paths.bucketPackageList} component={PackageList} exact />
         <Route path={paths.bucketPackageDetail} component={PackageDetail} exact />
+        <Route path={paths.bucketPackageTree} component={PackageTree} exact />
+        <Route component={NotFound} />
       </Switch>
     </BucketLayout>
   ));
