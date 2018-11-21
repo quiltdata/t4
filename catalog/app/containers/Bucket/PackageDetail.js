@@ -77,9 +77,9 @@ export default RT.composeComponent('Bucket.PackageDetail',
               className={classes.link}
               to={urls.bucketPackageTree(bucket, name, id)}
             >
-              <Field label="Message">{info.commit_message || '<empty>'}</Field>
-              <Field label="Date">{modified.toLocaleString()}</Field>
-              <Field label="Hash">{hash}</Field>
+              <Field label="Message:">{info.commit_message || '<empty>'}</Field>
+              <Field label="Date:">{modified.toLocaleString()}</Field>
+              <Field label="Hash:">{hash}</Field>
             </CardContent>
           </Card>
         )),
