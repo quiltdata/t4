@@ -98,8 +98,6 @@ class PackageEntry(object):
         """
         Returns dict representation of entry.
         """
-        if self.hash is None or self.size is None:
-            raise QuiltException("PackageEntry missing hash and/or size: %s" % self.physical_keys[0])
         ret = {
             'physical_keys': self.physical_keys,
             'size': self.size,
@@ -712,6 +710,8 @@ class Package(object):
         top_meta = json.dumps(self._meta, sort_keys=True, separators=(',', ':'))
         top_hash.update(top_meta.encode('utf-8'))
         for logical_key, entry in self.walk():
+            if entry.hash is None or entry.size is None:
+                raise QuiltException("PackageEntry missing hash and/or size: %s" % entry.physical_keys[0])
             entry_dict = entry.as_dict()
             entry_dict['logical_key'] = logical_key
             entry_dict.pop('physical_keys', None)
