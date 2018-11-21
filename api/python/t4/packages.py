@@ -15,10 +15,13 @@ from six import string_types
 
 from .data_transfer import (
     calculate_sha256_and_size, copy_file, deserialize_obj,
-    get_bytes, get_meta, put_bytes, TargetType
+    get_bytes, get_meta, list_object_versions, put_bytes, TargetType
 )
 from .exceptions import PackageException
-from .util import QuiltException, BASE_PATH, fix_url, PACKAGE_NAME_FORMAT, parse_file_url
+from .util import (
+    QuiltException, BASE_PATH, fix_url, PACKAGE_NAME_FORMAT,
+    parse_file_url, parse_s3_url
+)
 
 
 def hash_file(readable_file):
@@ -464,11 +467,8 @@ class Package(object):
         Raises:
             when path doesn't exist
         """
-        lkey = lkey.strip("/") + "/"
-
-        if lkey == '/':
-            # Prevent created logical keys from starting with '/'
-            lkey = ''
+        lkey = lkey.strip("/")
+        root = self._ensure_subpackage(self._split_key(lkey)) if lkey else self
 
         # TODO: deserialization metadata
         url = urlparse(fix_url(path).strip('/'))
@@ -480,10 +480,27 @@ class Package(object):
             for f in files:
                 if not f.is_file():
                     continue
-                entry = PackageEntry([f], None, None, None)
-                logical_key = lkey + f.relative_to(src_path).as_posix()
+                entry = PackageEntry([f.as_uri()], None, None, None)
+                logical_key = f.relative_to(src_path).as_posix()
                 # TODO: Warn if overwritting a logical key?
-                self.set(logical_key, entry)
+                root.set(logical_key, entry)
+        elif url.scheme == 's3':
+            src_bucket, src_key, src_version = parse_s3_url(url)
+            if src_version:
+                raise PackageException("Directories cannot have versions")
+            if src_key and not src_key.endswith('/'):
+                src_key += '/'
+            objects, _ = list_object_versions(src_bucket, src_key)
+            for obj in objects:
+                if not obj['IsLatest']:
+                    continue
+                obj_url = 's3://%s/%s' % (src_bucket, quote(obj['Key']))
+                if obj['VersionId'] != 'null':  # Yes, 'null'
+                    obj_url += '?versionId=%s' % quote(obj['VersionId'])
+                entry = PackageEntry([obj_url], None, None, None)
+                logical_key = obj['Key'][len(src_key):]
+                # TODO: Warn if overwritting a logical key?
+                root.set(logical_key, entry)
         else:
             raise NotImplementedError
 
