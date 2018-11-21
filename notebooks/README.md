@@ -1,5 +1,6 @@
-## notebooks
+This is the T4 web catalog. It does things that no other S3 browser does, such as the following:
 
-This folder contains some example notebooks useful for getting started with T4. Currently the notebooks are:
-
-* `QuickStart.ipynb` &mdash; A simple notebook demonstrating how the T4 API works. If you are completely new to T4, start here. Uses [HURDAT](https://www.nhc.noaa.gov/data/hurdat/), an NOAA hurricane dataset.
+* [Image preview](https://alpha.quiltdata.com/b/alpha-quilt-storage/tree/images/)
+* [Visualization](https://alpha.quiltdata.com/b/alpha-quilt-storage/tree/aleksey/open-images/)
+* [Jupyter notebook preview](https://alpha.quiltdata.com/b/alpha-quilt-storage/tree/notebooks/)
+* [Summaries, combining the above](https://alpha.quiltdata.com/b/alpha-quilt-storage/tree/summarize/)
