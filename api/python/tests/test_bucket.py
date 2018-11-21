@@ -18,7 +18,8 @@ def test_bucket_meta():
             'helium': json.dumps({'target': 'json'})
         }
         response = {
-            'Metadata': test_meta
+            'Metadata': test_meta,
+            'ContentLength': 123
         }
         params = {
             'Bucket': 'test-bucket',
@@ -34,7 +35,8 @@ def test_bucket_meta():
             'helium': json.dumps({"target": "json"})
         }
         head_response = {
-            'Metadata': head_meta
+            'Metadata': head_meta,
+            'ContentLength': 123
         }
         head_params = {
             'Bucket': 'test-bucket',

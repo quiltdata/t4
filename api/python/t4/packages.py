@@ -14,8 +14,8 @@ import jsonlines
 from six import string_types
 
 from .data_transfer import (
-    calculate_sha256_and_size, copy_file, deserialize_obj,
-    get_bytes, get_meta, put_bytes, TargetType
+    calculate_sha256, copy_file, deserialize_obj,
+    get_bytes, get_size_and_meta, put_bytes, TargetType
 )
 from .exceptions import PackageException
 from .util import QuiltException, BASE_PATH, fix_url, PACKAGE_NAME_FORMAT, parse_file_url
@@ -480,7 +480,7 @@ class Package(object):
             for f in files:
                 if not f.is_file():
                     continue
-                entry = PackageEntry([f], None, None, None)
+                entry = PackageEntry([f], f.stat().st_size, None, None)
                 logical_key = lkey + f.relative_to(src_path).as_posix()
                 # TODO: Warn if overwritting a logical key?
                 self.set(logical_key, entry)
@@ -521,12 +521,17 @@ class Package(object):
         """
         self._meta['user_meta'] = meta
 
-    def _fix_sha256_and_size(self):
-        entries = [entry for key, entry in self.walk() if entry.hash is None or entry.size is None]
-        results = calculate_sha256_and_size((entry.physical_keys[0] for entry in entries))
-        for entry, (obj_hash, size) in zip(entries, results):
+    def _fix_sha256(self):
+        entries = [entry for key, entry in self.walk() if entry.hash is None]
+        if not entries:
+            return
+
+        physical_keys = (entry.physical_keys[0] for entry in entries)
+        total_size = sum(entry.size for entry in entries)
+        results = calculate_sha256(physical_keys, total_size)
+
+        for entry, obj_hash in zip(entries, results):
             entry.hash = dict(type='SHA256', value=obj_hash)
-            entry.size = size
 
     def build(self, name=None, registry=None):
         """
@@ -542,7 +547,7 @@ class Package(object):
         """
         registry_prefix = get_package_registry(fix_url(registry) if registry else None)
 
-        self._fix_sha256_and_size()
+        self._fix_sha256()
 
         hash_string = self.top_hash()
         manifest = io.BytesIO()
@@ -623,8 +628,8 @@ class Package(object):
         """
         if isinstance(entry, (string_types, getattr(os, 'PathLike', str))):
             url = fix_url(str(entry))
-            get_meta(url)  # Unused, but ensures that the URL exists
-            entry = PackageEntry([url], None, None, meta)
+            size, orig_meta = get_size_and_meta(url)
+            entry = PackageEntry([url], size, None, meta if meta is not None else orig_meta)
         elif isinstance(entry, PackageEntry):
             entry = entry._clone()
             if meta is not None:
@@ -717,7 +722,7 @@ class Package(object):
         if registry is None:
             registry = dest
 
-        self._fix_sha256_and_size()
+        self._fix_sha256()
 
         dest_url = fix_url(dest).rstrip('/') + '/' + quote(name)
         if dest_url.startswith('file://') or dest_url.startswith('s3://'):
