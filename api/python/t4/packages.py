@@ -810,3 +810,28 @@ class Package(object):
         added = list(sorted(other_entries))
         
         return added, modified, deleted
+
+    def map(self, f, include_directories=False):
+        if include_directories:
+            raise NotImplementedError
+
+        return [f(lk, entity) for lk, entity in self.walk()]
+
+    def filter(self, f, include_directories=False):
+        if include_directories:
+            raise NotImplementedError
+
+        return [(lk, entity) for lk, entity in self.walk() if f(lk, entity)]
+
+    def reduce(self, f, default=None, include_directories=False):
+        if include_directories:
+            raise NotImplementedError
+
+        entities = list(self.walk())
+        out = default if default else entities[0]
+        first_idx = 0 if default else 1
+
+        for i in range(first_idx, len(entities)):
+            out = f(out, entities[i])
+            
+        return out
