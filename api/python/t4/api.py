@@ -4,7 +4,7 @@ import requests
 from aws_requests_auth.boto_utils import BotoAWSRequestsAuth
 from elasticsearch import Elasticsearch, RequestsHttpConnection
 from six.moves import urllib
-from urllib.parse import urlparse, urlunparse
+from urllib.parse import urlparse, unquote
 
 from .data_transfer import (copy_file, get_bytes, put_bytes, delete_object, list_objects,
                             list_object_versions)
@@ -53,7 +53,7 @@ def put(obj, dest, meta=None):
     """
     all_meta = {'user_meta': meta}
     clean_dest = fix_url(dest)
-    ext = pathlib.PurePosixPath(urlparse(clean_dest).path).suffix
+    ext = pathlib.PurePosixPath(urlparse(unquote(clean_dest)).path).suffix
     data = FormatsRegistry.serialize(obj, all_meta, ext)  # adds target
 
     put_bytes(data, clean_dest, all_meta)
@@ -72,7 +72,7 @@ def get(src):
     """
     clean_src = fix_url(src)
     data, meta = get_bytes(clean_src)
-    ext = pathlib.PurePosixPath(urlparse(clean_src).path).suffix
+    ext = pathlib.PurePosixPath(urlparse(unquote(clean_src)).path).suffix
 
     return FormatsRegistry.deserialize(data, meta, ext=ext), meta.get('user_meta')
 
