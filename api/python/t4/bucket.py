@@ -3,7 +3,7 @@ from urllib.parse import urlparse
 
 from .data_transfer import (copy_file, copy_object, delete_object,
                             get_bytes, get_meta, list_objects, put_bytes)
-from .formats import FormatsRegistry
+from .formats import FormatRegistry
 from .util import QuiltException, fix_url, parse_s3_url
 
 
@@ -44,7 +44,7 @@ class Bucket(object):
             if deserialization fails
         """
         data, meta = get_bytes(self._uri + key)
-        return FormatsRegistry.deserialize(data, meta, pathlib.PurePosixPath(key).suffix)
+        return FormatRegistry.deserialize(data, meta, pathlib.PurePosixPath(key).suffix)
 
     def __call__(self, key):
         """
@@ -63,7 +63,7 @@ class Bucket(object):
         """
         dest = self._uri + key
         all_meta = dict(user_meta=meta or {})
-        data = FormatsRegistry.serialize(obj, all_meta)  # all_meta gets updated.
+        data = FormatRegistry.serialize(obj, all_meta)  # all_meta gets updated.
         put_bytes(data, dest, all_meta)
 
     def put_file(self, key, path):

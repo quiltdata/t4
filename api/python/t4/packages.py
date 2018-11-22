@@ -18,7 +18,7 @@ from .data_transfer import (
     calculate_sha256_and_size, copy_file, get_bytes, get_meta, put_bytes
 )
 from .exceptions import PackageException
-from .formats import FormatsRegistry
+from .formats import FormatRegistry
 from .util import (
     QuiltException, BASE_PATH, fix_url, PACKAGE_NAME_FORMAT, parse_file_url,
     parse_s3_url
@@ -194,7 +194,7 @@ class PackageEntry(object):
         physical_key = _to_singleton(self.physical_keys)
         pkey_ext = pathlib.PurePosixPath(urlparse(unquote(physical_key)).path).suffix
 
-        fmt = FormatsRegistry.for_meta(self.meta) or FormatsRegistry.for_ext(pkey_ext)
+        fmt = FormatRegistry.for_meta(self.meta) or FormatRegistry.for_ext(pkey_ext)
 
         if fmt is None:
             raise QuiltException("No serialization metadata, and guessing by extension failed.")
