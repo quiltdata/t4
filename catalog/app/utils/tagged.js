@@ -64,34 +64,43 @@ export default (variants) => {
 
   const constructors = R.mapObjIndexed(mkConstructor, symbols);
 
+  const doCase = (cases, ...args) => {
+    invariant(R.type(cases) === 'Object',
+      `${scope}/case: cases must be an object`);
+    invariant(R.all((x) => typeof x === 'function', cases),
+      `${scope}/case: cases must be an object of functions`);
+    // eslint-disable-next-line no-underscore-dangle
+    invariant(R.all(R.contains(R.__, ['_', '__', ...variants]), R.keys(cases)),
+      `${scope}/case: cases may only include type variants and placeholders (_ and __)`);
+    invariant(exhaustive(variants, cases),
+      `${scope}/case: non-exhaustive cases`);
+
+    const exec = (inst, ...extra) => {
+      const variant = getVariant(inst);
+      // eslint-disable-next-line no-underscore-dangle
+      if (!cases.__) {
+        invariant(variant,
+          `${scope}/case: must be called with an instance of type, otherwise cases must include the __ placeholder`);
+      }
+      return chooseCase(cases, variant)(inst, ...extra);
+    };
+
+    return args.length ? exec(...args) : exec;
+  };
+
   return {
     is: (inst) => !!getVariant(inst),
+
     /**
      *
      */
-    case: (cases, ...args) => {
-      invariant(R.type(cases) === 'Object',
-        `${scope}/case: cases must be an object`);
-      invariant(R.all((x) => typeof x === 'function', cases),
-        `${scope}/case: cases must be an object of functions`);
-      // eslint-disable-next-line no-underscore-dangle
-      invariant(R.all(R.contains(R.__, ['_', '__', ...variants]), R.keys(cases)),
-        `${scope}/case: cases may only include type variants and placeholders (_ and __)`);
-      invariant(exhaustive(variants, cases),
-        `${scope}/case: non-exhaustive cases`);
+    case: doCase,
 
-      const exec = (inst, ...extra) => {
-        const variant = getVariant(inst);
-        // eslint-disable-next-line no-underscore-dangle
-        if (!cases.__) {
-          invariant(variant,
-            `${scope}/case: must be called with an instance of type, otherwise cases must include the __ placeholder`);
-        }
-        return chooseCase(cases, variant)(inst, ...extra);
-      };
+    /**
+     *
+     */
+    reducer: (cases) => (acc, next) => doCase(cases, next)(acc),
 
-      return args.length ? exec(...args) : exec;
-    },
     // TODO: mapCase
     ...constructors,
   };
