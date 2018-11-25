@@ -166,7 +166,9 @@ export const handleFromUrl = (url, referrer) => {
  *
  * @param {string} path
  *
- * @returns {[string]}
+ * @returns {[{ label: string, path: string }]}
  */
 export const getBreadCrumbs = (path) =>
-  path ? [...getBreadCrumbs(up(path)), path] : [];
+  path
+    ? [...getBreadCrumbs(up(path)), { label: basename(path), path }]
+    : [];

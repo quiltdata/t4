@@ -1,14 +1,10 @@
 import { basename } from 'path';
 
-import PT from 'prop-types';
 import * as R from 'ramda';
 import * as React from 'react';
-import { Link } from 'react-router-dom';
-import * as RC from 'recompose';
 import Button from '@material-ui/core/Button';
 import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
-import Typography from '@material-ui/core/Typography';
 import { withStyles } from '@material-ui/core/styles';
 
 import ContentWindow from 'components/ContentWindow';
@@ -24,6 +20,7 @@ import {
 } from 'utils/s3paths';
 import { composeComponent } from 'utils/reactTools';
 
+import BreadCrumbs, { Crumb } from './BreadCrumbs';
 import Listing, { ListingItem } from './Listing';
 import Summary from './Summary';
 
@@ -78,34 +75,14 @@ const fetchListing = ({ s3, urls, bucket, path }) =>
       R.uniqBy(ListingItem.case({ Dir: R.prop('name'), File: R.prop('name') })),
     ));
 
-const BreadCrumbs = composeComponent('Bucket.Tree.BreadCrumbs',
-  RC.setPropTypes({
-    bucket: PT.string.isRequired,
-    path: PT.string.isRequired,
-  }),
-  withStyles(({ typography }) => ({
-    root: {
-      fontWeight: typography.fontWeightRegular,
-    },
-  })),
-  NamedRoutes.inject(),
-  ({ classes, bucket, path, urls }) => (
-    <Typography variant="h6" className={classes.root}>
-      {path
-        ? <Link to={urls.bucketTree(bucket)}>{bucket}</Link>
-        : bucket
-      }
-      {getBreadCrumbs(path).map((b) => (
-        <span key={b}>
-          <span> / </span>
-          {b === path
-            ? basename(b)
-            : <Link to={urls.bucketTree(bucket, b)}>{basename(b)}</Link>
-          }
-        </span>
-      ))}
-    </Typography>
-  ));
+const getCrumbs = R.compose(R.intersperse(Crumb.Sep(' / ')),
+  ({ bucket, path, urls }) =>
+    [{ label: bucket, path: '' }, ...getBreadCrumbs(path)]
+      .map(({ label, path: segPath }) =>
+        Crumb.Segment({
+          label,
+          to: segPath === path ? undefined : urls.bucketTree(bucket, segPath),
+        })));
 
 export default composeComponent('Bucket.Tree',
   AWS.S3.inject(),
@@ -131,10 +108,16 @@ export default composeComponent('Bucket.Tree',
       textDecoration: 'none !important',
     },
   })),
-  ({ match: { params: { bucket, path } }, classes, signer, listing }) => (
+  ({
+    match: { params: { bucket, path } },
+    classes,
+    signer,
+    listing,
+    urls,
+  }) => (
     <React.Fragment>
       <div className={classes.topBar}>
-        <BreadCrumbs bucket={bucket} path={path} />
+        <BreadCrumbs items={getCrumbs({ bucket, path, urls })} />
         {!isDir(path) && (
           <Button
             variant="outlined"
