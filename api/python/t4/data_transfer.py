@@ -153,6 +153,9 @@ def _download_dir(bucket, prefix, dest_path):
 
             tuples_list.append((key, dest_file, size))
 
+    if not tuples_list:
+        raise QuiltException("No objects to download.")
+
     with tqdm(total=total_size, unit='B', unit_scale=True) as progress:
         callback = ProgressCallback(progress)
 
@@ -161,14 +164,16 @@ def _download_dir(bucket, prefix, dest_path):
 
         futures = []
         for key, dest_file, size in tuples_list:
-            def meta_callback(resp):
-                meta = _parse_metadata(resp)
-                with lock:
-                    metadata[key] = meta
+            def meta_callback(key):
+                def cb(resp):
+                    meta = _parse_metadata(resp)
+                    with lock:
+                        metadata[key] = meta
+                return cb
             dest_file.parent.mkdir(parents=True, exist_ok=True)
             future = s3_manager.download(
                 bucket, key, str(dest_file),
-                extra_args=dict(Callback=meta_callback), subscribers=[SizeCallback(size), callback]
+                extra_args=dict(Callback=meta_callback(key)), subscribers=[SizeCallback(size), callback]
             )
             futures.append(future)
 
@@ -329,6 +334,9 @@ def copy_object(src_bucket, src_key, dest_bucket, dest_key, override_meta=None, 
 
 
 def list_object_versions(bucket, prefix, recursive=True):
+    if prefix and not prefix.endswith('/'):
+        raise ValueError("Prefix must end with /")
+
     list_obj_params = dict(Bucket=bucket,
                            Prefix=prefix
                           )
@@ -353,6 +361,9 @@ def list_object_versions(bucket, prefix, recursive=True):
 
 
 def list_objects(bucket, prefix, recursive=True):
+    if prefix and not prefix.endswith('/'):
+        raise ValueError("Prefix must end with /")
+
     objects = []
     prefixes = []
     list_obj_params = dict(Bucket=bucket,

@@ -15,7 +15,8 @@ from six import string_types, binary_type
 
 
 from .data_transfer import (
-    calculate_sha256_and_size, copy_file, get_bytes, get_meta, put_bytes
+    calculate_sha256_and_size, copy_file, get_bytes, get_meta, 
+    list_object_versions, put_bytes
 )
 from .exceptions import PackageException
 from .formats import FormatRegistry
@@ -393,6 +394,21 @@ class Package(object):
                 for key, value in child.walk():
                     yield name + '/' + key, value
 
+    def _walk_dir_meta(self):
+        """
+        Generator that traverses all entries in the package tree and returns
+            tuples of (key, meta) for each directory with metadata.
+        Keys will all end in '/' to indicate that they are directories.
+        """
+        for key, child in sorted(self._children.items()):
+            if isinstance(child, PackageEntry):
+                continue
+            meta = child.get_meta()
+            if meta:
+                yield key + '/', meta
+            for child_key, child_meta in child._walk_dir_meta():
+                yield key + '/' + child_key, child_meta
+
     @classmethod
     def load(cls, readable_file):
         """
@@ -418,6 +434,10 @@ class Package(object):
             path = cls._split_key(obj.pop('logical_key'))
             subpkg = pkg._ensure_subpackage(path[:-1])
             key = path[-1]
+            if not obj.get('physical_keys', None):
+                # directory-level metadata
+                subpkg.set_meta(obj['meta'])
+                continue
             if key in subpkg._children:
                 raise PackageException("Duplicate logical key while loading package")
             subpkg._children[key] = PackageEntry(
@@ -447,11 +467,8 @@ class Package(object):
         Raises:
             when path doesn't exist
         """
-        lkey = lkey.strip("/") + "/"
-
-        if lkey == '/':
-            # Prevent created logical keys from starting with '/'
-            lkey = ''
+        lkey = lkey.strip("/")
+        root = self._ensure_subpackage(self._split_key(lkey)) if lkey else self
 
         # TODO: deserialization metadata
         url = urlparse(fix_url(path).strip('/'))
@@ -463,10 +480,27 @@ class Package(object):
             for f in files:
                 if not f.is_file():
                     continue
-                entry = PackageEntry([f], None, None, None)
-                logical_key = lkey + f.relative_to(src_path).as_posix()
+                entry = PackageEntry([f.as_uri()], None, None, None)
+                logical_key = f.relative_to(src_path).as_posix()
                 # TODO: Warn if overwritting a logical key?
-                self.set(logical_key, entry)
+                root.set(logical_key, entry)
+        elif url.scheme == 's3':
+            src_bucket, src_key, src_version = parse_s3_url(url)
+            if src_version:
+                raise PackageException("Directories cannot have versions")
+            if src_key and not src_key.endswith('/'):
+                src_key += '/'
+            objects, _ = list_object_versions(src_bucket, src_key)
+            for obj in objects:
+                if not obj['IsLatest']:
+                    continue
+                obj_url = 's3://%s/%s' % (src_bucket, quote(obj['Key']))
+                if obj['VersionId'] != 'null':  # Yes, 'null'
+                    obj_url += '?versionId=%s' % quote(obj['VersionId'])
+                entry = PackageEntry([obj_url], None, None, None)
+                logical_key = obj['Key'][len(src_key):]
+                # TODO: Warn if overwritting a logical key?
+                root.set(logical_key, entry)
         else:
             raise NotImplementedError
 
@@ -492,14 +526,17 @@ class Package(object):
             raise ValueError("Key does point to a PackageEntry")
         return obj.get()
 
-    def get_meta(self, logical_key):
+    def get_meta(self):
         """
-        Returns metadata for specified logical key.
+        Returns user metadata for this Package.
         """
-        obj = self[logical_key]
-        if not isinstance(obj, PackageEntry):
-            raise ValueError("Key does point to a PackageEntry")
-        return obj.meta
+        return self._meta.get('user_meta', {})
+
+    def set_meta(self, meta):
+        """
+        Sets user metadata on this Package.
+        """
+        self._meta['user_meta'] = meta
 
     def _fix_sha256_and_size(self):
         entries = [entry for key, entry in self.walk() if entry.hash is None or entry.size is None]
@@ -508,7 +545,25 @@ class Package(object):
             entry.hash = dict(type='SHA256', value=obj_hash)
             entry.size = size
 
-    def build(self, name=None, registry=None):
+    def _set_commit_message(self, msg):
+        """
+        Sets a commit message.
+
+        Args:
+            msg: a message string
+
+        Returns:
+            None
+
+        Raises:
+            a ValueError if msg is not a string
+        """
+        if msg is not None and not isinstance(msg, str):
+            raise ValueError("The package message must be a string.")
+
+        self._meta.update({'message': msg})
+
+    def build(self, name=None, registry=None, message=None):
         """
         Serializes this package to a registry.
 
@@ -516,10 +571,13 @@ class Package(object):
             name: optional name for package
             registry: registry to build to
                     defaults to local registry
+            message: the commit message of the package
 
         Returns:
             the top hash as a string
         """
+        self._set_commit_message(message)
+
         registry_prefix = get_package_registry(fix_url(registry) if registry else None)
 
         self._fix_sha256_and_size()
@@ -562,6 +620,8 @@ class Package(object):
         """
         writer = jsonlines.Writer(writable_file)
         writer.write(self._meta)
+        for dir_key, meta in self._walk_dir_meta():
+            writer.write({'logical_key': dir_key, 'meta': meta})
         for logical_key, entry in self.walk():
             writer.write({'logical_key': logical_key, **entry.as_dict()})
 
@@ -612,23 +672,30 @@ class Package(object):
 
         path = self._split_key(logical_key)
 
-        pkg = self._ensure_subpackage(path[:-1])
+        pkg = self._ensure_subpackage(path[:-1], ensure_no_entry=True)
+        if path[-1] in pkg and isinstance(pkg[path[-1]], Package):
+            raise QuiltException("Cannot overwrite directory with PackageEntry")
         pkg._children[path[-1]] = entry
 
         return self
 
-    def _ensure_subpackage(self, path):
+    def _ensure_subpackage(self, path, ensure_no_entry=False):
         """
         Creates a package and any intermediate packages at the given path.
 
         Args:
             path(list): logical key as a list or tuple
+            ensure_no_entry(boolean): if True, throws if this would overwrite
+                a PackageEntry that already exists in the tree.
 
         Returns:
             newly created or existing package at that path
         """
         pkg = self
         for key_fragment in path:
+            if ensure_no_entry and key_fragment in pkg \
+                    and isinstance(pkg[key_fragment], PackageEntry):
+                raise QuiltException("Already a PackageEntry along the path.")
             pkg = pkg._children.setdefault(key_fragment, Package())
         return pkg
 
@@ -670,7 +737,7 @@ class Package(object):
 
         return top_hash.hexdigest()
 
-    def push(self, name, dest, registry=None):
+    def push(self, name, dest, registry=None, message=None):
         """
         Copies objects to path, then creates a new package that points to those objects.
         Copies each object in this package to path according to logical key structure,
@@ -680,10 +747,12 @@ class Package(object):
             name: name for package in registry
             dest: where to copy the objects in the package
             registry: registry where to create the new package
+            message: the commit message for the new package
         Returns:
             A new package that points to the copied objects
         """
         self.validate_package_name(name)
+        self._set_commit_message(message)
 
         if registry is None:
             registry = dest
