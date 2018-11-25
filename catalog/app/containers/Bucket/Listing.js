@@ -166,7 +166,9 @@ export default composeComponent('Bucket.Tree.Listing',
               to={to}
             >
               <div className={classes.size}>{readableBytes(size)}</div>
-              <div className={classes.modified}>{modified.toLocaleString()}</div>
+              {!!modified && (
+                <div className={classes.modified}>{modified.toLocaleString()}</div>
+              )}
             </Item>
           ),
         }))}

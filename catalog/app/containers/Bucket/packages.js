@@ -49,30 +49,34 @@ const loadManifest = ({ s3, bucket }) => async (hash) =>
       return { info, keys, modified: LastModified };
     });
 
-const getRevisionIdFromKey = (key) =>
-  key.substring(key.lastIndexOf('/') + 1);
+const getRevisionIdFromKey = (key) => key.substring(key.lastIndexOf('/') + 1);
+const getRevisionKeyFromId = (name, id) => `${PACKAGES_PREFIX}${name}/${id}`;
 
-export const getRevisions = async ({ s3, bucket, name }) => {
-  const { Contents } = await s3
+const loadRevision = ({ s3, bucket }) => async (key) => {
+  const hash = await loadRevisionHash({ s3, bucket })(key);
+  const { info, keys, modified } = await loadManifest({ s3, bucket })(hash);
+  return {
+    id: getRevisionIdFromKey(key),
+    hash,
+    info,
+    keys,
+    modified,
+  };
+};
+
+export const getRevisions = ({ s3, bucket, name }) =>
+  s3
     .listObjectsV2({
       Bucket: bucket,
       Prefix: `${PACKAGES_PREFIX}${name}/`,
     })
-    .promise();
+    .promise()
+    .then(R.pipe(
+      R.prop('Contents'),
+      R.map(R.pipe(R.prop('Key'), loadRevision({ s3, bucket }))),
+      (ps) => Promise.all(ps),
+    ))
+    .then(R.sortBy((r) => -r.modified));
 
-  const revisions = await Promise.all(Contents.map(async ({ Key }) => {
-    const hash = await loadRevisionHash({ s3, bucket })(Key);
-    const { info, keys, modified } = await loadManifest({ s3, bucket })(hash);
-    return {
-      id: getRevisionIdFromKey(Key),
-      hash,
-      info,
-      keys,
-      modified,
-    };
-  }));
-
-  const sorted = R.sortBy((r) => -r.modified, revisions);
-
-  return sorted;
-};
+export const fetchTree = ({ s3, bucket, name, revision }) =>
+  loadRevision({ s3, bucket })(getRevisionKeyFromId(name, revision));
