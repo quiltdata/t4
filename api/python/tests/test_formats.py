@@ -79,3 +79,15 @@ def test_formats_serdes():
     df = pd.DataFrame([[1, 2], [3, 4]])
     meta = {}
     assert df.equals(FormatRegistry.deserialize(FormatRegistry.serialize(df, meta), meta))
+
+
+def test_formats_csv_read():
+    csv_file = pathlib.Path(__file__).parent / 'data' / 'csv.csv'
+
+    meta = {'format': {'name': 'csv'}}
+    expected_bytes = b'a,b,c,d\n1,2,3,4\n5,6,7,8\n'
+    expected_df = FormatRegistry.deserialize(expected_bytes, meta)
+    df = FormatRegistry.deserialize(csv_file.read_bytes(), meta)
+
+    assert df.equals(expected_df)
+    assert expected_bytes == FormatRegistry.serialize(df, meta)

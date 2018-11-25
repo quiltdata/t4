@@ -76,9 +76,9 @@ class FormatRegistry:
             cls.formats_by_ext[ext.lower().strip('. ')].insert(0, format)
 
     @classmethod
-    def serialize(cls, obj, meta, ext=None):
+    def serialize(cls, obj, meta=None, ext=None):
         # try to retain their meta-configured format.
-        meta_fmt = cls.for_meta(meta)
+        meta_fmt = cls.for_meta(meta) if meta is not None else None
         ext_fmts = cls.for_ext(ext, single=False) if ext else None
         obj_fmts = cls.for_obj(obj, single=False)
 
@@ -280,6 +280,7 @@ class BaseFormat(ABC):
             meta: object metadata, may contain deserialization prefs
             **kwargs: passed directly to deserializer, if given.
         """
+        pass
 
     def __repr__(self):
         return "<{} {!r}, handling exts {} and types {}>".format(
@@ -288,6 +289,7 @@ class BaseFormat(ABC):
             self.handled_extensions,
             list(t.__name__ for t in self.handled_types),
         )
+
 
 class GenericFormat(BaseFormat):
     """Generic format for handling simple serializer/deserializer pairs
@@ -367,6 +369,55 @@ GenericFormat(
     handled_extensions=['txt', 'md', 'rst'],
     handled_types=[text_type],
 ).register()
+
+
+class CSVPandasFormat(BaseFormat):
+    name = 'csv'
+    handled_extensions = ['csv', 'tsv', 'ssv']
+    opts = ('sep', 'linesep',)
+
+    def handles_obj(self, obj):
+        # don't load pandas unless we actually have to use it..
+        if 'pandas' not in sys.modules:
+            return False
+        import pandas as pd
+
+        if pd.DataFrame not in self.handled_types:
+            self.handled_types.append(pd.DataFrame)
+
+        return super().handles_obj(obj)
+
+    def serialize(self, obj, meta=None, **kwargs):
+        pandas_kwargs = dict(
+            encoding='utf-8',   # this is actually irrelevant currently due to a pandas bug.
+            index=False,
+        )
+        pandas_kwargs.update(kwargs)
+        print(pandas_kwargs)
+
+        # Pandas bug https://github.com/pandas-dev/pandas/issues/23854
+        # pandas ignores encoding when writing to io buffers (including files open as 'wb').
+        # this results in Pandas trying to write a string into the buffer instead of bytes.
+
+        # workaround
+        # buf = io.BytesIO()
+        buf = io.StringIO()
+        # /workaround
+
+        obj.to_csv(buf, **pandas_kwargs)
+        self._update_meta(meta)
+
+        # workaround
+        # return buf.getvalue()
+        return buf.getvalue().encode('utf-8')
+        # /workaround
+
+    def deserialize(self, bytes_obj, meta=None, **kwargs):
+        import pandas as pd
+        return pd.read_csv(io.BytesIO(bytes_obj))
+
+
+CSVPandasFormat().register()
 
 
 class NumpyFormat(BaseFormat):
