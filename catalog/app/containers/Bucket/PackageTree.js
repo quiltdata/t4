@@ -1,12 +1,10 @@
 import * as R from 'ramda';
 import * as React from 'react';
-import { Link } from 'react-router-dom';
 import * as RC from 'recompose';
 import Button from '@material-ui/core/Button';
 import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
 import CircularProgress from '@material-ui/core/CircularProgress';
-import Typography from '@material-ui/core/Typography';
 import { withStyles } from '@material-ui/core/styles';
 
 import ContentWindow from 'components/ContentWindow';
@@ -15,9 +13,10 @@ import * as AWS from 'utils/AWS';
 import { withData } from 'utils/Data';
 import * as NamedRoutes from 'utils/NamedRoutes';
 import * as RT from 'utils/reactTools';
-import { isDir, up } from 'utils/s3paths';
+import { getBreadCrumbs, isDir, up } from 'utils/s3paths';
 import tagged from 'utils/tagged';
 
+import BreadCrumbs, { Crumb } from './BreadCrumbs';
 import Listing, { ListingItem } from './Listing';
 import * as packages from './packages';
 
@@ -109,6 +108,27 @@ export default RT.composeComponent('Bucket.PackageTree',
         _: R.identity,
       }),
     }, data),
+    crumbs: [
+      Crumb.Segment({
+        label: name,
+        to: urls.bucketPackageDetail(bucket, name),
+      }),
+      Crumb.Sep('@'),
+      Crumb.Segment({
+        label: revision,
+        to: urls.bucketPackageTree(bucket, name, revision),
+      }),
+      Crumb.Sep(': '),
+      ...R.intersperse(Crumb.Sep(' / '),
+        getBreadCrumbs(path).map(({ label, path: segPath }) =>
+          Crumb.Segment({
+            label,
+            to:
+              path === segPath
+                ? undefined
+                : urls.bucketPackageTree(bucket, name, revision, segPath),
+          }))),
+    ],
   })),
   withStyles(({ spacing: { unit } }) => ({
     topBar: {
@@ -126,22 +146,14 @@ export default RT.composeComponent('Bucket.PackageTree',
   })),
   ({
     classes,
-    urls,
     signer,
+    crumbs,
     data: { result, ...data },
-    match: { params: { bucket, name, revision, path } },
+    match: { params: { bucket } },
   }) => (
     <React.Fragment>
       <div className={classes.topBar}>
-        {/* TODO: non-bold */}
-        <Typography variant="h6">
-          <Link to={urls.bucketPackageDetail(bucket, name)}>{name}</Link>
-          @
-          <Link to={urls.bucketPackageTree(bucket, name, revision)}>{revision}</Link>
-          :
-          {/* TODO: crumbs */}
-          {path}
-        </Typography>
+        <BreadCrumbs items={crumbs} />
         {AsyncResult.case({
           Ok: TreeDisplay.case({
             File: (key) => (
