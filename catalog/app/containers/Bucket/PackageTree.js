@@ -1,3 +1,4 @@
+import dedent from 'dedent';
 import * as R from 'ramda';
 import * as React from 'react';
 import * as RC from 'recompose';
@@ -17,6 +18,7 @@ import { getBreadCrumbs, isDir, up } from 'utils/s3paths';
 import tagged from 'utils/tagged';
 
 import BreadCrumbs, { Crumb } from './BreadCrumbs';
+import CodeButton from './CodeButton';
 import Listing, { ListingItem } from './Listing';
 import * as packages from './packages';
 
@@ -84,6 +86,12 @@ const computeTree = ({ urls, bucket, name, revision, path }) => R.pipe(
   ),
 );
 
+// TODO: handle revision / hash
+const pkgCode = ({ bucket, name }) => dedent`
+  import t4
+  p = t4.Package.browse("${name}", registry="s3://${bucket}")
+`;
+
 export default RT.composeComponent('Bucket.PackageTree',
   AWS.S3.inject(),
   AWS.Signer.inject(),
@@ -132,15 +140,18 @@ export default RT.composeComponent('Bucket.PackageTree',
   })),
   withStyles(({ spacing: { unit } }) => ({
     topBar: {
-      alignItems: 'baseline',
+      alignItems: 'center',
       display: 'flex',
       flexWrap: 'wrap',
-      justifyContent: 'space-between',
       marginBottom: 2 * unit,
       marginTop: unit,
     },
+    spacer: {
+      flexGrow: 1,
+    },
     button: {
       color: 'inherit !important',
+      marginLeft: unit,
       textDecoration: 'none !important',
     },
   })),
@@ -149,11 +160,13 @@ export default RT.composeComponent('Bucket.PackageTree',
     signer,
     crumbs,
     data: { result, ...data },
-    match: { params: { bucket } },
+    match: { params: { bucket, name } },
   }) => (
     <React.Fragment>
       <div className={classes.topBar}>
         <BreadCrumbs items={crumbs} />
+        <div className={classes.spacer} />
+        <CodeButton>{pkgCode({ bucket, name })}</CodeButton>
         {AsyncResult.case({
           Ok: TreeDisplay.case({
             File: (key) => (

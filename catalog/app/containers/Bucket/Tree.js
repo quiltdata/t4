@@ -1,5 +1,6 @@
 import { basename } from 'path';
 
+import dedent from 'dedent';
 import * as R from 'ramda';
 import * as React from 'react';
 import Button from '@material-ui/core/Button';
@@ -21,6 +22,7 @@ import {
 import { composeComponent } from 'utils/reactTools';
 
 import BreadCrumbs, { Crumb } from './BreadCrumbs';
+import CodeButton from './CodeButton';
 import Listing, { ListingItem } from './Listing';
 import Message from './Message';
 import Summary from './Summary';
@@ -85,6 +87,20 @@ const getCrumbs = R.compose(R.intersperse(Crumb.Sep(' / ')),
           to: segPath === path ? undefined : urls.bucketTree(bucket, segPath),
         })));
 
+const dirCode = ({ bucket, path }) => dedent`
+  import t4
+  b = Bucket("s3://${bucket}")
+  # replace ./ to change destination directory
+  b.fetch("${path}", "./")
+`;
+
+const fileCode = ({ bucket, path }) => dedent`
+  import t4
+  b = Bucket("s3://${bucket}")
+  # replace ./${basename(path)} to change destination file
+  b.fetch("${path}", "./${basename(path)}")
+`;
+
 export default composeComponent('Bucket.Tree',
   AWS.S3.inject(),
   AWS.Signer.inject(),
@@ -97,15 +113,18 @@ export default composeComponent('Bucket.Tree',
   }),
   withStyles(({ spacing: { unit } }) => ({
     topBar: {
-      alignItems: 'baseline',
+      alignItems: 'center',
       display: 'flex',
       flexWrap: 'wrap',
-      justifyContent: 'space-between',
       marginBottom: 2 * unit,
       marginTop: unit,
     },
+    spacer: {
+      flexGrow: 1,
+    },
     button: {
       color: 'inherit !important',
+      marginLeft: unit,
       textDecoration: 'none !important',
     },
   })),
@@ -119,6 +138,13 @@ export default composeComponent('Bucket.Tree',
     <React.Fragment>
       <div className={classes.topBar}>
         <BreadCrumbs items={getCrumbs({ bucket, path, urls })} />
+        <div className={classes.spacer} />
+        <CodeButton>
+          {isDir(path)
+            ? dirCode({ bucket, path })
+            : fileCode({ bucket, path })
+          }
+        </CodeButton>
         {!isDir(path) && (
           <Button
             variant="outlined"
