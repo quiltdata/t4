@@ -235,7 +235,7 @@ class Package(object):
         String representation of the Package.
         """
         self_repr = ''
-        for child_key in self.keys():
+        for child_key in sorted(self.keys()):
             child_entry = indent*level + child_key + '\n'
             self_repr += child_entry
             if isinstance(self[child_key], Package):

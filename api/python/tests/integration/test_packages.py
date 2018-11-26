@@ -573,3 +573,25 @@ def test_siblings_succeed():
     pkg = Package()
     pkg.set('as/df', LOCAL_MANIFEST)
     pkg.set('as/qw', LOCAL_MANIFEST)
+
+def test_repr():
+    TEST_REPR = (
+        "asdf\n"
+        "path1\n"
+        "  asdf\n"
+        "  qwer\n"
+        "path2\n"
+        "  first\n"
+        "    asdf\n"
+        "  second\n"
+        "    asdf\n"
+        "qwer\n"
+    )
+    pkg = Package()
+    pkg.set('asdf', LOCAL_MANIFEST)
+    pkg.set('qwer', LOCAL_MANIFEST)
+    pkg.set('path1/asdf', LOCAL_MANIFEST)
+    pkg.set('path1/qwer', LOCAL_MANIFEST)
+    pkg.set('path2/first/asdf', LOCAL_MANIFEST)
+    pkg.set('path2/second/asdf', LOCAL_MANIFEST)
+    assert repr(pkg) == TEST_REPR
