@@ -26,8 +26,7 @@ import { composeComponent, wrap } from 'utils/reactTools';
 
 
 const BUCKETS = [
-  'alpha-quilt-storage',
-  'quilt-test-public',
+  'quilt-example',
 ];
 
 const withInvertedTheme =

@@ -54,7 +54,7 @@ fontLoader('Roboto', 'Roboto Mono').then(() => {
 });
 
 
-const DEFAULT_BUCKET = 'alpha-quilt-storage';
+const DEFAULT_BUCKET = 'quilt-example';
 
 // Create redux store with history
 const initialState = {};
