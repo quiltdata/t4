@@ -260,6 +260,7 @@
     "compression": "^1.7.3",
     "connected-react-router": "^5.0.0",
     "cross-env": "^5.2.0",
+    "dedent": "^0.7.0",
     "dotenv": "^5.0.1",
     "elasticsearch-browser": "^15.2.0",
     "express": "^4.16.4",
