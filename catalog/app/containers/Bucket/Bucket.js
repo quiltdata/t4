@@ -36,9 +36,10 @@ const getBucketSection = (pathname, paths) => {
 const NavTab = RT.composeComponent('Bucket.Layout.Tab',
   withStyles(({ spacing: { unit } }) => ({
     root: {
+      color: 'inherit !important',
       minHeight: 8 * unit,
       minWidth: 120,
-      color: 'inherit !important',
+      outline: 'none !important',
       textDecoration: 'none !important',
     },
   })),
