@@ -108,6 +108,7 @@ export default composeComponent('Bucket.Tree.Listing',
   RC.setPropTypes({
     // AsyncResult of ListingItems
     result: PT.object.isRequired,
+    whenEmpty: PT.func,
   }),
   withStyles(({ spacing: { unit }, palette }) => ({
     root: {
@@ -133,6 +134,10 @@ export default composeComponent('Bucket.Tree.Listing',
       marginLeft: 2 * unit,
       paddingTop: 2 * unit,
     },
+    empty: {
+      marginLeft: 2 * unit,
+      paddingTop: 2.5 * unit,
+    },
     size: {
       textAlign: 'right',
       width: '6em',
@@ -144,36 +149,42 @@ export default composeComponent('Bucket.Tree.Listing',
   })),
   RC.withHandlers({
     // eslint-disable-next-line react/prop-types
-    renderOk: ({ classes }) => (items) => (
-      <React.Fragment>
-        <Stats items={items} />
-        {items.map(ListingItem.case({
-          // eslint-disable-next-line react/prop-types
-          Dir: ({ name, to }) => (
-            <Item
-              icon="folder_open"
-              key={name}
-              name={name}
-              to={to}
-            />
-          ),
-          // eslint-disable-next-line react/prop-types
-          File: ({ name, to, size, modified }) => (
-            <Item
-              icon="insert_drive_file"
-              key={name}
-              name={name}
-              to={to}
-            >
-              <div className={classes.size}>{readableBytes(size)}</div>
-              {!!modified && (
-                <div className={classes.modified}>{modified.toLocaleString()}</div>
-              )}
-            </Item>
-          ),
-        }))}
-      </React.Fragment>
-    ),
+    renderOk: ({ classes }) => R.ifElse(R.isEmpty,
+      () => (
+        <Typography className={classes.empty} variant="h5">
+          No files
+        </Typography>
+      ),
+      (items) => (
+        <React.Fragment>
+          <Stats items={items} />
+          {items.map(ListingItem.case({
+            // eslint-disable-next-line react/prop-types
+            Dir: ({ name, to }) => (
+              <Item
+                icon="folder_open"
+                key={name}
+                name={name}
+                to={to}
+              />
+            ),
+            // eslint-disable-next-line react/prop-types
+            File: ({ name, to, size, modified }) => (
+              <Item
+                icon="insert_drive_file"
+                key={name}
+                name={name}
+                to={to}
+              >
+                <div className={classes.size}>{readableBytes(size)}</div>
+                {!!modified && (
+                  <div className={classes.modified}>{modified.toLocaleString()}</div>
+                )}
+              </Item>
+            ),
+          }))}
+        </React.Fragment>
+      )),
     renderErr: ({ classes }) => () => (
       // TODO: proper error display, retry
       <Typography className={classes.error} variant="h5">
@@ -186,6 +197,11 @@ export default composeComponent('Bucket.Tree.Listing',
       </div>
     ),
   }),
+  RC.branch(
+    ({ whenEmpty, result }) =>
+      whenEmpty && AsyncResult.Ok.is(result, R.isEmpty),
+    RC.renderComponent(({ whenEmpty }) => whenEmpty()),
+  ),
   ({ result, classes, renderOk, renderErr, renderLock }) => (
     <Card>
       <CardContent className={classes.root}>

@@ -1,6 +1,6 @@
 import PT from 'prop-types';
 import * as React from 'react';
-import { Link, Redirect, Route, Switch, matchPath } from 'react-router-dom';
+import { Link, Route, Switch, matchPath } from 'react-router-dom';
 import * as RC from 'recompose';
 import AppBar from '@material-ui/core/AppBar';
 import Tab from '@material-ui/core/Tab';
@@ -13,6 +13,7 @@ import * as NamedRoutes from 'utils/NamedRoutes';
 import * as RT from 'utils/reactTools';
 import withParsedQuery from 'utils/withParsedQuery';
 
+import Message from './Message';
 import PackageDetail from './PackageDetail';
 import PackageList from './PackageList';
 import PackageTree from './PackageTree';
@@ -89,16 +90,17 @@ const BucketLayout = RT.composeComponent('Bucket.Layout',
     </Layout>
   ));
 
-/* eslint-disable react/prop-types */
-
 export const Overview = RT.composeComponent('Bucket.Overview',
-  NamedRoutes.inject(),
-  ({ urls, match: { params: { bucket } } }) => (
+  ({ match: { params: { bucket } } }) => (
     <Summary
       bucket={bucket}
       path=""
       progress
-      whenEmpty={() => <Redirect to={urls.bucketTree(bucket)} />}
+      whenEmpty={() => (
+        <Message headline="No overview">
+          <a href="TODO">Learn how to create an overview</a>.
+        </Message>
+      )}
     />
   ));
 

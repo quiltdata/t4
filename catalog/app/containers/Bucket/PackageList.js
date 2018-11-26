@@ -13,6 +13,7 @@ import { withData } from 'utils/Data';
 import * as NamedRoutes from 'utils/NamedRoutes';
 import * as RT from 'utils/reactTools';
 
+import Message from './Message';
 import * as packages from './packages';
 
 
@@ -36,23 +37,32 @@ export default RT.composeComponent('Bucket.PackageList',
   ({ classes, data: { result }, match: { params: { bucket } }, urls }) =>
     AsyncResult.case({
       _: () => <CircularProgress />,
-      Err: (e) => <h1>Error: {e.message}</h1>,
-      Ok: R.pipe(
-        // TODO: render message when thre's no packages in the bucket
-        R.map(({ name, revisions: { latest: { modified } } }) => (
-          <Card key={name} className={classes.card}>
-            <CardContent>
-              <Typography variant="h5">
-                <Link to={urls.bucketPackageDetail(bucket, name)}>
-                  {name}
-                </Link>
-              </Typography>
-              <Typography variant="body1">
-                Updated on {modified.toLocaleString()}
-              </Typography>
-            </CardContent>
-          </Card>
+      Err: R.cond([
+        // TODO: handle known errors:
+        // access denied, cors not configured
+        [R.T, (e) => <Message headline="Error">{e.message}</Message>],
+      ]),
+      Ok: R.ifElse(R.isEmpty,
+        () => (
+          <Message headline="No packages">
+            <a href="TODO">Learn how to create a package</a>.
+          </Message>
+        ),
+        R.pipe(
+          R.map(({ name, revisions: { latest: { modified } } }) => (
+            <Card key={name} className={classes.card}>
+              <CardContent>
+                <Typography variant="h5">
+                  <Link to={urls.bucketPackageDetail(bucket, name)}>
+                    {name}
+                  </Link>
+                </Typography>
+                <Typography variant="body1">
+                  Updated on {modified.toLocaleString()}
+                </Typography>
+              </CardContent>
+            </Card>
+          )),
+          (content) => <div className={classes.root}>{content}</div>
         )),
-        (content) => <div className={classes.root}>{content}</div>
-      ),
     }, result));

@@ -22,6 +22,7 @@ import { composeComponent } from 'utils/reactTools';
 
 import BreadCrumbs, { Crumb } from './BreadCrumbs';
 import Listing, { ListingItem } from './Listing';
+import Message from './Message';
 import Summary from './Summary';
 
 
@@ -132,7 +133,14 @@ export default composeComponent('Bucket.Tree',
       {isDir(path)
         ? (
           <React.Fragment>
-            <Listing {...listing} />
+            <Listing
+              {...listing}
+              whenEmpty={() => (
+                <Message headline="No files">
+                  <a href="TODO">Learn how to upload files</a>.
+                </Message>
+              )}
+            />
             <Summary bucket={bucket} path={path} />
           </React.Fragment>
         )
