@@ -51,7 +51,9 @@ export default (variants) => {
   const mkConstructor = (tag, variant) => {
     const constructor = (value) => ({ [TAG]: tag, [VALUE]: value, type: tag });
 
-    constructor.is = (inst) => getVariant(inst) === variant;
+    constructor.is = (inst, pred) =>
+      getVariant(inst) === variant
+      && (pred ? pred(constructor.unbox(inst)) : true);
 
     constructor.unbox = (inst) => {
       invariant(constructor.is(inst),
