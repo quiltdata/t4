@@ -1,11 +1,11 @@
 import pathlib
 from urllib.parse import urlparse
 
-from .api import select
 from .data_transfer import (TargetType, copy_file, copy_object, delete_object,
                             deserialize_obj, get_bytes, get_meta,
-                            list_objects, put_bytes, serialize_obj)
+                            list_objects, put_bytes, select, serialize_obj)
 from .util import QuiltException, fix_url, parse_s3_url
+
 
 class Bucket(object):
     """

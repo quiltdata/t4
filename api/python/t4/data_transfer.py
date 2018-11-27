@@ -1,3 +1,4 @@
+from codecs import iterdecode
 from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 import hashlib
@@ -18,6 +19,8 @@ import warnings
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
     from tqdm.autonotebook import tqdm
+
+import jsonlines
 
 from .util import QuiltException, parse_file_url, parse_s3_url
 from . import xattr
@@ -594,3 +597,120 @@ def calculate_sha256_and_size(src_list):
         results = executor.map(_process_url, src_list)
 
     return results
+
+
+def select(url, query, query_type="SQL", meta=None, s3client=None, raw=False, **kwargs):
+    accepted_compression = {
+        '.bz2': 'BZIP2',
+        '.gz': 'GZIP'
+        }
+    format_compression = {
+        'Parquet': ['NONE'],  # even if column-level compression has been used.
+        'JSON': ['NONE', 'BZIP2', 'GZIP'],
+        'CSV': ['NONE', 'BZIP2', 'GZIP'],
+        }
+    # largely 1:1, but we still need to check that they're accepted formats.
+    ext_formats = {
+        '.parquet': 'parquet',
+        '.json': 'json',
+        '.jsonl': 'jsonl',
+        '.csv': 'csv',
+        '.tsv': 'tsv',
+        }
+    valid_s3_select_formats = {
+        'parquet': 'Parquet',
+        'json': 'JSON',
+        'jsonl': 'JSON',
+        'csv': 'CSV',
+        'tsv': 'CSV',
+        }
+
+    parsed_url = urlparse(url)
+
+    bucket, path, version_id = parse_s3_url(parsed_url)
+
+    # TODO: Use formats lib for this stuff
+    # use metadata to get format and compression
+    compression = None
+    format = meta.get('target')
+    if format is None:
+        format = meta.get('format', {}).get('name')
+        if format in ('bzip2', 'gzip'):
+            compression = format.upper()
+            format = meta.get('format', {}).get('contained_format', {}).get('name')
+
+    # use file extensions to get compression info, if none is present
+    exts = pathlib.Path(path).suffixes
+    if exts and not compression:
+        if exts[-1].lower() in accepted_compression:
+            compression = accepted_compression[exts.pop(-1)]
+    compression = compression if compression else 'NONE'
+
+    # use remaining file extensions to get format info, if none is present
+    if exts and not format:
+        ext = exts[-1].lower()
+        if ext in ext_formats:
+            if ext == '.tsv':
+                input_serialization = kwargs.setdefault('InputSerialization', {})
+                csv = input_serialization.setdefault('CSV', {})
+                if 'FieldDelimiter' not in csv:
+                    csv['FieldDelimiter'] = '\t'
+            format = ext_formats[ext]
+            s3_format = valid_s3_select_formats[format]
+            ok_compression = format_compression[s3_format]
+            if compression not in format_compression[s3_format]:
+                raise QuiltException("Compression {!r} not valid for select on format {!r}: "
+                                     "Expected {!r}".format(compression, s3_format, ok_compression))
+    if not format:
+        raise QuiltException("Unable to discover format for select on {!r}".format(url))
+
+    s3_format = valid_s3_select_formats[format]
+    input_serialization = kwargs.setdefault('InputSerialization', {})
+
+    if s3_format == 'JSON':
+        jsn = input_serialization.setdefault('JSON', {})
+        jsn['TYPE'] = "LINES" if format == 'jsonl' else "DOCUMENT"
+    elif s3_format == 'CSV':
+        csv = input_serialization.setdefault('CSV', {})
+        if format == 'tsv':
+            csv['FieldDelimiter'] = '\t'
+    elif s3_format == "Parquet":
+        input_serialization.setdefault('Parquet', {})
+
+    s3 = s3client if s3client else s3_client  # use passed in client, otherwise module-level client
+    if 'OutputSerialization' not in kwargs:
+        kwargs['OutputSerialization'] = {'JSON': {}}
+
+    response = s3.select_object_content(Bucket=bucket, Key=path, Expression=query, ExpressionType=query_type,
+                                        **kwargs)
+
+    # we don't want multiple copies of large chunks of data hanging around.
+    # ..iteration ftw.  It's what we get from amazon, anyways..
+    def iter_chunks(resp):
+        for item in resp['Payload']:
+            chunk = item.get('Records', {}).get('Payload')
+            if chunk is None:
+                continue
+            yield chunk
+
+    def iter_lines(resp, delimiter):
+        lastline = ''
+        for chunk in iterdecode(iter_chunks(resp), 'utf-8'):
+            lines = chunk.split(delimiter)
+            lines[0] = lastline + lines[0]
+            lastline = lines.pop(-1)
+            for line in lines:
+                yield line + delimiter
+        yield lastline
+
+    if not raw:
+        if 'JSON' in kwargs["OutputSerialization"]:
+            delimiter = kwargs['OutputSerialization']['JSON'].get('RecordDelimiter', '\n')
+            reader = jsonlines.Reader(line.strip() for line in iter_lines(response, delimiter)
+                                      if line.strip())
+            # noinspection PyPackageRequirements
+            from pandas import DataFrame
+            # !! if this response type is modified, update related docstrings on Bucket.select().
+            return DataFrame.from_records(x for x in reader)
+    # !! if this response type is modified, update related docstrings on Bucket.select().
+    return response
