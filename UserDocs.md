@@ -34,7 +34,7 @@ To create a new in-memory package you initialize a new Package object and then p
 	p = p.update({"baz.csv": "/path/to/baz", "bam.png": "/path/to/bam"})
 
 	# or grab everything in a directory at once using set_dir
-	p = p.set_dir("/path/to/folder/with/stuff/")
+	p = p.set_dir("stuff", "/path/to/folder/with/stuff/")
 
 	# delete entries using `delete`
 	p = p.delete("bam.png")
@@ -124,7 +124,7 @@ You can manage individual files using the `Bucket` interface. A `Bucket` is just
     import t4
     b = t4.Bucket("s3://name-of-your-t4-bucket")
 
-The `Bucket` object supports the same getters that `Package` supports: <!-- TODO: potentially with the twise that set is now push -->
+The `Bucket` object supports the same getters that `Package` supports:
 
     # download a directory or a file with fetch
     b.fetch("path/to/directory", "path/to/local")
@@ -141,6 +141,17 @@ The `Bucket` object supports the same getters that `Package` supports: <!-- TODO
     b.delete("path/to/file")
     
     # and so on...
+
+You can use the `Bucket` API to write files and folders. Note that `set` operations on a `Package` are `put` operations on a `Bucket`.
+
+    # put a file to a bucket
+	p = b.put_file("foo.csv", "/path/to/local/disk/foo.csv")
+	
+	# put an in-memory object to a bucket
+	p = b.put("my-dict.json", {"a": "b"})
+
+	# or push everything in a directory at once
+	p = p.put_dir("stuff", "/path/to/folder/with/stuff/")
 
 
 ### Working with memory
