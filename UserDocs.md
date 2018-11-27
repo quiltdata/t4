@@ -295,3 +295,4 @@ are treated specially by some S3 tools in a way that
 is potentially dangerous, so it's best to avoid them.
 The T4 API will therefore reject object keys that end in `/`.
 Refer to [Amazon's documentation](https://docs.aws.amazon.com/AmazonS3/latest/user-guide/using-folders.html) on folder objects.
+* Metadata on objects that you push to S3 cannot exceed 20 kilobytes in size.
