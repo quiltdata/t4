@@ -98,7 +98,7 @@ export const Overview = RT.composeComponent('Bucket.Overview',
       progress
       whenEmpty={() => (
         <Message headline="No overview">
-          <a href="TODO">Learn how to create an overview</a>.
+          <a href="https://github.com/quiltdata/t4/blob/master/UserDocs.md#using-the-catalog">Learn how to create an overview</a>.
         </Message>
       )}
     />

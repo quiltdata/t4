@@ -163,7 +163,7 @@ export default composeComponent('Bucket.Tree',
               {...listing}
               whenEmpty={() => (
                 <Message headline="No files">
-                  <a href="TODO">Learn how to upload files</a>.
+                  <a href="https://github.com/quiltdata/t4/blob/master/UserDocs.md#working-with-buckets">Learn how to upload files</a>.
                 </Message>
               )}
             />

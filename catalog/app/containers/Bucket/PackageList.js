@@ -45,7 +45,7 @@ export default RT.composeComponent('Bucket.PackageList',
       Ok: R.ifElse(R.isEmpty,
         () => (
           <Message headline="No packages">
-            <a href="TODO">Learn how to create a package</a>.
+            <a href="https://github.com/quiltdata/t4/blob/master/UserDocs.md#publishing-a-package-to-t4">Learn how to create a package</a>.
           </Message>
         ),
         R.pipe(
