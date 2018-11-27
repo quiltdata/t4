@@ -613,3 +613,13 @@ def test_siblings_succeed():
     pkg = Package()
     pkg.set('as/df', LOCAL_MANIFEST)
     pkg.set('as/qw', LOCAL_MANIFEST)
+
+def test_manifest():
+    pkg = Package()
+    pkg.set('as/df', LOCAL_MANIFEST)
+    pkg.set('as/qw', LOCAL_MANIFEST)
+    top_hash = pkg.build()
+    manifest = list(pkg.manifest)
+
+    pkg2 = Package.browse(pkg_hash=top_hash)
+    assert list(pkg.manifest) == list(pkg2.manifest)
