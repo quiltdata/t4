@@ -619,11 +619,19 @@ class Package(object):
             fail to finish write
         """
         writer = jsonlines.Writer(writable_file)
-        writer.write(self._meta)
+        for line in self.manifest:
+            writer.write(line)
+
+    @property
+    def manifest(self):
+        """
+        Returns a generator of the dicts that make up the serialied package.
+        """
+        yield self._meta
         for dir_key, meta in self._walk_dir_meta():
-            writer.write({'logical_key': dir_key, 'meta': meta})
+            yield {'logical_key': dir_key, 'meta': meta}
         for logical_key, entry in self.walk():
-            writer.write({'logical_key': logical_key, **entry.as_dict()})
+            yield {'logical_key': logical_key, **entry.as_dict()}
 
     def update(self, new_keys_dict, meta=None, prefix=None):
         """
