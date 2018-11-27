@@ -47,7 +47,7 @@ export default RT.composeComponent('Bucket.CodeButton',
         onClick={open}
         buttonRef={setAnchor}
       >
-        <ButtonIcon position="left">code</ButtonIcon> See the code
+        <ButtonIcon position="left">code</ButtonIcon> Show code
       </Button>
       <Popover
         open={opened && !!anchor}
