@@ -273,43 +273,6 @@ Coming soon! For now please see the docstrings of individual API methods.
 
 (you can print out a docstring using `help(t4.methodname)`, or `t4.methodname?` in IPython)
 
-## Catalog 
-
-### Quilt summaries summarize data in your bucket
-
-Summaries combine several file types:
-
-* Markdown (`.md`)
-* [Vega specs](https://github.com/vega/vega) (`.json`)
-* Jupyter notebooks (`.ipynb`)
-* Images (`.jpe?g`, `.png`, `.gif`)
-* HTML (`.html`)
-
-#### Create your own summary
-
-Upload `quilt_summarize.json` to any directory where you want a summary
-to appear.
-
-#### Format
-
-`quilt_summarize.json` is a JSON list of supported files in your S3 bucket.
-All files in the list are signed (for security) and rendered in order
-when you visit the containing directory in the Quilt web catalog.
-
-Paths are resolved relative to the relevant `quilt_summarize.json` file.
-
-#### Example
-
-```
-[
-  "/vega_specs/chloropleth.json",
-  "./image.jpg",
-  "../notebooks/JupyterCon.ipynb",
-  "description.md"
-]
-```
-
-
 
 ## Known issues
 
