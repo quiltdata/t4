@@ -22,8 +22,8 @@ def test_buggy_parquet():
     path = pathlib.Path(__file__).parent
     with open(path / 'data' / 'buggy_parquet.parquet', 'rb') as bad_parq:
         # Make sure this doesn't crash.
-        fmt = FormatRegistry.registered_formats['pyarrow']
-        fmt.deserialize(bad_parq.read())
+        fmt = FormatRegistry.match('pyarrow')
+        fmt.deserialize(bad_parq.read(), )
 
 def test_formats_for_obj():
     arr = np.ndarray(3)
@@ -38,13 +38,13 @@ def test_formats_for_obj():
     assert found_string_fmt_names == expected_string_fmt_names
 
     bytes_obj = fmt.serialize(arr)
-    assert np.array_equal(fmt.deserialize(bytes_obj), arr)
+    assert np.array_equal(fmt.deserialize(bytes_obj, ), arr)
 
 
 def test_formats_for_ext():
     fmt = FormatRegistry.for_ext('json')
     assert fmt.serialize({'blah': 'blah'}) == b'{"blah": "blah"}'
-    assert fmt.deserialize(b'{"meow": "mix"}') == {'meow': 'mix'}
+    assert fmt.deserialize(b'{"meow": "mix"}', ) == {'meow': 'mix'}
 
 
 def test_formats_for_meta():
@@ -53,7 +53,7 @@ def test_formats_for_meta():
 
     some_bytes = b'["phlipper", "piglet"]'
     assert bytes_fmt.serialize(some_bytes) == some_bytes
-    assert json_fmt.deserialize(some_bytes) == ['phlipper', 'piglet']
+    assert json_fmt.deserialize(some_bytes, ) == ['phlipper', 'piglet']
 
 
 def test_formats_match():
@@ -62,7 +62,7 @@ def test_formats_match():
 
     some_bytes = b'["phlipper", "piglet"]'
     assert bytes_fmt.serialize(some_bytes) == some_bytes
-    assert json_fmt.deserialize(some_bytes) == ['phlipper', 'piglet']
+    assert json_fmt.deserialize(some_bytes, ) == ['phlipper', 'piglet']
 
 
 def test_formats_serdes():
@@ -91,3 +91,42 @@ def test_formats_csv_read():
 
     assert df.equals(expected_df)
     assert expected_bytes == FormatRegistry.serialize(df, meta)
+
+def test_formats_csv_roundtrip():
+    test_data = b'9,2,5\n7,2,6\n1,0,1\n'
+
+    # roundtrip defaults.
+    meta = {'format': {'name': 'csv'}}
+    df1 = FormatRegistry.deserialize(test_data, meta)
+    bin = FormatRegistry.serialize(df1, meta)
+    df2 = FormatRegistry.deserialize(bin, meta)
+
+    assert test_data == bin
+    assert df1.equals(df2)
+
+    # interpret first row as header
+    meta = {'format': {'name': 'csv', 'opts': {'use_header': True}}}
+    df1 = FormatRegistry.deserialize(test_data, meta)
+    bin = FormatRegistry.serialize(df1, meta)
+    df2 = FormatRegistry.deserialize(bin, meta)
+
+    assert test_data == bin
+    assert df1.equals(df2)
+
+    # interpret first column as index
+    meta = {'format': {'name': 'csv', 'opts': {'use_index': True}}}
+    df1 = FormatRegistry.deserialize(test_data, meta)
+    bin = FormatRegistry.serialize(df1, meta)
+    df2 = FormatRegistry.deserialize(bin, meta)
+
+    assert test_data == bin
+    assert df1.equals(df2)
+
+    # interpret first row as header, and first column as index
+    meta = {'format': {'name': 'csv', 'opts': {'use_index': True, 'use_header': True}}}
+    df1 = FormatRegistry.deserialize(test_data, meta)
+    bin = FormatRegistry.serialize(df1, meta)
+    df2 = FormatRegistry.deserialize(bin, meta)
+
+    assert test_data == bin
+    assert df1.equals(df2)

@@ -180,10 +180,13 @@ class PackageEntry(object):
         """
         return _to_singleton(self.physical_keys)
 
-    def deserialize(self):
+    def deserialize(self, **format_opts):
         """
         Returns the object this entry corresponds to.
 
+        Args:
+            **format_opts: Some data formats may take options.  Though
+                normally handled by metadata, these can be overridden here.
         Returns:
             The deserialized object from the logical_key
 
@@ -195,15 +198,15 @@ class PackageEntry(object):
         physical_key = _to_singleton(self.physical_keys)
         pkey_ext = pathlib.PurePosixPath(urlparse(unquote(physical_key)).path).suffix
 
-        fmt = FormatRegistry.for_meta(self.meta) or FormatRegistry.for_ext(pkey_ext)
-
-        if fmt is None:
-            raise QuiltException("No serialization metadata, and guessing by extension failed.")
-
         data, _ = get_bytes(physical_key)
+
+        # Verify format can be handled before checking hash..
+        FormatRegistry.deserialize(data, self.meta, pkey_ext, check_only=True, **format_opts)
+
+        # Verify hash before deserializing..
         self._verify_hash(data)
 
-        return fmt.deserialize(data)
+        return FormatRegistry.deserialize(data, self.meta, pkey_ext, **format_opts)
 
     def fetch(self, dest):
         """
@@ -219,11 +222,11 @@ class PackageEntry(object):
         dest = fix_url(dest)
         copy_file(physical_key, dest, self.meta)
 
-    def __call__(self):
+    def __call__(self, **kwargs):
         """
         Shorthand for self.deserialize()
         """
-        return self.deserialize()
+        return self.deserialize(**kwargs)
 
 
 class Package(object):
