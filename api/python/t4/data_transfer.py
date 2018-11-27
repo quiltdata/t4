@@ -419,6 +419,9 @@ def copy_object(src_bucket, src_key, dest_bucket, dest_key, override_meta=None, 
 
 
 def list_object_versions(bucket, prefix, recursive=True):
+    if prefix and not prefix.endswith('/'):
+        raise ValueError("Prefix must end with /")
+
     list_obj_params = dict(Bucket=bucket,
                            Prefix=prefix
                           )
@@ -443,6 +446,9 @@ def list_object_versions(bucket, prefix, recursive=True):
 
 
 def list_objects(bucket, prefix, recursive=True):
+    if prefix and not prefix.endswith('/'):
+        raise ValueError("Prefix must end with /")
+
     objects = []
     prefixes = []
     list_obj_params = dict(Bucket=bucket,
