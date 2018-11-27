@@ -1,3 +1,4 @@
+from collections import deque
 import copy
 import hashlib
 import io
@@ -230,17 +231,73 @@ class Package(object):
         self._children = {}
         self._meta = {'version': 'v0'}
 
-    def __repr__(self, level=0, indent='  '):
+    def _unlimited_repr(self, level=0, indent='  '):
         """
-        String representation of the Package.
+        String representation without line limit.
         """
         self_repr = ''
         for child_key in sorted(self.keys()):
-            child_entry = indent*level + child_key + '\n'
-            self_repr += child_entry
             if isinstance(self[child_key], Package):
+                child_entry = indent*level + child_key + '/\n'
+                self_repr += child_entry
                 self_repr += self[child_key].__repr__(level+1, indent)
+            else: # leaf node
+                self_repr += indent*level + child_key + '\n'
         return self_repr
+
+    def __repr__(self, max_lines=20):
+        """
+        String representation of the Package.
+        """
+        if max_lines is None:
+            return self._unlimited_repr()
+
+        if len(self.keys()) > max_lines:
+            # If there aren't enough lines to display all top-level children,
+            #   display as many as possible with a '...' at the end
+            self_repr = ''
+            i = 0
+            for key in sorted(self.keys()):
+                if i >= max_lines - 1:
+                    self_repr += '...\n'
+                    return self_repr
+                if isinstance(self[key], Package):
+                    key = key + '/'
+                self_repr += key + '\n'
+                i += 1
+            assert False, "This should never happen"
+
+        def _create_str(results_dict, level=0, indent='  '):
+            """
+            Creates a string from the results dict
+            """
+            result = ''
+            for key in sorted(results_dict.keys()):
+                result += indent*level + key + '\n'
+                result += _create_str(results_dict[key], level+1, indent)
+            return result
+
+        # candidates is a deque of 
+        #     ((logical_key, Package | PackageEntry), [list of parent key])
+        candidates = deque(([x, []] for x in self._children.items()))
+        results_dict = {}
+        results_total = 0
+        while len(candidates) and results_total < max_lines:
+            [[logical_key, entry], parent_keys] = candidates.popleft()
+            if isinstance(entry, Package):
+                logical_key = logical_key + '/'
+                new_parent_keys = parent_keys.copy()
+                new_parent_keys.append(logical_key)
+                for child_key in sorted(entry.keys()):
+                    candidates.append([[child_key, entry[child_key]], new_parent_keys])
+
+            current_result_level = results_dict
+            for key in parent_keys:
+                current_result_level = current_result_level[key]
+            current_result_level[logical_key] = {}
+            results_total += 1
+
+        return _create_str(results_dict)
 
     @classmethod
     def validate_package_name(cls, name):
