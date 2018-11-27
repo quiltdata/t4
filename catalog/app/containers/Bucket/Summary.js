@@ -244,7 +244,7 @@ export default composeComponent('Bucket.Summary',
               <Message headline="Error">
                 Seems like this bucket is not configured for T4.
                 <br />
-                <a href="TODO">Learn how to configure the bucket for T4</a>.
+                <a href="https://github.com/quiltdata/t4/tree/master/deployment#pre-requisites">Learn how to configure the bucket for T4</a>.
               </Message>
             )],
           [R.propEq('message', 'Access Denied'),
