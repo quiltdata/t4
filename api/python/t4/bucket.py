@@ -2,7 +2,7 @@ import pathlib
 from urllib.parse import urlparse
 
 from .data_transfer import (TargetType, copy_file, copy_object, delete_object,
-                            deserialize_obj, get_bytes, get_meta,
+                            deserialize_obj, get_bytes, get_size_and_meta,
                             list_objects, put_bytes, select, serialize_obj)
 from .util import QuiltException, fix_url, parse_s3_url
 
@@ -181,7 +181,7 @@ class Bucket(object):
             if download fails
         """
         src_uri = self._uri + key
-        return get_meta(src_uri)
+        return get_size_and_meta(src_uri)[1]
 
     def set_meta(self, key, meta):
         """
