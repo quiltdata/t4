@@ -610,3 +610,4 @@ def test_long_repr():
         pkg.set('path{}/qwer'.format(i), LOCAL_MANIFEST)
     pkgrepr = repr(pkg)
     assert pkgrepr.count('\n') == 20
+    assert pkgrepr.find('path9/') > 0
