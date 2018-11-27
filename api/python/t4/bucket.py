@@ -214,6 +214,6 @@ class Bucket(object):
         Returns:
             pandas.DataFrame with results of query
         """
+        meta = self.get_meta(key)
         uri = self._uri + key
-        meta = self.get_meta(uri)
         return select(uri, query, query_type="SQL", meta=meta, s3client=None, raw=raw)
