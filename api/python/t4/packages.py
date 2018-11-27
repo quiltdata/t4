@@ -480,7 +480,7 @@ class Package(object):
                 if not f.is_file():
                     continue
                 entry = PackageEntry([f.as_uri()], f.stat().st_size, None, None)
-                logical_key = lkey + f.relative_to(src_path).as_posix()
+                logical_key = f.relative_to(src_path).as_posix()
                 # TODO: Warn if overwritting a logical key?
                 root.set(logical_key, entry)
         elif url.scheme == 's3':
