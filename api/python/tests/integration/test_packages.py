@@ -254,8 +254,8 @@ def test_package_deserialize(tmpdir):
     with pytest.raises(QuiltException):
         pkg['bar'].deserialize()
 
-def test_set_dir(tmpdir):
-    """ Verify building a package from a directory. """
+def test_local_set_dir(tmpdir):
+    """ Verify building a package from a local directory. """
     pkg = Package()
     
     # Create some nested example files that contain their names.
@@ -288,6 +288,33 @@ def test_set_dir(tmpdir):
     # todo nested at set_dir site or relative to set_dir path.
     assert (bazdir / 'baz').resolve().as_uri() == pkg['my_keys/baz'].physical_keys[0]
 
+
+def test_s3_set_dir(tmpdir):
+    """ Verify building a package from an S3 directory. """
+    with patch('t4.packages.list_object_versions') as list_object_versions_mock:
+        pkg = Package()
+
+        list_object_versions_mock.return_value = ([
+            dict(Key='foo/a.txt', VersionId='xyz', IsLatest=True),
+            dict(Key='foo/x/y.txt', VersionId='null', IsLatest=True),
+            dict(Key='foo/z.txt', VersionId='123', IsLatest=False),
+        ], [])
+
+        pkg.set_dir('', 's3://bucket/foo/')
+
+        assert pkg['a.txt'].physical_keys[0] == 's3://bucket/foo/a.txt?versionId=xyz'
+        assert pkg['x']['y.txt'].physical_keys[0] == 's3://bucket/foo/x/y.txt'
+
+        list_object_versions_mock.assert_called_with('bucket', 'foo/')
+
+        list_object_versions_mock.reset_mock()
+
+        pkg.set_dir('bar', 's3://bucket/foo')
+
+        assert pkg['bar']['a.txt'].physical_keys[0] == 's3://bucket/foo/a.txt?versionId=xyz'
+        assert pkg['bar']['x']['y.txt'].physical_keys[0] == 's3://bucket/foo/x/y.txt'
+
+        list_object_versions_mock.assert_called_with('bucket', 'foo/')
 
 def test_updates(tmpdir):
     """ Verify building a package from a directory. """
@@ -408,9 +435,6 @@ def test_tophash_changes(tmpdir):
     th4 = pkg.top_hash()
     assert th2 == th4
 
-    pkg.delete('asdf')
-    assert th1 == pkg.top_hash()
-
 def test_keys():
     pkg = Package()
     assert not pkg.keys()
@@ -520,6 +544,7 @@ def test_diff():
     p2 = Package.browse('Quilt/Test')
     assert p1.diff(p2) == ([], [], [])
 
+
 def test_dir_meta(tmpdir):
     test_meta = {'test': 'meta'}
     pkg = Package()
@@ -545,7 +570,7 @@ def test_dir_meta(tmpdir):
     assert pkg2['asdf'].get_meta() == test_meta
     assert pkg2['qwer']['as'].get_meta() == test_meta
     assert pkg2.get_meta() == test_meta
-
+    
 def test_top_hash_stable():
     """Ensure that top_hash() never changes for a given manifest"""
 
@@ -556,6 +581,21 @@ def test_top_hash_stable():
 
     assert pkg.top_hash() == pkg_hash, \
            "Unexpected top_hash for {}/.quilt/packages/{}".format(registry, pkg_hash)
+
+def test_commit_message_on_push(tmpdir):
+    """ Verify commit messages populate correctly on push."""
+    with patch('botocore.client.BaseClient._make_api_call', new=mock_make_api_call):
+        with open(REMOTE_MANIFEST) as fd:
+            pkg = Package.load(fd)
+        with patch('t4.data_transfer._download_single_file', new=no_op_mock), \
+                patch('t4.data_transfer._download_dir', new=no_op_mock), \
+                patch('t4.Package.build', new=no_op_mock):
+            pkg.push('Quilt/test_pkg_name', tmpdir / 'pkg', message='test_message')
+            assert pkg._meta['message'] == 'test_message'
+
+            # ensure messages are strings
+            with pytest.raises(ValueError):
+                pkg.push('Quilt/test_pkg_name', tmpdir / 'pkg', message={})
 
 def test_overwrite_dir_fails():
     with pytest.raises(QuiltException):

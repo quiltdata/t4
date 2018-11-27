@@ -15,10 +15,13 @@ from six import string_types
 
 from .data_transfer import (
     calculate_sha256_and_size, copy_file, deserialize_obj,
-    get_bytes, get_meta, put_bytes, TargetType
+    get_bytes, get_meta, list_object_versions, put_bytes, TargetType
 )
 from .exceptions import PackageException
-from .util import QuiltException, BASE_PATH, fix_url, PACKAGE_NAME_FORMAT, parse_file_url
+from .util import (
+    QuiltException, BASE_PATH, fix_url, PACKAGE_NAME_FORMAT,
+    parse_file_url, parse_s3_url
+)
 
 
 def hash_file(readable_file):
@@ -98,8 +101,6 @@ class PackageEntry(object):
         """
         Returns dict representation of entry.
         """
-        if self.hash is None or self.size is None:
-            raise QuiltException("PackageEntry missing hash and/or size: %s" % self.physical_keys[0])
         ret = {
             'physical_keys': self.physical_keys,
             'size': self.size,
@@ -464,11 +465,8 @@ class Package(object):
         Raises:
             when path doesn't exist
         """
-        lkey = lkey.strip("/") + "/"
-
-        if lkey == '/':
-            # Prevent created logical keys from starting with '/'
-            lkey = ''
+        lkey = lkey.strip("/")
+        root = self._ensure_subpackage(self._split_key(lkey)) if lkey else self
 
         # TODO: deserialization metadata
         url = urlparse(fix_url(path).strip('/'))
@@ -480,10 +478,27 @@ class Package(object):
             for f in files:
                 if not f.is_file():
                     continue
-                entry = PackageEntry([f], None, None, None)
-                logical_key = lkey + f.relative_to(src_path).as_posix()
+                entry = PackageEntry([f.as_uri()], None, None, None)
+                logical_key = f.relative_to(src_path).as_posix()
                 # TODO: Warn if overwritting a logical key?
-                self.set(logical_key, entry)
+                root.set(logical_key, entry)
+        elif url.scheme == 's3':
+            src_bucket, src_key, src_version = parse_s3_url(url)
+            if src_version:
+                raise PackageException("Directories cannot have versions")
+            if src_key and not src_key.endswith('/'):
+                src_key += '/'
+            objects, _ = list_object_versions(src_bucket, src_key)
+            for obj in objects:
+                if not obj['IsLatest']:
+                    continue
+                obj_url = 's3://%s/%s' % (src_bucket, quote(obj['Key']))
+                if obj['VersionId'] != 'null':  # Yes, 'null'
+                    obj_url += '?versionId=%s' % quote(obj['VersionId'])
+                entry = PackageEntry([obj_url], None, None, None)
+                logical_key = obj['Key'][len(src_key):]
+                # TODO: Warn if overwritting a logical key?
+                root.set(logical_key, entry)
         else:
             raise NotImplementedError
 
@@ -528,7 +543,25 @@ class Package(object):
             entry.hash = dict(type='SHA256', value=obj_hash)
             entry.size = size
 
-    def build(self, name=None, registry=None):
+    def _set_commit_message(self, msg):
+        """
+        Sets a commit message.
+
+        Args:
+            msg: a message string
+
+        Returns:
+            None
+
+        Raises:
+            a ValueError if msg is not a string
+        """
+        if msg is not None and not isinstance(msg, str):
+            raise ValueError("The package message must be a string.")
+
+        self._meta.update({'message': msg})
+
+    def build(self, name=None, registry=None, message=None):
         """
         Serializes this package to a registry.
 
@@ -536,10 +569,13 @@ class Package(object):
             name: optional name for package
             registry: registry to build to
                     defaults to local registry
+            message: the commit message of the package
 
         Returns:
             the top hash as a string
         """
+        self._set_commit_message(message)
+
         registry_prefix = get_package_registry(fix_url(registry) if registry else None)
 
         self._fix_sha256_and_size()
@@ -691,6 +727,8 @@ class Package(object):
         top_meta = json.dumps(self._meta, sort_keys=True, separators=(',', ':'))
         top_hash.update(top_meta.encode('utf-8'))
         for logical_key, entry in self.walk():
+            if entry.hash is None or entry.size is None:
+                raise QuiltException("PackageEntry missing hash and/or size: %s" % entry.physical_keys[0])
             entry_dict = entry.as_dict()
             entry_dict['logical_key'] = logical_key
             entry_dict.pop('physical_keys', None)
@@ -699,7 +737,7 @@ class Package(object):
 
         return top_hash.hexdigest()
 
-    def push(self, name, dest, registry=None):
+    def push(self, name, dest, registry=None, message=None):
         """
         Copies objects to path, then creates a new package that points to those objects.
         Copies each object in this package to path according to logical key structure,
@@ -709,10 +747,12 @@ class Package(object):
             name: name for package in registry
             dest: where to copy the objects in the package
             registry: registry where to create the new package
+            message: the commit message for the new package
         Returns:
             A new package that points to the copied objects
         """
         self.validate_package_name(name)
+        self._set_commit_message(message)
 
         if registry is None:
             registry = dest
