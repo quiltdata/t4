@@ -34,7 +34,7 @@ if platform.system() == 'Linux':
 
 s3_client = boto3.client('s3')
 try:
-    s3_client.head_object(Bucket='alpha-quilt-storage')
+    s3_client.head_bucket(Bucket='alpha-quilt-storage')
 except ClientError:
     # Use unsigned boto if credentials can't head the default bucket
     s3_client = boto3.client('s3', config=Config(signature_version=UNSIGNED))
