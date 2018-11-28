@@ -8,6 +8,8 @@ import shutil
 from threading import Lock
 from urllib.parse import urlparse
 
+from botocore import UNSIGNED
+from botocore.client import Config
 from botocore.exceptions import ClientError
 import boto3
 from boto3.s3.transfer import TransferConfig, create_transfer_manager
@@ -31,6 +33,12 @@ if platform.system() == 'Linux':
     HELIUM_XATTR = 'user.%s' % HELIUM_XATTR
 
 s3_client = boto3.client('s3')
+try:
+    s3_client.head_object(Bucket='alpha-quilt-storage')
+except ClientError:
+    # Use unsigned boto if credentials can't head the default bucket
+    s3_client = boto3.client('s3', config=Config(signature_version=UNSIGNED))
+
 s3_transfer_config = TransferConfig()
 s3_manager = create_transfer_manager(s3_client, s3_transfer_config)
 
