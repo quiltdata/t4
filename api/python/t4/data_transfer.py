@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 
 from botocore import UNSIGNED
 from botocore.client import Config
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError, NoCredentialsError
 import boto3
 from boto3.s3.transfer import TransferConfig, create_transfer_manager
 from s3transfer.subscribers import BaseSubscriber
@@ -35,7 +35,7 @@ if platform.system() == 'Linux':
 s3_client = boto3.client('s3')
 try:
     s3_client.head_bucket(Bucket='alpha-quilt-storage')
-except ClientError:
+except ClientError, NoCredentialsError:
     # Use unsigned boto if credentials can't head the default bucket
     s3_client = boto3.client('s3', config=Config(signature_version=UNSIGNED))
 
