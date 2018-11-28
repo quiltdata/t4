@@ -63,14 +63,12 @@ Resources:
             Action:
               - "es:*"
           - Effect: Allow
-            Principal:
-              AWS: !Ref Users
+            Principal: '*'
             Resource: !Sub "arn:aws:es:${AWS::Region}:${AWS::AccountId}:domain/${AWS::StackName}/*"
             Action:
               - "es:ESHttpGet"
           - Effect: Allow
-            Principal:
-              AWS: !Ref Users
+            Principal: '*'
             Resource: !Sub "arn:aws:es:${AWS::Region}:${AWS::AccountId}:domain/${AWS::StackName}/drive/_doc/_search*"
             Action:
               - "es:ESHttpPost"
