@@ -20,6 +20,11 @@ Parameters:
   Users:
     Type: CommaDelimitedList
     Description: Required, comma-separated list of ARNs for IAM users who can search QuiltBucket. NOTE - Users with search access can see the contents of all indexed documents. Only include trusted users.
+  PublicHostedBucket:
+    Type: String
+    AllowedValues: [true, false]
+    Default: false
+    Description: Set this to true if this bucket should be publically readable and searchable. This will override the Users whitelist.
 
 Mappings:
   VersionMap:
@@ -63,12 +68,14 @@ Resources:
             Action:
               - "es:*"
           - Effect: Allow
-            Principal: '*'
+            Principal:
+              AWS: !If[!Equals[true, !Ref PublicHostedBucket], '*', !Ref Users]
             Resource: !Sub "arn:aws:es:${AWS::Region}:${AWS::AccountId}:domain/${AWS::StackName}/*"
             Action:
               - "es:ESHttpGet"
           - Effect: Allow
-            Principal: '*'
+            Principal:
+              AWS: !If[!Equals[true, !Ref PublicHostedBucket], '*', !Ref Users]
             Resource: !Sub "arn:aws:es:${AWS::Region}:${AWS::AccountId}:domain/${AWS::StackName}/drive/_doc/_search*"
             Action:
               - "es:ESHttpPost"
