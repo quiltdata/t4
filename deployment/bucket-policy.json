@@ -1,0 +1,19 @@
+{
+  "Version":"2012-10-17",
+  "Statement":[
+    {
+      "Sid":"ReadObjects",
+      "Effect":"Allow",
+      "Principal": "*",
+      "Action":["s3:GetObject", "s3:GetObjectVersion"],
+      "Resource":["arn:aws:s3:::$BUCKETNAME/*"]
+    },
+    {
+      "Sid":"ListBucket",
+      "Effect":"Allow",
+      "Principal": "*",
+      "Action":["s3:ListBucket", "s3:ListBucketVersions"],
+      "Resource":["arn:aws:s3:::$BUCKETNAME"]
+    }
+  ]
+}
