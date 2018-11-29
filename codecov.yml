@@ -9,4 +9,6 @@ coverage:
         paths: "tests/"
       app:
         paths: "t4/"
+        fixes:
+          - "::api/python/"
 
