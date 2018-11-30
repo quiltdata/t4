@@ -34,7 +34,11 @@ if platform.system() == 'Linux':
 
 s3_client = boto3.client('s3')
 try:
-    s3_client.head_bucket(Bucket='alpha-quilt-storage')
+    # Ensure that user has AWS credentials that function.
+    # quilt-example is readable by anonymous users, if the head fails
+    #   then the s3 client needs to be in UNSIGNED mode
+    #   because the user's credentials aren't working
+    s3_client.head_bucket(Bucket='quilt-example')
 except (ClientError, NoCredentialsError):
     # Use unsigned boto if credentials can't head the default bucket
     s3_client = boto3.client('s3', config=Config(signature_version=UNSIGNED))
