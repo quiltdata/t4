@@ -1,5 +1,4 @@
 import json
-
 import requests
 
 from aws_requests_auth.boto_utils import BotoAWSRequestsAuth
