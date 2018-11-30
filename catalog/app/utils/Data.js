@@ -9,6 +9,7 @@ import AsyncResult from 'utils/AsyncResult';
 import { injectReducer } from 'utils/ReducerInjector';
 import { injectSaga } from 'utils/SagaInjector';
 import * as RT from 'utils/reactTools';
+import * as reduxTools from 'utils/reduxTools';
 import { takeEveryTagged } from 'utils/sagaTools';
 import tagged from 'utils/tagged';
 
@@ -34,17 +35,16 @@ function* saga() {
 
 const init = { id: -1, result: AsyncResult.Init() };
 
-const reducer = (state = {}, action) =>
-  Action.case({
-    Init: (dataId) => R.assoc(dataId, init),
-    Request: ({ dataId, requestId }) => R.evolve({
-      [dataId]: (s) => ({ id: requestId, result: AsyncResult.Pending(s.result) }),
-    }),
-    Response: ({ dataId, requestId, result }) => R.evolve({
-      [dataId]: (s) => s.id === requestId ? { ...s, result } : s,
-    }),
-    __: () => R.identity,
-  })(action)(state);
+const reducer = reduxTools.withInitialState({}, Action.reducer({
+  Init: (dataId) => R.assoc(dataId, init),
+  Request: ({ dataId, requestId }) => R.evolve({
+    [dataId]: (s) => ({ id: requestId, result: AsyncResult.Pending(s.result) }),
+  }),
+  Response: ({ dataId, requestId, result }) => R.evolve({
+    [dataId]: (s) => s.id === requestId ? { ...s, result } : s,
+  }),
+  __: () => R.identity,
+}));
 
 const mkSelector = (dataId) => (state) =>
   (state.get(REDUX_KEY)[dataId] || init);
