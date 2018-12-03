@@ -652,6 +652,11 @@ def test_long_repr():
     assert pkgrepr.count('\n') == 20
     assert pkgrepr.find('path9/') > 0
 
+def test_repr_empty_package():
+    pkg = Package()
+    r = repr(pkg)
+    assert r == "(empty Package)"
+
 def test_manifest():
     pkg = Package()
     pkg.set('as/df', LOCAL_MANIFEST)

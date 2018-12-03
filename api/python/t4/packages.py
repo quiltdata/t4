@@ -251,6 +251,9 @@ class Package(object):
         """
         String representation of the Package.
         """
+        if not self.keys():
+            return "(empty Package)"
+
         if max_lines is None:
             return self._unlimited_repr()
 
