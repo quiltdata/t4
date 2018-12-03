@@ -654,6 +654,7 @@ def select(url, query, meta=None, alt_s3_client=None, raw=False, **kwargs):
     # We don't process any other kind of response at this time.
     output_serialization = {'JSON': {}}
     query_type = "SQL"  # AWS S3 doesn't currently support anything else.
+    meta = meta if meta is not None else {}
 
     # Internal Format Name <--> S3 Format Name
     valid_s3_select_formats = {
