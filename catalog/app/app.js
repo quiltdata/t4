@@ -7,7 +7,7 @@ import 'whatwg-fetch';
 import MuiThemeProviderV0 from 'material-ui/styles/MuiThemeProvider';
 import { MuiThemeProvider } from '@material-ui/core/styles';
 import ReactDOM from 'react-dom';
-import { LOCATION_CHANGE } from 'connected-react-router/immutable';
+// import { LOCATION_CHANGE } from 'connected-react-router/immutable';
 import createHistory from 'history/createBrowserHistory';
 import 'sanitize.css/sanitize.css';
 //  Need to bypass CSS modules used by standard loader
@@ -18,6 +18,7 @@ import '!!style-loader!css-loader!css/bootstrap-grid.css';
 import App from 'containers/App';
 import LanguageProvider from 'containers/LanguageProvider';
 import * as AWSAuth from 'containers/AWSAuth';
+import * as BucketConfig from 'containers/Bucket/Config';
 import * as Notifications from 'containers/Notifications';
 import config from 'constants/config';
 import routes from 'constants/routes';
@@ -27,12 +28,11 @@ import * as Data from 'utils/Data';
 import * as NamedRoutes from 'utils/NamedRoutes';
 import FormProvider from 'utils/ReduxFormProvider';
 import StoreProvider from 'utils/StoreProvider';
-import SearchProvider from 'utils/SearchProvider';
 import fontLoader from 'utils/fontLoader';
 import { nest } from 'utils/reactTools';
 import RouterProvider from 'utils/router';
 import mkStorage from 'utils/storage';
-import tracking from 'utils/tracking';
+// import tracking from 'utils/tracking';
 // Load the favicon, the manifest.json file and the .htaccess file
 /* eslint-disable import/no-unresolved, import/extensions */
 import '!file-loader?name=[name].[ext]!./favicon.ico';
@@ -83,12 +83,8 @@ const render = (messages) => {
       }],
       AWS.S3.Provider,
       AWS.Signer.Provider,
-      [AWS.ES.Provider, {
-        host: config.aws.elasticSearchUrl,
-        log: 'trace',
-      }],
       Data.Provider,
-      SearchProvider,
+      [BucketConfig.BucketsProvider, { buckets: config.buckets }],
       [RouterProvider, { history }],
       [MuiThemeProviderV0, { muiTheme: style.themeV0 }],
       [MuiThemeProvider, { theme: style.theme }],
@@ -101,10 +97,12 @@ const render = (messages) => {
 };
 
 // track navigation
+/*
 store.runSaga(tracking, {
   locationChangeAction: LOCATION_CHANGE,
   token: config.mixpanelToken,
 });
+*/
 
 if (module.hot) {
   // Hot reloadable React components and translation json files

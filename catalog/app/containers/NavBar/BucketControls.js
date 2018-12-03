@@ -12,6 +12,7 @@ import Icon from '@material-ui/core/Icon';
 import Input from '@material-ui/core/Input';
 import InputBase from '@material-ui/core/InputBase';
 import InputAdornment from '@material-ui/core/InputAdornment';
+import ListItemText from '@material-ui/core/ListItemText';
 import MenuItem from '@material-ui/core/MenuItem';
 import MenuList from '@material-ui/core/MenuList';
 import Paper from '@material-ui/core/Paper';
@@ -20,19 +21,16 @@ import { MuiThemeProvider, withStyles } from '@material-ui/core/styles';
 import { fade } from '@material-ui/core/styles/colorManipulator';
 
 import * as style from 'constants/style';
+import * as BucketConfig from 'containers/Bucket/Config';
 import * as NamedRoutes from 'utils/NamedRoutes';
 import { setSearchText, selectSearchText } from 'utils/SearchProvider';
-import { composeComponent, wrap } from 'utils/reactTools';
+import * as RT from 'utils/reactTools';
 
-
-const BUCKETS = [
-  'quilt-example',
-];
 
 const withInvertedTheme =
-  wrap(MuiThemeProvider, () => ({ theme: style.themeInverted }));
+  RT.wrap(MuiThemeProvider, () => ({ theme: style.themeInverted }));
 
-const BucketDisplay = composeComponent('NavBar.BucketControls.BucketDisplay',
+const BucketDisplay = RT.composeComponent('NavBar.BucketControls.BucketDisplay',
   RC.setPropTypes({
     bucket: PT.string.isRequired,
     select: PT.func.isRequired,
@@ -70,13 +68,15 @@ const normalizeBucket = R.pipe(
   R.replace(/[^a-z0-9-.]/g, '-'),
 );
 
-const getCycled = (arr, value, offset) => {
-  const index = arr.indexOf(value) + offset;
+const getCycled = (getter) => (arr, val, offset) => {
+  const index = arr.findIndex(R.pipe(getter, R.equals(val))) + offset;
   const cycledIndex = ((index + 1 + arr.length + 1) % (arr.length + 1)) - 1;
-  return arr[cycledIndex];
+  return getter(arr[cycledIndex]);
 };
 
-const BucketSelect = composeComponent('NavBar.BucketControls.BucketSelect',
+const getBucketCycled = getCycled(R.prop('name'));
+
+const BucketSelect = RT.composeComponent('NavBar.BucketControls.BucketSelect',
   RC.setPropTypes({
     bucket: PT.string,
     cancel: PT.func,
@@ -84,17 +84,17 @@ const BucketSelect = composeComponent('NavBar.BucketControls.BucketSelect',
   }),
   connect(),
   NamedRoutes.inject(),
-  RC.withProps({ suggestions: BUCKETS }),
+  RT.consume(BucketConfig.BucketsCtx, 'buckets'),
   RC.withStateHandlers({
     value: '',
     anchor: null,
   }, {
     setValue: () => (value) => ({ value }),
-    nextSuggestion: ({ value }, { suggestions }) => () => ({
-      value: getCycled(suggestions, value, 1) || '',
+    nextSuggestion: ({ value }, { buckets }) => () => ({
+      value: getBucketCycled(buckets, value, 1) || '',
     }),
-    prevSuggestion: ({ value }, { suggestions }) => () => ({
-      value: getCycled(suggestions, value, -1) || '',
+    prevSuggestion: ({ value }, { buckets }) => () => ({
+      value: getBucketCycled(buckets, value, -1) || '',
     }),
     setAnchor: () => (anchor) => ({ anchor }),
   }),
@@ -155,6 +155,13 @@ const BucketSelect = composeComponent('NavBar.BucketControls.BucketSelect',
     popper: {
       zIndex: zIndex.appBar + 1,
     },
+    description: {
+      maxWidth: 50 * unit,
+    },
+    icon: {
+      height: 40,
+      width: 40,
+    },
   })),
   ({
     anchor,
@@ -162,7 +169,7 @@ const BucketSelect = composeComponent('NavBar.BucketControls.BucketSelect',
     value,
     handleKey,
     handleChange,
-    suggestions,
+    buckets,
     handleSuggestion,
     handleFocus,
     handleBlur,
@@ -188,13 +195,22 @@ const BucketSelect = composeComponent('NavBar.BucketControls.BucketSelect',
       >
         <Paper>
           <MenuList>
-            {suggestions.map((s) => (
+            {buckets.map((s) => (
               <MenuItem
-                key={s}
-                onMouseDown={() => handleSuggestion(s)}
-                selected={s === value}
+                key={s.name}
+                onMouseDown={() => handleSuggestion(s.name)}
+                selected={s.name === value}
               >
-                s3://{s}
+                <img src={s.icon} alt={s.title} className={classes.icon} />
+                <ListItemText
+                  primary={s.title}
+                  secondary={s.description}
+                  secondaryTypographyProps={{
+                    noWrap: true,
+                    className: classes.description,
+                  }}
+                  title={s.description}
+                />
               </MenuItem>
             ))}
           </MenuList>
@@ -203,7 +219,7 @@ const BucketSelect = composeComponent('NavBar.BucketControls.BucketSelect',
     </React.Fragment>
   ));
 
-const NavInput = composeComponent('NavBar.BucketControls.NavInput',
+const NavInput = RT.composeComponent('NavBar.BucketControls.NavInput',
   withInvertedTheme,
   withStyles(({ palette }) => ({
     underline: {
@@ -217,7 +233,7 @@ const NavInput = composeComponent('NavBar.BucketControls.NavInput',
   })),
   Input);
 
-const Search = composeComponent('NavBar.BucketControls.Search',
+const Search = RT.composeComponent('NavBar.BucketControls.Search',
   RC.setPropTypes({
     bucket: PT.string.isRequired,
   }),
@@ -282,7 +298,7 @@ const Search = composeComponent('NavBar.BucketControls.Search',
     />
   ));
 
-export default composeComponent('NavBar.BucketControls',
+export default RT.composeComponent('NavBar.BucketControls',
   NamedRoutes.inject(),
   RC.withStateHandlers({
     selecting: false,
@@ -322,7 +338,12 @@ export default composeComponent('NavBar.BucketControls',
                   )
                   : <BucketDisplay bucket={match.params.bucket} select={select} />
                 }
-                <Search bucket={match.params.bucket} />
+                <BucketConfig.CurrentCtx.Consumer>
+                  {(current) =>
+                    !!current && !!current.searchEndpoint
+                      && <Search bucket={match.params.bucket} />
+                  }
+                </BucketConfig.CurrentCtx.Consumer>
               </React.Fragment>
             )
             : <BucketSelect />
