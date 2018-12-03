@@ -651,6 +651,8 @@ def select(url, query, meta=None, alt_s3_client=None, raw=False, **kwargs):
     """
     # use passed in client, otherwise module-level client
     s3 = alt_s3_client if alt_s3_client else s3_client
+    # We don't process any other kind of response at this time.
+    output_serialization = {'JSON': {}}
 
     query_type = "SQL"  # AWS S3 doesn't currently support anything else.
     # Format may be indicated by extension or metadata.
@@ -736,11 +738,6 @@ def select(url, query, meta=None, alt_s3_client=None, raw=False, **kwargs):
         elif s3_format == 'CSV':
             if csv_delim is not None:
                 format_spec['FieldDelimiter'] = csv_delim
-
-    # Create OutputSerialization section if not user-specified.
-    output_serialization = None
-    if 'OutputSerialization' not in kwargs:
-        output_serialization = {'JSON': {}}     # Actually JSON Lines
 
     select_kwargs = dict(
         Bucket=bucket,
