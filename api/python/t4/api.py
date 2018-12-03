@@ -115,8 +115,8 @@ def delete_dir(target):
     if version:
         raise ValueError("Versions don't make sense for directories")
 
-    results = list_object_versions(bucket, path, recursive=True)
-    for result in results[0]:
+    results = list_objects(bucket, path)
+    for result in results:
         delete('s3://' + bucket + '/' + result['Key'])
 
 
