@@ -8,8 +8,6 @@ import Message from './Message';
 import Summary from './Summary';
 
 
-const DOC_LINK =
-  'https://github.com/quiltdata/t4/blob/master/UserDocs.md#using-the-catalog';
 const EXAMPLE_BUCKET = 'quilt-example';
 
 export default RT.composeComponent('Bucket.Overview',
@@ -21,12 +19,13 @@ export default RT.composeComponent('Bucket.Overview',
       progress
       whenEmpty={() => (
         <Message headline="Getting Started">
-          Currently there`s no overview in this bucket
-          &mdash; <a href={DOC_LINK}>learn how to create one</a>.
+          Welcome to the Quilt T4 catalog for the <strong>{bucket}</strong> bucket.
           <br />
-          Also, check out
-          our <Link to={urls.bucketRoot(EXAMPLE_BUCKET)}>example bucket</Link> to
-          see what T4 is capable of.
+          For help getting started with T4 check
+          out <Link to={urls.bucketRoot(EXAMPLE_BUCKET)}>the demo bucket</Link>.
+          <br />
+          To overwrite this landing page with your own, create a
+          new <strong>README.md</strong> at the top level of this bucket.
         </Message>
       )}
     />
