@@ -651,32 +651,31 @@ def select(url, query, meta=None, alt_s3_client=None, raw=False, **kwargs):
     """
     # use passed in client, otherwise module-level client
     s3 = alt_s3_client if alt_s3_client else s3_client
-
+    # We don't process any other kind of response at this time.
+    output_serialization = {'JSON': {}}
     query_type = "SQL"  # AWS S3 doesn't currently support anything else.
-    # Format may be indicated by extension or metadata.
-    # Key: format name.
-    # Value: S3's expected value indicating a format.
+
+    # Internal Format Name <--> S3 Format Name
     valid_s3_select_formats = {
         'parquet': 'Parquet',
         'json': 'JSON',
         'jsonl': 'JSON',
         'csv': 'CSV',
         }
-    # Key: S3's expected value indicating a format.
-    # Value: S3's accepted compression types for that format
+    # S3 Format Name <--> S3-Acceptable compression types
     format_compression = {
         'Parquet': ['NONE'],  # even if column-level compression has been used.
         'JSON': ['NONE', 'BZIP2', 'GZIP'],
         'CSV': ['NONE', 'BZIP2', 'GZIP'],
         }
+    # File extension <--> S3-Acceptable compression type
     # For compression type, when not specified in metadata.  Guess by extension.
-    # Key: File extension.  Value: S3's expected value to specify compression type
     accepted_compression = {
         '.bz2': 'BZIP2',
         '.gz': 'GZIP'
         }
-    # For file type, when not specified in metadata. Guess format by extension.
-    # Our format names largely correlate with extension names, so this is largely 1:1.
+    # Extension <--> Internal Format Name
+    # For file type, when not specified in metadata. Guess by extension.
     ext_formats = {
         '.parquet': 'parquet',
         '.json': 'json',
@@ -737,11 +736,7 @@ def select(url, query, meta=None, alt_s3_client=None, raw=False, **kwargs):
             if csv_delim is not None:
                 format_spec['FieldDelimiter'] = csv_delim
 
-    # Create OutputSerialization section if not user-specified.
-    output_serialization = None
-    if 'OutputSerialization' not in kwargs:
-        output_serialization = {'JSON': {}}     # Actually JSON Lines
-
+    # These are processed and/or default args.
     select_kwargs = dict(
         Bucket=bucket,
         Key=path,
