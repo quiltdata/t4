@@ -8,16 +8,16 @@ import Tabs from '@material-ui/core/Tabs';
 import { withStyles } from '@material-ui/core/styles';
 
 import Layout from 'components/Layout';
+import { ThrowNotFound } from 'containers/NotFoundPage';
 import SearchResults from 'containers/SearchResults';
 import * as NamedRoutes from 'utils/NamedRoutes';
 import * as RT from 'utils/reactTools';
 import withParsedQuery from 'utils/withParsedQuery';
 
-import Message from './Message';
+import Overview from './Overview';
 import PackageDetail from './PackageDetail';
 import PackageList from './PackageList';
 import PackageTree from './PackageTree';
-import Summary from './Summary';
 import Tree from './Tree';
 
 
@@ -90,28 +90,11 @@ const BucketLayout = RT.composeComponent('Bucket.Layout',
     </Layout>
   ));
 
-export const Overview = RT.composeComponent('Bucket.Overview',
-  ({ match: { params: { bucket } } }) => (
-    <Summary
-      bucket={bucket}
-      path=""
-      progress
-      whenEmpty={() => (
-        <Message headline="No overview">
-          <a href="https://github.com/quiltdata/t4/blob/master/UserDocs.md#using-the-catalog">Learn how to create an overview</a>.
-        </Message>
-      )}
-    />
-  ));
-
-export const Search = RT.composeComponent('Bucket.Search',
+const Search = RT.composeComponent('Bucket.Search',
   withParsedQuery,
   ({ location: { query: { q } }, match: { params: { bucket } } }) => (
     <SearchResults bucket={bucket} q={q} />
   ));
-
-// TODO: create an error boundary to catch NotFound
-const NotFound = () => { throw new Error('Not found'); };
 
 export default RT.composeComponent('Bucket',
   NamedRoutes.inject(),
@@ -127,7 +110,7 @@ export default RT.composeComponent('Bucket',
         <Route path={paths.bucketPackageList} component={PackageList} exact />
         <Route path={paths.bucketPackageDetail} component={PackageDetail} exact />
         <Route path={paths.bucketPackageTree} component={PackageTree} exact />
-        <Route component={NotFound} />
+        <Route component={ThrowNotFound} />
       </Switch>
     </BucketLayout>
   ));

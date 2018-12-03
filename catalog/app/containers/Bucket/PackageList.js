@@ -14,7 +14,8 @@ import * as NamedRoutes from 'utils/NamedRoutes';
 import * as RT from 'utils/reactTools';
 
 import Message from './Message';
-import * as packages from './packages';
+import { displayError } from './errors';
+import * as requests from './requests';
 
 
 export default RT.composeComponent('Bucket.PackageList',
@@ -22,7 +23,7 @@ export default RT.composeComponent('Bucket.PackageList',
   NamedRoutes.inject(),
   withData({
     params: ({ s3, match: { params: { bucket } } }) => ({ s3, bucket }),
-    fetch: packages.list,
+    fetch: requests.listPackages,
   }),
   withStyles(({ spacing: { unit } }) => ({
     root: {
@@ -37,11 +38,7 @@ export default RT.composeComponent('Bucket.PackageList',
   ({ classes, data: { result }, match: { params: { bucket } }, urls }) =>
     AsyncResult.case({
       _: () => <CircularProgress />,
-      Err: R.cond([
-        // TODO: handle known errors:
-        // access denied, cors not configured
-        [R.T, (e) => <Message headline="Error">{e.message}</Message>],
-      ]),
+      Err: displayError(),
       Ok: R.ifElse(R.isEmpty,
         () => (
           <Message headline="No packages">

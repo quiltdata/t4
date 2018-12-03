@@ -20,7 +20,8 @@ import tagged from 'utils/tagged';
 import BreadCrumbs, { Crumb } from './BreadCrumbs';
 import CodeButton from './CodeButton';
 import Listing, { ListingItem } from './Listing';
-import * as packages from './packages';
+import { displayError } from './errors';
+import * as requests from './requests';
 
 
 const splitPath = R.pipe(R.split('/'), R.reject(R.isEmpty));
@@ -98,7 +99,7 @@ export default RT.composeComponent('Bucket.PackageTree',
   withData({
     params: ({ s3, match: { params: { bucket, name, revision } } }) =>
       ({ s3, bucket, name, revision }),
-    fetch: packages.fetchTree,
+    fetch: requests.fetchPackageTree,
   }),
   NamedRoutes.inject(),
   RC.withProps(({
@@ -194,7 +195,7 @@ export default RT.composeComponent('Bucket.PackageTree',
           ),
           Dir: (dir) => <Listing result={AsyncResult.Ok(dir)} {...data} />,
         }),
-        Err: (e) => <h1>Error: {e.message}</h1>,
+        Err: displayError(),
         _: () => <CircularProgress />,
       }, result)}
     </React.Fragment>

@@ -16,16 +16,14 @@ import { S3, Signer } from 'utils/AWS';
 import AsyncResult from 'utils/AsyncResult';
 import { withData } from 'utils/Data';
 import * as NamedRoutes from 'utils/NamedRoutes';
-import * as Resource from 'utils/Resource';
 import { composeComponent } from 'utils/reactTools';
 import {
   getPrefix,
   withoutPrefix,
-  resolveKey,
-  getBasename,
 } from 'utils/s3paths';
 
-import Message from './Message';
+import { displayError } from './errors';
+import * as requests from './requests';
 
 
 const MAX_THUMBNAILS = 100;
@@ -128,84 +126,6 @@ const Thumbnails = composeComponent('Bucket.Summary.Thumbnails',
     </SummaryItem>
   ));
 
-const mkHandle = (bucket) => (i) => ({
-  bucket,
-  key: i.Key,
-  modified: i.LastModified,
-  size: i.Size,
-  etag: i.ETag,
-});
-
-const findFile = (re) => R.find(({ key }) => re.test(getBasename(key)));
-
-const README_RE = /^readme\.md$/i;
-const SUMMARIZE_RE = /^quilt_summarize\.json$/i;
-const IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.gif'];
-
-const fetchSummary = ({ s3, bucket, path }) =>
-  s3
-    .listObjectsV2({
-      Bucket: bucket,
-      Delimiter: '/',
-      Prefix: path,
-    })
-    .promise()
-    .then(R.pipe(
-      R.prop('Contents'),
-      R.map(mkHandle(bucket)),
-      // filter-out "directory-files" (files that match prefixes)
-      R.filter((f) => f.key !== path && !f.key.endsWith('/')),
-      R.applySpec({
-        readme: findFile(README_RE),
-        summarize: findFile(SUMMARIZE_RE),
-        images: R.filter(({ key }) =>
-          IMAGE_EXTS.some((ext) => key.endsWith(ext))),
-      }),
-    ));
-
-const isValidManifest = R.both(Array.isArray, R.all(R.is(String)));
-
-const fetchSummarize = async ({ s3, handle }) => {
-  try {
-    const file = await s3.getObject({
-      Bucket: handle.bucket,
-      Key: handle.key,
-      // TODO: figure out caching issues
-      IfMatch: handle.etag,
-    }).promise();
-    const json = file.Body.toString('utf-8');
-    const manifest = JSON.parse(json);
-    if (!isValidManifest(manifest)) {
-      throw new Error(
-        'Invalid manifest: must be a JSON array of file links'
-      );
-    }
-
-    const resolvePath = (path) => ({
-      bucket: handle.bucket,
-      key: resolveKey(handle.key, path),
-    });
-
-    return manifest
-      .map(R.pipe(
-        Resource.parse,
-        Resource.Pointer.case({
-          Web: () => null, // web urls are not supported in this context
-          S3: R.identity,
-          S3Rel: resolvePath,
-          Path: resolvePath,
-        }),
-      ))
-      .filter((h) => h);
-  } catch (e) {
-    // eslint-disable-next-line no-console
-    console.log('Error loading summary:');
-    // eslint-disable-next-line no-console
-    console.error(e);
-    return [];
-  }
-};
-
 const Summarize = composeComponent('Bucket.Summary.Summarize',
   RC.setPropTypes({
     /**
@@ -218,7 +138,7 @@ const Summarize = composeComponent('Bucket.Summary.Summarize',
   S3.inject(),
   withData({
     params: R.pick(['s3', 'handle']),
-    fetch: fetchSummarize,
+    fetch: requests.summarize,
   }),
   ({ data: { result }, children }) => children(result));
 
@@ -228,71 +148,49 @@ export default composeComponent('Bucket.Summary',
     path: PT.string.isRequired,
     progress: PT.bool,
     whenEmpty: PT.func,
+    showError: PT.bool,
   }),
   S3.inject(),
   withData({
     params: R.pick(['s3', 'bucket', 'path']),
-    fetch: fetchSummary,
+    fetch: requests.fetchSummary,
   }),
-  ({ data: { result }, progress = false, whenEmpty = () => null }) => (
-    <React.Fragment>
-      {AsyncResult.case({
-        _: () => (progress && <CircularProgress />),
-        Err: R.cond([
-          [R.propEq('message', 'Network Failure'),
-            () => (
-              <Message headline="Error">
-                Seems like this bucket is not configured for T4.
-                <br />
-                <a href="https://github.com/quiltdata/t4/tree/master/deployment#pre-requisites">Learn how to configure the bucket for T4</a>.
-              </Message>
-            )],
-          [R.propEq('message', 'Access Denied'),
-            () => (
-              <Message headline="Access Denied">
-                Seems like you don`t have access to this bucket.
-                <br />
-                <a href="TODO">Learn about access control in T4</a>.
-              </Message>
-            )],
-          [R.T,
-            () => (
-              <Message headline="Error">
-                Something went wrong and we are not sure why.
-                <br />
-                Contact <a href="TODO">our support</a> for help.
-              </Message>
-            )],
-        ]),
-        // eslint-disable-next-line react/prop-types
-        Ok: ({ readme, images, summarize }) => (
-          <React.Fragment>
-            {!readme && !summarize && !images.length && whenEmpty()}
-            {readme && (
-              <SummaryItemFile
-                title={basename(readme.key)}
-                handle={readme}
-              />
-            )}
-            {!!images.length && <Thumbnails images={images} />}
-            {summarize && (
-              <Summarize handle={summarize}>
-                {AsyncResult.case({
-                  Err: () => null,
-                  _: () => (progress && <CircularProgress />),
-                  Ok: R.map((i) => (
-                    <SummaryItemFile
-                      key={i.key}
-                      // TODO: make a reusable function to compute relative s3 paths or smth
-                      title={withoutPrefix(getPrefix(summarize.key), i.key)}
-                      handle={i}
-                    />
-                  )),
-                })}
-              </Summarize>
-            )}
-          </React.Fragment>
-        ),
-      })(result)}
-    </React.Fragment>
-  ));
+  ({
+    data: { result },
+    progress = false,
+    whenEmpty = () => null,
+    showError = true,
+  }) =>
+    AsyncResult.case({
+      _: () => (progress && <CircularProgress />),
+      Err: showError ? displayError() : () => null,
+      // eslint-disable-next-line react/prop-types
+      Ok: ({ readme, images, summarize }) => (
+        <React.Fragment>
+          {!readme && !summarize && !images.length && whenEmpty()}
+          {readme && (
+            <SummaryItemFile
+              title={basename(readme.key)}
+              handle={readme}
+            />
+          )}
+          {!!images.length && <Thumbnails images={images} />}
+          {summarize && (
+            <Summarize handle={summarize}>
+              {AsyncResult.case({
+                Err: () => null,
+                _: () => (progress && <CircularProgress />),
+                Ok: R.map((i) => (
+                  <SummaryItemFile
+                    key={i.key}
+                    // TODO: make a reusable function to compute relative s3 paths or smth
+                    title={withoutPrefix(getPrefix(summarize.key), i.key)}
+                    handle={i}
+                  />
+                )),
+              })}
+            </Summarize>
+          )}
+        </React.Fragment>
+      ),
+    }, result));

@@ -1,82 +1,34 @@
 import { basename } from 'path';
 
 import dedent from 'dedent';
+import PT from 'prop-types';
 import * as R from 'ramda';
 import * as React from 'react';
+import * as RC from 'recompose';
 import Button from '@material-ui/core/Button';
 import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
 import { withStyles } from '@material-ui/core/styles';
 
 import ContentWindow from 'components/ContentWindow';
+import AsyncResult from 'utils/AsyncResult';
 import * as AWS from 'utils/AWS';
 import { withData } from 'utils/Data';
 import * as NamedRoutes from 'utils/NamedRoutes';
 import {
-  ensureNoSlash,
   getBreadCrumbs,
   isDir,
-  up,
-  withoutPrefix,
 } from 'utils/s3paths';
 import { composeComponent } from 'utils/reactTools';
 
 import BreadCrumbs, { Crumb } from './BreadCrumbs';
 import CodeButton from './CodeButton';
-import Listing, { ListingItem } from './Listing';
+import Listing from './Listing';
 import Message from './Message';
 import Summary from './Summary';
+import { displayError } from './errors';
+import * as requests from './requests';
 
-
-const fetchListing = ({ s3, urls, bucket, path }) =>
-  s3
-    .listObjectsV2({
-      Bucket: bucket,
-      Delimiter: '/',
-      Prefix: path,
-    })
-    .promise()
-    .then(R.pipe(
-      R.applySpec({
-        directories: R.pipe(
-          R.prop('CommonPrefixes'),
-          R.pluck('Prefix'),
-          R.filter((d) => d !== '/' && d !== '../'),
-          R.uniq,
-          R.map((name) =>
-            ListingItem.Dir({
-              name: ensureNoSlash(withoutPrefix(path, name)),
-              to: urls.bucketTree(bucket, name),
-            })),
-        ),
-        files: R.pipe(
-          R.prop('Contents'),
-          // filter-out "directory-files" (files that match prefixes)
-          R.filter(({ Key }) => Key !== path && !Key.endsWith('/')),
-          R.map(({ Key, Size, LastModified }) =>
-            ListingItem.File({
-              name: basename(Key),
-              to: urls.bucketTree(bucket, Key),
-              size: Size,
-              modified: LastModified,
-            })),
-        ),
-      }),
-      ({ files, directories }) => [
-        ...(
-          path !== ''
-            ? [ListingItem.Dir({
-              name: '..',
-              to: urls.bucketTree(bucket, up(path)),
-            })]
-            : []
-        ),
-        ...directories,
-        ...files,
-      ],
-      // filter-out files with same name as one of dirs
-      R.uniqBy(ListingItem.case({ Dir: R.prop('name'), File: R.prop('name') })),
-    ));
 
 const getCrumbs = R.compose(R.intersperse(Crumb.Sep(' / ')),
   ({ bucket, path, urls }) =>
@@ -101,16 +53,23 @@ const fileCode = ({ bucket, path }) => dedent`
   b.fetch("${path}", "./${basename(path)}")
 `;
 
-export default composeComponent('Bucket.Tree',
+const ListingData = composeComponent('Bucket.Tree.ListingData',
+  RC.setPropTypes({
+    urls: PT.object.isRequired,
+    bucket: PT.string.isRequired,
+    path: PT.string.isRequired,
+    children: PT.func.isRequired,
+  }),
   AWS.S3.inject(),
+  withData({
+    params: R.pick(['s3', 'urls', 'bucket', 'path']),
+    fetch: requests.bucketListing,
+  }),
+  ({ data: { result }, children }) => children(result));
+
+export default composeComponent('Bucket.Tree',
   AWS.Signer.inject(),
   NamedRoutes.inject(),
-  withData({
-    params: ({ s3, urls, match: { params: { bucket, path } } }) =>
-      ({ s3, urls, bucket, path }),
-    fetch: fetchListing,
-    name: 'listing',
-  }),
   withStyles(({ spacing: { unit } }) => ({
     topBar: {
       alignItems: 'center',
@@ -132,7 +91,6 @@ export default composeComponent('Bucket.Tree',
     match: { params: { bucket, path } },
     classes,
     signer,
-    listing,
     urls,
   }) => (
     <React.Fragment>
@@ -158,17 +116,28 @@ export default composeComponent('Bucket.Tree',
 
       {isDir(path)
         ? (
-          <React.Fragment>
-            <Listing
-              {...listing}
-              whenEmpty={() => (
-                <Message headline="No files">
-                  <a href="https://github.com/quiltdata/t4/blob/master/UserDocs.md#working-with-buckets">Learn how to upload files</a>.
-                </Message>
-              )}
-            />
-            <Summary bucket={bucket} path={path} />
-          </React.Fragment>
+          <ListingData urls={urls} bucket={bucket} path={path}>
+            {AsyncResult.case({
+              Err: displayError(),
+              _: (result) => (
+                <React.Fragment>
+                  <Listing
+                    result={result}
+                    whenEmpty={() => (
+                      <Message headline="No files">
+                        <a
+                          href="https://github.com/quiltdata/t4/blob/master/UserDocs.md#working-with-buckets"
+                        >
+                          Learn how to upload files
+                        </a>.
+                      </Message>
+                    )}
+                  />
+                  <Summary bucket={bucket} path={path} />
+                </React.Fragment>
+              ),
+            })}
+          </ListingData>
         )
         : (
           <Card>

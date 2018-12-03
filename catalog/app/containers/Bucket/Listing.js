@@ -16,6 +16,8 @@ import { composeComponent } from 'utils/reactTools';
 import { readableBytes } from 'utils/string';
 import tagged from 'utils/tagged';
 
+import { displayError } from './errors';
+
 
 export const ListingItem = tagged([
   'Dir', // { name, to }
@@ -130,10 +132,6 @@ export default composeComponent('Bucket.Tree.Listing',
       width: '100%',
       zIndex: 1,
     },
-    error: {
-      marginLeft: 2 * unit,
-      paddingTop: 2 * unit,
-    },
     empty: {
       marginLeft: 2 * unit,
       paddingTop: 2.5 * unit,
@@ -185,12 +183,6 @@ export default composeComponent('Bucket.Tree.Listing',
           }))}
         </React.Fragment>
       )),
-    renderErr: ({ classes }) => () => (
-      // TODO: proper error display, retry
-      <Typography className={classes.error} variant="h5">
-        Something went wrong
-      </Typography>
-    ),
     renderLock: ({ classes }) => () => (
       <div className={classes.lock}>
         <CircularProgress />
@@ -202,7 +194,7 @@ export default composeComponent('Bucket.Tree.Listing',
       whenEmpty && AsyncResult.Ok.is(result, R.isEmpty),
     RC.renderComponent(({ whenEmpty }) => whenEmpty()),
   ),
-  ({ result, classes, renderOk, renderErr, renderLock }) => (
+  ({ result, classes, renderOk, renderLock }) => (
     <Card>
       <CardContent className={classes.root}>
         {AsyncResult.case({
@@ -212,10 +204,9 @@ export default composeComponent('Bucket.Tree.Listing',
         }, result)}
         {AsyncResult.case({
           Ok: renderOk,
-          Err: renderErr,
+          Err: displayError(),
           Pending: AsyncResult.case({
             Ok: renderOk,
-            Err: renderErr,
             _: () => null,
           }),
           _: () => null,

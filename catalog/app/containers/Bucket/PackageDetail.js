@@ -13,7 +13,8 @@ import * as NamedRoutes from 'utils/NamedRoutes';
 import Link from 'utils/PlainLink';
 import * as RT from 'utils/reactTools';
 
-import * as packages from './packages';
+import { displayError } from './errors';
+import * as requests from './requests';
 
 
 const Field = RT.composeComponent('Bucket.PackageDetail.Field',
@@ -43,7 +44,7 @@ export default RT.composeComponent('Bucket.PackageDetail',
   withData({
     params: ({ s3, match: { params: { bucket, name } } }) =>
       ({ s3, bucket, name }),
-    fetch: packages.getRevisions,
+    fetch: requests.getPackageRevisions,
   }),
   NamedRoutes.inject(),
   withStyles(({ spacing: { unit }, palette }) => ({
@@ -69,7 +70,7 @@ export default RT.composeComponent('Bucket.PackageDetail',
       </Typography>
       {AsyncResult.case({
         _: () => <CircularProgress />,
-        Err: (e) => <h1>Error: {e.message}</h1>,
+        Err: displayError(),
         Ok: R.map(({ id, hash, modified, info }) => id !== 'latest' && (
           <Card key={id} className={classes.card}>
             <CardContent
