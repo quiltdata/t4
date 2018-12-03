@@ -26,6 +26,10 @@ Parameters:
     Default: false
     Description: Set this to true if this bucket should be publically readable and searchable. This will override the Users whitelist.
 
+Conditions:
+  PublicHostedBucketCondition:
+    !Equals [ !Ref PublicHostedBucket, true ]
+
 Mappings:
   VersionMap:
     # initializes config.js and config.json for static website
@@ -69,13 +73,13 @@ Resources:
               - "es:*"
           - Effect: Allow
             Principal:
-              AWS: !If[!Equals[true, !Ref PublicHostedBucket], '*', !Ref Users]
+              AWS: !If [ PublicHostedBucketCondition, '*', !Ref Users ]
             Resource: !Sub "arn:aws:es:${AWS::Region}:${AWS::AccountId}:domain/${AWS::StackName}/*"
             Action:
               - "es:ESHttpGet"
           - Effect: Allow
             Principal:
-              AWS: !If[!Equals[true, !Ref PublicHostedBucket], '*', !Ref Users]
+              AWS: !If [ PublicHostedBucketCondition, '*', !Ref Users ]
             Resource: !Sub "arn:aws:es:${AWS::Region}:${AWS::AccountId}:domain/${AWS::StackName}/drive/_doc/_search*"
             Action:
               - "es:ESHttpPost"
