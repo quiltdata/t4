@@ -202,7 +202,7 @@ class Bucket(object):
         existing_meta['user_meta'] = meta
         copy_object(self._bucket, key, self._bucket, key, existing_meta)
 
-    def select(self, key, query, query_type="SQL", raw=False):
+    def select(self, key, query, raw=False):
         """
         Selects data from an S3 object.
 
@@ -216,4 +216,4 @@ class Bucket(object):
         """
         meta = self.get_meta(key)
         uri = self._uri + key
-        return select(uri, query, query_type="SQL", meta=meta, s3client=None, raw=raw)
+        return select(uri, query, meta=meta, alt_s3_client=None, raw=raw)

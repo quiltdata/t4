@@ -612,34 +612,82 @@ def calculate_sha256(src_list, total_size):
     return results
 
 
-def select(url, query, query_type="SQL", meta=None, s3client=None, raw=False, **kwargs):
-    accepted_compression = {
-        '.bz2': 'BZIP2',
-        '.gz': 'GZIP'
-        }
-    format_compression = {
-        'Parquet': ['NONE'],  # even if column-level compression has been used.
-        'JSON': ['NONE', 'BZIP2', 'GZIP'],
-        'CSV': ['NONE', 'BZIP2', 'GZIP'],
-        }
-    # largely 1:1, but we still need to check that they're accepted formats.
-    ext_formats = {
-        '.parquet': 'parquet',
-        '.json': 'json',
-        '.jsonl': 'jsonl',
-        '.csv': 'csv',
-        '.tsv': 'tsv',
-        }
+def select(url, query, meta=None, alt_s3_client=None, raw=False, **kwargs):
+    """Perform an S3 Select SQL query, return results as a Pandas DataFrame
+
+    The data returned by Boto3 for S3 Select is fairly convoluted, to say the
+    least.  This function returns the result as a dataframe instead.  It also
+    performs the following actions, for convenience:
+
+    * If t4 metadata is given, necessary info to handle the select query is
+      pulled from the format metadata.
+    * If no metadata is present, but the URL indicates an object with a known
+      extension, the file format (and potentially compression) are determeined
+      by that extension.
+      * Extension may include a compresssion extension in cases where that is
+        supported by AWS -- I.e, for queries on JSON or CSV files, .bz2 and
+        .gz are supported.
+      * Parquet files must not be compressed as a whole, and should not have
+        a compression extension.  However, columnar GZIP and Snappy are
+        transparently supported.
+
+    Args:
+        url(str):  S3 URL of the object to query
+        query(str): An SQL query using the 'SELECT' directive. See examples at
+            https://docs.aws.amazon.com/AmazonS3/latest/API/RESTObjectSELECTContent.html
+        meta: T4 Object Metadata
+        alt_s3_client(boto3.client('s3')):  Default client used if not given
+        raw(bool):  True to return the raw Boto3 response object
+        **kwargs:  s3_client.select() kwargs override.
+            All kwargs specified passed to S3 client directly, overriding
+            matching default/generated kwargs for `select_object_content()`.
+            Note that this will also override the bucket and key specified in
+            the URL if `Bucket` and `Key` are passed as kwargs.
+
+    Returns: pandas.DataFrame | dict
+        dict is returned if 'raw' is True or if OutputSerialization is set to
+            something other than JSON Lines.
+
+    """
+    # use passed in client, otherwise module-level client
+    s3 = alt_s3_client if alt_s3_client else s3_client
+
+    query_type = "SQL"  # AWS S3 doesn't currently support anything else.
+    # Format may be indicated by extension or metadata.
+    # Key: format name.
+    # Value: S3's expected value indicating a format.
     valid_s3_select_formats = {
         'parquet': 'Parquet',
         'json': 'JSON',
         'jsonl': 'JSON',
         'csv': 'CSV',
-        'tsv': 'CSV',
         }
+    # Key: S3's expected value indicating a format.
+    # Value: S3's accepted compression types for that format
+    format_compression = {
+        'Parquet': ['NONE'],  # even if column-level compression has been used.
+        'JSON': ['NONE', 'BZIP2', 'GZIP'],
+        'CSV': ['NONE', 'BZIP2', 'GZIP'],
+        }
+    # For compression type, when not specified in metadata.  Guess by extension.
+    # Key: File extension.  Value: S3's expected value to specify compression type
+    accepted_compression = {
+        '.bz2': 'BZIP2',
+        '.gz': 'GZIP'
+        }
+    # For file type, when not specified in metadata. Guess format by extension.
+    # Our format names largely correlate with extension names, so this is largely 1:1.
+    ext_formats = {
+        '.parquet': 'parquet',
+        '.json': 'json',
+        '.jsonl': 'jsonl',
+        '.csv': 'csv',
+        '.tsv': 'csv',
+        '.ssv': 'csv',
+        }
+    delims = {'.tsv': '\t', '.ssv': ';'}
 
     parsed_url = urlparse(url)
-
     bucket, path, version_id = parse_s3_url(parsed_url)
 
     # TODO: Use formats lib for this stuff
@@ -653,49 +701,59 @@ def select(url, query, query_type="SQL", meta=None, s3client=None, raw=False, **
             format = meta.get('format', {}).get('contained_format', {}).get('name')
 
     # use file extensions to get compression info, if none is present
-    exts = pathlib.Path(path).suffixes
+    exts = pathlib.Path(path).suffixes  # last of e.g. ['.periods', '.in', '.name', '.json', '.gz']
     if exts and not compression:
         if exts[-1].lower() in accepted_compression:
-            compression = accepted_compression[exts.pop(-1)]
+            compression = accepted_compression[exts.pop(-1)]   # remove e.g. '.gz'
     compression = compression if compression else 'NONE'
 
     # use remaining file extensions to get format info, if none is present
+    csv_delim = None
     if exts and not format:
-        ext = exts[-1].lower()
+        ext = exts[-1].lower()    # last of e.g. ['.periods', '.in', '.name', '.json']
         if ext in ext_formats:
-            if ext == '.tsv':
-                input_serialization = kwargs.setdefault('InputSerialization', {})
-                csv = input_serialization.setdefault('CSV', {})
-                if 'FieldDelimiter' not in csv:
-                    csv['FieldDelimiter'] = '\t'
             format = ext_formats[ext]
+            csv_delim = delims.get(ext)
             s3_format = valid_s3_select_formats[format]
             ok_compression = format_compression[s3_format]
-            if compression not in format_compression[s3_format]:
+            if compression not in ok_compression:
                 raise QuiltException("Compression {!r} not valid for select on format {!r}: "
                                      "Expected {!r}".format(compression, s3_format, ok_compression))
     if not format:
         raise QuiltException("Unable to discover format for select on {!r}".format(url))
 
+    # At this point, we have a known format and enough information to use it.
     s3_format = valid_s3_select_formats[format]
-    input_serialization = kwargs.setdefault('InputSerialization', {})
 
-    if s3_format == 'JSON':
-        jsn = input_serialization.setdefault('JSON', {})
-        jsn['TYPE'] = "LINES" if format == 'jsonl' else "DOCUMENT"
-    elif s3_format == 'CSV':
-        csv = input_serialization.setdefault('CSV', {})
-        if format == 'tsv':
-            csv['FieldDelimiter'] = '\t'
-    elif s3_format == "Parquet":
-        input_serialization.setdefault('Parquet', {})
+    # Create InputSerialization section if not user-specified.
+    input_serialization = None
+    if 'InputSerialization' not in kwargs:
+        input_serialization = {'CompressionType': compression}
+        format_spec = input_serialization.setdefault(s3_format, {})
 
-    s3 = s3client if s3client else s3_client  # use passed in client, otherwise module-level client
+        if s3_format == 'JSON':
+            format_spec['TYPE'] = "LINES" if format == 'jsonl' else "DOCUMENT"
+        elif s3_format == 'CSV':
+            if csv_delim is not None:
+                format_spec['FieldDelimiter'] = csv_delim
+
+    # Create OutputSerialization section if not user-specified.
+    output_serialization = None
     if 'OutputSerialization' not in kwargs:
-        kwargs['OutputSerialization'] = {'JSON': {}}
+        output_serialization = {'JSON': {}}     # Actually JSON Lines
 
-    response = s3.select_object_content(Bucket=bucket, Key=path, Expression=query, ExpressionType=query_type,
-                                        **kwargs)
+    select_kwargs = dict(
+        Bucket=bucket,
+        Key=path,
+        Expression=query,
+        ExpressionType=query_type,
+        InputSerialization=input_serialization,
+        OutputSerialization=output_serialization,
+    )
+    # Include user-specified passthrough options, overriding other options
+    select_kwargs.update(kwargs)
+
+    response = s3.select_object_content(**select_kwargs)
 
     # we don't want multiple copies of large chunks of data hanging around.
     # ..iteration ftw.  It's what we get from amazon, anyways..
@@ -707,6 +765,10 @@ def select(url, query, query_type="SQL", meta=None, s3client=None, raw=False, **
             yield chunk
 
     def iter_lines(resp, delimiter):
+        # S3 may break chunks off at any point, so we need to find line endings and handle
+        # line breaks manually.
+        # Note: this isn't reliable for CSV, because CSV may have a quoted line ending,
+        # whereas line endings in JSONLines content will be encoded cleanly.
         lastline = ''
         for chunk in iterdecode(iter_chunks(resp), 'utf-8'):
             lines = chunk.split(delimiter)
@@ -717,13 +779,17 @@ def select(url, query, query_type="SQL", meta=None, s3client=None, raw=False, **
         yield lastline
 
     if not raw:
-        if 'JSON' in kwargs["OutputSerialization"]:
-            delimiter = kwargs['OutputSerialization']['JSON'].get('RecordDelimiter', '\n')
+        # JSON used for processed content as it doesn't have the ambiguity of CSV.
+        if 'JSON' in select_kwargs["OutputSerialization"]:
+            delimiter = select_kwargs['OutputSerialization']['JSON'].get('RecordDelimiter', '\n')
             reader = jsonlines.Reader(line.strip() for line in iter_lines(response, delimiter)
                                       if line.strip())
             # noinspection PyPackageRequirements
-            from pandas import DataFrame
+            from pandas import DataFrame   # Lazy import for slow module
             # !! if this response type is modified, update related docstrings on Bucket.select().
             return DataFrame.from_records(x for x in reader)
+        # If there's some need, we could implement some other OutputSerialization format here.
+        # If they've specified an OutputSerialization key we don't handle, just give them the
+        # raw response.
     # !! if this response type is modified, update related docstrings on Bucket.select().
     return response
