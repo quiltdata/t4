@@ -602,9 +602,13 @@ def test_filter():
     assert pkg.filter(lambda lk, entry: lk == 'as/df') == [('as/df', pkg['as/df'])]
 
 
-# TODO
-# def test_reduce():
-#     pkg = Package()
-#     pkg.set('as/df', LOCAL_MANIFEST)
-#     pkg.set('as/qw', LOCAL_MANIFEST)
-#     assert set(pkg.reduce(lambda a, b: a + [b])) == [('as/df', pkg['as/df'])]
+def test_reduce():
+    pkg = Package()
+    pkg.set('as/df', LOCAL_MANIFEST)
+    pkg.set('as/qw', LOCAL_MANIFEST)
+    assert pkg.reduce(lambda a, b: a) == ('as/df', pkg['as/df'])
+    assert pkg.reduce(lambda a, b: b) == ('as/qw', pkg['as/qw'])
+    assert pkg.reduce(lambda a, b: a + [b], []) == [
+        ('as/df', pkg['as/df']),
+        ('as/qw', pkg['as/qw'])
+    ]
