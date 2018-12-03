@@ -128,3 +128,27 @@ def test_select():
         result = data_transfer.select('s3://foo/bar/baz', 'select * from S3Object', meta={'target': 'json'})
         assert result.equals(expected_result)
         patched.assert_called_once_with(**expected_args)
+
+    # test compression is specified
+    expected_args = {
+        'Bucket': 'foo',
+        'Key': 'bar/baz.json.gz',
+        'Expression': 'select * from S3Object',
+        'ExpressionType': 'SQL',
+        'InputSerialization': {
+            'CompressionType': 'GZIP',
+            'JSON': {'TYPE': 'DOCUMENT'}
+            },
+        'OutputSerialization': {'JSON': {}},
+        }
+    boto_return_val = {'Payload': iter(records)}
+    patched_s3 = mock.patch.object(
+        data_transfer.s3_client,
+        'select_object_content',
+        return_value=boto_return_val,
+        autospec=True,
+    )
+    with patched_s3 as patched:
+        # result ignored -- returned data isn't compressed, and this has already been tested.
+        data_transfer.select('s3://foo/bar/baz.json.gz', 'select * from S3Object')
+        patched.assert_called_once_with(**expected_args)
