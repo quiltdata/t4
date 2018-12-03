@@ -101,6 +101,25 @@ def delete(target):
     delete_object(bucket, path)
 
 
+def delete_dir(target):
+    """Delete a remote directory.
+
+    Parameters:
+            target (str): URI of the directory to delete
+    """
+    url = urlparse(target)
+    if url.scheme != 's3':
+        raise NotImplementedError
+
+    bucket, path, version = parse_s3_url(url)
+    if version:
+        raise ValueError("Versions don't make sense for directories")
+
+    results = list_object_versions(bucket, path, recursive=True)
+    for result in results[0]:
+        delete('s3://' + bucket + '/' + result['Key'])
+
+
 def ls(target, recursive=False):
     """List data from the specified path.
 

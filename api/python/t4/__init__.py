@@ -8,6 +8,7 @@ from .api import (
     put,
     get,
     delete,
+    delete_dir,
     ls,
     list_packages,
     search,
