@@ -1,10 +1,15 @@
+import json
 import pathlib
 from urllib.parse import urlparse
+
+import requests
 
 from .data_transfer import (TargetType, copy_file, copy_object, delete_object,
                             deserialize_obj, get_bytes, get_size_and_meta,
                             list_objects, put_bytes, serialize_obj)
 from .util import QuiltException, fix_url, parse_s3_url
+
+CONFIG_URL = "https://t4.quiltdata.com/config.json"
 
 class Bucket(object):
     """
@@ -27,6 +32,33 @@ class Bucket(object):
 
         self._uri = 's3://{}/'.format(bucket)
         self._bucket = bucket
+        self.config(quiet=True)
+
+    def config(self, config_url=CONFIG_URL, quiet=False):
+        """
+        Updates this bucket's search endpoint based on a federation config.
+        """
+        response = requests.get(config_url)
+        if not response.ok:
+            # just don't do anything
+            if not quiet:
+                raise QuiltException("Failed to configure bucket search endpoint")
+            return
+        configs = json.loads(response.text).get('configs', None)
+        if not configs:
+            if not quiet:
+                raise QuiltException("Config at config_url malformed")
+            return
+        if self._bucket in configs:
+            self._search_endpoint = configs[self._bucket]
+        elif not quiet:
+            raise QuiltException("Config info not found for this bucket")
+
+    def search(self, query):
+        """
+        Placeholder till I decide how to move the logic around
+        """
+        pass
 
     def deserialize(self, key):
         """
