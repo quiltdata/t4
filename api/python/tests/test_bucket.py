@@ -1,4 +1,6 @@
 import json
+from mock import patch
+from urllib.parse import urlparse
 
 import botocore.session
 from botocore.stub import Stubber
@@ -18,7 +20,8 @@ def test_bucket_meta():
             'helium': json.dumps({'target': 'json'})
         }
         response = {
-            'Metadata': test_meta
+            'Metadata': test_meta,
+            'ContentLength': 123
         }
         params = {
             'Bucket': 'test-bucket',
@@ -34,7 +37,8 @@ def test_bucket_meta():
             'helium': json.dumps({"target": "json"})
         }
         head_response = {
-            'Metadata': head_meta
+            'Metadata': head_meta,
+            'ContentLength': 123
         }
         head_params = {
             'Bucket': 'test-bucket',
@@ -73,3 +77,12 @@ def test_bucket_fetch():
         stubber.add_response('list_objects_v2', response, params)
         with pytest.raises(QuiltException):
             Bucket('s3://test-bucket').fetch('does/not/exist/', './')
+
+def test_bucket_put():
+    with patch("t4.bucket.copy_file") as copy_mock:
+        bucket = Bucket('s3://test-bucket')
+        bucket.put_file(key='README.md', path='./README') # put local file to bucket
+        copy_src = copy_mock.call_args_list[0][0][0]
+        assert urlparse(copy_src).scheme == 'file'
+        copy_dest = copy_mock.call_args_list[0][0][1]
+        assert urlparse(copy_dest).scheme == 's3'
