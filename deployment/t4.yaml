@@ -413,6 +413,13 @@ Resources:
           ForwardedValues:
             QueryString: false
           ViewerProtocolPolicy: redirect-to-https
+        - PathPattern: /configs/*
+          TargetOriginId: config
+          DefaultTTL: 300
+          Compress: true
+          ForwardedValues:
+            QueryString: false
+          ViewerProtocolPolicy: redirect-to-https
         - PathPattern: /index.html
           TargetOriginId: default
           DefaultTTL: 300
