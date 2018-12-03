@@ -103,6 +103,14 @@ def delete(target):
 
 
 def _tophashes_with_packages(registry=None):
+    """Return a dictionary of tophashes and their corresponding packages
+
+    Parameters:
+        registry (str): URI of the registry to enumerate
+
+    Returns:
+        dict: a dictionary of tophash keys and package name entries
+    """
     registry_base_path = get_package_registry(fix_url(registry) if registry else None)
     registry_url = urlparse(registry_base_path)
     if registry_url.scheme != 'file':
@@ -131,6 +139,13 @@ def _tophashes_with_packages(registry=None):
 
 
 def delete_package(name, registry=None):
+    """
+    Delete a package. Deletes only the manifest entries and not the underlying files.
+
+    Parameters:
+        name (str): Name of the package
+        registry (str): The registry the package will be removed from
+    """
     if not re.match(PACKAGE_NAME_FORMAT, name):
         raise QuiltException("Invalid package name, must contain exactly one /.")
 
@@ -145,7 +160,7 @@ def delete_package(name, registry=None):
     pkg_namespace, pkg_subname = name.split("/")
 
     registry_dir = pathlib.Path(parse_file_url(registry_url))
-    pkg_namespace_dir = registry_dir / 'named_packages/' / pkg_namespace
+    pkg_namespace_dir = registry_dir / 'named_packages' / pkg_namespace
     pkg_dir = pkg_namespace_dir / pkg_subname
     packages_path = registry_dir / 'packages'
 
