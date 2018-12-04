@@ -76,7 +76,7 @@ def test_select():
         'ExpressionType': 'SQL',
         'InputSerialization': {
             'CompressionType': 'NONE',
-            'JSON': {'TYPE': 'DOCUMENT'}
+            'JSON': {'Type': 'DOCUMENT'}
             },
         'OutputSerialization': {'JSON': {}},
         }
@@ -112,7 +112,7 @@ def test_select():
         'ExpressionType': 'SQL',
         'InputSerialization': {
             'CompressionType': 'NONE',
-            'JSON': {'TYPE': 'DOCUMENT'}
+            'JSON': {'Type': 'DOCUMENT'}
         },
         'OutputSerialization': {'JSON': {}},
     }
@@ -137,7 +137,7 @@ def test_select():
         'ExpressionType': 'SQL',
         'InputSerialization': {
             'CompressionType': 'GZIP',
-            'JSON': {'TYPE': 'DOCUMENT'}
+            'JSON': {'Type': 'DOCUMENT'}
             },
         'OutputSerialization': {'JSON': {}},
         }

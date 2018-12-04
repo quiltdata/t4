@@ -732,7 +732,7 @@ def select(url, query, meta=None, alt_s3_client=None, raw=False, **kwargs):
         format_spec = input_serialization.setdefault(s3_format, {})
 
         if s3_format == 'JSON':
-            format_spec['TYPE'] = "LINES" if format == 'jsonl' else "DOCUMENT"
+            format_spec['Type'] = "LINES" if format == 'jsonl' else "DOCUMENT"
         elif s3_format == 'CSV':
             if csv_delim is not None:
                 format_spec['FieldDelimiter'] = csv_delim
