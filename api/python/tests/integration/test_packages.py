@@ -582,6 +582,38 @@ def test_top_hash_stable():
     assert pkg.top_hash() == pkg_hash, \
            "Unexpected top_hash for {}/.quilt/packages/{}".format(registry, pkg_hash)
 
+
+@patch('appdirs.user_data_dir', lambda x, y: os.path.join('test_appdir', x))
+def test_local_package_delete(tmpdir):
+    """Verify local package delete works."""
+    top_hash = Package().build("Quilt/Test")
+    t4.delete_package('Quilt/Test', registry=BASE_PATH)
+
+    assert 'Quilt/Test' not in t4.list_packages()
+    assert top_hash not in [p.name for p in
+                            Path(BASE_PATH, '.quilt/packages').iterdir()]
+
+
+@patch('appdirs.user_data_dir', lambda x, y: os.path.join('test_appdir', x))
+def test_local_package_delete_overlapping(tmpdir):
+    """
+    Verify local package delete works when multiple packages reference the
+    same tophash.
+    """
+    top_hash = Package().build("Quilt/Test1")
+    top_hash = Package().build("Quilt/Test2")
+    t4.delete_package('Quilt/Test1', registry=BASE_PATH)
+
+    assert 'Quilt/Test1' not in t4.list_packages()
+    assert top_hash in [p.name for p in
+                        Path(BASE_PATH, '.quilt/packages').iterdir()]
+
+    t4.delete_package('Quilt/Test2', registry=BASE_PATH)
+    assert 'Quilt/Test2' not in t4.list_packages()
+    assert top_hash not in [p.name for p in
+                            Path(BASE_PATH, '.quilt/packages').iterdir()]
+
+
 def test_commit_message_on_push(tmpdir):
     """ Verify commit messages populate correctly on push."""
     with patch('botocore.client.BaseClient._make_api_call', new=mock_make_api_call):
