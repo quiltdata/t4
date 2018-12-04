@@ -1,4 +1,4 @@
-from unittest.mock import Mock, patch, ANY
+from unittest.mock import Mock, patch
 
 import numpy as np
 import pytest
