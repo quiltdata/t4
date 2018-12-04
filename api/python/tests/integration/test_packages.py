@@ -247,14 +247,15 @@ def test_package_deserialize(tmpdir):
              {'target': 'unicode', 'user_meta': 'blah'})
         .set('bar', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'))
     )
+    pkg.build()
 
     assert pkg['foo'].deserialize() == '123\n'
 
     with pytest.raises(QuiltException):
         pkg['bar'].deserialize()
 
-def test_set_dir(tmpdir):
-    """ Verify building a package from a directory. """
+def test_local_set_dir(tmpdir):
+    """ Verify building a package from a local directory. """
     pkg = Package()
     
     # Create some nested example files that contain their names.
@@ -288,6 +289,33 @@ def test_set_dir(tmpdir):
     assert (bazdir / 'baz').resolve().as_uri() == pkg['my_keys/baz'].physical_keys[0]
 
 
+def test_s3_set_dir(tmpdir):
+    """ Verify building a package from an S3 directory. """
+    with patch('t4.packages.list_object_versions') as list_object_versions_mock:
+        pkg = Package()
+
+        list_object_versions_mock.return_value = ([
+            dict(Key='foo/a.txt', VersionId='xyz', IsLatest=True),
+            dict(Key='foo/x/y.txt', VersionId='null', IsLatest=True),
+            dict(Key='foo/z.txt', VersionId='123', IsLatest=False),
+        ], [])
+
+        pkg.set_dir('', 's3://bucket/foo/')
+
+        assert pkg['a.txt'].physical_keys[0] == 's3://bucket/foo/a.txt?versionId=xyz'
+        assert pkg['x']['y.txt'].physical_keys[0] == 's3://bucket/foo/x/y.txt'
+
+        list_object_versions_mock.assert_called_with('bucket', 'foo/')
+
+        list_object_versions_mock.reset_mock()
+
+        pkg.set_dir('bar', 's3://bucket/foo')
+
+        assert pkg['bar']['a.txt'].physical_keys[0] == 's3://bucket/foo/a.txt?versionId=xyz'
+        assert pkg['bar']['x']['y.txt'].physical_keys[0] == 's3://bucket/foo/x/y.txt'
+
+        list_object_versions_mock.assert_called_with('bucket', 'foo/')
+
 def test_updates(tmpdir):
     """ Verify building a package from a directory. """
     pkg = (
@@ -297,6 +325,8 @@ def test_updates(tmpdir):
         .set('bar', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
             {'target': 'unicode', 'user_meta': 'blah'})
     )
+    pkg.build()
+
     assert pkg['foo']() == '123\n'
     assert pkg['bar']() == '123\n'
 
@@ -390,11 +420,13 @@ def test_tophash_changes(tmpdir):
     pkg = Package()
     th1 = pkg.top_hash()
     pkg.set('asdf', test_file)
+    pkg.build()
     th2 = pkg.top_hash()
     assert th1 != th2
 
     test_file.write_text('jkl', 'utf-8')
     pkg.set('jkl', test_file)
+    pkg.build()
     th3 = pkg.top_hash()
     assert th1 != th3
     assert th2 != th3
@@ -402,9 +434,6 @@ def test_tophash_changes(tmpdir):
     pkg.delete('jkl')
     th4 = pkg.top_hash()
     assert th2 == th4
-
-    pkg.delete('asdf')
-    assert th1 == pkg.top_hash()
 
 def test_keys():
     pkg = Package()
@@ -456,6 +485,8 @@ def test_brackets():
         .set('foo', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
              {'target': 'unicode', 'user_meta': 'blah'})
     )
+
+    pkg.build()
 
     assert pkg['foo'].deserialize() == '123\n'
     assert pkg['foo']() == '123\n'
@@ -513,6 +544,33 @@ def test_diff():
     p2 = Package.browse('Quilt/Test')
     assert p1.diff(p2) == ([], [], [])
 
+
+def test_dir_meta(tmpdir):
+    test_meta = {'test': 'meta'}
+    pkg = Package()
+    pkg.set('asdf/jkl', LOCAL_MANIFEST)
+    pkg.set('asdf/qwer', LOCAL_MANIFEST)
+    pkg.set('qwer/asdf', LOCAL_MANIFEST)
+    pkg.set('qwer/as/df', LOCAL_MANIFEST)
+    pkg.build()
+    assert pkg['asdf'].get_meta() == {}
+    assert pkg.get_meta() == {}
+    assert pkg['qwer']['as'].get_meta() == {}
+    pkg['asdf'].set_meta(test_meta)
+    assert pkg['asdf'].get_meta() == test_meta
+    pkg['qwer']['as'].set_meta(test_meta)
+    assert pkg['qwer']['as'].get_meta() == test_meta
+    pkg.set_meta(test_meta)
+    assert pkg.get_meta() == test_meta
+    dump_path = os.path.join(tmpdir, 'test_meta')
+    with open(dump_path, 'w') as f:
+        pkg.dump(f)
+    with open(dump_path) as f:
+        pkg2 = Package.load(f)
+    assert pkg2['asdf'].get_meta() == test_meta
+    assert pkg2['qwer']['as'].get_meta() == test_meta
+    assert pkg2.get_meta() == test_meta
+    
 def test_top_hash_stable():
     """Ensure that top_hash() never changes for a given manifest"""
 
@@ -554,3 +612,89 @@ def test_local_package_delete_overlapping(tmpdir):
     assert 'Quilt/Test2' not in t4.list_packages()
     assert top_hash not in [p.name for p in
                             Path(BASE_PATH, '.quilt/packages').iterdir()]
+
+
+def test_commit_message_on_push(tmpdir):
+    """ Verify commit messages populate correctly on push."""
+    with patch('botocore.client.BaseClient._make_api_call', new=mock_make_api_call):
+        with open(REMOTE_MANIFEST) as fd:
+            pkg = Package.load(fd)
+        with patch('t4.data_transfer._download_single_file', new=no_op_mock), \
+                patch('t4.data_transfer._download_dir', new=no_op_mock), \
+                patch('t4.Package.build', new=no_op_mock):
+            pkg.push('Quilt/test_pkg_name', tmpdir / 'pkg', message='test_message')
+            assert pkg._meta['message'] == 'test_message'
+
+            # ensure messages are strings
+            with pytest.raises(ValueError):
+                pkg.push('Quilt/test_pkg_name', tmpdir / 'pkg', message={})
+
+def test_overwrite_dir_fails():
+    with pytest.raises(QuiltException):
+        pkg = Package()
+        pkg.set('asdf/jkl', LOCAL_MANIFEST)
+        pkg.set('asdf', LOCAL_MANIFEST)
+
+def test_overwrite_entry_fails():
+    with pytest.raises(QuiltException):
+        pkg = Package()
+        pkg.set('asdf', LOCAL_MANIFEST)
+        pkg.set('asdf/jkl', LOCAL_MANIFEST)
+
+def test_siblings_succeed():
+    pkg = Package()
+    pkg.set('as/df', LOCAL_MANIFEST)
+    pkg.set('as/qw', LOCAL_MANIFEST)
+
+def test_repr():
+    TEST_REPR = (
+        "asdf\n"
+        "path1/\n"
+        "  asdf\n"
+        "  qwer\n"
+        "path2/\n"
+        "  first/\n"
+        "    asdf\n"
+        "  second/\n"
+        "    asdf\n"
+        "qwer\n"
+    )
+    pkg = Package()
+    pkg.set('asdf', LOCAL_MANIFEST)
+    pkg.set('qwer', LOCAL_MANIFEST)
+    pkg.set('path1/asdf', LOCAL_MANIFEST)
+    pkg.set('path1/qwer', LOCAL_MANIFEST)
+    pkg.set('path2/first/asdf', LOCAL_MANIFEST)
+    pkg.set('path2/second/asdf', LOCAL_MANIFEST)
+    assert repr(pkg) == TEST_REPR
+
+def test_long_repr():
+    pkg = Package()
+    for i in range(30):
+        pkg.set('path{}/asdf'.format(i), LOCAL_MANIFEST)
+    r = repr(pkg)
+    assert r.count('\n') == 20
+    assert r[-4:] == '...\n'
+
+    pkg = Package()
+    for i in range(10):
+        pkg.set('path{}/asdf'.format(i), LOCAL_MANIFEST)
+        pkg.set('path{}/qwer'.format(i), LOCAL_MANIFEST)
+    pkgrepr = repr(pkg)
+    assert pkgrepr.count('\n') == 20
+    assert pkgrepr.find('path9/') > 0
+
+def test_repr_empty_package():
+    pkg = Package()
+    r = repr(pkg)
+    assert r == "(empty Package)"
+
+def test_manifest():
+    pkg = Package()
+    pkg.set('as/df', LOCAL_MANIFEST)
+    pkg.set('as/qw', LOCAL_MANIFEST)
+    top_hash = pkg.build()
+    manifest = list(pkg.manifest)
+
+    pkg2 = Package.browse(pkg_hash=top_hash)
+    assert list(pkg.manifest) == list(pkg2.manifest)

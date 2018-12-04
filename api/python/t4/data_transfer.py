@@ -8,7 +8,9 @@ import shutil
 from threading import Lock
 from urllib.parse import urlparse
 
-from botocore.exceptions import ClientError
+from botocore import UNSIGNED
+from botocore.client import Config
+from botocore.exceptions import ClientError, NoCredentialsError
 import boto3
 from boto3.s3.transfer import TransferConfig, create_transfer_manager
 from s3transfer.subscribers import BaseSubscriber
@@ -31,6 +33,16 @@ if platform.system() == 'Linux':
     HELIUM_XATTR = 'user.%s' % HELIUM_XATTR
 
 s3_client = boto3.client('s3')
+try:
+    # Ensure that user has AWS credentials that function.
+    # quilt-example is readable by anonymous users, if the head fails
+    #   then the s3 client needs to be in UNSIGNED mode
+    #   because the user's credentials aren't working
+    s3_client.head_bucket(Bucket='quilt-example')
+except (ClientError, NoCredentialsError):
+    # Use unsigned boto if credentials can't head the default bucket
+    s3_client = boto3.client('s3', config=Config(signature_version=UNSIGNED))
+
 s3_transfer_config = TransferConfig()
 s3_manager = create_transfer_manager(s3_client, s3_transfer_config)
 
@@ -238,6 +250,9 @@ def _download_dir(bucket, prefix, dest_path):
 
             tuples_list.append((key, dest_file, size))
 
+    if not tuples_list:
+        raise QuiltException("No objects to download.")
+
     with tqdm(total=total_size, unit='B', unit_scale=True) as progress:
         callback = ProgressCallback(progress)
 
@@ -246,14 +261,16 @@ def _download_dir(bucket, prefix, dest_path):
 
         futures = []
         for key, dest_file, size in tuples_list:
-            def meta_callback(resp):
-                meta = _parse_metadata(resp)
-                with lock:
-                    metadata[key] = meta
+            def meta_callback(key):
+                def cb(resp):
+                    meta = _parse_metadata(resp)
+                    with lock:
+                        metadata[key] = meta
+                return cb
             dest_file.parent.mkdir(parents=True, exist_ok=True)
             future = s3_manager.download(
                 bucket, key, str(dest_file),
-                extra_args=dict(Callback=meta_callback), subscribers=[SizeCallback(size), callback]
+                extra_args=dict(Callback=meta_callback(key)), subscribers=[SizeCallback(size), callback]
             )
             futures.append(future)
 
@@ -414,6 +431,9 @@ def copy_object(src_bucket, src_key, dest_bucket, dest_key, override_meta=None, 
 
 
 def list_object_versions(bucket, prefix, recursive=True):
+    if prefix and not prefix.endswith('/'):
+        raise ValueError("Prefix must end with /")
+
     list_obj_params = dict(Bucket=bucket,
                            Prefix=prefix
                           )
@@ -438,6 +458,9 @@ def list_object_versions(bucket, prefix, recursive=True):
 
 
 def list_objects(bucket, prefix, recursive=True):
+    if prefix and not prefix.endswith('/'):
+        raise ValueError("Prefix must end with /")
+
     objects = []
     prefixes = []
     list_obj_params = dict(Bucket=bucket,
@@ -536,17 +559,63 @@ def get_bytes(src):
         raise NotImplementedError
     return data, meta
 
-def get_meta(src):
+def get_size_and_meta(src):
     """
-    Gets S3 metadata for the object at a given S3 URI.
+    Gets metadata for the object at a given URL.
     """
-    bucket, key, version_id = parse_s3_url(urlparse(src))
-    params = {
-        'Bucket': bucket,
-        'Key': key
-    }
-    if version_id:
-        params['VersionId'] = version_id
-    resp = s3_client.head_object(**params)
-    meta = _parse_metadata(resp)
-    return meta
+    src_url = urlparse(src)
+    if src_url.scheme == 'file':
+        src_path = pathlib.Path(parse_file_url(src_url))
+        size = src_path.stat().st_size
+        meta = _parse_file_metadata(src_path)
+    elif src_url.scheme == 's3':
+        bucket, key, version_id = parse_s3_url(src_url)
+        params = dict(
+            Bucket=bucket,
+            Key=key
+        )
+        if version_id:
+            params.update(dict(VersionId=version_id))
+        resp = s3_client.head_object(**params)
+        size = resp['ContentLength']
+        meta = _parse_metadata(resp)
+    else:
+        raise NotImplementedError
+    return size, meta
+
+def calculate_sha256(src_list, total_size):
+    lock = Lock()
+
+    with tqdm(total=total_size, unit='B', unit_scale=True) as progress:
+        def _process_url(src):
+            src_url = urlparse(src)
+            hash_obj = hashlib.sha256()
+            if src_url.scheme == 'file':
+                path = pathlib.Path(parse_file_url(src_url))
+                with open(path, 'rb') as fd:
+                    while True:
+                        chunk = fd.read(1024)
+                        if not chunk:
+                            break
+                        hash_obj.update(chunk)
+                        with lock:
+                            progress.update(len(chunk))
+            elif src_url.scheme == 's3':
+                src_bucket, src_path, src_version_id = parse_s3_url(src_url)
+                params = dict(Bucket=src_bucket, Key=src_path)
+                if src_version_id is not None:
+                    params.update(dict(VersionId=src_version_id))
+                resp = s3_client.get_object(**params)
+                body = resp['Body']
+                for chunk in body:
+                    hash_obj.update(chunk)
+                    with lock:
+                        progress.update(len(chunk))
+            else:
+                raise NotImplementedError
+            return hash_obj.hexdigest()
+
+        with ThreadPoolExecutor() as executor:
+            results = executor.map(_process_url, src_list)
+
+    return results
