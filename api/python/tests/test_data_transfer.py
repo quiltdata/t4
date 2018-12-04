@@ -33,6 +33,8 @@ def test_buggy_parquet():
 
 
 def test_select():
+    # Note: The boto3 Stubber doesn't work properly with s3_client.select_object_content().
+    #       The return value expects a dict where an iterable is in the actual results.
     chunks = [
         b'{"foo": ',
         b'9, "b',
