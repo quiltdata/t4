@@ -13,6 +13,7 @@ from .api import (
     list_packages,
     search,
     config,
+    delete_package
 )
 
 from .packages import Package
