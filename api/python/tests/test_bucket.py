@@ -1,4 +1,6 @@
 import json
+from mock import patch
+from urllib.parse import urlparse
 
 try:
     import unittest.mock as mock
@@ -131,13 +133,6 @@ def test_bucket_select():
             },
         'OutputSerialization': {'JSON': {}},
         }
-    boto_return_val = {'Payload': iter(records)}
-    patched_s3 = mock.patch.object(
-        s3_client,
-        'select_object_content',
-        return_value=boto_return_val,
-        autospec=True,
-    )
 
     test_meta = {
         'helium': json.dumps({'target': 'json'})
@@ -153,6 +148,15 @@ def test_bucket_select():
 
     with Stubber(s3_client) as stubber:
         stubber.add_response('head_object', response, params)
+
+        boto_return_val = {'Payload': iter(records)}
+        patched_s3 = patch.object(
+            s3_client,
+            'select_object_content',
+            return_value=boto_return_val,
+            autospec=True,
+        )
+
         with patched_s3 as patched:
             bucket = Bucket('s3://test-bucket')
 
@@ -162,3 +166,14 @@ def test_bucket_select():
             assert result.equals(expected_result)
 
     # Further testing specific to select() is in test_data_transfer
+
+
+def test_bucket_put():
+    with patch("t4.bucket.copy_file") as copy_mock:
+        bucket = Bucket('s3://test-bucket')
+        bucket.put_file(key='README.md', path='./README') # put local file to bucket
+        copy_src = copy_mock.call_args_list[0][0][0]
+        assert urlparse(copy_src).scheme == 'file'
+        copy_dest = copy_mock.call_args_list[0][0][1]
+        assert urlparse(copy_dest).scheme == 's3'
+

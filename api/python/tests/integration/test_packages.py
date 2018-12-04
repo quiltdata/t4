@@ -582,6 +582,38 @@ def test_top_hash_stable():
     assert pkg.top_hash() == pkg_hash, \
            "Unexpected top_hash for {}/.quilt/packages/{}".format(registry, pkg_hash)
 
+
+@patch('appdirs.user_data_dir', lambda x, y: os.path.join('test_appdir', x))
+def test_local_package_delete(tmpdir):
+    """Verify local package delete works."""
+    top_hash = Package().build("Quilt/Test")
+    t4.delete_package('Quilt/Test', registry=BASE_PATH)
+
+    assert 'Quilt/Test' not in t4.list_packages()
+    assert top_hash not in [p.name for p in
+                            Path(BASE_PATH, '.quilt/packages').iterdir()]
+
+
+@patch('appdirs.user_data_dir', lambda x, y: os.path.join('test_appdir', x))
+def test_local_package_delete_overlapping(tmpdir):
+    """
+    Verify local package delete works when multiple packages reference the
+    same tophash.
+    """
+    top_hash = Package().build("Quilt/Test1")
+    top_hash = Package().build("Quilt/Test2")
+    t4.delete_package('Quilt/Test1', registry=BASE_PATH)
+
+    assert 'Quilt/Test1' not in t4.list_packages()
+    assert top_hash in [p.name for p in
+                        Path(BASE_PATH, '.quilt/packages').iterdir()]
+
+    t4.delete_package('Quilt/Test2', registry=BASE_PATH)
+    assert 'Quilt/Test2' not in t4.list_packages()
+    assert top_hash not in [p.name for p in
+                            Path(BASE_PATH, '.quilt/packages').iterdir()]
+
+
 def test_commit_message_on_push(tmpdir):
     """ Verify commit messages populate correctly on push."""
     with patch('botocore.client.BaseClient._make_api_call', new=mock_make_api_call):
@@ -613,3 +645,56 @@ def test_siblings_succeed():
     pkg = Package()
     pkg.set('as/df', LOCAL_MANIFEST)
     pkg.set('as/qw', LOCAL_MANIFEST)
+
+def test_repr():
+    TEST_REPR = (
+        "asdf\n"
+        "path1/\n"
+        "  asdf\n"
+        "  qwer\n"
+        "path2/\n"
+        "  first/\n"
+        "    asdf\n"
+        "  second/\n"
+        "    asdf\n"
+        "qwer\n"
+    )
+    pkg = Package()
+    pkg.set('asdf', LOCAL_MANIFEST)
+    pkg.set('qwer', LOCAL_MANIFEST)
+    pkg.set('path1/asdf', LOCAL_MANIFEST)
+    pkg.set('path1/qwer', LOCAL_MANIFEST)
+    pkg.set('path2/first/asdf', LOCAL_MANIFEST)
+    pkg.set('path2/second/asdf', LOCAL_MANIFEST)
+    assert repr(pkg) == TEST_REPR
+
+def test_long_repr():
+    pkg = Package()
+    for i in range(30):
+        pkg.set('path{}/asdf'.format(i), LOCAL_MANIFEST)
+    r = repr(pkg)
+    assert r.count('\n') == 20
+    assert r[-4:] == '...\n'
+
+    pkg = Package()
+    for i in range(10):
+        pkg.set('path{}/asdf'.format(i), LOCAL_MANIFEST)
+        pkg.set('path{}/qwer'.format(i), LOCAL_MANIFEST)
+    pkgrepr = repr(pkg)
+    assert pkgrepr.count('\n') == 20
+    assert pkgrepr.find('path9/') > 0
+
+def test_repr_empty_package():
+    pkg = Package()
+    r = repr(pkg)
+    assert r == "(empty Package)"
+
+def test_manifest():
+    pkg = Package()
+    pkg.set('as/df', LOCAL_MANIFEST)
+    pkg.set('as/qw', LOCAL_MANIFEST)
+    top_hash = pkg.build()
+    manifest = list(pkg.manifest)
+
+    pkg2 = Package.browse(pkg_hash=top_hash)
+    assert list(pkg.manifest) == list(pkg2.manifest)

@@ -91,7 +91,7 @@ class Bucket(object):
             if copy fails
         """
         dest = self._uri + key
-        copy_file(path, dest)
+        copy_file(fix_url(path), dest)
 
     def put_dir(self, key, directory):
         """

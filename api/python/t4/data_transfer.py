@@ -9,7 +9,9 @@ import shutil
 from threading import Lock
 from urllib.parse import urlparse
 
-from botocore.exceptions import ClientError
+from botocore import UNSIGNED
+from botocore.client import Config
+from botocore.exceptions import ClientError, NoCredentialsError
 import boto3
 from boto3.s3.transfer import TransferConfig, create_transfer_manager
 from s3transfer.subscribers import BaseSubscriber
@@ -34,6 +36,16 @@ if platform.system() == 'Linux':
     HELIUM_XATTR = 'user.%s' % HELIUM_XATTR
 
 s3_client = boto3.client('s3')
+try:
+    # Ensure that user has AWS credentials that function.
+    # quilt-example is readable by anonymous users, if the head fails
+    #   then the s3 client needs to be in UNSIGNED mode
+    #   because the user's credentials aren't working
+    s3_client.head_bucket(Bucket='quilt-example')
+except (ClientError, NoCredentialsError):
+    # Use unsigned boto if credentials can't head the default bucket
+    s3_client = boto3.client('s3', config=Config(signature_version=UNSIGNED))
+
 s3_transfer_config = TransferConfig()
 s3_manager = create_transfer_manager(s3_client, s3_transfer_config)
 
