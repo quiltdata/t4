@@ -13,7 +13,7 @@ import requests
 from .data_transfer import (TargetType, copy_file, copy_object, delete_object,
                             deserialize_obj, get_bytes, get_size_and_meta,
                             list_objects, put_bytes, serialize_obj)
-from .search import search
+from .search_util import search
 from .util import QuiltException, fix_url, parse_s3_url
 
 CONFIG_URL = "https://t4.quiltdata.com/config.json"
