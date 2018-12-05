@@ -171,7 +171,7 @@ const HANDLERS = [
     detect: '.ipynb',
     render: (url) => (
       <IframeContent
-        src={`${config.aws.apiGatewayUrl}/preview?url=${encodeURIComponent(url)}`}
+        src={`${config.apiGatewayUrl}/preview?url=${encodeURIComponent(url)}`}
       />
     ),
   },

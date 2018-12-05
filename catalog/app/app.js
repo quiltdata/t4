@@ -54,8 +54,6 @@ fontLoader('Roboto', 'Roboto Mono').then(() => {
 });
 
 
-const DEFAULT_BUCKET = 'quilt-example';
-
 // Create redux store with history
 const initialState = {};
 const history = createHistory();
@@ -74,12 +72,11 @@ const render = (messages) => {
       // TODO: figure out AWS components order / race conditions
       [AWSAuth.Provider, {
         storage,
-        testBucket: config.aws.s3Bucket,
-        signInRedirect: routes.bucketRoot.url(DEFAULT_BUCKET),
+        testBucket: config.defaultBucket,
+        signInRedirect: routes.bucketRoot.url(config.defaultBucket),
       }],
       [AWS.Config.Provider, {
         credentialsSelector: AWSAuth.selectors.credentials,
-        region: config.aws.region,
       }],
       AWS.S3.Provider,
       AWS.Signer.Provider,
