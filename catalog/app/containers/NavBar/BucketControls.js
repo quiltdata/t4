@@ -156,12 +156,20 @@ const BucketSelect = RT.composeComponent('NavBar.BucketControls.BucketSelect',
     popper: {
       zIndex: zIndex.appBar + 1,
     },
+    item: {
+      paddingBottom: 20,
+      paddingTop: 20,
+    },
     description: {
       maxWidth: 50 * unit,
     },
     icon: {
       height: 40,
       width: 40,
+    },
+    help: {
+      paddingLeft: 2 * unit,
+      paddingTop: unit,
     },
   })),
   ({
@@ -198,6 +206,7 @@ const BucketSelect = RT.composeComponent('NavBar.BucketControls.BucketSelect',
           <MenuList>
             {buckets.map((s) => (
               <MenuItem
+                className={classes.item}
                 key={s.name}
                 onMouseDown={() => handleSuggestion(s.name)}
                 selected={s.name === value}
@@ -214,6 +223,9 @@ const BucketSelect = RT.composeComponent('NavBar.BucketControls.BucketSelect',
                 />
               </MenuItem>
             ))}
+            <li className={classes.help}>
+              <a href="TODO">Learn how to create your own registry</a>
+            </li>
           </MenuList>
         </Paper>
       </Popper>
