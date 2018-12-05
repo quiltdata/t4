@@ -738,7 +738,7 @@ class Package(object):
             logical_key(string): logical key to update
             entry(PackageEntry OR string): new entry to place at logical_key in the package
                 if entry is a string, it is treated as a URL, and an entry is created based on it
-            meta(dict): metadata dict to attach to entry
+            meta(dict): user level metadata dict to attach to entry
 
         Returns:
             self
@@ -746,13 +746,13 @@ class Package(object):
         if isinstance(entry, (string_types, getattr(os, 'PathLike', str))):
             url = fix_url(str(entry))
             size, orig_meta = get_size_and_meta(url)
-            entry = PackageEntry([url], size, None, meta if meta is not None else orig_meta)
+            entry = PackageEntry([url], size, None, orig_meta)
         elif isinstance(entry, PackageEntry):
             entry = entry._clone()
-            if meta is not None:
-                entry.meta = meta
         else:
             raise TypeError("Expected a string for entry")
+        if meta is not None:
+            entry.set_user_meta(meta)
 
         path = self._split_key(logical_key)
 
