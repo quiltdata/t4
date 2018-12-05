@@ -1,3 +1,4 @@
+import cx from 'classnames';
 import { push } from 'connected-react-router/immutable';
 import deburr from 'lodash/deburr';
 import PT from 'prop-types';
@@ -236,6 +237,7 @@ const NavInput = RT.composeComponent('NavBar.BucketControls.NavInput',
 const Search = RT.composeComponent('NavBar.BucketControls.Search',
   RC.setPropTypes({
     bucket: PT.string.isRequired,
+    disabled: PT.bool,
   }),
   connect(createStructuredSelector({
     searchText: selectSearchText,
@@ -260,9 +262,12 @@ const Search = RT.composeComponent('NavBar.BucketControls.Search',
       borderRadius,
       marginLeft: 2 * unit,
       minWidth: 240,
-      '&:hover': {
+      '&:not($disabled):hover': {
         background: palette.common.white,
       },
+    },
+    disabled: {
+      opacity: 0.8,
     },
     focused: {
       background: palette.common.white,
@@ -279,10 +284,11 @@ const Search = RT.composeComponent('NavBar.BucketControls.Search',
     },
   })),
   ({
-    classes: { adornment, ...classes },
+    classes: { adornment, disabled: disabledCls, ...classes },
     handleChange,
     handleEnter,
     searchText,
+    disabled = false,
   }) => (
     <InputBase
       startAdornment={
@@ -291,10 +297,12 @@ const Search = RT.composeComponent('NavBar.BucketControls.Search',
         </InputAdornment>
       }
       classes={classes}
+      className={cx({ [disabledCls]: disabled })}
       placeholder="Search"
       onChange={handleChange}
       onKeyPress={handleEnter}
-      value={searchText}
+      value={disabled ? 'Search not available' : searchText}
+      disabled={disabled}
     />
   ));
 
@@ -339,10 +347,12 @@ export default RT.composeComponent('NavBar.BucketControls',
                   : <BucketDisplay bucket={match.params.bucket} select={select} />
                 }
                 <BucketConfig.CurrentCtx.Consumer>
-                  {(current) =>
-                    !!current && !!current.searchEndpoint
-                      && <Search bucket={match.params.bucket} />
-                  }
+                  {(current) => (
+                    <Search
+                      bucket={match.params.bucket}
+                      disabled={!current || !current.searchEndpoint}
+                    />
+                  )}
                 </BucketConfig.CurrentCtx.Consumer>
               </React.Fragment>
             )
