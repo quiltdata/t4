@@ -3,7 +3,7 @@ import { select, take, takeEvery, takeLatest } from 'redux-saga/effects';
 
 
 const mapAction = (mapping, fn) => (...args) =>
-  fn(...R.adjust(mapping, -1, args));
+  fn(...R.adjust(-1, mapping, args));
 
 const mkTaker = (taker) => (variant, fn, ...args) =>
   taker(variant.is, mapAction(variant.unbox, fn), ...args);
