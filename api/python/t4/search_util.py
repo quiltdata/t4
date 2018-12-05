@@ -9,6 +9,8 @@ from urllib.parse import urlparse
 from aws_requests_auth.boto_utils import BotoAWSRequestsAuth
 from elasticsearch import Elasticsearch, RequestsHttpConnection
 
+from .util import QuiltException
+
 ES_INDEX = 'drive'
 
 def _create_es(search_endpoint, aws_region):
@@ -35,8 +37,8 @@ def _create_es(search_endpoint, aws_region):
 
 def search(query, search_endpoint, aws_region='us-east-1'):
     """
-    Searches your bucket. query can contain plaintext, and can also contain clauses
-    like $key:"$value" that search for exact matches on specific keys.
+    Searches your bucket. Query may contain plaintext and clauses of the 
+        form $key:"$value" that search for exact matches on specific keys.
 
     Returns either the request object (in case of an error)
             or a list of objects with the following keys:
@@ -83,4 +85,7 @@ def search(query, search_endpoint, aws_region='us-east-1'):
         results = list(sorted(results, key=lambda x: x['time'], reverse=True))
         return results
     except KeyError:
-        return raw_response
+        exception =  QuiltException("Query failed unexpectedly due to either a "
+                                    "bad query or a misconfigured search service.")
+        setattr(exception, 'raw_response', raw_response)
+        raise exception

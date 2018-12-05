@@ -60,7 +60,7 @@ class Bucket(object):
         if self._bucket in configs:
             self._search_endpoint = configs[self._bucket]['search_endpoint']
         elif not quiet:
-            raise QuiltException("Config info not found for this bucket at config_url")
+            raise QuiltException("Config info not found for this bucket")
 
     def search(self, query):
         """

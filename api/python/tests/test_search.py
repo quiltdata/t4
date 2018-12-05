@@ -43,7 +43,8 @@ def test_bucket_search():
                         'type': 'asdf',
                         'user_meta': {},
                         'size': 0,
-                        'text': ''
+                        'text': '',
+                        'updated': '0'
                     }
                 }]
             }
