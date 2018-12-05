@@ -33,7 +33,22 @@ def test_bucket_config():
 def test_bucket_search():
     with patch('t4.search_util._create_es') as create_es_mock:
         es_mock = MagicMock()
+        es_mock.search.return_value = {
+            'hits': {
+                'hits': [{
+                    '_source': {
+                        'key': 'asdf',
+                        'version_id': 'asdf',
+                        'type': 'asdf',
+                        'user_meta': {},
+                        'size': 0,
+                        'text': ''
+                    }
+                }]
+            }
+        }
         create_es_mock.return_value = es_mock
         b = Bucket('s3://quilt-example')
-        b.search('*')
+        results = b.search('*')
         assert es_mock.search.called_with('*', 'test')
+        assert len(results) == 1
