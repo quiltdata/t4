@@ -738,7 +738,7 @@ class Package(object):
             logical_key(string): logical key to update
             entry(PackageEntry OR string): new entry to place at logical_key in the package
                 if entry is a string, it is treated as a URL, and an entry is created based on it
-            meta(dict): metadata dict to attach to entry
+            meta(dict): user level metadata dict to attach to entry
 
         Returns:
             self
@@ -752,7 +752,7 @@ class Package(object):
         else:
             raise TypeError("Expected a string for entry")
         if meta is not None:
-            entry.set_user_meta = meta
+            entry.set_user_meta(meta)
 
         path = self._split_key(logical_key)
 
