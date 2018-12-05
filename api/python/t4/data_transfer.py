@@ -46,20 +46,28 @@ except (ClientError, NoCredentialsError):
 s3_transfer_config = TransferConfig()
 s3_manager = create_transfer_manager(s3_client, s3_transfer_config)
 
-# s3transfer does not give us a way to access the metadata of an object it's downloading,
+# s3transfer does not give us a way to access the metadata of an object it's uploading/downloading,
 # even though it has access to it. To get around this, we patch the s3 client to get a callback
 # with the response.
 # See https://github.com/boto/s3transfer/issues/104
-_old_get_object = s3_client.get_object
-def _get_object(self, **kwargs):
-    callback = kwargs.pop('Callback', None)
-    resp = _old_get_object(**kwargs)
-    if callback is not None:
-        callback(resp)
-    return resp
-s3_client.get_object = type(_old_get_object)(_get_object, s3_client)
+
+def _add_callback(method):
+    def wrapper(self, **kwargs):
+        callback = kwargs.pop('Callback', None)
+        resp = method(**kwargs)
+        if callback is not None:
+            callback(resp)
+        return resp
+    return type(method)(wrapper, method.__self__)
+
+for name in ['get_object', 'put_object', 'copy_object']:
+    orig_method = getattr(s3_client, name)
+    new_method = _add_callback(orig_method)
+    setattr(s3_client, name, new_method)
 
 s3_manager.ALLOWED_DOWNLOAD_ARGS = s3_manager.ALLOWED_DOWNLOAD_ARGS + ['Callback']
+s3_manager.ALLOWED_UPLOAD_ARGS = s3_manager.ALLOWED_UPLOAD_ARGS + ['Callback']
+s3_manager.ALLOWED_COPY_ARGS = s3_manager.ALLOWED_COPY_ARGS + ['Callback']
 
 
 class TargetType(Enum):
@@ -361,7 +369,13 @@ def upload_file(src_path, bucket, key, override_meta=None):
             else:
                 meta = override_meta
 
-            extra_args = dict(Metadata={HELIUM_METADATA: json.dumps(meta)})
+            def meta_callback(f):
+                def cb(resp):
+                    version_id = resp.get('VersionId')  # Absent in unversioned buckets.
+                    # TODO: Use the version_id.
+                return cb
+
+            extra_args = dict(Metadata={HELIUM_METADATA: json.dumps(meta)}, Callback=meta_callback(f))
             existing_src = existing_etags.get(etag)
             if existing_src is not None:
                 # We found an existing object with the same ETag, so copy it instead of uploading
