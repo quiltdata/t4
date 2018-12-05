@@ -15,6 +15,7 @@ import boto3
 from boto3.s3.transfer import TransferConfig, create_transfer_manager
 from s3transfer.subscribers import BaseSubscriber
 from six import BytesIO, binary_type, text_type
+from urllib.parse import quote
 
 import warnings
 with warnings.catch_warnings():
@@ -342,7 +343,7 @@ def upload_file(src_path, bucket, key, override_meta=None):
     else:
         src_root = src_file.parent
         src_file_list = [src_file]
-        versioned_key = []
+        versioned_key = [None]
 
     total_size = sum(f.stat().st_size for f in src_file_list)
 
@@ -374,7 +375,7 @@ def upload_file(src_path, bucket, key, override_meta=None):
             def meta_callback(bucket, real_dest_path, versioned_key):
                 def cb(resp):
                     version_id = resp.get('VersionId', 'null')  # Absent in unversioned buckets.
-                    if versioned_key:
+                    if versioned_key is not None:
                         obj_url = 's3://%s/%s' % (bucket, real_dest_path)
                         if version_id != 'null':  # Yes, 'null'
                             obj_url += '?versionId=%s' % quote(version_id)
