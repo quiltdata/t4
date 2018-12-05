@@ -23,7 +23,7 @@ def get_configured_bucket():
         def mock_get(url):
             return mock_response
         requests_mock.get = mock_get
-        b = Bucket('s3://quilt-example')
+        b = Bucket('s3://test-bucket')
         return b
 
 def test_bucket_config():
@@ -48,7 +48,7 @@ def test_bucket_search():
             }
         }
         create_es_mock.return_value = es_mock
-        b = Bucket('s3://quilt-example')
+        b = Bucket('s3://test-bucket')
         results = b.search('*')
         assert es_mock.search.called_with('*', 'test')
         assert len(results) == 1
