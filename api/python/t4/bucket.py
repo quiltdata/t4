@@ -39,7 +39,7 @@ class Bucket(object):
 
         self._uri = 's3://{}/'.format(bucket)
         self._bucket = bucket
-        self.config(quiet=True)
+        self._search_endpoint = None
 
     def config(self, config_url=CONFIG_URL, quiet=False):
         """
@@ -49,7 +49,8 @@ class Bucket(object):
         if not response.ok:
             # just don't do anything
             if not quiet:
-                raise QuiltException("Failed to configure bucket search endpoint")
+                raise QuiltException("Failed to retrieve bucket search "
+                                     "config at config_url")
             return
         configs = json.loads(response.text).get('configs', None)
         if not configs:
@@ -59,7 +60,7 @@ class Bucket(object):
         if self._bucket in configs:
             self._search_endpoint = configs[self._bucket]['search_endpoint']
         elif not quiet:
-            raise QuiltException("Config info not found for this bucket")
+            raise QuiltException("Config info not found for this bucket at config_url")
 
     def search(self, query):
         """
@@ -79,6 +80,8 @@ class Bucket(object):
             time: timestamp for operation
 
         """
+        if not self._search_endpoint:
+            self.config()
         return search(query, self._search_endpoint)
 
     def deserialize(self, key):

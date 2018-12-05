@@ -12,7 +12,7 @@ def get_configured_bucket():
     with patch('t4.bucket.requests') as requests_mock:
         mock_config = {
                 'configs': {
-                    'quilt-example': {
+                    'test-bucket': {
                         'search_endpoint': 'test'
                     }
                 }
@@ -23,12 +23,13 @@ def get_configured_bucket():
         def mock_get(url):
             return mock_response
         requests_mock.get = mock_get
-        b = Bucket('s3://test-bucket')
-        return b
+        bucket = Bucket('s3://test-bucket')
+        bucket.config()
+        return bucket
 
 def test_bucket_config():
-    b = get_configured_bucket()
-    assert b._search_endpoint == 'test'
+    bucket = get_configured_bucket()
+    assert bucket._search_endpoint == 'test'
 
 def test_bucket_search():
     with patch('t4.search_util._create_es') as create_es_mock:
@@ -48,7 +49,7 @@ def test_bucket_search():
             }
         }
         create_es_mock.return_value = es_mock
-        b = Bucket('s3://test-bucket')
-        results = b.search('*')
+        bucket = get_configured_bucket()
+        results = bucket.search('*')
         assert es_mock.search.called_with('*', 'test')
         assert len(results) == 1
