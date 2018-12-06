@@ -176,10 +176,12 @@ def test_fetch(tmpdir):
     pkg = (
         Package()
         .set('foo', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
-             {'target': 'unicode', 'user_meta': 'blah'})
+             {'user_meta': 'blah'})
         .set('bar', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
-             {'target': 'unicode', 'user_meta': 'blah'})
+             {'user_meta': 'blah'})
     )
+    pkg['foo'].meta['target'] = 'unicode'
+    pkg['bar'].meta['target'] = 'unicode'
 
     with open(os.path.join(os.path.dirname(__file__), 'data', 'foo.txt')) as fd:
         assert fd.read().replace('\n', '') == '123'
@@ -244,11 +246,12 @@ def test_package_deserialize(tmpdir):
     pkg = (
         Package()
         .set('foo', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
-             {'target': 'unicode', 'user_meta': 'blah'})
+             {'user_meta_foo': 'blah'})
         .set('bar', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'))
     )
     pkg.build()
 
+    pkg['foo'].meta['target'] = 'unicode'
     assert pkg['foo'].deserialize() == '123\n'
 
     with pytest.raises(QuiltException):
@@ -321,10 +324,12 @@ def test_updates(tmpdir):
     pkg = (
         Package()
         .set('foo', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
-             {'target': 'unicode', 'user_meta': 'blah'})
+             {'foo_meta': 'blah'})
         .set('bar', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
-            {'target': 'unicode', 'user_meta': 'blah'})
+            {'bar_meta': 'blah'})
     )
+    pkg['foo'].meta['target'] = 'unicode'
+    pkg['bar'].meta['target'] = 'unicode'
     pkg.build()
 
     assert pkg['foo']() == '123\n'
@@ -353,10 +358,12 @@ def test_package_entry_meta():
     pkg = (
         Package()
         .set('foo', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
-            {'target': 'unicode', 'user_meta': {'value': 'blah'}})
+            {'value': 'blah'})
         .set('bar', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
-            {'target': 'unicode', 'user_meta': {'value': 'blah2'}})
+            {'value': 'blah2'})
     )
+    pkg['foo'].meta['target'] = 'unicode'
+    pkg['bar'].meta['target'] = 'unicode'
 
     assert pkg['foo'].get_user_meta() == {'value': 'blah'}
     assert pkg['bar'].get_user_meta() == {'value': 'blah2'}
@@ -400,10 +407,12 @@ def test_set_package_entry(tmpdir):
     pkg = (
         Package()
         .set('foo', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
-             {'target': 'unicode', 'user_meta': 'blah'})
+             {'user_meta': 'blah'})
         .set('bar', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
-            {'target': 'unicode', 'user_meta': 'blah'})
+             {'user_meta': 'blah'})
     )
+    pkg['foo'].meta['target'] = 'unicode'
+    pkg['bar'].meta['target'] = 'unicode'
 
     # Build a dummy file to add to the map.
     with open('bar.txt', "w") as fd:
@@ -483,8 +492,9 @@ def test_brackets():
     pkg = (
         Package()
         .set('foo', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
-             {'target': 'unicode', 'user_meta': 'blah'})
+             {'foo': 'blah'})
     )
+    pkg['foo'].meta['target'] = 'unicode'
 
     pkg.build()
 
@@ -581,6 +591,38 @@ def test_top_hash_stable():
 
     assert pkg.top_hash() == pkg_hash, \
            "Unexpected top_hash for {}/.quilt/packages/{}".format(registry, pkg_hash)
+
+
+@patch('appdirs.user_data_dir', lambda x, y: os.path.join('test_appdir', x))
+def test_local_package_delete(tmpdir):
+    """Verify local package delete works."""
+    top_hash = Package().build("Quilt/Test")
+    t4.delete_package('Quilt/Test', registry=BASE_PATH)
+
+    assert 'Quilt/Test' not in t4.list_packages()
+    assert top_hash not in [p.name for p in
+                            Path(BASE_PATH, '.quilt/packages').iterdir()]
+
+
+@patch('appdirs.user_data_dir', lambda x, y: os.path.join('test_appdir', x))
+def test_local_package_delete_overlapping(tmpdir):
+    """
+    Verify local package delete works when multiple packages reference the
+    same tophash.
+    """
+    top_hash = Package().build("Quilt/Test1")
+    top_hash = Package().build("Quilt/Test2")
+    t4.delete_package('Quilt/Test1', registry=BASE_PATH)
+
+    assert 'Quilt/Test1' not in t4.list_packages()
+    assert top_hash in [p.name for p in
+                        Path(BASE_PATH, '.quilt/packages').iterdir()]
+
+    t4.delete_package('Quilt/Test2', registry=BASE_PATH)
+    assert 'Quilt/Test2' not in t4.list_packages()
+    assert top_hash not in [p.name for p in
+                            Path(BASE_PATH, '.quilt/packages').iterdir()]
+
 
 def test_commit_message_on_push(tmpdir):
     """ Verify commit messages populate correctly on push."""

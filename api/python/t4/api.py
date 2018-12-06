@@ -1,5 +1,6 @@
 import json
 import requests
+import re
 
 from aws_requests_auth.boto_utils import BotoAWSRequestsAuth
 from elasticsearch import Elasticsearch, RequestsHttpConnection
@@ -12,7 +13,7 @@ from .data_transfer import (TargetType, copy_file, deserialize_obj, get_bytes,
 from .packages import get_package_registry
 from .util import (HeliumConfig, QuiltException, CONFIG_PATH,
                    CONFIG_TEMPLATE, fix_url, parse_file_url, parse_s3_url, read_yaml, validate_url,
-                   write_yaml, yaml_has_comments)
+                   write_yaml, yaml_has_comments, PACKAGE_NAME_FORMAT)
 
 # backports
 from six.moves import urllib
@@ -99,6 +100,85 @@ def delete(target):
         raise ValueError("Cannot delete a version")
 
     delete_object(bucket, path)
+
+
+def _tophashes_with_packages(registry=None):
+    """Return a dictionary of tophashes and their corresponding packages
+
+    Parameters:
+        registry (str): URI of the registry to enumerate
+
+    Returns:
+        dict: a dictionary of tophash keys and package name entries
+    """
+    registry_base_path = get_package_registry(fix_url(registry) if registry else None)
+    registry_url = urlparse(registry_base_path)
+    if registry_url.scheme != 'file':
+        raise NotImplementedError
+
+    registry_dir = pathlib.Path(parse_file_url(registry_url))
+
+    out = {}
+    for pkg_namespace_path in (registry_dir / 'named_packages').iterdir():
+        pkg_namespace = pkg_namespace_path.name
+
+        for pkg_subname_path in pkg_namespace_path.iterdir():
+            pkg_subname = pkg_subname_path.name
+            pkg_name = pkg_namespace + '/' + pkg_subname
+
+            package_tophashes = [tophash.name for tophash in pkg_subname_path.iterdir()
+                                 if tophash.name != 'latest']
+
+            for tophash in package_tophashes:
+                if tophash in out:
+                    out[tophash].append(pkg_name)
+                else:
+                    out[tophash] = [pkg_name]
+
+    return out
+
+
+def delete_package(name, registry=None):
+    """
+    Delete a package. Deletes only the manifest entries and not the underlying files.
+
+    Parameters:
+        name (str): Name of the package
+        registry (str): The registry the package will be removed from
+    """
+    if not re.match(PACKAGE_NAME_FORMAT, name):
+        raise QuiltException("Invalid package name, must contain exactly one /.")
+
+    if name not in list_packages(registry):
+        raise QuiltException("No such package exists in the given directory.")
+
+    registry_base_path = get_package_registry(fix_url(registry) if registry else None)
+    registry_url = urlparse(registry_base_path)
+    if registry_url.scheme != 'file':
+        raise NotImplementedError
+
+    pkg_namespace, pkg_subname = name.split("/")
+
+    registry_dir = pathlib.Path(parse_file_url(registry_url))
+    pkg_namespace_dir = registry_dir / 'named_packages' / pkg_namespace
+    pkg_dir = pkg_namespace_dir / pkg_subname
+    packages_path = registry_dir / 'packages'
+
+    tophashes_with_packages = _tophashes_with_packages(registry)
+
+    for tophash_file in pkg_dir.iterdir():
+        # skip latest, which always duplicates a tophashed file
+        tophash = tophash_file.name
+
+        if tophash != 'latest' and len(tophashes_with_packages[tophash]) == 1:
+            (packages_path / tophash_file.read_text()).unlink()
+
+        tophash_file.unlink()
+
+    pkg_dir.rmdir()
+
+    if not list(pkg_namespace_dir.iterdir()):
+        pkg_namespace_dir.rmdir()
 
 
 def ls(target, recursive=False):

@@ -1,3 +1,4 @@
+from codecs import iterdecode
 from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 import hashlib
@@ -15,11 +16,14 @@ import boto3
 from boto3.s3.transfer import TransferConfig, create_transfer_manager
 from s3transfer.subscribers import BaseSubscriber
 from six import BytesIO, binary_type, text_type
+from urllib.parse import quote
 
 import warnings
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
     from tqdm.autonotebook import tqdm
+
+import jsonlines
 
 from .util import QuiltException, parse_file_url, parse_s3_url
 from . import xattr
@@ -46,20 +50,28 @@ except (ClientError, NoCredentialsError):
 s3_transfer_config = TransferConfig()
 s3_manager = create_transfer_manager(s3_client, s3_transfer_config)
 
-# s3transfer does not give us a way to access the metadata of an object it's downloading,
+# s3transfer does not give us a way to access the metadata of an object it's uploading/downloading,
 # even though it has access to it. To get around this, we patch the s3 client to get a callback
 # with the response.
 # See https://github.com/boto/s3transfer/issues/104
-_old_get_object = s3_client.get_object
-def _get_object(self, **kwargs):
-    callback = kwargs.pop('Callback', None)
-    resp = _old_get_object(**kwargs)
-    if callback is not None:
-        callback(resp)
-    return resp
-s3_client.get_object = type(_old_get_object)(_get_object, s3_client)
+
+def _add_callback(method):
+    def wrapper(self, **kwargs):
+        callback = kwargs.pop('Callback', None)
+        resp = method(**kwargs)
+        if callback is not None:
+            callback(resp)
+        return resp
+    return type(method)(wrapper, method.__self__)
+
+for name in ['get_object', 'put_object', 'copy_object']:
+    orig_method = getattr(s3_client, name)
+    new_method = _add_callback(orig_method)
+    setattr(s3_client, name, new_method)
 
 s3_manager.ALLOWED_DOWNLOAD_ARGS = s3_manager.ALLOWED_DOWNLOAD_ARGS + ['Callback']
+s3_manager.ALLOWED_UPLOAD_ARGS = s3_manager.ALLOWED_UPLOAD_ARGS + ['Callback']
+s3_manager.ALLOWED_COPY_ARGS = s3_manager.ALLOWED_COPY_ARGS + ['Callback']
 
 
 class TargetType(Enum):
@@ -330,9 +342,11 @@ def upload_file(src_path, bucket, key, override_meta=None):
     if is_dir:
         src_root = src_file
         src_file_list = list(f for f in src_file.rglob('*') if f.is_file())
+        versioned_key = None
     else:
         src_root = src_file.parent
         src_file_list = [src_file]
+        versioned_key = [None]
 
     total_size = sum(f.stat().st_size for f in src_file_list)
 
@@ -361,12 +375,24 @@ def upload_file(src_path, bucket, key, override_meta=None):
             else:
                 meta = override_meta
 
-            extra_args = dict(Metadata={HELIUM_METADATA: json.dumps(meta)})
+            def meta_callback(bucket, real_dest_path, versioned_key):
+                def cb(resp):
+                    version_id = resp.get('VersionId', 'null')  # Absent in unversioned buckets.
+                    if versioned_key is not None:
+                        obj_url = 's3://%s/%s' % (bucket, real_dest_path)
+                        if version_id != 'null':  # Yes, 'null'
+                            obj_url += '?versionId=%s' % quote(version_id)
+                        versioned_key[0] = obj_url
+                return cb
+
+            extra_args = dict(Metadata={HELIUM_METADATA: json.dumps(meta)},
+                              Callback=meta_callback(bucket, real_dest_path, versioned_key))
             existing_src = existing_etags.get(etag)
             if existing_src is not None:
                 # We found an existing object with the same ETag, so copy it instead of uploading
                 # the bytes. (In the common case, it's the same key - the object is already there -
                 # but we still copy it onto itself just in case the metadata has changed.)
+                extra_args['MetadataDirective'] = 'REPLACE'
                 future = s3_manager.copy(
                     dict(Bucket=bucket, Key=existing_src[0], VersionId=existing_src[1]),
                     bucket, real_dest_path, extra_args, [callback]
@@ -378,7 +404,7 @@ def upload_file(src_path, bucket, key, override_meta=None):
 
         for future in futures:
             future.result()
-
+    return versioned_key
 
 def delete_object(bucket, key):
     if key.endswith('/'):
@@ -422,7 +448,12 @@ def copy_object(src_bucket, src_key, dest_bucket, dest_key, override_meta=None, 
         ))
 
     try:
-        s3_client.copy_object(**params)
+        resp = s3_client.copy_object(**params)
+        version_id = resp.get('VersionId', 'null')  # Absent in unversioned buckets.
+        obj_url = 's3://%s/%s' % (dest_bucket, dest_key)
+        if version_id != 'null':  # Yes, 'null'
+            obj_url += '?versionId=%s' % quote(version_id)
+        return [obj_url]
     except ClientError as e:
         # suppress error from copying a file to itself
         if str(e) == NO_OP_COPY_ERROR_MESSAGE:
@@ -500,7 +531,7 @@ def copy_file(src, dest, override_meta=None):
             dest_bucket, dest_path, dest_version_id = parse_s3_url(dest_url)
             if dest_version_id:
                 raise ValueError("Cannot set VersionId on destination")
-            upload_file(parse_file_url(src_url), dest_bucket, dest_path, override_meta)
+            return upload_file(parse_file_url(src_url), dest_bucket, dest_path, override_meta)
         else:
             raise NotImplementedError
     elif src_url.scheme == 's3':
@@ -512,7 +543,8 @@ def copy_file(src, dest, override_meta=None):
             dest_bucket, dest_path, dest_version_id = parse_s3_url(dest_url)
             if dest_version_id:
                 raise ValueError("Cannot set VersionId on destination")
-            copy_object(src_bucket, src_path, dest_bucket, dest_path, override_meta, src_version_id)
+            return copy_object(src_bucket, src_path, dest_bucket, dest_path, override_meta,
+                               src_version_id)
         else:
             raise NotImplementedError
     else:
@@ -619,3 +651,182 @@ def calculate_sha256(src_list, total_size):
             results = executor.map(_process_url, src_list)
 
     return results
+
+
+def select(url, query, meta=None, alt_s3_client=None, raw=False, **kwargs):
+    """Perform an S3 Select SQL query, return results as a Pandas DataFrame
+
+    The data returned by Boto3 for S3 Select is fairly convoluted, to say the
+    least.  This function returns the result as a dataframe instead.  It also
+    performs the following actions, for convenience:
+
+    * If t4 metadata is given, necessary info to handle the select query is
+      pulled from the format metadata.
+    * If no metadata is present, but the URL indicates an object with a known
+      extension, the file format (and potentially compression) are determeined
+      by that extension.
+      * Extension may include a compresssion extension in cases where that is
+        supported by AWS -- I.e, for queries on JSON or CSV files, .bz2 and
+        .gz are supported.
+      * Parquet files must not be compressed as a whole, and should not have
+        a compression extension.  However, columnar GZIP and Snappy are
+        transparently supported.
+
+    Args:
+        url(str):  S3 URL of the object to query
+        query(str): An SQL query using the 'SELECT' directive. See examples at
+            https://docs.aws.amazon.com/AmazonS3/latest/API/RESTObjectSELECTContent.html
+        meta: T4 Object Metadata
+        alt_s3_client(boto3.client('s3')):  Default client used if not given
+        raw(bool):  True to return the raw Boto3 response object
+        **kwargs:  s3_client.select() kwargs override.
+            All kwargs specified passed to S3 client directly, overriding
+            matching default/generated kwargs for `select_object_content()`.
+            Note that this will also override the bucket and key specified in
+            the URL if `Bucket` and `Key` are passed as kwargs.
+
+    Returns: pandas.DataFrame | dict
+        dict is returned if 'raw' is True or if OutputSerialization is set to
+            something other than JSON Lines.
+
+    """
+    # use passed in client, otherwise module-level client
+    s3 = alt_s3_client if alt_s3_client else s3_client
+    # We don't process any other kind of response at this time.
+    output_serialization = {'JSON': {}}
+    query_type = "SQL"  # AWS S3 doesn't currently support anything else.
+    meta = meta if meta is not None else {}
+
+    # Internal Format Name <--> S3 Format Name
+    valid_s3_select_formats = {
+        'parquet': 'Parquet',
+        'json': 'JSON',
+        'jsonl': 'JSON',
+        'csv': 'CSV',
+        }
+    # S3 Format Name <--> S3-Acceptable compression types
+    format_compression = {
+        'Parquet': ['NONE'],  # even if column-level compression has been used.
+        'JSON': ['NONE', 'BZIP2', 'GZIP'],
+        'CSV': ['NONE', 'BZIP2', 'GZIP'],
+        }
+    # File extension <--> S3-Acceptable compression type
+    # For compression type, when not specified in metadata.  Guess by extension.
+    accepted_compression = {
+        '.bz2': 'BZIP2',
+        '.gz': 'GZIP'
+        }
+    # Extension <--> Internal Format Name
+    # For file type, when not specified in metadata. Guess by extension.
+    ext_formats = {
+        '.parquet': 'parquet',
+        '.json': 'json',
+        '.jsonl': 'jsonl',
+        '.csv': 'csv',
+        '.tsv': 'csv',
+        '.ssv': 'csv',
+        }
+    delims = {'.tsv': '\t', '.ssv': ';'}
+
+    parsed_url = urlparse(url)
+    bucket, path, version_id = parse_s3_url(parsed_url)
+
+    # TODO: Use formats lib for this stuff
+    # use metadata to get format and compression
+    compression = None
+    format = meta.get('target')
+    if format is None:
+        format = meta.get('format', {}).get('name')
+        if format in ('bzip2', 'gzip'):
+            compression = format.upper()
+            format = meta.get('format', {}).get('contained_format', {}).get('name')
+
+    # use file extensions to get compression info, if none is present
+    exts = pathlib.Path(path).suffixes  # last of e.g. ['.periods', '.in', '.name', '.json', '.gz']
+    if exts and not compression:
+        if exts[-1].lower() in accepted_compression:
+            compression = accepted_compression[exts.pop(-1)]   # remove e.g. '.gz'
+    compression = compression if compression else 'NONE'
+
+    # use remaining file extensions to get format info, if none is present
+    csv_delim = None
+    if exts and not format:
+        ext = exts[-1].lower()    # last of e.g. ['.periods', '.in', '.name', '.json']
+        if ext in ext_formats:
+            format = ext_formats[ext]
+            csv_delim = delims.get(ext)
+            s3_format = valid_s3_select_formats[format]
+            ok_compression = format_compression[s3_format]
+            if compression not in ok_compression:
+                raise QuiltException("Compression {!r} not valid for select on format {!r}: "
+                                     "Expected {!r}".format(compression, s3_format, ok_compression))
+    if not format:
+        raise QuiltException("Unable to discover format for select on {!r}".format(url))
+
+    # At this point, we have a known format and enough information to use it.
+    s3_format = valid_s3_select_formats[format]
+
+    # Create InputSerialization section if not user-specified.
+    input_serialization = None
+    if 'InputSerialization' not in kwargs:
+        input_serialization = {'CompressionType': compression}
+        format_spec = input_serialization.setdefault(s3_format, {})
+
+        if s3_format == 'JSON':
+            format_spec['Type'] = "LINES" if format == 'jsonl' else "DOCUMENT"
+        elif s3_format == 'CSV':
+            if csv_delim is not None:
+                format_spec['FieldDelimiter'] = csv_delim
+
+    # These are processed and/or default args.
+    select_kwargs = dict(
+        Bucket=bucket,
+        Key=path,
+        Expression=query,
+        ExpressionType=query_type,
+        InputSerialization=input_serialization,
+        OutputSerialization=output_serialization,
+    )
+    # Include user-specified passthrough options, overriding other options
+    select_kwargs.update(kwargs)
+
+    response = s3.select_object_content(**select_kwargs)
+
+    # we don't want multiple copies of large chunks of data hanging around.
+    # ..iteration ftw.  It's what we get from amazon, anyways..
+    def iter_chunks(resp):
+        for item in resp['Payload']:
+            chunk = item.get('Records', {}).get('Payload')
+            if chunk is None:
+                continue
+            yield chunk
+
+    def iter_lines(resp, delimiter):
+        # S3 may break chunks off at any point, so we need to find line endings and handle
+        # line breaks manually.
+        # Note: this isn't reliable for CSV, because CSV may have a quoted line ending,
+        # whereas line endings in JSONLines content will be encoded cleanly.
+        lastline = ''
+        for chunk in iterdecode(iter_chunks(resp), 'utf-8'):
+            lines = chunk.split(delimiter)
+            lines[0] = lastline + lines[0]
+            lastline = lines.pop(-1)
+            for line in lines:
+                yield line + delimiter
+        yield lastline
+
+    if not raw:
+        # JSON used for processed content as it doesn't have the ambiguity of CSV.
+        if 'JSON' in select_kwargs["OutputSerialization"]:
+            delimiter = select_kwargs['OutputSerialization']['JSON'].get('RecordDelimiter', '\n')
+            reader = jsonlines.Reader(line.strip() for line in iter_lines(response, delimiter)
+                                      if line.strip())
+            # noinspection PyPackageRequirements
+            from pandas import DataFrame   # Lazy import for slow module
+            # !! if this response type is modified, update related docstrings on Bucket.select().
+            return DataFrame.from_records(x for x in reader)
+        # If there's some need, we could implement some other OutputSerialization format here.
+        # If they've specified an OutputSerialization key we don't handle, just give them the
+        # raw response.
+    # !! if this response type is modified, update related docstrings on Bucket.select().
+    return response
