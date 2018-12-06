@@ -28,7 +28,9 @@ export const displayError = (pairs = []) => R.cond([
     <Message headline="Access Denied">
       Seems like you don`t have access to this bucket.
       <br />
-      <a href="TODO">Learn about access control in T4</a>.
+      <a href="https://github.com/quiltdata/t4/tree/master/deployment#permissions">
+        Learn about access control in T4
+      </a>.
     </Message>
   )],
   ...pairs,

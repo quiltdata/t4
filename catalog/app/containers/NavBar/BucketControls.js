@@ -224,7 +224,9 @@ const BucketSelect = RT.composeComponent('NavBar.BucketControls.BucketSelect',
               </MenuItem>
             ))}
             <li className={classes.help}>
-              <a href="TODO">Learn how to create your own registry</a>
+              <a href="https://github.com/quiltdata/t4/tree/master/deployment#installation">
+                Learn how to create your own registry
+              </a>
             </li>
           </MenuList>
         </Paper>
