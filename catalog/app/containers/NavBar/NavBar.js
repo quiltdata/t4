@@ -119,6 +119,12 @@ const SignIn = composeComponent('NavBar.SignIn',
     );
   });
 
+const whenNot = (path, fn) => (
+  <Route path={path} exact>
+    {({ match }) => !match && fn()}
+  </Route>
+);
+
 export default composeComponent('NavBar',
   connect(createStructuredSelector(
     R.pick(['error', 'waiting', 'authenticated'], authSelectors)
@@ -137,17 +143,12 @@ export default composeComponent('NavBar',
     <AppBar className={classes.root} color="default" position="static">
       <Toolbar>
         <Logo />
-        {authenticated && <BucketControls />}
+        {whenNot(paths.signIn, () => <BucketControls />)}
         <div className={classes.spacer} />
         {authenticated
           ? <NavMenu />
-          : (
-            <Route path={paths.signIn} exact>
-              {({ match }) =>
-                !match && <SignIn error={error} waiting={waiting} />
-              }
-            </Route>
-          )
+          : whenNot(paths.signIn, () =>
+            <SignIn error={error} waiting={waiting} />)
         }
       </Toolbar>
     </AppBar>
