@@ -392,6 +392,7 @@ def upload_file(src_path, bucket, key, override_meta=None):
                 # We found an existing object with the same ETag, so copy it instead of uploading
                 # the bytes. (In the common case, it's the same key - the object is already there -
                 # but we still copy it onto itself just in case the metadata has changed.)
+                extra_args['MetadataDirective'] = 'REPLACE'
                 future = s3_manager.copy(
                     dict(Bucket=bucket, Key=existing_src[0], VersionId=existing_src[1]),
                     bucket, real_dest_path, extra_args, [callback]
