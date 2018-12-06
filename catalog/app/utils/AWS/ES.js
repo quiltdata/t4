@@ -4,6 +4,7 @@ import AWS from 'aws-sdk/lib/core';
 import es from 'elasticsearch-browser';
 import omit from 'lodash/fp/omit';
 import isEqual from 'lodash/isEqual';
+import * as R from 'ramda';
 import * as React from 'react';
 import { withPropsOnChange } from 'recompose';
 
@@ -41,6 +42,12 @@ export const Provider = composeComponent('AWS.ES.Provider',
 export const inject = (prop = 'es') =>
   composeHOC('AWS.ES.inject', consume(Ctx, prop));
 
+const getRegion = R.pipe(
+  R.prop('hostname'),
+  R.match(/\.([a-z]{2}-[a-z]+-\d)\.es\.amazonaws\.com$/),
+  R.nth(1),
+  R.defaultTo('us-east-1'),
+);
 
 // TODO: use injected `fetch` instead of xhr
 class SignedConnector extends es.ConnectionPool.connectionClasses.xhr {
@@ -55,7 +62,7 @@ class SignedConnector extends es.ConnectionPool.connectionClasses.xhr {
   }
 
   request(params, cb) {
-    const request = new AWS.HttpRequest(this.endpoint, this.awsConfig.region);
+    const request = new AWS.HttpRequest(this.endpoint, getRegion(this.endpoint));
 
     if (params.body) {
       request.body = params.body;

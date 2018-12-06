@@ -77,7 +77,7 @@ const imageHandler = ({
     const src = escapeHtml(t.src);
     const alt = t.alt ? escape(unescapeMd(t.alt)) : '';
     const title = t.title ? ` title="${escape(t.title)}"` : '';
-    return `<img src="${src}" alt="${alt}"${title} />`;
+    return `<img src="${src}" alt="${alt}"${title} width="33%"/>`;
   };
 };
 
