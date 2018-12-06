@@ -878,10 +878,11 @@ class Package(object):
             # Copy the datafiles in the package.
             physical_key = _to_singleton(entry.physical_keys)
             new_physical_key = dest_url + "/" + quote(logical_key)
-            copy_file(physical_key, new_physical_key, entry.meta)
+            versioned_key = copy_file(physical_key, new_physical_key, entry.meta)
 
             # Create a new package entry pointing to the new remote key.
             new_entry = entry._clone()
+            new_physical_key = versioned_key[0] if versioned_key else new_physical_key
             new_entry.physical_keys = [new_physical_key]
             pkg.set(logical_key, new_entry)
         return pkg
