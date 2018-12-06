@@ -76,9 +76,16 @@ def test_formats_serdes():
     for obj, meta in zip(objects, metadata):
         assert FormatRegistry.deserialize(FormatRegistry.serialize(obj, meta), meta) == obj
 
-    df = pd.DataFrame([[1, 2], [3, 4]])
     meta = {}
-    assert df.equals(FormatRegistry.deserialize(FormatRegistry.serialize(df, meta), meta))
+    df1 = pd.DataFrame([[1, 2], [3, 4]])
+    df2 = FormatRegistry.deserialize(FormatRegistry.serialize(df1, meta), meta)
+
+    # we can't really get around this nicely -- if header is used, and header names are numeric,
+    # once loaded from CSV, header names are now strings.  This causes a bad comparison, so we
+    # cast to int again.
+    df2.columns = df2.columns.astype(int, copy=False)
+
+    assert df1.equals(df2)
 
 
 def test_formats_csv_read():

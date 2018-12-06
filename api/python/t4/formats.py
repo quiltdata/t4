@@ -230,8 +230,11 @@ class BaseFormat(ABC):
     """Base class for binary format handlers
     """
     opts = tuple()
+    name = None
+    handled_extensions = tuple()
+    handled_types = tuple()
 
-    def __init__(self, name=None, handled_extensions=None, handled_types=None):
+    def __init__(self, name=None, handled_extensions=tuple(), handled_types=tuple()):
         """Common initialization for BaseFormat subclasses
         
         Subclasses implement the `serialize()` and `deserialize()` methods,
@@ -255,27 +258,22 @@ class BaseFormat(ABC):
                 format is compatible with existing formats, if practicable.  
                 I.e., two different CSV format handlers should both use 'csv'.
 
-            handled_extensions(list(str)): a list of filename extensions
-                that can be deserialized by this format
+            handled_extensions(iterable(str)): filename extensions that can be
+                deserialized by this format
 
-            handled_types: a list of types that can be serialized to
+            handled_types(iterable(type)): types that can be serialized to
                 (and deserialized from) by this format
         """
-        self.name = name if name else getattr(self, 'name', None)
+        self.name = name if name else self.name
         if not self.name:
             raise TypeError("No `name` attribute has been defined for {!r}".format(type(self).__name__))
 
         # add user extensions if given
-        handled_extensions = [] if handled_extensions is None else handled_extensions
-        self.handled_extensions = getattr(self, 'handled_extensions', [])
-        self.handled_extensions.extend(ext for ext in handled_extensions if ext not in self.handled_extensions)
-        for ext in self.handled_extensions:
-            assert ext == ext.lower().strip('. \n')
+        self.handled_extensions = set(ext.lstrip('.').lower() for ext in self.handled_extensions)
+        self.handled_extensions.update(ext.lstrip('.').lower() for ext in handled_extensions)
 
         # add user types if given
-        handled_types = [] if handled_types is None else handled_types
-        self.handled_types = getattr(self, 'handled_types', [])
-        self.handled_types.extend(typ for typ in handled_types if typ not in self.handled_types)
+        self.handled_types = set(self.handled_types) | set(handled_types)
 
     def handles_ext(self, ext):
         """Check if this format handles the filetype indicated by an extension
@@ -370,122 +368,34 @@ class BaseFormat(ABC):
         return "<{} {!r}, handling exts {} and types {}>".format(
             type(self).__name__,
             self.name,
-            self.handled_extensions,
-            list(t.__name__ for t in self.handled_types),
+            sorted(self.handled_extensions),
+            sorted(t.__name__ for t in self.handled_types),
         )
 
-    def _get_opts(self, meta, format_opts, hook):
-        if format_opts:
-            opts = format_opts
-        else:
-            meta = meta if meta else {}
-            opts = meta.get('format', {}).get('opts', {})
+    def get_opts(self, meta, user_opts=None):
+        """Get options from format_opts or meta.
 
-        permitted_opts = self.opts
-        result_kwargs = {}
-        result_opts = {}
-        defaults = getattr(self, 'defaults', {})
-
-        for opt_name in permitted_opts:
-            value = opts.get(opt_name, NOT_SET)
-            if value is NOT_SET:
-                # get the default if present
-                value = defaults.get(opt_name, NOT_SET)
-                if value is NOT_SET:
-                    continue
-            else:
-                # defaults are excluded from metadata unless specified directly.
-                result_opts[opt_name] = value
-            arg = hook(opt_name, value)
-            if not arg:
-                continue
-            processed_name, processed_value = arg
-            result_kwargs[processed_name] = processed_value
-
-        return result_kwargs, result_opts
-
-    def get_serialization_opts(self, meta, format_opts):
-        """Convert opts in `meta` into kwargs for serializer
-
-        For each arg in the `"opts"` dict in the given metadata, this does
-        the following:
-            1: checks that the option's name is in self.opts
-            2: call `self.serialization_opts_hook(name, value)`
-            3: skip the arg if `serialization_opts_hook` returns None
-            4: otherwise, use the (name, value) pair returned by
-               `serialization_opts_hook` as a kwarg for the serializer
+        This drops or rejects any options that are not named in self.opts.
 
         Args:
-            meta: metadata to process
-            format_opts: If present, use this instead of metadata-derived opts
-
-        Returns:
-            (dict of kwargs for serializer, dict of user opts)
+              user_opts(dict):  Format options from the user.  Used if given,
+                and an error is raised for any invalid arguments.
+              meta(dict):  Object metadata.  Used if user_opts is not given,
+                and invalid options are dropped.
         """
-        return self._get_opts(meta, format_opts, self.serialization_opts_hook)
+        allowed = set(self.opts)
+        if user_opts:
+            assert isinstance(user_opts, Mapping)
+            for name in user_opts:
+                if name not in allowed or not isinstance(name, str):
+                    raise QuiltException("Invalid option: {!r}".format(name))
+            return copy.deepcopy(user_opts)
+        meta = meta if meta else {}
+        meta_opts = meta.get('format', {}).get('opts', {})
 
-    def serialization_opts_hook(self, name, value):
-        """Check and potentially modify a specific serializer arg
-
-        If opts are used, this must be overridden, at least as a simple
-        pass-through method for the case that kwargs are known to be
-        safe and valid for the serializer.
-
-        In other cases, the name or value may be modified to suit the
-        serializer, or to make them safe.  Invalid options can be dropped
-        by returning a falsey value.
-
-        `name` is a valid/permitted argument name from `self.opts`.
-        `value` is an option value retrieved from metadata.
-
-        Returns:
-            (name, value) or None -- If (name, value) is returned, it
-                will be used as a serializer kwarg.  If None is returned,
-                no arg will be added.
-        """
-        raise NotImplementedError()
-
-    def get_deserialization_opts(self, meta, format_opts):
-        """Convert opts in `meta` into kwargs for deserializer
-
-        For each arg in the `"opts"` dict in the given metadata, this does
-        the following:
-            1: checks that the option's name is in self.opts
-            2: call `self.deserialization_opts_hook(name, value)`
-            3: skip the arg if `serialization_opts_hook` returns None
-            4: otherwise, use the (name, value) pair returned by
-               `serialization_opts_hook` as a kwarg for the serializer
-
-        Args:
-            meta: metadata to process
-            format_opts: If present, use this instead of metadata-derived opts
-
-        Returns:
-            (dict of kwargs for serializer, dict of user opts)
-        """
-        return self._get_opts(meta, format_opts, self.deserialization_opts_hook)
-
-    def deserialization_opts_hook(self, name, value):
-        """Check and potentially modify a specific deserializer arg
-
-        If opts are used, this must be overridden, at least as a simple
-        pass-through method for the case that kwargs are known to be
-        safe and valid for the deserializer.
-
-        In other cases, the name or value may be modified to suit the
-        deserializer, or to make them safe.  Invalid options can be dropped
-        by returning a falsey value.
-
-        Args:
-            name(str): a valid/permitted argument name from `self.opts`.
-            value(object): an option value retrieved from metadata.
-
-        Returns:
-            (name, value) or None -- If (name, value) is returned, it
-                will be used as a serializer kwarg.  If None is returned,
-                no arg will be added.
-        """
-        raise NotImplementedError()
+        return {name: meta_opts[name] for name in allowed
+                if name in meta_opts
+                and isinstance(name, str)}
 
 
 class GenericFormat(BaseFormat):
@@ -675,14 +585,13 @@ class CSVPandasFormat(BaseFormat):
             return False
         import pandas as pd
 
-        if pd.DataFrame not in self.handled_types:
-            self.handled_types.append(pd.DataFrame)
+        self.handled_types.add(pd.DataFrame)
 
         return super().handles_type(typ)
 
-    def _quoting_opt_to_python(self, name, value):
+    def _quoting_opt_to_python(self, value):
         if isinstance(value, int):
-            return name, value
+            return value
         elif isinstance(value, str):
             value = value.strip().lower()
             map = {
@@ -691,137 +600,159 @@ class CSVPandasFormat(BaseFormat):
                 'none': csv.QUOTE_NONE,
                 'nonnumeric': csv.QUOTE_NONNUMERIC
             }
-            if value in map:
-                return name, map[value]
+            return map.get(value, NOT_SET)
         print("Unrecognized value for 'quoting' option: {!r}".format(value))
-        return None
+        return NOT_SET
 
-    def serialization_opts_hook(self, name, value):
-        if not isinstance(name, str):
-            return
-        name = name.strip().lower()
+    def get_ser_kwargs(self, opts):
+        opts = copy.deepcopy(opts)
+        result_kwargs = {}
 
-        if name == 'quoting':
-            return self._quoting_opt_to_python(name, value)
-        if name == 'na_values':
-            return 'na_rep', value[0]
+        # interdependent opts, can't be processed individually.
+        use_header = opts.pop('use_header')    # must exist, at least as a default
+        header_names = opts.pop('header_names', None)
+        if use_header:
+            result_kwargs['header'] = header_names if header_names else True
+        else:
+            result_kwargs['header'] = False
 
-        # map names to pandas `df.to_csv() args`
+        # No kwarg correlate for serialization
+        opts.pop('index_names_are_keys', None)
+
         name_map = {
             'fieldsep': 'sep',
             'linesep': 'line_terminator',
             'use_index': 'index',
             'index_names': 'index_label',
         }
-        if name in name_map:
-            return name_map[name], value
+        for name, value in opts.items():
+            if name in name_map:
+                result_kwargs[name_map[name]] = value
+            elif name == 'quoting':
+                value = self._quoting_opt_to_python(value)
+                if value is NOT_SET:
+                    continue
+                result_kwargs[name] = value
+                continue
+            elif name == 'na_values':
+                result_kwargs['na_rep'] = value[0]
+            else:
+                # exact match / pass through arg
+                result_kwargs[name] = value
 
-        # other options are pass-through.
-        return name, value
+        return result_kwargs
+
 
     def serialize(self, obj, meta=None, ext=None, raw_args=None, **format_opts):
-        kwargs, used_opts = self.get_serialization_opts(meta, format_opts)
+        opts = self.get_opts(meta, format_opts)
+
+        default_opts = copy.deepcopy(self.defaults)
 
         # Use the default delimiter for the given extension, if no fieldsep was specified.
-        if ext and 'sep' not in kwargs:
-            ext = ext.strip().strip('.').lower()
+        if ext and 'fieldsep' not in opts:
+            ext = ext.strip().lstrip('.').lower()
             ext_map = {'csv': ',', 'tsv': '\t', 'ssv': ';'}
             if ext in ext_map:
-                kwargs['sep'] = ext_map[ext]
+                default_opts['fieldsep'] = ext_map[ext]
+        opts_with_defaults = default_opts
+        opts_with_defaults.update(opts)
 
-        # these two args are interdependent, and can't be processed individually by the hook.
-        use_header = kwargs.pop('use_header')
-        header_names = kwargs.pop('header_names', None)
-        if use_header:
-            kwargs['header'] = header_names if header_names else True
-        else:
-            kwargs['header'] = False
-
-        # interdependent args, including pass-through defaults that need processing
+        # interdependent opts, can't be processed individually.
         # Does nothing during serialization, but we should check it at least makes sense.
-        index_names_are_keys = kwargs.pop('index_names_are_keys')
+        index_names_are_keys = opts_with_defaults.get('index_names_are_keys')
         if index_names_are_keys:
-            if not 'index_names' in used_opts:
-                used_opts['index_names'] = list(obj.index.names)
-            else:
-                if not len(used_opts['index_names']) == len(obj.index.names):
-                    raise ValueError("{} entried in `index_names`, but the DataFrame to be serialized has {}"
-                                     .format(len(used_opts['index_names']), len(obj.index.names)))
+            if 'index_names' not in opts:
+                raise QuiltException(
+                    "Format option 'index_names_are_keys' is set, but 'index_names' not given."
+                )
+            elif not len(opts['index_names']) == len(obj.index.names):
+                raise ValueError(
+                    "{} entries in `index_names`, but the DataFrame to be serialized has {} indexes"
+                    .format(len(opts['index_names']), len(obj.index.names))
+                )
 
+        kwargs = self.get_ser_kwargs(opts_with_defaults)
         buf = io.BytesIO()
 
-        # pandas bug workaround -- see _WriteEncodingWraper definition
+        # pandas bug workaround -- see _WriteEncodingWrapper definition
         encoded_buf = self._WriteEncodingWrapper(buf, encoding=kwargs['encoding'])
         obj.to_csv(encoded_buf, **(raw_args if raw_args is not None else kwargs))
 
-        self._update_meta(meta, additions={'opts': used_opts})
+        self._update_meta(meta, additions={'opts': opts_with_defaults})
 
         # return buf.getvalue()
         return buf.getvalue()
         # /workaround
 
-    def deserialization_opts_hook(self, name, value):
-        if not isinstance(name, str):
-            return
-        name = name.strip().lower()
+    def get_des_kwargs(self, opts):
+        opts = copy.deepcopy(opts)
+        result_kwargs = {}
 
-        if name == 'quoting':
-            return self._quoting_opt_to_python(name, value)
+        # Interdependent opts.
+        header_names = opts.pop('header_names', None)
+        use_header = opts.pop('use_header')  # opt should be present from defaults.
+        if use_header:
+            result_kwargs['header'] = 0
+            if header_names:
+                result_kwargs['names'] = header_names
+        else:
+            result_kwargs['header'] = None
+            result_kwargs['names'] = header_names
+
+        # Interdependent opts.
+        index_names = opts.pop('index_names', None)
+        use_index = opts.pop('use_index')   # opt should be present from defaults.
+        index_names_are_keys = opts.pop('index_names_are_keys', False)
+        if use_index:
+            if index_names:
+                if index_names_are_keys:
+                    result_kwargs['index_col'] = index_names
+                else:
+                    result_kwargs['index_col'] = list(range(len(index_names)))
+            else:
+                result_kwargs['index_col'] = [0]
+        else:
+            result_kwargs['index_col'] = False
 
         # map names to pandas `df.to_csv() args`
         name_map = {
             'fieldsep': 'sep',
             'linesep': 'lineterminator',
         }
-        if name in name_map:
-            return name_map[name], value
+        for name, value in opts.items():
+            if name == 'quoting':
+                result_kwargs[name] = self._quoting_opt_to_python(value)
+            elif name in name_map:
+                result_kwargs[name_map[name]] = value
+            else:
+                # exact match / passthrough arg
+                result_kwargs[name] = value
 
-        # other options are pass-through.
-        return name, value
+        return result_kwargs
 
     def deserialize(self, bytes_obj, meta=None, ext=None, raw_args=None, **format_opts):
-        import pandas as pd
+        import pandas as pd     # large import / lazy
 
-        kwargs, used_opts = self.get_deserialization_opts(meta, format_opts)
+        opts = self.get_opts(meta, format_opts)
+        default_opts = copy.deepcopy(self.defaults)
 
         # Use the default delimiter for the given extension, if no fieldsep was specified.
-        if ext and 'sep' not in kwargs:
-            ext = ext.strip().strip('.').lower()
+        if ext and 'fieldsep' not in opts:
+            ext = ext.strip().lstrip('.').lower()
             ext_map = {'csv': ',', 'tsv': '\t', 'ssv': ';'}
             if ext in ext_map:
-                kwargs['sep'] = ext_map[ext]
+                default_opts['fieldsep'] = ext_map[ext]
+        opts_with_defaults = default_opts
+        opts_with_defaults.update(opts)
 
-        # use_header, header_names, and index_names_are_keys aren't valid serializer kwargs,
-        # they're pass-through opts that need special handling do act like serialize() would
-        # expect.
-        header_names = kwargs.pop('header_names', None)
-        index_names = kwargs.pop('index_names', None)
-        use_header = kwargs.pop('use_header')  # opt should be present from defaults.
-        use_index = kwargs.pop('use_index')   # opt should be present from defaults.
-        index_names_are_keys = kwargs.pop('index_names_are_keys', False)
+        kwargs = self.get_des_kwargs(opts_with_defaults)
+        df = pd.read_csv(io.BytesIO(bytes_obj), **(raw_args if raw_args else kwargs))
 
-        if use_header:
-            kwargs['header'] = 0
-            if header_names:
-                kwargs['names'] = header_names
-        else:
-            kwargs['header'] = None
-            kwargs['names'] = header_names
-
-        if use_index:
-            if index_names:
-                if index_names_are_keys:
-                    kwargs['index_col'] = index_names
-                else:
-                    kwargs['index_col'] = list(range(len(index_names)))
-            else:
-                kwargs['index_col'] = [0]
-        else:
-            kwargs['index_col'] = False
-
-        df = pd.read_csv(io.BytesIO(bytes_obj), **raw_args if raw_args else kwargs)
-
+        index_names = opts_with_defaults.get('index_names')
+        index_names_are_keys = opts_with_defaults.get('index_names_are_keys')
         if index_names and not index_names_are_keys:
+            # this particular config isn't handled directly by Pandas read_csv, but
+            # is an inverse of a Pandas to_csv() option state.
             df.rename_axis(index_names, inplace=True)
 
         return df
@@ -861,8 +792,7 @@ class NumpyFormat(BaseFormat):
         if 'numpy' not in sys.modules:
             return False
         import numpy as np
-        if np.ndarray not in self.handled_types:
-            self.handled_types.append(np.ndarray)
+        self.handled_types.add(np.ndarray)
         return super().handles_type(typ)
 
     def serialize(self, obj, meta=None, ext=None, raw_args=None, **format_opts):
@@ -915,10 +845,6 @@ class ParquetFormat(BaseFormat):
         'compression': 'snappy_columns',
     }
 
-    def serialization_opts_hook(self, name, value):
-        if name in self.opts:
-            return name, value
-
     def handles_typ(self, typ):
         # don't load pyarrow or pandas unless we actually have to use them..
         if 'pandas' not in sys.modules:
@@ -929,25 +855,33 @@ class ParquetFormat(BaseFormat):
             import pyarrow as pa
         except ImportError:
             return False
-        if pd.DataFrame not in self.handled_types:
-            self.handled_types.append(pd.DataFrame)
+        self.handled_types.add(pd.DataFrame)
         return super().handles_type(typ)
 
     def serialize(self, obj, meta=None, ext=None, raw_args=None, **format_opts):
         import pyarrow as pa
         from pyarrow import parquet
-        kwargs, used_opts = self.get_deserialization_opts(meta, format_opts)
-        
-        buf = io.BytesIO()
+
+        opts = self.get_opts(meta, format_opts)
+        opts_with_defaults = copy.deepcopy(self.defaults)
+        opts_with_defaults.update(opts)
+        kwargs = {}
         table = pa.Table.from_pandas(obj)
 
-        compression = kwargs.get('compression')
-        if isinstance(compression, str) and compression.endswith('_columns'):
-            compression = compression.rsplit('_')[0]
-            kwargs['compression'] = {col.name.encode('utf-8'): compression for col in table.columns} 
+        for name, value in opts_with_defaults.items():
+            if name == 'compression':
+                if isinstance(value, str) and value.endswith('_columns'):
+                    # shorthand for columnar compression on all columns, using prefix value.
+                    compression = value.split('_')[0]
+                    kwargs['compression'] = {
+                        col.name.encode('utf-8'): compression for col in table.columns
+                    }
+                else:
+                    kwargs['compression'] = value
 
+        buf = io.BytesIO()
         parquet.write_table(table, buf, **(raw_args if raw_args is not None else kwargs))
-        self._update_meta(meta, additions=used_opts)
+        self._update_meta(meta, additions=opts_with_defaults)
         return buf.getvalue()
 
 
