@@ -16,6 +16,7 @@ import boto3
 from boto3.s3.transfer import TransferConfig, create_transfer_manager
 from s3transfer.subscribers import BaseSubscriber
 from six import BytesIO, binary_type, text_type
+from urllib.parse import quote
 
 import warnings
 with warnings.catch_warnings():
@@ -49,20 +50,28 @@ except (ClientError, NoCredentialsError):
 s3_transfer_config = TransferConfig()
 s3_manager = create_transfer_manager(s3_client, s3_transfer_config)
 
-# s3transfer does not give us a way to access the metadata of an object it's downloading,
+# s3transfer does not give us a way to access the metadata of an object it's uploading/downloading,
 # even though it has access to it. To get around this, we patch the s3 client to get a callback
 # with the response.
 # See https://github.com/boto/s3transfer/issues/104
-_old_get_object = s3_client.get_object
-def _get_object(self, **kwargs):
-    callback = kwargs.pop('Callback', None)
-    resp = _old_get_object(**kwargs)
-    if callback is not None:
-        callback(resp)
-    return resp
-s3_client.get_object = type(_old_get_object)(_get_object, s3_client)
+
+def _add_callback(method):
+    def wrapper(self, **kwargs):
+        callback = kwargs.pop('Callback', None)
+        resp = method(**kwargs)
+        if callback is not None:
+            callback(resp)
+        return resp
+    return type(method)(wrapper, method.__self__)
+
+for name in ['get_object', 'put_object', 'copy_object']:
+    orig_method = getattr(s3_client, name)
+    new_method = _add_callback(orig_method)
+    setattr(s3_client, name, new_method)
 
 s3_manager.ALLOWED_DOWNLOAD_ARGS = s3_manager.ALLOWED_DOWNLOAD_ARGS + ['Callback']
+s3_manager.ALLOWED_UPLOAD_ARGS = s3_manager.ALLOWED_UPLOAD_ARGS + ['Callback']
+s3_manager.ALLOWED_COPY_ARGS = s3_manager.ALLOWED_COPY_ARGS + ['Callback']
 
 
 class TargetType(Enum):
@@ -333,9 +342,11 @@ def upload_file(src_path, bucket, key, override_meta=None):
     if is_dir:
         src_root = src_file
         src_file_list = list(f for f in src_file.rglob('*') if f.is_file())
+        versioned_key = None
     else:
         src_root = src_file.parent
         src_file_list = [src_file]
+        versioned_key = [None]
 
     total_size = sum(f.stat().st_size for f in src_file_list)
 
@@ -364,7 +375,18 @@ def upload_file(src_path, bucket, key, override_meta=None):
             else:
                 meta = override_meta
 
-            extra_args = dict(Metadata={HELIUM_METADATA: json.dumps(meta)})
+            def meta_callback(bucket, real_dest_path, versioned_key):
+                def cb(resp):
+                    version_id = resp.get('VersionId', 'null')  # Absent in unversioned buckets.
+                    if versioned_key is not None:
+                        obj_url = 's3://%s/%s' % (bucket, real_dest_path)
+                        if version_id != 'null':  # Yes, 'null'
+                            obj_url += '?versionId=%s' % quote(version_id)
+                        versioned_key[0] = obj_url
+                return cb
+
+            extra_args = dict(Metadata={HELIUM_METADATA: json.dumps(meta)},
+                              Callback=meta_callback(bucket, real_dest_path, versioned_key))
             existing_src = existing_etags.get(etag)
             if existing_src is not None:
                 # We found an existing object with the same ETag, so copy it instead of uploading
@@ -381,7 +403,7 @@ def upload_file(src_path, bucket, key, override_meta=None):
 
         for future in futures:
             future.result()
-
+    return versioned_key
 
 def delete_object(bucket, key):
     if key.endswith('/'):
@@ -425,7 +447,12 @@ def copy_object(src_bucket, src_key, dest_bucket, dest_key, override_meta=None, 
         ))
 
     try:
-        s3_client.copy_object(**params)
+        resp = s3_client.copy_object(**params)
+        version_id = resp.get('VersionId', 'null')  # Absent in unversioned buckets.
+        obj_url = 's3://%s/%s' % (dest_bucket, dest_key)
+        if version_id != 'null':  # Yes, 'null'
+            obj_url += '?versionId=%s' % quote(version_id)
+        return [obj_url]
     except ClientError as e:
         # suppress error from copying a file to itself
         if str(e) == NO_OP_COPY_ERROR_MESSAGE:
@@ -503,7 +530,7 @@ def copy_file(src, dest, override_meta=None):
             dest_bucket, dest_path, dest_version_id = parse_s3_url(dest_url)
             if dest_version_id:
                 raise ValueError("Cannot set VersionId on destination")
-            upload_file(parse_file_url(src_url), dest_bucket, dest_path, override_meta)
+            return upload_file(parse_file_url(src_url), dest_bucket, dest_path, override_meta)
         else:
             raise NotImplementedError
     elif src_url.scheme == 's3':
@@ -515,7 +542,8 @@ def copy_file(src, dest, override_meta=None):
             dest_bucket, dest_path, dest_version_id = parse_s3_url(dest_url)
             if dest_version_id:
                 raise ValueError("Cannot set VersionId on destination")
-            copy_object(src_bucket, src_path, dest_bucket, dest_path, override_meta, src_version_id)
+            return copy_object(src_bucket, src_path, dest_bucket, dest_path, override_meta,
+                               src_version_id)
         else:
             raise NotImplementedError
     else:
