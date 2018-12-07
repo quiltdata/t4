@@ -10,9 +10,8 @@ from urllib.parse import urlparse
 
 import requests
 
-from .data_transfer import (copy_file, copy_object, delete_object,
-                            get_bytes, get_size_and_meta,
-                            list_objects, put_bytes, select)
+from .data_transfer import (copy_file, copy_object, delete_object, get_bytes,
+                            get_size_and_meta, list_objects, put_bytes, select)
 from .formats import FormatRegistry
 from .search_util import search
 from .util import QuiltException, fix_url, parse_s3_url

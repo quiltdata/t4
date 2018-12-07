@@ -22,8 +22,8 @@ from .data_transfer import (
 from .exceptions import PackageException
 from .formats import FormatRegistry
 from .util import (
-    QuiltException, BASE_PATH, fix_url, PACKAGE_NAME_FORMAT, parse_file_url,
-    parse_s3_url
+    QuiltException, BASE_PATH, fix_url, PACKAGE_NAME_FORMAT,
+    parse_file_url, parse_s3_url
 )
 
 
@@ -179,11 +179,13 @@ class PackageEntry(object):
         """
         return _to_singleton(self.physical_keys)
 
-    def deserialize(self, **format_opts):
+    def deserialize(self, func=None, **format_opts):
         """
         Returns the object this entry corresponds to.
 
         Args:
+            func: Skip normal deserialization process, and call func(bytes),
+                returning the result directly.
             **format_opts: Some data formats may take options.  Though
                 normally handled by metadata, these can be overridden here.
         Returns:
@@ -195,9 +197,12 @@ class PackageEntry(object):
             when deserialization metadata is not present
         """
         physical_key = _to_singleton(self.physical_keys)
-        pkey_ext = pathlib.PurePosixPath(urlparse(unquote(physical_key)).path).suffix
-
         data, _ = get_bytes(physical_key)
+
+        if func is not None:
+            return func(data)
+
+        pkey_ext = pathlib.PurePosixPath(urlparse(unquote(physical_key)).path).suffix
 
         # Verify format can be handled before checking hash..
         FormatRegistry.deserialize(data, self.meta, pkey_ext, check_only=True, **format_opts)
@@ -221,11 +226,11 @@ class PackageEntry(object):
         dest = fix_url(dest)
         copy_file(physical_key, dest, self.meta)
 
-    def __call__(self, **kwargs):
+    def __call__(self, func=None, **kwargs):
         """
         Shorthand for self.deserialize()
         """
-        return self.deserialize(**kwargs)
+        return self.deserialize(func=func, **kwargs)
 
 
 class Package(object):

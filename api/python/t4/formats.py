@@ -2,11 +2,12 @@
 
 This module handles binary formats, and conversion to/from objects.
 
-# FormatsRegistry Class (plural)
+# FormatRegistry Class (singleton)
 
 The `FormatsRegistry` class acts as a global container for registered formats,
 and provides a place to register and discover formats.
 
+Formats may be discovered by:
     * metadata
     * file extension
     * serializable object
@@ -14,26 +15,32 @@ and provides a place to register and discover formats.
 ..as well as other types in the future, potentially.
 
 Format objects are registered with the FormatsRegistry class by calling
-`FormatsRegistry.register(format_obj)`, or `FormatsRegistry.register(**new_format_args)`.
+`FormatRegistry.register(format_obj)`, or `format_obj.register()`.
 
 
-# Format Class (singular)
+# FormatHandler Class
 
-A Format is tied to *logical key* metadata.
-A Format has, at bare minimum:
-    * a name specific to the format used (NOT to the format object used)
-      * I.e., two Format objects that both handle JSON should both be
+A Format is tied to *logical key* metadata.  This is because the underlying
+data for each of the physical keys must be the same for the hashes to match,
+so variances in format between physical keys cannot be tolerated, unless there
+is also a change to what data the logical key references.
+
+A FormatHandler has, at bare minimum:
+    * a name specific to the format used (NOT to the format handler used)
+      * I.e., two FormatHandler objects that both handle JSON should both be
         named 'json'
     * a serializer
     * a deserializer
 
-Aside from that, a format *should* have:
+Aside from that, a FormatHandler *should* have:
     * a list of filename extensions it can (theoretically) handle
     * a list of object types it can handle
 
 Format objects can be registered directly by calling "f.register()".
 
+
 # Format metadata
+
 In an object's metadata, the format should only touch the 'format' key,
 and possibly the 'target' key.
 
@@ -41,22 +48,25 @@ Format metadata has the following form:
 
 ```
 {
-  # name is a unique format name, like csv, json, parquet, numpy, etc
+  # 'name' is a unique format name, like csv, json, parquet, numpy, etc
   'name': <format name>,
-  # opts are options to help with serialization / deserialization.  These are
-  # needed when a format is leaky or ill-defined, as is the case with CSV
-  'opts': {<opt name>: <opt value>}  # opt must be present in cls.opts to be used.
+  #
+  # 'opts', or Format Options / format_opts / meta['format']['opts']:
+  # * opts are options to help with serialization / deserialization.
+  # * opts are needed when a format is leaky or ill-defined, as is with CSV.
+  # * opts should not be mapped directly to underlying serializer/deserializer
+  #   args unless known to be safe or analyzed at runtime for safety.
+  # * opts should be kept as platform-independent as possible.
+  # * opts must be present in format_handler.opts to be used.
+  'opts': {<opt name>: <opt value>}
 }
 
 """
 
+
 # Python imports
 from abc import ABC, abstractmethod
-from collections import (
-    defaultdict,
-    OrderedDict,
-    Mapping,
-    )
+from collections import Mapping
 import copy
 import csv
 import io
@@ -69,23 +79,23 @@ from six import text_type
 # Project imports
 from .util import QuiltException
 
+
 # Constants
-class NOT_SET:
-    """Used as an indicator of disuse when `None` is a valid value"""
-    def __init__(self):
-        raise RuntimeError("Not an instantiable class.")
+NOT_SET = type('NOT_SET', (object,), {'__doc__':
+    """A unique indicator of disuse when `None` is a valid value"""
+    })()
 
 
 # Code
 class FormatRegistry:
-    """A collection for organizing `Format` objects.
+    """A collection for organizing `FormatHandler` objects.
 
-    This class organizes `Format` objects for querying and general use.
+    This class organizes `FormatHandler` objects for querying and general use.
     It provides methods for querying by format name, metadata dict, handled
     extensions, or handled object types.  This list may expand in the future,
     so see the actual class methods.
     """
-    registered_formats = list()
+    registered_handlers = list()
 
     # latest adds are last, and come first in lookups by type via `for_obj`.
     def __init__(self):
@@ -93,125 +103,209 @@ class FormatRegistry:
                         .format(type(self).__name__))
 
     @classmethod
-    def register(cls, format):
-        formats = cls.registered_formats
+    def register(cls, handler):
+        """Register a FormatHandler instance"""
+        handlers = cls.registered_handlers
 
         # no duplicates, just reprioritize.
-        if format in formats:
-            formats.pop(formats.index(format))
+        if handler in handlers:
+            handlers.pop(handlers.index(handler))
 
-        formats.insert(0, format)
-
-    @classmethod
-    def serialize(cls, obj, meta=None, ext=None, raw_args=None, check_only=False, **format_opts):
-        # try to retain their meta-configured format.
-        meta_fmt = cls.for_meta(meta)
-        ext_fmts = cls.for_ext(ext, single=False)
-        obj_fmts = cls.for_obj(obj, single=False)
-
-        if meta_fmt:
-            # meta_fmt should always be an exact match on what to use.
-            if meta_fmt not in obj_fmts:
-                raise QuiltException("Metadata specified the {!r} format, but it doesn't handle {!r} objects."
-                                     .format(meta_fmt.name, type(obj)))
-            # Warn about a known, definitive extension / metadata format mismatch.
-            if ext_fmts and meta_fmt not in ext_fmts and not check_only:
-                print("Notice: Using format specified by metadata ({!r}) but extension {!r} doesn't match."
-                      .format(meta_fmt.name, ext))
-            assert isinstance(meta_fmt, BaseFormat)
-            return (meta_fmt if check_only
-                    else meta_fmt.serialize(obj, meta=meta, ext=ext, raw_args=raw_args, **format_opts))
-        # prefer a format that matches the extension.
-        elif ext_fmts:
-            for fmt in ext_fmts:
-                if fmt in obj_fmts:
-                    return (fmt if check_only
-                            else fmt.serialize(obj, meta=meta, ext=ext, raw_args=raw_args, **format_opts))
-        # otherwise, just use the first format that can handle obj.
-        if obj_fmts:
-            if ext and not check_only:
-                print("Notice: No matching serialization formats for extension {!r} with given object."
-                      .format(ext))
-                print("        Using {!r} format instead.".format(obj_fmts[0].name))
-            fmt = obj_fmts[0]
-            return (fmt if check_only
-                    else fmt.serialize(obj, meta=meta, ext=ext, raw_args=raw_args, **format_opts))
-        raise QuiltException("No Format to serialize object with")
+        handlers.insert(0, handler)
 
     @classmethod
-    def deserialize(cls, bytes_obj, meta=None, ext=None, as_type=None, raw_args=None, check_only=False, **format_opts):
-        meta_fmt = cls.for_meta(meta)
-        ext_fmts = cls.for_ext(ext, single=False)
-        typ_fmts = cls.for_type(as_type, single=False)
+    def search(cls, obj_type=None, meta=None, ext=None, single=True, handlers=None):
+        """Get a handler or handlers meeting the specified requirements
 
-        # metadata is always an exact specification (if present)
-        if meta_fmt:
-            if as_type:
-                if meta_fmt not in typ_fmts:
-                    raise QuiltException("Cannot deserialize as specified type: {}".format(as_type))
-            if check_only:
-                return meta_fmt
-            assert isinstance(meta_fmt, BaseFormat)
-            return meta_fmt.deserialize(bytes_obj, meta=meta, ext=ext, raw_args=raw_args, **format_opts)
+        Preference:
+            Args are checked, in order, for matches.  If `single` is False,
+            then all matching formats are returned, most-recently added
+            handlers first in the list.  If `single` is True, the most recent
+            matching handler is returned.
+
+        Args:
+            obj_type: type of object to convert from/to
+                If given, the returned handler(s) *must* handle this type.
+            meta: object metadata, potentially containing format metadata
+                If given, and the metadata contains format metadata with a
+                format name, then the returned handler(s) *must* handle the
+                named format.
+            ext: The filename extension for the data
+                If given, then if other methods fail or are not specified,
+                the handler(s) for the extension `ext` will be returned.
+            single(True): Return only the most-preferred result if True.
+                Otherwise, return a list of results, most-recently-added
+                first.
+            handlers: restrict results to these handlers.
+
+        Returns:
+            if not single (default): A list of formats in order of preference
+            if single: The first format by order of preference
+        """
+        # we want to retain order.
+        meta_fmts = cls.for_meta(meta, single=False)
+        typ_fmts = cls.for_type(obj_type, single=False)
         fmt_name = cls._get_name_from_meta(meta)
+
+        # Most critical param is obj_type -- hard fail if given, but not matched.
+        if obj_type is not None:
+            if not typ_fmts:
+                raise QuiltException("No format handler for type {!r}".format(obj_type))
+            if fmt_name:
+                # a format was specified by metadata
+                typ_meta_fmts = [fmt for fmt in typ_fmts if fmt in meta_fmts]
+                if typ_meta_fmts:
+                    return typ_meta_fmts[0] if single else typ_meta_fmts
+                raise QuiltException(
+                    "Metadata requires the {!r} format for type {!r}, but no registered handler can do that"
+                    .format(fmt_name, obj_type)
+                )
+            # matched by type alone
+            return typ_fmts[0] if single else typ_fmts
+
+        # Look up by metadata
         if fmt_name:
-            raise QuiltException("Metadata specified the {!r} format, which isn't registered."
-                                 .format(fmt_name))
-        # Try by extension
-        for ext_fmt in ext_fmts:
-            if as_type and ext_fmt not in typ_fmts:
-                continue
-            if check_only:
-                return ext_fmt
-            assert isinstance(ext_fmt, BaseFormat)
-            return ext_fmt.deserialize(bytes_obj, meta=meta, ext=ext, raw_args=raw_args, **format_opts)
-        if ext_fmts and as_type:
-            raise QuiltException("Cannot deserialize as specified type: {}".format(as_type))
-        raise QuiltException("No serialization metadata, and guessing by extension failed.")
+            # a format was specified by metadata
+            if not meta_fmts:
+                raise QuiltException(
+                    "Metadata requires the {!r} format, but no handler is registered for it"
+                    .format(fmt_name)
+                )
+            return meta_fmts[0] if single else meta_fmts
+
+        # Fall back to using extension
+        # Extension is a second-class citizen here to prevent a file's extension from
+        # interfering with match in a situation where the format or object type has been
+        # explicitly specified.
+        ext_fmts = cls.for_ext(ext, single=False)
+        if not ext_fmts:
+            raise QuiltException("No serialization metadata, and guessing by extension failed.")
+        return ext_fmts[0] if single else ext_fmts
 
     @classmethod
-    def match(cls, name):
-        """Match a format by exact name."""
-        for fmt in cls.registered_formats:
-            if fmt.name == name:
-                return fmt
+    def serialize(cls, obj, meta=None, ext=None, raw_args=None, **format_opts):
+        """Match an object to a format, and serialize it to that format.
+
+        `obj`, `meta`, and `ext` are used to `search()` for a format handler.
+        Then `obj` is serialized using that handler.  The resultant bytes and
+        a dict for updating object metadata are returned.
+
+        Args:
+            obj: Object to serialize
+            meta: Metadata (potentially) containing format info
+            ext: File extension, if any
+            raw_args: Use these serialization args instead of the defaults.
+                Overrides both defaults and args generated from opts and
+                metadata.
+                raw_args are not stored in metadata if used.
+            **format_opts:
+                Options specific to the format.  These are added to the
+                format-specific metadata that is returned with the bytes of
+                the serialized object.
+        Raises:
+            QuiltException: when an error is encountered obtaining the format
+            Exception: Pass-through exceptions from serializers
+        Returns: (bytes, dict)
+            bytes: serialized object
+            dict: format-specific metadata to be added to object metadata
+        """
+        handler = cls.search(type(obj), meta, ext, single=True)
+        assert isinstance(handler, BaseFormatHandler)
+        return handler.serialize(obj, meta, ext, raw_args, **format_opts)
+
+    @classmethod
+    def deserialize(cls, bytes_obj, meta=None, ext=None, as_type=None, raw_args=None,
+                    **format_opts):
+        """Deserialize `bytes_obj` using the given info
+
+        `meta`, and `ext` are used to `search()` for format handlers, and
+        that is filtered by `as_type` (if given).  The discovered handler is
+        used to deserialize the given `bytes_obj`, and the deserialized object
+        is returned.
+
+        Args:
+            bytes_obj: bytes to deserialize
+            meta: Used to search for format handlers
+            ext: Used to search for format handlers
+            as_type: Used to filter format found handlers
+            raw_args: Use these deserialization args instead of the defaults
+                or generated deserializer args.
+            check_only:
+            **format_opts:
+
+        Returns:
+
+        """
+        if as_type:
+            # Get handlers for meta and ext first.  obj_type is too strict to use here.
+            handlers = cls.search(meta=meta, ext=ext)  # raises if no matches occur.
+            handlers = [h for h in handlers if h.handles_type(as_type)]
+            if not handlers:
+                raise QuiltException(
+                    "No matching handlers when limited to type {!r}".format(as_type)
+                )
+            handler = handlers[0]
+        else:
+            handler = cls.search(meta=meta, ext=ext, single=True)
+        return handler.deserialize(bytes_obj, meta, ext, raw_args, **format_opts)
+
+    @classmethod
+    def for_format(cls, name, single=True):
+        """Match a format handler by exact name."""
+        if not name:
+            return None if single else []
+        matching_handlers = []
+        for handler in cls.registered_handlers:
+            if handler.name == name:
+                if single:
+                    return handler
+                matching_handlers.append(handler)
+        if single:
+            return None
+        return matching_handlers
 
     @classmethod
     def for_ext(cls, ext, single=True):
-        """Match a format (or formats) by extension."""
+        """Match a format handler (or handlers) by extension."""
         if not ext:
             return None if single else []
         ext = ext.lower().strip('. ')
-        matching_formats = []
-        for fmt in cls.registered_formats:
-            if fmt.handles_ext(ext):
+        matching_handlers = []
+        for handler in cls.registered_handlers:
+            if handler.handles_ext(ext):
                 if single:
-                    return fmt
-                matching_formats.append(fmt)
-        return matching_formats
+                    return handler
+                matching_handlers.append(handler)
+        if single:
+            return None
+        return matching_handlers
 
     @classmethod
     def for_type(cls, typ, single=True):
-        """Match a format (or formats) by a (potentially) serializable type"""
+        """Match a format handler (or handlers) for a serializable type"""
         if typ is None:
             return None if single else []
 
-        matching_formats = []
+        matching_handlers = []
 
-        for fmt in cls.registered_formats:
-            if fmt.handles_type(typ):
+        for handler in cls.registered_handlers:
+            if handler.handles_type(typ):
                 if single:
-                    return fmt
-                matching_formats.append(fmt)
-        return matching_formats
+                    return handler
+                matching_handlers.append(handler)
+        if single:
+            return None
+        return matching_handlers
 
     @classmethod
     def for_obj(cls, obj, single=True):
-        """Match a format (or formats) by a (potentially) serializable object"""
+        """Match a format handler (or handlers) for a serializable object"""
         return cls.for_type(type(obj), single=single)
 
     @classmethod
     def _get_name_from_meta(cls, meta):
+        if not meta:
+            return None
         name = meta.get('format', {}).get('name')
         # 'target': compat with older pkg structure -- can probably be removed soon.
         if not name:
@@ -219,15 +313,12 @@ class FormatRegistry:
         return name
 
     @classmethod
-    def for_meta(cls, meta):
-        """Unambiguously match a specific format by the given metadata"""
-        # As a point of order, this must return a singular format.
+    def for_meta(cls, meta, single=True):
         name = cls._get_name_from_meta(meta)
-        fmt = cls.match(name)
-        return fmt
+        return cls.for_format(name, single=single)
 
 
-class BaseFormat(ABC):
+class BaseFormatHandler(ABC):
     """Base class for binary format handlers
     """
     opts = tuple()
@@ -407,7 +498,7 @@ class BaseFormat(ABC):
                 and isinstance(name, str)}
 
 
-class GenericFormat(BaseFormat):
+class GenericFormatHandler(BaseFormatHandler):
     """Generic format for handling simple serializer/deserializer pairs
 
     This is a generic type that can be instantiated directly, passing in
@@ -453,7 +544,7 @@ class GenericFormat(BaseFormat):
         return self._deserializer(bytes_obj, **(raw_args if raw_args else {}))
 
 
-GenericFormat(
+GenericFormatHandler(
     'bytes',
     serializer=lambda obj: obj,
     deserializer=lambda bytes_obj: bytes_obj,
@@ -462,7 +553,7 @@ GenericFormat(
 ).register()
 
 
-GenericFormat(
+GenericFormatHandler(
     'json',
     serializer=lambda obj, **kwargs: json.dumps(obj, **kwargs).encode('utf-8'),
     deserializer=lambda bytes_obj, **kwargs: json.loads(bytes_obj.decode('utf-8'), **kwargs),
@@ -473,7 +564,7 @@ GenericFormat(
 
 # compatibility with prior code.  The 'utf-8' GenericFormat supersedes this,
 # as it is loaded after this, but this is still present to decode existing stored objects.
-GenericFormat(
+GenericFormatHandler(
     'unicode',
     serializer=lambda s: s.encode('utf-8'),
     deserializer=lambda b: b.decode('utf-8'),
@@ -482,7 +573,7 @@ GenericFormat(
 ).register()
 
 
-GenericFormat(
+GenericFormatHandler(
     'utf-8',  # utf-8 instead?
     serializer=lambda s: s.encode('utf-8'),
     deserializer=lambda b: b.decode('utf-8'),
@@ -491,7 +582,7 @@ GenericFormat(
 ).register()
 
 
-class CSVPandasFormat(BaseFormat):
+class CSVPandasFormatHandler(BaseFormatHandler):
     """Format for Pandas DataFrame <--> CSV formats
 
     Format Opts:
@@ -784,10 +875,10 @@ class CSVPandasFormat(BaseFormat):
             self.bytes_filelike.writelines(encoded_lines)
 
 
-CSVPandasFormat().register()
+CSVPandasFormatHandler().register()
 
 
-class NumpyFormat(BaseFormat):
+class NumpyFormatHandler(BaseFormatHandler):
     name = 'numpy'
     handled_extensions = ['npy', 'npz']
 
@@ -823,11 +914,11 @@ class NumpyFormat(BaseFormat):
         return np.load(buf, **(kwargs if raw_args is None else raw_args))
 
 
-NumpyFormat().register()
+NumpyFormatHandler().register()
 
 
 # noinspection PyPackageRequirements
-class ParquetFormat(BaseFormat):
+class ParquetFormatHandler(BaseFormatHandler):
     """Format for Pandas DF <--> Parquet
 
     Format Opts:
@@ -905,6 +996,6 @@ class ParquetFormat(BaseFormat):
             obj = newtable.to_pandas()
         return obj
 
-
-ParquetFormat('pyarrow').register()  # compat -- also handle 'pyarrow' target and meta['format']['name'].
-ParquetFormat().register()  # latest is preferred
+# compat -- also handle 'pyarrow' in meta['target'] and meta['format']['name'].
+ParquetFormatHandler('pyarrow').register()
+ParquetFormatHandler().register()  # latest is preferred

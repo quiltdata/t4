@@ -20,10 +20,10 @@ def test_buggy_parquet():
     old pyarrow libaries.
     """
     path = pathlib.Path(__file__).parent
-    with open(path / 'data' / 'buggy_parquet.parquet', 'rb') as bad_parq:
-        # Make sure this doesn't crash.
-        fmt = FormatRegistry.match('pyarrow')
-        fmt.deserialize(bad_parq.read(), )
+    for parquet_handler in FormatRegistry.for_format('parquet', single=False):
+        with open(path / 'data' / 'buggy_parquet.parquet', 'rb') as bad_parq:
+            # Make sure this doesn't crash.
+            parquet_handler.deserialize(bad_parq.read())
 
 def test_formats_for_obj():
     arr = np.ndarray(3)
@@ -56,9 +56,9 @@ def test_formats_for_meta():
     assert json_fmt.deserialize(some_bytes) == ['phlipper', 'piglet']
 
 
-def test_formats_match():
-    bytes_fmt = FormatRegistry.match('bytes')
-    json_fmt = FormatRegistry.match('json')
+def test_formats_for_format():
+    bytes_fmt = FormatRegistry.for_format('bytes')
+    json_fmt = FormatRegistry.for_format('json')
 
     some_bytes = b'["phlipper", "piglet"]'
     assert bytes_fmt.serialize(some_bytes)[0] == some_bytes

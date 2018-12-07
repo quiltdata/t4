@@ -22,7 +22,7 @@ import pytest
 
 ### Code
 
-# parquet / serialization test moved to test_formats.py
+# parquet test moved to test_formats.py
 
 
 def test_select():
