@@ -1,5 +1,4 @@
 /* Simple Layout Helpers */
-import PropTypes from 'prop-types';
 import styled from 'styled-components';
 
 import { breaks, rowVSpace } from 'constants/style';
@@ -74,24 +73,4 @@ export const Skip = styled.div`
 
 Skip.defaultProps = {
   height: '2em',
-};
-
-/* Stack - Inject margin between stacking columns */
-export const Stack = styled.div`
-  @media (max-width:${(props) => props.maxWidth}) {
-    > div:not(:first-child) {
-      margin-top: ${(props) => props.margin};
-    }
-  }
-`;
-
-Stack.propTypes = {
-  breakPoint: PropTypes.string,
-  margin: PropTypes.string,
-};
-
-const sm = `${breaks.md - 1}px`; //  upper end of sm breakpoint
-Stack.defaultProps = {
-  margin: '3em',
-  maxWidth: sm,
 };

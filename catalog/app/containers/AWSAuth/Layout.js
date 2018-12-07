@@ -7,8 +7,10 @@ import { Link } from 'react-router-dom';
 import { mapProps, setPropTypes } from 'recompose';
 import styled from 'styled-components';
 
+import Layout from 'components/Layout';
 import Spinner from 'components/Spinner';
 import { composeComponent, withStyle } from 'utils/reactTools';
+
 
 export const Container = styled.div`
   margin-left: auto;
@@ -125,10 +127,12 @@ export const Message = styled.p`
 
 // eslint-disable-next-line react/prop-types
 export const mkLayout = (heading) => ({ children }) => (
-  <Container>
-    <Heading>{heading}</Heading>
-    {children}
-  </Container>
+  <Layout>
+    <Container>
+      <Heading>{heading}</Heading>
+      {children}
+    </Container>
+  </Layout>
 );
 
 export const Submit = composeComponent('AWSAuth.Submit',

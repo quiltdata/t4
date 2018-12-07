@@ -2,6 +2,7 @@ import { injectGlobal } from 'styled-components';
 
 import { appBackgroundColor, backgroundColor, bodyColor, bodySize, headerColor } from 'constants/style';
 
+// TODO: deprecate this, use MUI baseline, theme and typography
 /* eslint no-unused-expressions: 0 */
 injectGlobal`
   html,
@@ -142,7 +143,7 @@ injectGlobal`
     }
 
     p, label, li, dd {
-      font-weight: lighter;
+      //font-weight: lighter;
     }
 
   }

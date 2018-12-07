@@ -1,5 +1,5 @@
 import PT from 'prop-types';
-import React from 'react';
+import * as React from 'react';
 import { connect } from 'react-redux';
 import { defaultProps, setPropTypes, withProps } from 'recompose';
 
@@ -17,7 +17,7 @@ export const Provider = composeComponent('Notifications.Provider',
   withProps({ mount: REDUX_KEY, reducer }),
   InjectReducer);
 
-export default composeComponent('Notifications',
+export const Display = composeComponent('Notifications.Display',
   connect(selector, actions),
   setPropTypes({
     notifications: PT.arrayOf( // eslint-disable-line function-paren-newline
@@ -41,3 +41,11 @@ export default composeComponent('Notifications',
   ({ NotificationComponent, notifications, dismiss }) =>
     notifications.map((n) =>
       <NotificationComponent key={n.id} {...n} dismiss={dismiss} />));
+
+export const WithNotifications = composeComponent('Notifications.WithNotifications',
+  ({ children }) => (
+    <React.Fragment>
+      {children}
+      <Display />
+    </React.Fragment>
+  ));
