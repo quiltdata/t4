@@ -15,9 +15,6 @@ import * as errors from './errors';
  * @throws {InvalidCredentials}
  */
 function* verifyCredentials(testBucket, credentials) {
-  // TODO: figure out proper way to verify credentials
-  return;
-  // eslint-disable-next-line no-unreachable
   try {
     const s3 = new S3({ apiVersion: '2006-03-01', ...credentials });
     yield s3.listObjectsV2({ Bucket: testBucket, MaxKeys: 1 }).promise();
