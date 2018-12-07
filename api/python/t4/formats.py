@@ -72,7 +72,8 @@ from .util import QuiltException
 # Constants
 class NOT_SET:
     """Used as an indicator of disuse when `None` is a valid value"""
-    pass
+    def __init__(self):
+        raise RuntimeError("Not an instantiable class.")
 
 
 # Code
