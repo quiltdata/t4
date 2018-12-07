@@ -1,0 +1,23 @@
+window.__CONFIG = {
+  "buckets": [
+    {
+      "name": "quilt-example",
+      "title": "Quilt Data",
+      "icon": "https://d1zvn9rasera71.cloudfront.net/q-128-square.png",
+      "description": "T4 transforms an S3 bucket into a visual data regsitry",
+      "searchEndpoint": "https://search-quilt-example-rytakqayno3rlembetdhuflrna.us-east-1.es.amazonaws.com/",
+      "menu": true
+    },
+    {
+      "name": "quilt-aics",
+      "title": "Allen Institute for Cell Science",
+      "icon": "https://3c1703fe8d.site.internapcdn.net/newman/gfx/news/hires/2017/3dwindowinto.png",
+      "description": "The Allen Cell Explorer is a novel visual, dynamic, predictive model of the cell that will accelerate cell biology and biomedical research.",
+      "searchEndpoint": "https://search-quilt-aics-2alivodd7we6cjhcrkxguahbkm.us-east-1.es.amazonaws.com/",
+      "menu": true
+    }
+  ],
+  "defaultBucket": "quilt-example",
+  "alwaysRequiresAuth": false,
+  "apiGatewayUrl": "https://tdfqht5b70.execute-api.us-east-1.amazonaws.com/prod",
+}
