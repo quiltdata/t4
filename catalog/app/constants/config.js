@@ -24,7 +24,7 @@ const buckets = [
 const defaultBucket = 'quilt-example';
 
 // eslint-disable-next-line no-underscore-dangle
-const config = { ...window.__CONFIG, buckets, defaultBucket };
+const config = { buckets, defaultBucket, ...window.__CONFIG };
 
 const check = conforms({
   alwaysRequiresAuth: R.is(Boolean),
