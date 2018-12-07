@@ -11,11 +11,12 @@ class ResponseMock(object):
 def get_configured_bucket():
     with patch('t4.bucket.requests') as requests_mock:
         mock_config = {
-                'configs': {
-                    'test-bucket': {
-                        'search_endpoint': 'test'
+                'buckets': [
+                    {
+                        'name': 'test-bucket',
+                        'searchEndpoint': 'test'
                     }
-                }
+                ]
             }
         mock_response = ResponseMock()
         setattr(mock_response, 'text', json.dumps(mock_config))
