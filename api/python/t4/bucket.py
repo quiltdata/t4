@@ -43,25 +43,21 @@ class Bucket(object):
         self._bucket = bucket
         self._search_endpoint = None
 
-    def config(self, config_url=CONFIG_URL, quiet=False):
+    def config(self, config_url=CONFIG_URL):
         """
         Updates this bucket's search endpoint based on a federation config.
         """
         response = requests.get(config_url)
         if not response.ok:
-            # just don't do anything
-            if not quiet:
-                raise QuiltException("Failed to retrieve bucket search "
-                                     "config at config_url")
-            return
-        configs = json.loads(response.text).get('configs', None)
-        if not configs:
-            if not quiet:
-                raise QuiltException("Config at config_url malformed")
-            return
-        if self._bucket in configs:
-            self._search_endpoint = configs[self._bucket]['search_endpoint']
-        elif not quiet:
+            raise QuiltException("Failed to retrieve bucket search "
+                                 "config at config_url")
+        raw_buckets = json.loads(response.text).get('buckets', None)
+        if not raw_buckets:
+            raise QuiltException("Config at config_url malformed")
+        buckets = {raw_bucket['name']: raw_bucket for raw_bucket in raw_buckets}
+        if self._bucket in buckets:
+            self._search_endpoint = buckets[self._bucket]['searchEndpoint']
+        else:
             raise QuiltException("Config info not found for this bucket")
 
     def search(self, query):
