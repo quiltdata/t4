@@ -85,7 +85,9 @@ const BucketSelect = RT.composeComponent('NavBar.BucketControls.BucketSelect',
   }),
   connect(),
   NamedRoutes.inject(),
-  RT.consume(BucketConfig.BucketsCtx, 'buckets'),
+  RT.consume(BucketConfig.BucketsCtx, (buckets) => ({
+    buckets: buckets.filter((b) => b.menu),
+  })),
   RC.withStateHandlers({
     value: '',
     anchor: null,
