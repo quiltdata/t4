@@ -30,7 +30,7 @@ const config = { buckets, defaultBucket, ...window.__CONFIG };
 
 const check = conforms({
   alwaysRequiresAuth: R.is(Boolean),
-  sentryDSN: R.is(String),
+  sentryDSN: R.either(R.isNil, R.is(String)),
   apiGatewayUrl: R.is(String),
 });
 
