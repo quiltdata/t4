@@ -1,10 +1,24 @@
+"""
+bucket.py
+
+Contains the Bucket class, which provides several useful functions
+    over an s3 bucket.
+"""
+import json
 import pathlib
 from urllib.parse import urlparse
 
+import requests
+
 from .data_transfer import (copy_file, copy_object, delete_object,
-                            get_bytes, get_meta, list_objects, put_bytes)
+                            get_bytes, get_size_and_meta,
+                            list_objects, put_bytes, select)
 from .formats import FormatRegistry
+from .search_util import search
 from .util import QuiltException, fix_url, parse_s3_url
+
+
+CONFIG_URL = "https://t4.quiltdata.com/config.json"
 
 
 class Bucket(object):
@@ -28,6 +42,50 @@ class Bucket(object):
 
         self._uri = 's3://{}/'.format(bucket)
         self._bucket = bucket
+        self._search_endpoint = None
+
+    def config(self, config_url=CONFIG_URL, quiet=False):
+        """
+        Updates this bucket's search endpoint based on a federation config.
+        """
+        response = requests.get(config_url)
+        if not response.ok:
+            # just don't do anything
+            if not quiet:
+                raise QuiltException("Failed to retrieve bucket search "
+                                     "config at config_url")
+            return
+        configs = json.loads(response.text).get('configs', None)
+        if not configs:
+            if not quiet:
+                raise QuiltException("Config at config_url malformed")
+            return
+        if self._bucket in configs:
+            self._search_endpoint = configs[self._bucket]['search_endpoint']
+        elif not quiet:
+            raise QuiltException("Config info not found for this bucket")
+
+    def search(self, query):
+        """
+        Execute a search against the configured search endpoint.
+
+        query: query string to search
+
+        Returns either the request object (in case of an error) or
+                a list of objects with the following keys:
+            key: key of the object
+            version_id: version_id of object version
+            operation: Create or Delete
+            meta: metadata attached to object
+            size: size of object in bytes
+            text: indexed text of object
+            source: source document for object (what is actually stored in ElasticSeach)
+            time: timestamp for operation
+
+        """
+        if not self._search_endpoint:
+            self.config()
+        return search(query, self._search_endpoint)
 
     def deserialize(self, key):
         """
@@ -82,7 +140,7 @@ class Bucket(object):
             if copy fails
         """
         dest = self._uri + key
-        copy_file(path, dest)
+        copy_file(fix_url(path), dest)
 
     def put_dir(self, key, directory):
         """
@@ -172,7 +230,7 @@ class Bucket(object):
             if download fails
         """
         src_uri = self._uri + key
-        return get_meta(src_uri)
+        return get_size_and_meta(src_uri)[1]
 
     def set_meta(self, key, meta):
         """
@@ -191,3 +249,19 @@ class Bucket(object):
         existing_meta = self.get_meta(key)
         existing_meta['user_meta'] = meta
         copy_object(self._bucket, key, self._bucket, key, existing_meta)
+
+    def select(self, key, query, raw=False):
+        """
+        Selects data from an S3 object.
+
+        Args:
+            key(str): key to query in bucket
+            query(str): query to execute (SQL by default)
+            query_type(str): other query type accepted by S3 service
+            raw(bool): return the raw (but parsed) response
+        Returns:
+            pandas.DataFrame with results of query
+        """
+        meta = self.get_meta(key)
+        uri = self._uri + key
+        return select(uri, query, meta=meta, alt_s3_client=None, raw=raw)

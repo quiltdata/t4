@@ -175,10 +175,12 @@ def test_fetch(tmpdir):
     pkg = (
         Package()
         .set('foo', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
-             {'target': 'unicode', 'user_meta': 'blah'})
+             {'user_meta': 'blah'})
         .set('bar', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
-             {'target': 'unicode', 'user_meta': 'blah'})
+             {'user_meta': 'blah'})
     )
+    pkg['foo'].meta['target'] = 'unicode'
+    pkg['bar'].meta['target'] = 'unicode'
 
     with open(os.path.join(os.path.dirname(__file__), 'data', 'foo.txt')) as fd:
         assert fd.read().replace('\n', '') == '123'
@@ -243,12 +245,13 @@ def test_package_deserialize(tmpdir):
     pkg = (
         Package()
         .set('foo', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
-             {'target': 'unicode', 'user_meta': 'blah'})
+             {'user_meta_foo': 'blah'})
         .set('bar', os.path.join(os.path.dirname(__file__), 'data', 'foo.unrecognized.ext'))
         .set('baz', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'))
     )
     pkg.build()
 
+    pkg['foo'].meta['target'] = 'unicode'
     assert pkg['foo'].deserialize() == '123\n'
     assert pkg['baz'].deserialize() == '123\n'
 
@@ -322,10 +325,12 @@ def test_updates(tmpdir):
     pkg = (
         Package()
         .set('foo', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
-             {'target': 'unicode', 'user_meta': 'blah'})
+             {'foo_meta': 'blah'})
         .set('bar', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
-            {'target': 'unicode', 'user_meta': 'blah'})
+            {'bar_meta': 'blah'})
     )
+    pkg['foo'].meta['target'] = 'unicode'
+    pkg['bar'].meta['target'] = 'unicode'
     pkg.build()
 
     assert pkg['foo']() == '123\n'
@@ -354,10 +359,12 @@ def test_package_entry_meta():
     pkg = (
         Package()
         .set('foo', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
-            {'target': 'unicode', 'user_meta': {'value': 'blah'}})
+            {'value': 'blah'})
         .set('bar', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
-            {'target': 'unicode', 'user_meta': {'value': 'blah2'}})
+            {'value': 'blah2'})
     )
+    pkg['foo'].meta['target'] = 'unicode'
+    pkg['bar'].meta['target'] = 'unicode'
 
     assert pkg['foo'].get_user_meta() == {'value': 'blah'}
     assert pkg['bar'].get_user_meta() == {'value': 'blah2'}
@@ -401,10 +408,12 @@ def test_set_package_entry(tmpdir):
     pkg = (
         Package()
         .set('foo', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
-             {'target': 'unicode', 'user_meta': 'blah'})
+             {'user_meta': 'blah'})
         .set('bar', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
-            {'target': 'unicode', 'user_meta': 'blah'})
+             {'user_meta': 'blah'})
     )
+    pkg['foo'].meta['target'] = 'unicode'
+    pkg['bar'].meta['target'] = 'unicode'
 
     # Build a dummy file to add to the map.
     with open('bar.txt', "w") as fd:
@@ -484,8 +493,9 @@ def test_brackets():
     pkg = (
         Package()
         .set('foo', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
-             {'target': 'unicode', 'user_meta': 'blah'})
+             {'foo': 'blah'})
     )
+    pkg['foo'].meta['target'] = 'unicode'
 
     pkg.build()
 
@@ -583,6 +593,38 @@ def test_top_hash_stable():
     assert pkg.top_hash() == pkg_hash, \
            "Unexpected top_hash for {}/.quilt/packages/{}".format(registry, pkg_hash)
 
+
+@patch('appdirs.user_data_dir', lambda x, y: os.path.join('test_appdir', x))
+def test_local_package_delete(tmpdir):
+    """Verify local package delete works."""
+    top_hash = Package().build("Quilt/Test")
+    t4.delete_package('Quilt/Test', registry=BASE_PATH)
+
+    assert 'Quilt/Test' not in t4.list_packages()
+    assert top_hash not in [p.name for p in
+                            Path(BASE_PATH, '.quilt/packages').iterdir()]
+
+
+@patch('appdirs.user_data_dir', lambda x, y: os.path.join('test_appdir', x))
+def test_local_package_delete_overlapping(tmpdir):
+    """
+    Verify local package delete works when multiple packages reference the
+    same tophash.
+    """
+    top_hash = Package().build("Quilt/Test1")
+    top_hash = Package().build("Quilt/Test2")
+    t4.delete_package('Quilt/Test1', registry=BASE_PATH)
+
+    assert 'Quilt/Test1' not in t4.list_packages()
+    assert top_hash in [p.name for p in
+                        Path(BASE_PATH, '.quilt/packages').iterdir()]
+
+    t4.delete_package('Quilt/Test2', registry=BASE_PATH)
+    assert 'Quilt/Test2' not in t4.list_packages()
+    assert top_hash not in [p.name for p in
+                            Path(BASE_PATH, '.quilt/packages').iterdir()]
+
+
 def test_commit_message_on_push(tmpdir):
     """ Verify commit messages populate correctly on push."""
     with patch('botocore.client.BaseClient._make_api_call', new=mock_make_api_call):
@@ -614,3 +656,56 @@ def test_siblings_succeed():
     pkg = Package()
     pkg.set('as/df', LOCAL_MANIFEST)
     pkg.set('as/qw', LOCAL_MANIFEST)
+
+def test_repr():
+    TEST_REPR = (
+        "asdf\n"
+        "path1/\n"
+        "  asdf\n"
+        "  qwer\n"
+        "path2/\n"
+        "  first/\n"
+        "    asdf\n"
+        "  second/\n"
+        "    asdf\n"
+        "qwer\n"
+    )
+    pkg = Package()
+    pkg.set('asdf', LOCAL_MANIFEST)
+    pkg.set('qwer', LOCAL_MANIFEST)
+    pkg.set('path1/asdf', LOCAL_MANIFEST)
+    pkg.set('path1/qwer', LOCAL_MANIFEST)
+    pkg.set('path2/first/asdf', LOCAL_MANIFEST)
+    pkg.set('path2/second/asdf', LOCAL_MANIFEST)
+    assert repr(pkg) == TEST_REPR
+
+def test_long_repr():
+    pkg = Package()
+    for i in range(30):
+        pkg.set('path{}/asdf'.format(i), LOCAL_MANIFEST)
+    r = repr(pkg)
+    assert r.count('\n') == 20
+    assert r[-4:] == '...\n'
+
+    pkg = Package()
+    for i in range(10):
+        pkg.set('path{}/asdf'.format(i), LOCAL_MANIFEST)
+        pkg.set('path{}/qwer'.format(i), LOCAL_MANIFEST)
+    pkgrepr = repr(pkg)
+    assert pkgrepr.count('\n') == 20
+    assert pkgrepr.find('path9/') > 0
+
+def test_repr_empty_package():
+    pkg = Package()
+    r = repr(pkg)
+    assert r == "(empty Package)"
+
+def test_manifest():
+    pkg = Package()
+    pkg.set('as/df', LOCAL_MANIFEST)
+    pkg.set('as/qw', LOCAL_MANIFEST)
+    top_hash = pkg.build()
+    manifest = list(pkg.manifest)
+
+    pkg2 = Package.browse(pkg_hash=top_hash)
+    assert list(pkg.manifest) == list(pkg2.manifest)

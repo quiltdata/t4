@@ -4,8 +4,10 @@ import 'babel-polyfill';
 import 'whatwg-fetch';
 
 // Import all the third party stuff
+import MuiThemeProviderV0 from 'material-ui/styles/MuiThemeProvider';
+import { MuiThemeProvider } from '@material-ui/core/styles';
 import ReactDOM from 'react-dom';
-import { LOCATION_CHANGE } from 'connected-react-router/immutable';
+// import { LOCATION_CHANGE } from 'connected-react-router/immutable';
 import createHistory from 'history/createBrowserHistory';
 import 'sanitize.css/sanitize.css';
 //  Need to bypass CSS modules used by standard loader
@@ -14,19 +16,23 @@ import '!!style-loader!css-loader!css/bootstrap-grid.css';
 
 // Import root app
 import App from 'containers/App';
-// Import Language Provider
 import LanguageProvider from 'containers/LanguageProvider';
 import * as AWSAuth from 'containers/AWSAuth';
-import { Provider as NotificationsProvider } from 'containers/Notifications';
+import * as BucketConfig from 'containers/Bucket/Config';
+import * as Notifications from 'containers/Notifications';
 import config from 'constants/config';
+import routes from 'constants/routes';
+import * as style from 'constants/style';
 import * as AWS from 'utils/AWS';
+import * as Data from 'utils/Data';
+import * as NamedRoutes from 'utils/NamedRoutes';
+import FormProvider from 'utils/ReduxFormProvider';
+import StoreProvider from 'utils/StoreProvider';
 import fontLoader from 'utils/fontLoader';
 import { nest } from 'utils/reactTools';
-import FormProvider from 'utils/ReduxFormProvider';
 import RouterProvider from 'utils/router';
 import mkStorage from 'utils/storage';
-import StoreProvider from 'utils/StoreProvider';
-import tracking from 'utils/tracking';
+// import tracking from 'utils/tracking';
 // Load the favicon, the manifest.json file and the .htaccess file
 /* eslint-disable import/no-unresolved, import/extensions */
 import '!file-loader?name=[name].[ext]!./favicon.ico';
@@ -47,6 +53,7 @@ fontLoader('Roboto', 'Roboto Mono').then(() => {
   document.body.classList.add('fontLoaded');
 });
 
+
 // Create redux store with history
 const initialState = {};
 const history = createHistory();
@@ -61,24 +68,25 @@ const render = (messages) => {
       [StoreProvider, { store }],
       FormProvider,
       [LanguageProvider, { messages }],
-      NotificationsProvider,
+      Notifications.Provider,
       // TODO: figure out AWS components order / race conditions
       [AWSAuth.Provider, {
         storage,
-        testBucket: config.aws.s3Bucket,
-        signInRedirect: '/browse/',
+        testBucket: config.defaultBucket,
+        signInRedirect: routes.bucketRoot.url(config.defaultBucket),
       }],
       [AWS.Config.Provider, {
         credentialsSelector: AWSAuth.selectors.credentials,
-        region: config.aws.region,
       }],
       AWS.S3.Provider,
       AWS.Signer.Provider,
-      [AWS.ES.Provider, {
-        host: config.aws.elasticSearchUrl,
-        log: 'trace',
-      }],
+      Data.Provider,
+      [BucketConfig.BucketsProvider, { buckets: config.buckets }],
       [RouterProvider, { history }],
+      [MuiThemeProviderV0, { muiTheme: style.themeV0 }],
+      [MuiThemeProvider, { theme: style.theme }],
+      Notifications.WithNotifications,
+      [NamedRoutes.Provider, { routes }],
       App,
     ),
     MOUNT_NODE
@@ -86,10 +94,12 @@ const render = (messages) => {
 };
 
 // track navigation
+/*
 store.runSaga(tracking, {
   locationChangeAction: LOCATION_CHANGE,
   token: config.mixpanelToken,
 });
+*/
 
 if (module.hot) {
   // Hot reloadable React components and translation json files

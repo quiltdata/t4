@@ -1,3 +1,4 @@
+from collections import deque
 import copy
 import hashlib
 import io
@@ -15,7 +16,7 @@ from six import string_types, binary_type
 
 
 from .data_transfer import (
-    calculate_sha256_and_size, copy_file, get_bytes, get_meta, 
+    calculate_sha256, copy_file, get_bytes, get_size_and_meta, 
     list_object_versions, put_bytes
 )
 from .exceptions import PackageException
@@ -103,8 +104,6 @@ class PackageEntry(object):
         """
         Returns dict representation of entry.
         """
-        if self.hash is None or self.size is None:
-            raise QuiltException("PackageEntry missing hash and/or size: %s" % self.physical_keys[0])
         ret = {
             'physical_keys': self.physical_keys,
             'size': self.size,
@@ -235,6 +234,77 @@ class Package(object):
     def __init__(self):
         self._children = {}
         self._meta = {'version': 'v0'}
+
+    def _unlimited_repr(self, level=0, indent='  '):
+        """
+        String representation without line limit.
+        """
+        self_repr = ''
+        for child_key in sorted(self.keys()):
+            if isinstance(self[child_key], Package):
+                child_entry = indent*level + child_key + '/\n'
+                self_repr += child_entry
+                self_repr += self[child_key].__repr__(level+1, indent)
+            else: # leaf node
+                self_repr += indent*level + child_key + '\n'
+        return self_repr
+
+    def __repr__(self, max_lines=20):
+        """
+        String representation of the Package.
+        """
+        if not self.keys():
+            return "(empty Package)"
+
+        if max_lines is None:
+            return self._unlimited_repr()
+
+        if len(self.keys()) > max_lines:
+            # If there aren't enough lines to display all top-level children,
+            #   display as many as possible with a '...' at the end
+            self_repr = ''
+            i = 0
+            for key in sorted(self.keys()):
+                if i >= max_lines - 1:
+                    self_repr += '...\n'
+                    return self_repr
+                if isinstance(self[key], Package):
+                    key = key + '/'
+                self_repr += key + '\n'
+                i += 1
+            assert False, "This should never happen"
+
+        def _create_str(results_dict, level=0, indent='  '):
+            """
+            Creates a string from the results dict
+            """
+            result = ''
+            for key in sorted(results_dict.keys()):
+                result += indent*level + key + '\n'
+                result += _create_str(results_dict[key], level+1, indent)
+            return result
+
+        # candidates is a deque of 
+        #     ((logical_key, Package | PackageEntry), [list of parent key])
+        candidates = deque(([x, []] for x in self._children.items()))
+        results_dict = {}
+        results_total = 0
+        while len(candidates) and results_total < max_lines:
+            [[logical_key, entry], parent_keys] = candidates.popleft()
+            if isinstance(entry, Package):
+                logical_key = logical_key + '/'
+                new_parent_keys = parent_keys.copy()
+                new_parent_keys.append(logical_key)
+                for child_key in sorted(entry.keys()):
+                    candidates.append([[child_key, entry[child_key]], new_parent_keys])
+
+            current_result_level = results_dict
+            for key in parent_keys:
+                current_result_level = current_result_level[key]
+            current_result_level[logical_key] = {}
+            results_total += 1
+
+        return _create_str(results_dict)
 
     @classmethod
     def validate_package_name(cls, name):
@@ -483,7 +553,7 @@ class Package(object):
             for f in files:
                 if not f.is_file():
                     continue
-                entry = PackageEntry([f.as_uri()], None, None, None)
+                entry = PackageEntry([f.as_uri()], f.stat().st_size, None, None)
                 logical_key = f.relative_to(src_path).as_posix()
                 # TODO: Warn if overwritting a logical key?
                 root.set(logical_key, entry)
@@ -541,12 +611,17 @@ class Package(object):
         """
         self._meta['user_meta'] = meta
 
-    def _fix_sha256_and_size(self):
-        entries = [entry for key, entry in self.walk() if entry.hash is None or entry.size is None]
-        results = calculate_sha256_and_size((entry.physical_keys[0] for entry in entries))
-        for entry, (obj_hash, size) in zip(entries, results):
+    def _fix_sha256(self):
+        entries = [entry for key, entry in self.walk() if entry.hash is None]
+        if not entries:
+            return
+
+        physical_keys = (entry.physical_keys[0] for entry in entries)
+        total_size = sum(entry.size for entry in entries)
+        results = calculate_sha256(physical_keys, total_size)
+
+        for entry, obj_hash in zip(entries, results):
             entry.hash = dict(type='SHA256', value=obj_hash)
-            entry.size = size
 
     def _set_commit_message(self, msg):
         """
@@ -583,7 +658,7 @@ class Package(object):
 
         registry_prefix = get_package_registry(fix_url(registry) if registry else None)
 
-        self._fix_sha256_and_size()
+        self._fix_sha256()
 
         hash_string = self.top_hash()
         manifest = io.BytesIO()
@@ -622,11 +697,19 @@ class Package(object):
             fail to finish write
         """
         writer = jsonlines.Writer(writable_file)
-        writer.write(self._meta)
+        for line in self.manifest:
+            writer.write(line)
+
+    @property
+    def manifest(self):
+        """
+        Returns a generator of the dicts that make up the serialied package.
+        """
+        yield self._meta
         for dir_key, meta in self._walk_dir_meta():
-            writer.write({'logical_key': dir_key, 'meta': meta})
+            yield {'logical_key': dir_key, 'meta': meta}
         for logical_key, entry in self.walk():
-            writer.write({'logical_key': logical_key, **entry.as_dict()})
+            yield {'logical_key': logical_key, **entry.as_dict()}
 
     def update(self, new_keys_dict, meta=None, prefix=None):
         """
@@ -657,21 +740,21 @@ class Package(object):
             logical_key(string): logical key to update
             entry(PackageEntry OR string): new entry to place at logical_key in the package
                 if entry is a string, it is treated as a URL, and an entry is created based on it
-            meta(dict): metadata dict to attach to entry
+            meta(dict): user level metadata dict to attach to entry
 
         Returns:
             self
         """
         if isinstance(entry, (string_types, getattr(os, 'PathLike', str))):
             url = fix_url(str(entry))
-            get_meta(url)  # Unused, but ensures that the URL exists
-            entry = PackageEntry([url], None, None, meta)
+            size, orig_meta = get_size_and_meta(url)
+            entry = PackageEntry([url], size, None, orig_meta)
         elif isinstance(entry, PackageEntry):
             entry = entry._clone()
-            if meta is not None:
-                entry.meta = meta
         else:
             raise TypeError("Expected a string for entry")
+        if meta is not None:
+            entry.set_user_meta(meta)
 
         path = self._split_key(logical_key)
 
@@ -732,6 +815,8 @@ class Package(object):
         top_meta = json.dumps(self._meta, sort_keys=True, separators=(',', ':'))
         top_hash.update(top_meta.encode('utf-8'))
         for logical_key, entry in self.walk():
+            if entry.hash is None or entry.size is None:
+                raise QuiltException("PackageEntry missing hash and/or size: %s" % entry.physical_keys[0])
             entry_dict = entry.as_dict()
             entry_dict['logical_key'] = logical_key
             entry_dict.pop('physical_keys', None)
@@ -760,7 +845,7 @@ class Package(object):
         if registry is None:
             registry = dest
 
-        self._fix_sha256_and_size()
+        self._fix_sha256()
 
         dest_url = fix_url(dest).rstrip('/') + '/' + quote(name)
         if dest_url.startswith('file://') or dest_url.startswith('s3://'):
@@ -795,10 +880,11 @@ class Package(object):
             # Copy the datafiles in the package.
             physical_key = _to_singleton(entry.physical_keys)
             new_physical_key = dest_url + "/" + quote(logical_key)
-            copy_file(physical_key, new_physical_key, entry.meta)
+            versioned_key = copy_file(physical_key, new_physical_key, entry.meta)
 
             # Create a new package entry pointing to the new remote key.
             new_entry = entry._clone()
+            new_physical_key = versioned_key[0] if versioned_key else new_physical_key
             new_entry.physical_keys = [new_physical_key]
             pkg.set(logical_key, new_entry)
         return pkg

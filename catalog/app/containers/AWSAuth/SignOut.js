@@ -1,9 +1,10 @@
-import React, { Fragment } from 'react';
+import * as React from 'react';
 import { FormattedMessage as FM } from 'react-intl';
 import { connect } from 'react-redux';
 import { Redirect } from 'react-router-dom';
 import { createStructuredSelector } from 'reselect';
 
+import Layout from 'components/Layout';
 import Lifecycle from 'components/Lifecycle';
 import Working from 'components/Working';
 import { composeComponent } from 'utils/reactTools';
@@ -21,9 +22,9 @@ export default composeComponent('AWSAuth.SignOut',
     doSignOut: signOut,
   }),
   ({ waiting, authenticated, signOutRedirect, doSignOut }) => (
-    <Fragment>
+    <Layout>
       {!waiting && authenticated && <Lifecycle willMount={doSignOut} />}
       {!authenticated && <Redirect to={signOutRedirect} />}
       <Working><FM {...msg.signOutWaiting} /></Working>
-    </Fragment>
+    </Layout>
   ));
