@@ -118,13 +118,13 @@ class FormatRegistry:
                 print("Notice: Using format specified by metadata ({!r}) but extension {!r} doesn't match."
                       .format(meta_fmt.name, ext))
             assert isinstance(meta_fmt, BaseFormat)
-            return (meta_fmt.name if check_only
+            return (meta_fmt if check_only
                     else meta_fmt.serialize(obj, meta=meta, ext=ext, raw_args=raw_args, **format_opts))
         # prefer a format that matches the extension.
         elif ext_fmts:
             for fmt in ext_fmts:
                 if fmt in obj_fmts:
-                    return (fmt.name if check_only
+                    return (fmt if check_only
                             else fmt.serialize(obj, meta=meta, ext=ext, raw_args=raw_args, **format_opts))
         # otherwise, just use the first format that can handle obj.
         if obj_fmts:
@@ -133,7 +133,7 @@ class FormatRegistry:
                       .format(ext))
                 print("        Using {!r} format instead.".format(obj_fmts[0].name))
             fmt = obj_fmts[0]
-            return (fmt.name if check_only
+            return (fmt if check_only
                     else fmt.serialize(obj, meta=meta, ext=ext, raw_args=raw_args, **format_opts))
         raise QuiltException("No Format to serialize object with")
 
@@ -149,7 +149,7 @@ class FormatRegistry:
                 if meta_fmt not in typ_fmts:
                     raise QuiltException("Cannot deserialize as specified type: {}".format(as_type))
             if check_only:
-                return meta_fmt.name
+                return meta_fmt
             assert isinstance(meta_fmt, BaseFormat)
             return meta_fmt.deserialize(bytes_obj, meta=meta, ext=ext, raw_args=raw_args, **format_opts)
         fmt_name = cls._get_name_from_meta(meta)
@@ -161,7 +161,7 @@ class FormatRegistry:
             if as_type and ext_fmt not in typ_fmts:
                 continue
             if check_only:
-                return ext_fmt.name
+                return ext_fmt
             assert isinstance(ext_fmt, BaseFormat)
             return ext_fmt.deserialize(bytes_obj, meta=meta, ext=ext, raw_args=raw_args, **format_opts)
         if ext_fmts and as_type:
@@ -309,12 +309,12 @@ class BaseFormat(ABC):
         FormatRegistry.register(self)
 
     def _update_meta(self, meta, additions=None):
-        """Merge `additions` into `meta`.
+        """Merge `additions` into a copy of `meta`, and returns the result.
 
         `additions` are recursively merged into `meta`.  If a .
         """
         additions = additions if additions else {}
-        meta = meta if meta is not None else {}
+        meta = copy.deepcopy(meta) if meta is not None else {}
 
         format_meta = meta.get('format', {})
         meta['format'] = format_meta   # in case default was used
@@ -326,6 +326,8 @@ class BaseFormat(ABC):
 
         # compat -- remove once we stop using 'target' in other code.
         meta['target'] = self.name
+
+        return meta
 
     @abstractmethod
     def serialize(self, obj, meta=None, ext=None, raw_args=None, **format_opts):
@@ -341,6 +343,10 @@ class BaseFormat(ABC):
                 needed for some poorly-specified formats, like CSV.  If
                 used in serialization, they are retained and used for
                 deserialization.
+        Returns:
+            (bytes, dict):
+                bytes: serialized object
+                dict: metadata update
         """
         pass
 
@@ -361,6 +367,8 @@ class BaseFormat(ABC):
                 needed for some poorly-specified formats, like CSV.  If
                 used in serialization, they are retained and used for
                 deserialization.
+        Returns:
+            object
         """
         pass
 
@@ -431,8 +439,7 @@ class GenericFormat(BaseFormat):
             :param raw_args:
         """
         data = self._serializer(obj, **(raw_args if raw_args else {}))
-        self._update_meta(meta)
-        return data
+        return data, self._update_meta(meta)
 
     def deserialize(self, bytes_obj, meta=None, ext=None, raw_args=None, **format_opts):
         """Pass `bytes_obj` to deserializer and return the result
@@ -678,11 +685,7 @@ class CSVPandasFormat(BaseFormat):
         encoded_buf = self._WriteEncodingWrapper(buf, encoding=kwargs['encoding'])
         obj.to_csv(encoded_buf, **(raw_args if raw_args is not None else kwargs))
 
-        self._update_meta(meta, additions={'opts': opts_with_defaults})
-
-        # return buf.getvalue()
-        return buf.getvalue()
-        # /workaround
+        return buf.getvalue(), self._update_meta(meta, additions={'opts': opts_with_defaults})
 
     def get_des_kwargs(self, opts):
         opts = copy.deepcopy(opts)
@@ -805,8 +808,7 @@ class NumpyFormat(BaseFormat):
             raw_args['allow_pickle'] = False
 
         np.save(buf, obj, **(kwargs if raw_args is None else raw_args))
-        self._update_meta(meta)
-        return buf.getvalue()
+        return buf.getvalue(), self._update_meta(meta)
 
     def deserialize(self, bytes_obj, meta=None, ext=None, raw_args=None, **format_opts):
         import numpy as np
@@ -881,8 +883,8 @@ class ParquetFormat(BaseFormat):
 
         buf = io.BytesIO()
         parquet.write_table(table, buf, **(raw_args if raw_args is not None else kwargs))
-        self._update_meta(meta, additions=opts_with_defaults)
-        return buf.getvalue()
+
+        return buf.getvalue(), self._update_meta(meta, additions=opts_with_defaults)
 
 
     def deserialize(self, bytes_obj, meta=None, ext=None, raw_args=None, **format_opts):

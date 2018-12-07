@@ -121,7 +121,8 @@ class Bucket(object):
         """
         dest = self._uri + key
         all_meta = dict(user_meta=meta or {})
-        data = FormatRegistry.serialize(obj, all_meta)  # all_meta gets updated.
+        data, format_meta = FormatRegistry.serialize(obj, all_meta)
+        all_meta.update(format_meta)
         put_bytes(data, dest, all_meta)
 
     def put_file(self, key, path):
