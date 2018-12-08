@@ -116,8 +116,10 @@ const BucketSelect = RT.composeComponent('NavBar.BucketControls.BucketSelect',
       setAnchor(evt.target);
     },
     handleBlur: ({ setAnchor, cancel }) => () => {
-      setAnchor(null);
-      if (cancel) cancel();
+      setTimeout(() => {
+        setAnchor(null);
+        if (cancel) cancel();
+      }, 300);
     },
   }),
   RC.withHandlers({
@@ -211,7 +213,7 @@ const BucketSelect = RT.composeComponent('NavBar.BucketControls.BucketSelect',
               <MenuItem
                 className={classes.item}
                 key={s.name}
-                onMouseDown={() => handleSuggestion(s.name)}
+                onClick={() => handleSuggestion(s.name)}
                 selected={s.name === value}
               >
                 <img src={s.icon} alt={s.title} className={classes.icon} />
