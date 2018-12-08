@@ -1,4 +1,5 @@
-import { stringify } from 'query-string';
+import { stringify } from 'querystring';
+
 import * as R from 'ramda';
 import * as React from 'react';
 import { withPropsOnChange } from 'recompose';
@@ -15,7 +16,7 @@ const Ctx = React.createContext();
 
 export const mkSearch = R.pipe(
   stringify,
-  R.unless(R.isEmpty, (qs) => `?${qs}`),
+  R.unless(R.isEmpty, R.concat('?')),
 );
 
 export const Provider = composeComponent('NamedRoutes.Provider',

@@ -1,8 +1,10 @@
+import { parse } from 'querystring';
+
 import PT from 'prop-types';
 import { setPropTypes, withProps } from 'recompose';
-import { parse } from 'query-string';
 
 import { composeHOC } from 'utils/reactTools';
+
 
 export default composeHOC('withParsedQuery',
   setPropTypes({
@@ -11,5 +13,5 @@ export default composeHOC('withParsedQuery',
     }).isRequired,
   }),
   withProps(({ location }) => ({
-    location: { ...location, query: parse(location.search) },
+    location: { ...location, query: parse(location.search.replace(/^\?/, '')) },
   })));
