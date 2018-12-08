@@ -4,7 +4,7 @@ import PropTypes from 'prop-types';
 import React, { Fragment } from 'react';
 import { connect } from 'react-redux';
 import { Link } from 'react-router-dom';
-import { lifecycle, setPropTypes/* , compose */ } from 'recompose';
+import { lifecycle, setPropTypes, defaultProps } from 'recompose';
 import { FormattedMessage } from 'react-intl';
 import { createStructuredSelector } from 'reselect';
 import styled from 'styled-components';
@@ -162,7 +162,10 @@ const NothingFound = () => (
 export default composeComponent('SearchResults',
   setPropTypes({
     bucket: PropTypes.string.isRequired,
-    q: PropTypes.string.isRequired,
+    q: PropTypes.string,
+  }),
+  defaultProps({
+    q: '',
   }),
   ES.inject(),
   injectReducer(REDUX_KEY, reducer),
@@ -173,7 +176,7 @@ export default composeComponent('SearchResults',
   })),
   NamedRoutes.inject(),
   lifecycle({
-    componentWillMount() {
+    componentDidMount() {
       const {
         q,
         searchText,
@@ -182,8 +185,8 @@ export default composeComponent('SearchResults',
       if (q !== searchText) dispatch(setSearchText(q));
       dispatch(getSearch(q));
     },
-    componentWillReceiveProps({ dispatch, searchText, q }) {
-      const oldQ = this.props.q;
+    componentDidUpdate({ q: oldQ }) {
+      const { dispatch, searchText, q } = this.props;
       if (q !== oldQ) {
         dispatch(getSearch(q));
         if (q !== searchText) dispatch(setSearchText(q));

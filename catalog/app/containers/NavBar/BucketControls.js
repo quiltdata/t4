@@ -270,8 +270,7 @@ const Search = RT.composeComponent('NavBar.BucketControls.Search',
       if (evt.key === 'Enter') {
         /* suppress onSubmit (didn't actually find this to be a problem tho) */
         evt.preventDefault();
-        // TODO: check out if encodeURIComponent is required
-        dispatch(push(urls.bucketSearch(bucket, encodeURIComponent(searchText))));
+        dispatch(push(urls.bucketSearch(bucket, searchText)));
       }
     },
   }),
