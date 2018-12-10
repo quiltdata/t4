@@ -69,8 +69,6 @@ const processResults = ({ hits: { hits } }) =>
 
 export function* getSearch(es, { query }) {
   try {
-    // TODO: rm debug code
-    window.query = query;
     const formattedquery = {
       query: {
         query_string: {
