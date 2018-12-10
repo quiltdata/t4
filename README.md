@@ -13,7 +13,7 @@ T4 is alpha software. It is not yet recommended for production use.
 * Every file in T4 is versioned and searchable
 * T4 is for data scientists, data engineers, and data-driven teams
 
-![](./img/t4.gif)
+![](docs/imgs/t4.gif)
 
 ### Use cases
 * Collaborate - get everyone on the same page by pointing them all to the same immutable data version
