@@ -1,6 +1,6 @@
 # Summary
 
-* [Introduction](../README.md)
+* [Introduction](README.md)
 * [Installation](Installation.md)
 * [Quickstart](Quickstart.md)
 
