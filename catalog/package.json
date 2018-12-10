@@ -43,7 +43,7 @@
     "test": "cross-env NODE_ENV=test jest --coverage",
     "test:watch": "cross-env NODE_ENV=test jest --watchAll",
     "coveralls": "cat ./coverage/lcov.info | coveralls",
-    "config": "sh -c 'set -a; . \"$0\"; set +a; envsubst < config.js.tmpl > static/config.js'"
+    "config": "node ./internals/scripts/config.js"
   },
   "lint-staged": {
     "*.js": "npm run lint:eslint --"
