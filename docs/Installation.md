@@ -29,30 +29,30 @@ The following instructions use CloudFormation to install T4 on a bucket in your 
 
 * Go to Services > CloudFormation > Create stack
 
-![](../deployment/img/start.png)
+![](imgs/start.png)
 
 * Click "Upload a template to Amazon S3" and select `t4.yaml`, provided to you by Quilt
 * Click Next
 * Fill in Stack name and Parameters
 
-![](../deployment/img/params.png)
+![](imgs/params.png)
 
 > Carefully note parameter descriptions to avoid stack failure
 
 * Click Next
 * You can safely skip the Options screen (below) by clicking Next
 
-![](../deployment/img/skip.png)
+![](imgs/skip.png)
 
 * Acknowledge that CloudFormation may create IAM roles
 
-![](../deployment/img/finish.png)
+![](imgs/finish.png)
 
 * Click Create (typically takes 30 minutes to complete)
 
 * You should see `CREATE_COMPLETE` as the Status for your CloudFormation stack. Select the stack and open the Outputs tab. The Value of `CloudFrontDomain` is your CloudFront origin. Depending on your S3 bucket's [CORS policy](#pre-requisites) your web catalog is available at the CloudFront and/or the `CNAME` set by you in the following step.
 
-![](../deployment/img/outputs.png)
+![](imgs/outputs.png)
 
 * If desired, set a `CNAME` record with your DNS service that points to your CloudFrontDomain. The `CNAME` must also be present in your [CORS policy](#pre-requisites). Now users can access the T4 catalog at your custom
 `CNAME`.
