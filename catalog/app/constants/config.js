@@ -21,6 +21,11 @@ const buckets = [
     searchEndpoint: 'https://search-quilt-aics-2alivodd7we6cjhcrkxguahbkm.us-east-1.es.amazonaws.com/',
     menu: true,
   },
+  {
+    name: 'alpha-quilt-storage',
+    title: 'Alpha',
+    searchEndpoint: 'https://search-alpha-ness-i55uw3a7cpm3aejv22y7p4ijge.us-east-1.es.amazonaws.com',
+  },
 ];
 
 const defaultBucket = 'quilt-example';
