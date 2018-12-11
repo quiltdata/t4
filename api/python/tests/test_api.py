@@ -8,7 +8,6 @@ from ruamel.yaml import YAML
 import t4 as he
 from t4 import util
 
-
 class TestAPI():
     @responses.activate
     def test_config(self):
