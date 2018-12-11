@@ -1,13 +1,38 @@
+import os
+import sys
+
 from setuptools import setup, find_packages
+from setuptools.command.install import install
+
+VERSION = "0.0.3"
 
 def readme():
     readme_short = """
+    Quilt T4 is a data management tool designed for data discoverability, data dependency
+    management, and data version control using `data packages <https://blog.quiltdata.com/data-packages-for-fast-reproducible-python-analysis-c74b78015c7f>`_.
+
+    The `t4` PyPi package allows you to build, push, and pull data packages in T4 using Python.
+    Visit the `documentation quickstart <https://quiltdocs.gitbook.io/t4/quickstart>`_ for more information.
+
     """
     return readme_short
 
+class VerifyVersionCommand(install):
+    """Custom command to verify that the git tag matches our version"""
+    description = 'verify that the git tag matches our version'
+
+    def run(self):
+        tag = os.getenv('CIRCLE_TAG')
+
+        if tag != VERSION:
+            info = "Git tag: {0} does not match the version of this app: {1}".format(
+                tag, VERSION
+            )
+            sys.exit(info)
+
 setup(
     name="t4",
-    version="0.0.1-dev",
+    version=VERSION,
     packages=find_packages(),
     description='T4',
     long_description=readme(),
@@ -59,5 +84,8 @@ setup(
     include_package_data=True,
     entry_points={
         # 'console_scripts': ['quilt=quilt.tools.main:main'],
-    }
+    },
+    cmdclass={
+        'verify': VerifyVersionCommand,
+    }    
 )
