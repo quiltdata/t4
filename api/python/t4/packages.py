@@ -5,7 +5,6 @@ import io
 import json
 import pathlib
 import os
-import re
 
 import time
 
@@ -21,8 +20,7 @@ from .data_transfer import (
 )
 from .exceptions import PackageException
 from .util import (
-    QuiltException, BASE_PATH, fix_url, PACKAGE_NAME_FORMAT,
-    parse_file_url, parse_s3_url
+    QuiltException, BASE_PATH, fix_url, parse_file_url, parse_s3_url, validate_package_name
 )
 
 
@@ -305,12 +303,6 @@ class Package(object):
         return _create_str(results_dict)
 
     @classmethod
-    def validate_package_name(cls, name):
-        """ Verify that a package name is two alphanumerics strings separated by a slash."""
-        if not re.match(PACKAGE_NAME_FORMAT, name):
-            raise QuiltException("Invalid package name, must contain exactly one /.")
-
-    @classmethod
     def install(cls, name, registry, pkg_hash=None, dest=None, dest_registry=None):
         """
         Installs a named package to the local registry and downloads its files.
@@ -352,7 +344,7 @@ class Package(object):
             pkg_path = '{}/packages/{}'.format(registry_prefix, pkg_hash)
             return cls._from_path(pkg_path)
         else:
-            cls.validate_package_name(name)
+            validate_package_name(name)
 
         pkg_path = '{}/named_packages/{}/latest'.format(registry_prefix, quote(name))
         latest_bytes, _ = get_bytes(pkg_path)
@@ -668,7 +660,7 @@ class Package(object):
 
         if name:
             # Sanitize name.
-            self.validate_package_name(name)
+            validate_package_name(name)
 
             named_path = registry_prefix + '/named_packages/' + quote(name) + '/'
             # todo: use a float to string formater instead of double casting
@@ -837,7 +829,7 @@ class Package(object):
         Returns:
             A new package that points to the copied objects
         """
-        self.validate_package_name(name)
+        validate_package_name(name)
         self._set_commit_message(message)
 
         if registry is None:

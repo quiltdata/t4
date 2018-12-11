@@ -11,7 +11,8 @@ import pytest
 
 import t4
 from t4 import Package
-from t4.util import QuiltException, APP_NAME, APP_AUTHOR, BASE_DIR, BASE_PATH, parse_file_url
+from t4.util import (QuiltException, APP_NAME, APP_AUTHOR, BASE_DIR, BASE_PATH,
+                     validate_package_name, parse_file_url)
 
 LOCAL_MANIFEST = os.path.join(os.path.dirname(__file__), 'data', 'local_manifest.jsonl')
 REMOTE_MANIFEST = os.path.join(os.path.dirname(__file__), 'data', 't4_manifest.jsonl')
@@ -520,22 +521,22 @@ def test_list_remote_packages():
 
 
 def test_validate_package_name():
-    Package.validate_package_name("a/b")
-    Package.validate_package_name("21312/bes")
+    validate_package_name("a/b")
+    validate_package_name("21312/bes")
     with pytest.raises(QuiltException):
-        Package.validate_package_name("b")
+        validate_package_name("b")
     with pytest.raises(QuiltException):
-        Package.validate_package_name("a/b/")
+        validate_package_name("a/b/")
     with pytest.raises(QuiltException):
-        Package.validate_package_name("a\\/b")
+        validate_package_name("a\\/b")
     with pytest.raises(QuiltException):
-        Package.validate_package_name("a/b/c")
+        validate_package_name("a/b/c")
     with pytest.raises(QuiltException):
-        Package.validate_package_name("a/")
+        validate_package_name("a/")
     with pytest.raises(QuiltException):
-        Package.validate_package_name("/b")
+        validate_package_name("/b")
     with pytest.raises(QuiltException):
-        Package.validate_package_name("b")
+        validate_package_name("b")
 
 def test_diff():
     new_pkg = Package()
