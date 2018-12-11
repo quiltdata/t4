@@ -1,3 +1,10 @@
+<!--
+	Are you editing this file?
+	* /README.md and docs/README.md should be identical copies (symlinks don't work)
+	* Use only *absolute links* in these files. Relative links will break.
+!-->
+[![docs on_gitbook](https://img.shields.io/badge/docs-on_gitbook-blue.svg?style=flat-square)](https://docs.quiltdata.com/)
+[![chat on_slack](https://img.shields.io/badge/chat-on_slack-blue.svg?style=flat-square)](https://slack.quiltdata.com/)
 [![codecov](https://codecov.io/gh/quiltdata/t4/branch/master/graph/badge.svg)](https://codecov.io/gh/quiltdata/t4)
 
 # Alpha - technology preview
@@ -40,4 +47,3 @@ T4 is alpha software. It is not yet recommended for production use.
 * [User docs](./UserDocs.md)
 * [Developer docs](./DeveloperDocs.md)
 * [Roadmap](./Roadmap.md)
-
