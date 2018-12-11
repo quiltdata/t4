@@ -2,13 +2,8 @@ coverage:
   precision: 2
   round: down
   range: "60...100"
-  status:
-    project:
-      default: false
-      tests:
-        paths: "tests/"
-      app:
-        paths: "t4/"
-        fixes:
-          - "::api/python/"
+  fixes:
+    - "::api/python/"
+  ignore:
+    "tests"
 
