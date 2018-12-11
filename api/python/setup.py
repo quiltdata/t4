@@ -26,7 +26,7 @@ class VerifyVersionCommand(install):
 
 setup(
     name="t4",
-    version="0.0.1",
+    version="0.0.3",
     packages=find_packages(),
     description='T4',
     long_description=readme(),
