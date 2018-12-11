@@ -5,5 +5,5 @@ coverage:
   fixes:
     - "::api/python/"
   ignore:
-    "tests"
+    "api/python/tests"
 
