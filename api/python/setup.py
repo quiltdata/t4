@@ -8,6 +8,12 @@ VERSION = "0.0.3"
 
 def readme():
     readme_short = """
+    Quilt T4 is a data management tool designed for data discoverability, data dependency
+    management, and data version control using `data packages <https://blog.quiltdata.com/data-packages-for-fast-reproducible-python-analysis-c74b78015c7f>`_.
+
+    The `t4` PyPi package allows you to build, push, and pull data packages in T4 using Python.
+    Visit the GitHub `repository <https://github.com/quiltdata/t4>`_ for more information.
+
     """
     return readme_short
 
@@ -26,7 +32,7 @@ class VerifyVersionCommand(install):
 
 setup(
     name="t4",
-    version="0.0.3",
+    version=VERSION,
     packages=find_packages(),
     description='T4',
     long_description=readme(),
