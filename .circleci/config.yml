@@ -17,8 +17,6 @@ workflows:
           filters:
             tags:
               only: /[0-9]+(\.[0-9]+)*(\-[a-z])*/
-            branches:
-              ignore: /.*/
 jobs:
   test-3.6: &test-template
     docker:
