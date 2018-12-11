@@ -6,7 +6,7 @@ import shutil
 from urllib.parse import urlparse
 
 import jsonlines
-from mock import patch
+from mock import patch, call
 import pytest
 
 import t4
@@ -623,6 +623,69 @@ def test_local_package_delete_overlapping(tmpdir):
     assert 'Quilt/Test2' not in t4.list_packages()
     assert top_hash not in [p.name for p in
                             Path(BASE_PATH, '.quilt/packages').iterdir()]
+
+
+@patch('t4.data_transfer.s3_client')
+def test_remote_package_delete(tmpdir):
+    """Verify remote package delete works."""
+    def list_packages_mock(*args, **kwargs): return ['Quilt/Test']
+
+    def _tophashes_with_packages_mock(*args, **kwargs): return {'101': {'Quilt/Test'}}
+
+    def list_objects_mock(*args): return [
+        {'Key': '.quilt/named_packages/Quilt/Test/0'},
+        {'Key': '.quilt/named_packages/Quilt/Test/latest'}
+    ]
+
+    def get_bytes_mock(*args): return b'101', None
+
+    with patch('t4.Package.push', new=no_op_mock), \
+            patch('t4.api.list_packages', new=list_packages_mock), \
+            patch('t4.api._tophashes_with_packages', new=_tophashes_with_packages_mock), \
+            patch('t4.api.list_objects', new=list_objects_mock), \
+            patch('t4.api.get_bytes', new=get_bytes_mock), \
+            patch('t4.api.delete_object') as delete_mock:
+        top_hash = Package().push('Quilt/Test', 's3://test-bucket')
+        t4.delete_package('Quilt/Test', registry='s3://test-bucket')
+
+        delete_mock.assert_any_call('test-bucket', '.quilt/packages/101')
+        delete_mock.assert_any_call('test-bucket', '.quilt/named_packages/Quilt/Test/0')
+        delete_mock.assert_any_call('test-bucket', '.quilt/named_packages/Quilt/Test/latest')
+
+
+@patch('t4.data_transfer.s3_client')
+def test_remote_package_delete_overlapping(tmpdir):
+    """
+    Verify remote package delete works when multiple packages reference the
+    same tophash.
+    """
+    def list_packages_mock(*args, **kwargs): return ['Quilt/Test1', 'Quilt/Test2']
+
+    def _tophashes_with_packages_mock(*args, **kwargs): return {'101': {'Quilt/Test1', 'Quilt/Test2'}}
+
+    def list_objects_mock(*args): return [
+        {'Key': '.quilt/named_packages/Quilt/Test1/0'},
+        {'Key': '.quilt/named_packages/Quilt/Test1/latest'},
+        {'Key': '.quilt/named_packages/Quilt/Test2/0'},
+        {'Key': '.quilt/named_packages/Quilt/Test2/latest'}
+    ]
+
+    def get_bytes_mock(*args): return b'101', None
+
+    with patch('t4.Package.push', new=no_op_mock), \
+            patch('t4.api.list_packages', new=list_packages_mock), \
+            patch('t4.api._tophashes_with_packages', new=_tophashes_with_packages_mock), \
+            patch('t4.api.list_objects', new=list_objects_mock), \
+            patch('t4.api.get_bytes', new=get_bytes_mock), \
+            patch('t4.api.delete_object') as delete_mock:
+        top_hash = Package().push('Quilt/Test1', 's3://test-bucket')
+        top_hash = Package().push('Quilt/Test2', 's3://test-bucket')
+        t4.delete_package('Quilt/Test1', registry='s3://test-bucket')
+
+        # the reference count for the tophash 101 is still one, so it should still exist
+        assert call('test-bucket', '.quilt/packages/101') not in delete_mock.call_args_list
+        delete_mock.assert_any_call('test-bucket', '.quilt/named_packages/Quilt/Test1/0')
+        delete_mock.assert_any_call('test-bucket', '.quilt/named_packages/Quilt/Test1/latest')
 
 
 def test_commit_message_on_push(tmpdir):
