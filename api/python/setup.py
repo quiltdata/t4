@@ -12,7 +12,7 @@ def readme():
     management, and data version control using `data packages <https://blog.quiltdata.com/data-packages-for-fast-reproducible-python-analysis-c74b78015c7f>`_.
 
     The `t4` PyPi package allows you to build, push, and pull data packages in T4 using Python.
-    Visit the GitHub `repository <https://github.com/quiltdata/t4>`_ for more information.
+    Visit the `documentation quickstart <https://quiltdocs.gitbook.io/t4/quickstart>`_ for more information.
 
     """
     return readme_short
