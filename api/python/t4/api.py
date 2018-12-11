@@ -102,6 +102,25 @@ def delete(target):
     delete_object(bucket, path)
 
 
+def delete_dir(target):
+    """Delete a remote directory.
+
+    Parameters:
+            target (str): URI of the directory to delete
+    """
+    url = urlparse(target)
+    if url.scheme != 's3':
+        raise NotImplementedError
+
+    bucket, path, version = parse_s3_url(url)
+    if version:
+        raise ValueError("Versions don't make sense for directories")
+
+    results = list_objects(bucket, path)
+    for result in results:
+        delete('s3://' + bucket + '/' + result['Key'])
+
+        
 def _tophashes_with_packages(registry=None):
     """Return a dictionary of tophashes and their corresponding packages
 
