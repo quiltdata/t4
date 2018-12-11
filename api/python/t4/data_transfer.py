@@ -25,6 +25,7 @@ from . import xattr
 
 HELIUM_METADATA = 'helium'
 HELIUM_XATTR = 'com.quiltdata.helium'
+RANDOM_CONST = 1
 
 if platform.system() == 'Linux':
     # Linux only allows users to modify user.* xattrs.
