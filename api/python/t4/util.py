@@ -1,3 +1,4 @@
+import re
 from collections import Mapping, Sequence, Set, OrderedDict
 import datetime
 import json
@@ -210,3 +211,8 @@ class HeliumConfig(OrderedDict):
     def __repr__(self):
         return "<{} at {!r} {}>".format(type(self).__name__, str(self.filepath), json.dumps(self, indent=4))
 
+
+def validate_package_name(name):
+    """ Verify that a package name is two alphanumerics strings separated by a slash."""
+    if not re.match(PACKAGE_NAME_FORMAT, name):
+        raise QuiltException("Invalid package name, must contain exactly one /.")
