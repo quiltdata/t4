@@ -909,9 +909,9 @@ class Package(object):
 
         entities = list(self.walk())
         out = default if default is not None else entities[0]
-        iter = [entities if default is not None else entities[1:]]
+        iters = entities if default is not None else entities[1:]
 
-        for entry in entities:
+        for entry in iters:
             out = f(out, entry)
             
         return out
