@@ -43,7 +43,7 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-          key: v1-dependency-cache-{{ checksum "setup.py" }}-{{ checksum "Makefile" }}
+          key: v1-dependency-cache-{{ checksum "api/python/setup.py" }}-{{ checksum "Makefile" }}
       - run:
           name: install python dependencies
           command: |
@@ -51,7 +51,7 @@ jobs:
             . venv/bin/activate
             pip install -e api/python[tests]
       - save_cache:
-          key: v1-dependency-cache-{{ checksum "setup.py" }}-{{ checksum "Makefile" }}
+          key: v1-dependency-cache-{{ checksum "api/python/setup.py" }}-{{ checksum "Makefile" }}
           paths:
             - "venv"
       - run:
@@ -69,7 +69,7 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-          key: v1-dependency-cache-{{ checksum "setup.py" }}-{{ checksum "Makefile" }}
+          key: v1-dependency-cache-{{ checksum "api/pythonsetup.py" }}-{{ checksum "Makefile" }}
       - run:
           name: install python dependencies
           command: |
@@ -77,7 +77,7 @@ jobs:
             . venv/bin/activate
             pip install -e api/python[tests]
       - save_cache:
-          key: v1-dependency-cache-{{ checksum "setup.py" }}-{{ checksum "Makefile" }}
+          key: v1-dependency-cache-{{ checksum "api/python/setup.py" }}-{{ checksum "Makefile" }}
           paths:
             - "venv"
       - run:
@@ -85,7 +85,7 @@ jobs:
           command: |
             python3 -m venv venv
             . venv/bin/activate
-            python setup.py verify
+            python api/python/setup.py verify
       - run:
           name: init .pypirc
           command: |
@@ -95,8 +95,8 @@ jobs:
       - run:
           name: create packages
           command: |
-            python setup.py sdist
-            python setup.py bdist_wheel
+            python api/python/setup.py sdist
+            python api/python/setup.py bdist_wheel
       - run:
           name: upload to pypi
           command: |
