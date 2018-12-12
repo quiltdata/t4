@@ -709,3 +709,28 @@ def test_manifest():
 
     pkg2 = Package.browse(pkg_hash=top_hash)
     assert list(pkg.manifest) == list(pkg2.manifest)
+
+def test_map():
+    pkg = Package()
+    pkg.set('as/df', LOCAL_MANIFEST)
+    pkg.set('as/qw', LOCAL_MANIFEST)
+    assert set(pkg.map(lambda lk, entry: lk)) == {'as/df', 'as/qw'}
+
+
+def test_filter():
+    pkg = Package()
+    pkg.set('as/df', LOCAL_MANIFEST)
+    pkg.set('as/qw', LOCAL_MANIFEST)
+    assert pkg.filter(lambda lk, entry: lk == 'as/df') == [('as/df', pkg['as/df'])]
+
+
+def test_reduce():
+    pkg = Package()
+    pkg.set('as/df', LOCAL_MANIFEST)
+    pkg.set('as/qw', LOCAL_MANIFEST)
+    assert pkg.reduce(lambda a, b: a) == ('as/df', pkg['as/df'])
+    assert pkg.reduce(lambda a, b: b) == ('as/qw', pkg['as/qw'])
+    assert pkg.reduce(lambda a, b: a + [b], []) == [
+        ('as/df', pkg['as/df']),
+        ('as/qw', pkg['as/qw'])
+    ]
