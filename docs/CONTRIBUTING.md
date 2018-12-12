@@ -26,6 +26,7 @@ $ git checkout -B new-branch-name
 Use `pip` to install `t4` locally (including development dependencies):
 
 ```bash
+$ cd api/python
 $ pip install -e .[extra]
 ```
 
@@ -44,7 +45,43 @@ $ pytest
 When your branch is ready, you may run `tox` or `detox` to test a new install. To additionally test dependencies use `detox --refresh`, which will reset the environment it creates.
 
 ## Local catalog development
-For information on local catalog development see [here](https://github.com/quiltdata/t4/tree/master/catalog/docs).
+### Environment
+Use `npm` to install the catalog (`t4-navigator`) dependencies locally:
+
+```bash
+$ cd catalog
+$ npm install
+```
+
+There is one known issue with installation. At time of writing, the `t4-navigator` package depends on `iltorb@1.3.10`, which may lack prebuilt binaries for your platform and may fall back on building from source using `node-gyp`. `node-gyp` depends on Python 2; if you only have Python 3 in your install environment it will fail.
+
+To fix this, point `npm` to a Python 2 path on your machine. For example on macOS:
+
+```bash
+$ npm config set python /usr/bin/python
+$ npm install
+```
+
+### Build
+We use `webpack` to build the `t4-navigator` package from source. To build a new package instance, run the following:
+
+```bash
+$ npm run build
+$ npm run build:dll
+```
+
+You will now be able to visit an instance of the catalog running locally:
+
+```bash
+$ npm start
+```
+
+### Testing
+To run the catalog unit tests:
+
+```bash
+npm run test
+```
 
 ## License
 
