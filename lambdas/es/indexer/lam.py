@@ -87,7 +87,7 @@ def format_notebook(nb):
     text = ' '.join(list(formatted))
     markdowncells = filter(lambda x: x['cell_type'] == 'markdown', cells)
     markdowntext = ' '.join([' '.join(cell['source']) for cell in markdowncells])
-    return text + markdowntext
+    return text + ' ' + markdowntext
 
 def post_to_es(event_type, size, text, key, meta, version_id=''):
     data = {
