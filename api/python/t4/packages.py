@@ -894,7 +894,7 @@ class Package(object):
                 the (logical key, PackageEntry) argument for the right entry.
                 As you iterate over the package entries, the left argument will
                 be replaced by the output of the previous reduce operation.
-            default: object
+            default: initial value
                 The default argument. If left unspecified, the (logical key,
                 PackageEntry) pair for the first package entry in the package
                 will be used.
