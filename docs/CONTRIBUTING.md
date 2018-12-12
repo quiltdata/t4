@@ -70,7 +70,7 @@ $ npm run build
 $ npm run build:dll
 ```
 
-You will now be able to visit an instance of the catalog running locally:
+You will now be able to run a local instance of the catalog:
 
 ```bash
 $ npm start
