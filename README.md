@@ -41,4 +41,6 @@ T4 is alpha software. It is not yet recommended for production use.
 
 ## Documentation
 * [Docs](https://quiltdocs.gitbook.io/t4/)
+
+## Roadmap
 * [Roadmap](https://github.com/quiltdata/t4/blob/master/Roadmap.md)
