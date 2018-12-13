@@ -76,6 +76,8 @@ You will now be able to run a local instance of the catalog:
 $ npm start
 ```
 
+Make sure that any images you check into the repository are [optimized](https://kinsta.com/blog/optimize-images-for-web/) at check-in time.
+
 ### Testing
 To run the catalog unit tests:
 
