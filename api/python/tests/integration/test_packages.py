@@ -53,7 +53,7 @@ def test_build(tmpdir):
     out_path = Path(BASE_PATH, ".quilt/packages", top_hash)
     with open(out_path) as fd:
         pkg = Package.load(fd)
-        assert test_file.resolve().as_uri() == pkg['foo'].physical_keys[0]
+        assert test_file.resolve().as_uri() == pkg['foo'].physical_key
 
     # Verify latest points to the new location.
     named_pointer_path = Path(BASE_PATH, ".quilt/named_packages/Quilt/Test/latest")
@@ -67,7 +67,7 @@ def test_build(tmpdir):
     out_path = Path(BASE_PATH, ".quilt/packages", top_hash)
     with open(out_path) as fd:
         pkg = Package.load(fd)
-        assert test_file.resolve().as_uri() == pkg['bar'].physical_keys[0]
+        assert test_file.resolve().as_uri() == pkg['bar'].physical_key
 
 
 def test_read_manifest(tmpdir):
@@ -79,7 +79,7 @@ def test_read_manifest(tmpdir):
     with open(out_path, 'w') as fd:
         pkg.dump(fd)
     
-    # Insepct the jsonl to verify everything is maintained, i.e.
+    # Inspect the jsonl to verify everything is maintained, i.e.
     # that load/dump results in an equivalent set.
     # todo: Use load/dump once __eq__ implemented.
     with open(LOCAL_MANIFEST) as fd:
@@ -277,20 +277,20 @@ def test_local_set_dir(tmpdir):
 
     pkg = pkg.set_dir("/", ".")
 
-    assert pathlib.Path('foo').resolve().as_uri() == pkg['foo'].physical_keys[0]
-    assert pathlib.Path('bar').resolve().as_uri() == pkg['bar'].physical_keys[0]
-    assert (bazdir / 'baz').resolve().as_uri() == pkg['foo_dir/baz_dir/baz'].physical_keys[0]
-    assert (foodir / 'bar').resolve().as_uri() == pkg['foo_dir/bar'].physical_keys[0]
+    assert pathlib.Path('foo').resolve().as_uri() == pkg['foo'].physical_key
+    assert pathlib.Path('bar').resolve().as_uri() == pkg['bar'].physical_key
+    assert (bazdir / 'baz').resolve().as_uri() == pkg['foo_dir/baz_dir/baz'].physical_key
+    assert (foodir / 'bar').resolve().as_uri() == pkg['foo_dir/bar'].physical_key
 
     pkg = Package()
     pkg = pkg.set_dir('/','foo_dir/baz_dir/')
     # todo nested at set_dir site or relative to set_dir path.
-    assert (bazdir / 'baz').resolve().as_uri() == pkg['baz'].physical_keys[0]
+    assert (bazdir / 'baz').resolve().as_uri() == pkg['baz'].physical_key
 
     pkg = Package()
     pkg = pkg.set_dir('my_keys', 'foo_dir/baz_dir/')
     # todo nested at set_dir site or relative to set_dir path.
-    assert (bazdir / 'baz').resolve().as_uri() == pkg['my_keys/baz'].physical_keys[0]
+    assert (bazdir / 'baz').resolve().as_uri() == pkg['my_keys/baz'].physical_key
 
 
 def test_s3_set_dir(tmpdir):
@@ -306,8 +306,8 @@ def test_s3_set_dir(tmpdir):
 
         pkg.set_dir('', 's3://bucket/foo/')
 
-        assert pkg['a.txt'].physical_keys[0] == 's3://bucket/foo/a.txt?versionId=xyz'
-        assert pkg['x']['y.txt'].physical_keys[0] == 's3://bucket/foo/x/y.txt'
+        assert pkg['a.txt'].physical_key == 's3://bucket/foo/a.txt?versionId=xyz'
+        assert pkg['x']['y.txt'].physical_key == 's3://bucket/foo/x/y.txt'
 
         list_object_versions_mock.assert_called_with('bucket', 'foo/')
 
@@ -315,8 +315,8 @@ def test_s3_set_dir(tmpdir):
 
         pkg.set_dir('bar', 's3://bucket/foo')
 
-        assert pkg['bar']['a.txt'].physical_keys[0] == 's3://bucket/foo/a.txt?versionId=xyz'
-        assert pkg['bar']['x']['y.txt'].physical_keys[0] == 's3://bucket/foo/x/y.txt'
+        assert pkg['bar']['a.txt'].physical_key == 's3://bucket/foo/a.txt?versionId=xyz'
+        assert pkg['bar']['x']['y.txt'].physical_key == 's3://bucket/foo/x/y.txt'
 
         list_object_versions_mock.assert_called_with('bucket', 'foo/')
 
@@ -341,7 +341,7 @@ def test_updates(tmpdir):
         fd.write('test_file_content_string')
         test_file = Path(fd.name)
     pkg = pkg.update({'bar': 'bar.txt'})
-    assert test_file.resolve().as_uri() == pkg['bar'].physical_keys[0]
+    assert test_file.resolve().as_uri() == pkg['bar'].physical_key
 
     assert pkg['foo']() == '123\n'
 
@@ -350,7 +350,7 @@ def test_updates(tmpdir):
         fd.write('test_file_content_string')
         test_file = Path(fd.name)
     pkg = pkg.update({'baz': 'baz.txt'}, prefix='prefix/')
-    assert test_file.resolve().as_uri() == pkg['prefix/baz'].physical_keys[0]
+    assert test_file.resolve().as_uri() == pkg['prefix/baz'].physical_key
 
     assert pkg['foo']() == '123\n'
 
@@ -421,7 +421,7 @@ def test_set_package_entry(tmpdir):
         test_file = Path(fd.name)
     pkg['bar'].set('bar.txt')
 
-    assert test_file.resolve().as_uri() == pkg['bar'].physical_keys[0]
+    assert test_file.resolve().as_uri() == pkg['bar'].physical_key
 
 def test_tophash_changes(tmpdir):
     test_file = tmpdir / 'test.txt'

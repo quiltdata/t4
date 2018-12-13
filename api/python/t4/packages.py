@@ -46,14 +46,12 @@ def _to_singleton(physical_keys):
 
     Throws:
         NotImplementedError
-
-    TODO:
-        support multiple physical keys
     """
-    if len(physical_keys) > 1:
-        raise NotImplementedError("Multiple physical keys not supported")
-
-    return physical_keys[0]
+    # TODO: temp shim
+    if isinstance(physical_keys, list):
+        return physical_keys[0]
+    else:
+        return physical_keys
 
 def get_package_registry(path=None):
     """ Returns the package registry root for a given path """
@@ -66,13 +64,13 @@ class PackageEntry(object):
     """
     Represents an entry at a logical key inside a package.
     """
-    __slots__ = ['physical_keys', 'size', 'hash', 'meta']
-    def __init__(self, physical_keys, size, hash_obj, meta):
+    __slots__ = ['physical_key', 'size', 'hash', 'meta']
+    def __init__(self, physical_key, size, hash_obj, meta):
         """
         Creates an entry.
 
         Args:
-            physical_keys is a nonempty list of URIs (either s3:// or file://)
+            physical_key is a nonempty list of URIs (either s3:// or file://)
             size(number): size of object in bytes
             hash({'type': string, 'value': string}): hash object
                 for example: {'type': 'SHA256', 'value': 'bb08a...'}
@@ -81,7 +79,7 @@ class PackageEntry(object):
         Returns:
             a PackageEntry
         """
-        self.physical_keys = [fix_url(x) for x in physical_keys]
+        self.physical_key = fix_url(physical_key)
         self.size = size
         self.hash = hash_obj
         self.meta = meta or {}
@@ -95,14 +93,14 @@ class PackageEntry(object):
         )
 
     def __repr__(self):
-        return f"PackageEntry('{self.physical_keys[0]}')"
+        return f"PackageEntry('{self.physical_key}')"
 
     def as_dict(self):
         """
         Returns dict representation of entry.
         """
         ret = {
-            'physical_keys': self.physical_keys,
+            'physical_key': self.physical_key,
             'size': self.size,
             'hash': self.hash,
             'meta': self.meta
@@ -113,7 +111,7 @@ class PackageEntry(object):
         """
         Returns clone of this PackageEntry.
         """
-        return self.__class__(copy.deepcopy(self.physical_keys), self.size, \
+        return self.__class__(copy.deepcopy(self.physical_key), self.size, \
                               copy.deepcopy(self.hash), copy.deepcopy(self.meta))
 
     def set_user_meta(self, meta):
@@ -162,7 +160,7 @@ class PackageEntry(object):
             self
         """
         if path is not None:
-            self.physical_keys = [fix_url(path)]
+            self.physical_key = fix_url(path)
             self.size = None
             self.hash = None
         elif meta is not None:
@@ -174,7 +172,7 @@ class PackageEntry(object):
         """
         Returns the physical key of this PackageEntry.
         """
-        return _to_singleton(self.physical_keys)
+        return _to_singleton(self.physical_key)
 
     def deserialize(self):
         """
@@ -197,7 +195,7 @@ class PackageEntry(object):
         except ValueError:
             raise QuiltException("Unknown serialization target: %r" % target_str)
 
-        physical_key = _to_singleton(self.physical_keys)
+        physical_key = _to_singleton(self.physical_key)
         data, _ = get_bytes(physical_key)
         self._verify_hash(data)
 
@@ -213,7 +211,7 @@ class PackageEntry(object):
         Returns:
             None
         """
-        physical_key = _to_singleton(self.physical_keys)
+        physical_key = _to_singleton(self.physical_key)
         dest = fix_url(dest)
         copy_file(physical_key, dest, self.meta)
 
@@ -229,7 +227,7 @@ class Package(object):
 
     def __init__(self):
         self._children = {}
-        self._meta = {'version': 'v0'}
+        self._meta = {'version': 'v1'}
 
     def _unlimited_repr(self, level=0, indent='  '):
         """
@@ -497,14 +495,14 @@ class Package(object):
             path = cls._split_key(obj.pop('logical_key'))
             subpkg = pkg._ensure_subpackage(path[:-1])
             key = path[-1]
-            if not obj.get('physical_keys', None):
+            if not obj.get('physical_key', None):
                 # directory-level metadata
                 subpkg.set_meta(obj['meta'])
                 continue
             if key in subpkg._children:
                 raise PackageException("Duplicate logical key while loading package")
             subpkg._children[key] = PackageEntry(
-                obj['physical_keys'],
+                obj['physical_key'],
                 obj['size'],
                 obj['hash'],
                 obj['meta']
@@ -543,7 +541,7 @@ class Package(object):
             for f in files:
                 if not f.is_file():
                     continue
-                entry = PackageEntry([f.as_uri()], f.stat().st_size, None, None)
+                entry = PackageEntry(f.as_uri(), f.stat().st_size, None, None)
                 logical_key = f.relative_to(src_path).as_posix()
                 # TODO: Warn if overwritting a logical key?
                 root.set(logical_key, entry)
@@ -560,7 +558,7 @@ class Package(object):
                 obj_url = 's3://%s/%s' % (src_bucket, quote(obj['Key']))
                 if obj['VersionId'] != 'null':  # Yes, 'null'
                     obj_url += '?versionId=%s' % quote(obj['VersionId'])
-                entry = PackageEntry([obj_url], None, None, None)
+                entry = PackageEntry(obj_url, None, None, None)
                 logical_key = obj['Key'][len(src_key):]
                 # TODO: Warn if overwritting a logical key?
                 root.set(logical_key, entry)
@@ -606,7 +604,7 @@ class Package(object):
         if not entries:
             return
 
-        physical_keys = (entry.physical_keys[0] for entry in entries)
+        physical_keys = (entry.physical_key for entry in entries)
         total_size = sum(entry.size for entry in entries)
         results = calculate_sha256(physical_keys, total_size)
 
@@ -693,7 +691,7 @@ class Package(object):
     @property
     def manifest(self):
         """
-        Returns a generator of the dicts that make up the serialied package.
+        Returns a generator of the dicts that make up the serialized package.
         """
         yield self._meta
         for dir_key, meta in self._walk_dir_meta():
@@ -738,7 +736,7 @@ class Package(object):
         if isinstance(entry, (string_types, getattr(os, 'PathLike', str))):
             url = fix_url(str(entry))
             size, orig_meta = get_size_and_meta(url)
-            entry = PackageEntry([url], size, None, orig_meta)
+            entry = PackageEntry(url, size, None, orig_meta)
         elif isinstance(entry, PackageEntry):
             entry = entry._clone()
         else:
@@ -806,10 +804,10 @@ class Package(object):
         top_hash.update(top_meta.encode('utf-8'))
         for logical_key, entry in self.walk():
             if entry.hash is None or entry.size is None:
-                raise QuiltException("PackageEntry missing hash and/or size: %s" % entry.physical_keys[0])
+                raise QuiltException("PackageEntry missing hash and/or size: %s" % entry.physical_key)
             entry_dict = entry.as_dict()
             entry_dict['logical_key'] = logical_key
-            entry_dict.pop('physical_keys', None)
+            entry_dict.pop('physical_key', None)
             entry_dict_str = json.dumps(entry_dict, sort_keys=True, separators=(',', ':'))
             top_hash.update(entry_dict_str.encode('utf-8'))
 
@@ -868,14 +866,14 @@ class Package(object):
         # Since all that is modified is physical keys, pkg will have the same top hash
         for logical_key, entry in self.walk():
             # Copy the datafiles in the package.
-            physical_key = _to_singleton(entry.physical_keys)
+            physical_key = _to_singleton(entry.physical_key)
             new_physical_key = dest_url + "/" + quote(logical_key)
             versioned_key = copy_file(physical_key, new_physical_key, entry.meta)
 
             # Create a new package entry pointing to the new remote key.
             new_entry = entry._clone()
             new_physical_key = versioned_key[0] if versioned_key else new_physical_key
-            new_entry.physical_keys = [new_physical_key]
+            new_entry.physical_key = new_physical_key
             pkg.set(logical_key, new_entry)
         return pkg
 
