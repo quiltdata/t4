@@ -38,9 +38,15 @@ You can build it as follows:
 $ cd catalog
 $ npm run build
 ```
+
 The static assets, including webpack chunks, are written to `/static`.
 
+For more advanced deployment scripts, see [`deploy_navigator.sh`](../deployment/deploy_navigator.sh).
+
+
 ## AWS T4 Instance (via CloudFormation)
+The following section uses CloudFormation to manage S3 buckets, ElasticSearch endpoints, and CloudFront to deploy
+a T4 instance in your VPC.
 
 ### Known limitations
 
