@@ -34,24 +34,6 @@ def hash_file(readable_file):
 
     return hasher.hexdigest()
 
-def _to_singleton(physical_keys):
-    """
-    Ensure that there is a single physical key, throw otherwise.
-    Temporary utility method to avoid repeated, identical checks.
-
-    Args:
-        pkeys (list): list of physical keys
-    Returns:
-        A physical key
-
-    Throws:
-        NotImplementedError
-    """
-    # TODO: temp shim
-    if isinstance(physical_keys, list):
-        return physical_keys[0]
-    else:
-        return physical_keys
 
 def get_package_registry(path=None):
     """ Returns the package registry root for a given path """
@@ -172,7 +154,7 @@ class PackageEntry(object):
         """
         Returns the physical key of this PackageEntry.
         """
-        return _to_singleton(self.physical_key)
+        return self.physical_key
 
     def deserialize(self):
         """
@@ -195,8 +177,7 @@ class PackageEntry(object):
         except ValueError:
             raise QuiltException("Unknown serialization target: %r" % target_str)
 
-        physical_key = _to_singleton(self.physical_key)
-        data, _ = get_bytes(physical_key)
+        data, _ = get_bytes(self.physical_key)
         self._verify_hash(data)
 
         return deserialize_obj(data, target)
@@ -211,9 +192,8 @@ class PackageEntry(object):
         Returns:
             None
         """
-        physical_key = _to_singleton(self.physical_key)
         dest = fix_url(dest)
-        copy_file(physical_key, dest, self.meta)
+        copy_file(self.physical_key, dest, self.meta)
 
     def __call__(self):
         """
@@ -866,7 +846,7 @@ class Package(object):
         # Since all that is modified is physical keys, pkg will have the same top hash
         for logical_key, entry in self.walk():
             # Copy the datafiles in the package.
-            physical_key = _to_singleton(entry.physical_key)
+            physical_key = entry.physical_key
             new_physical_key = dest_url + "/" + quote(logical_key)
             versioned_key = copy_file(physical_key, new_physical_key, entry.meta)
 
