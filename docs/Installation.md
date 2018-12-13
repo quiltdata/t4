@@ -129,7 +129,7 @@ by you in the following step.
     <br/>
     <br/>
 
-    ![](./img/outputs.png)
+    ![](./imgs/outputs.png)
 
 1. If desired, set a `CNAME` record with your DNS service that points to your CloudFrontDomain. The `CNAME` must also be present in your [CORS policy](#pre-requisites). Now users can access the T4 catalog at your custom
 `CNAME`.
