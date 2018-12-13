@@ -3,28 +3,19 @@ The catalog is a web frontend for browsing meta-data held by the Quilt registry.
 
 # Developer
 ## Configuration
-The app configuration (API endpoints, Stripe keys, etc.) is read from the
-`window.__CONFIG` object exposed by the `/config.js` script.
-
-### Production environment
-The config script must be served under `/config.js` path.
-The simplest way to generate the script file from the config json file is to
-use this command:
-
-```sh
-npm run config [custom config.json location] > config.js
-```
-
-### Development environment
-The template is processed and served by the custom middleware (`server/middleware/config.js`).
+The app configuration (API endpoints, bucket federations, etc.) is read from
+the `/config.json` path.
 
 ## Running the catalog locally
 ```sh
 # local web server for catalog w/hot reload
 $ cd catalog
 # copy and edit config file
-$ cp config.json.example config.json
-$ vi config.json
+$ cp config.json.example static/config.json
+$ vi static/config.json
+# copy and edit federation file if required
+$ cp federation.json.example static/federation.json
+$ vi static/federation.json
 $ npm start
 ```
 

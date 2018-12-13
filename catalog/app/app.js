@@ -20,11 +20,12 @@ import LanguageProvider from 'containers/LanguageProvider';
 import * as AWSAuth from 'containers/AWSAuth';
 import * as BucketConfig from 'containers/Bucket/Config';
 import * as Notifications from 'containers/Notifications';
-import config from 'constants/config';
 import routes from 'constants/routes';
 import * as style from 'constants/style';
 import * as AWS from 'utils/AWS';
+import * as Config from 'utils/Config';
 import * as Data from 'utils/Data';
+import * as Federations from 'utils/Federations';
 import * as NamedRoutes from 'utils/NamedRoutes';
 import FormProvider from 'utils/ReduxFormProvider';
 import StoreProvider from 'utils/StoreProvider';
@@ -66,22 +67,27 @@ const render = (messages) => {
   ReactDOM.render(
     nest(
       [StoreProvider, { store }],
+      [Data.Provider, { fetch }],
+      [Config.Provider, { path: '/config.json' }],
+      Federations.Provider,
       FormProvider,
       [LanguageProvider, { messages }],
       Notifications.Provider,
       // TODO: figure out AWS components order / race conditions
       [AWSAuth.Provider, {
         storage,
-        testBucket: config.defaultBucket,
-        signInRedirect: routes.bucketRoot.url(config.defaultBucket),
+        // TODO: inject config
+        // testBucket: config.defaultBucket,
+        // signInRedirect: routes.bucketRoot.url(config.defaultBucket),
       }],
       [AWS.Config.Provider, {
         credentialsSelector: AWSAuth.selectors.credentials,
       }],
       AWS.S3.Provider,
       AWS.Signer.Provider,
-      Data.Provider,
-      [BucketConfig.BucketsProvider, { buckets: config.buckets }],
+      // [BucketConfig.BucketsProvider, { buckets: config.buckets }],
+      // TODO: inject federations
+      [BucketConfig.BucketsProvider, { buckets: [] }],
       [RouterProvider, { history }],
       [MuiThemeProviderV0, { muiTheme: style.themeV0 }],
       [MuiThemeProvider, { theme: style.theme }],

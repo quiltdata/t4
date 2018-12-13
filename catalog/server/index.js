@@ -14,7 +14,6 @@ const app = express();
 setup(app, {
   outputPath: resolve(process.cwd(), 'build'),
   publicPath: '/',
-  configPath: resolve(process.cwd(), argv.config || 'config.json'),
 });
 
 // get the intended host and port number, use localhost and port 3000 if not provided
