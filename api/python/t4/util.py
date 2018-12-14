@@ -83,12 +83,18 @@ def fix_url(url):
     return fixed_url
 
 
+EXAMPLE = "Example: 's3://my-bucket/path/'."
 def parse_s3_url(s3_url):
     """
     Takes in the result of urlparse, and returns a tuple (bucket, path, version_id)
     """
-    if s3_url.scheme != 's3' or not s3_url.netloc or (s3_url.path and not s3_url.path.startswith('/')):
-        raise ValueError("Expected URI scheme 's3://', not '{}'".format(s3_url.scheme))
+    if s3_url.scheme != 's3':
+        raise ValueError("Expected URI scheme 's3', not '{}'. {}".format(s3_url.scheme, EXAMPLE))
+    if not s3_url.netloc:
+        raise ValueError("Expected non-empty URI location. {}".format(EXAMPLE))
+    # based on testing, the next case can never happen; TODO: remove this case
+    if (s3_url.path and not s3_url.path.startswith('/')):
+        raise ValueError("Expected URI path to start with '/', not '{}'. {}".format(s3_url.scheme, EXAMPLE))
     bucket = s3_url.netloc
     path = unquote(s3_url.path)[1:]
     # Parse the version ID the way the Java SDK does:
