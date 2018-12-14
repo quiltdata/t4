@@ -907,7 +907,6 @@ class Package(object):
         
         return added, modified, deleted
 
-    # TODO: keep hacking at the include_directories bit
     def map(self, f, include_directories=False):
         """
         Performs a user-specified operation on each entry in the package.
@@ -924,7 +923,7 @@ class Package(object):
         """
         if include_directories:
             for lk, _ in self._walk_dir_meta():
-                yield (lk, self[lk.rstrip("/")])
+                yield f(lk, self[lk.rstrip("/")])
 
         for lk, entity in self.walk():
             yield f(lk, entity)
@@ -945,9 +944,9 @@ class Package(object):
             A list of truthy (logical key, entry) tuples.
         """
         if include_directories:
-            for lk, entity in self._walk_dir_meta():
-                if f(lk, entity):
-                    yield (lk, entity)
+            for lk, _ in self._walk_dir_meta():
+                if f(lk, self[lk.rstrip("/")]):
+                    yield (lk, self[lk.rstrip("/")])
 
         for lk, entity in self.walk():
             if f(lk, entity):
@@ -976,11 +975,12 @@ class Package(object):
         Returns: list
             A list of truthy (logical key, entry) tuples.
         """
-        if include_directories:
-            for lk, entity in self._walk_dir_meta():
-                yield (lk, entity)
+        entities = []
 
-        entities = list(self.walk())
+        if include_directories:
+            entities += [(lk, self[lk.rstrip("/")]) for lk, _ in self._walk_dir_meta()]
+
+        entities += list(self.walk())
         out = default if default is not None else entities[0]
         iters = entities if default is not None else entities[1:]
 

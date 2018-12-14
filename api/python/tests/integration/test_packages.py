@@ -717,6 +717,10 @@ def test_map():
     pkg.set('as/qw', LOCAL_MANIFEST)
     assert set(pkg.map(lambda lk, entry: lk)) == {'as/df', 'as/qw'}
 
+    pkg['as'].set_meta({'foo': 'bar'})
+    assert set(pkg.map(lambda lk, entry: lk, include_directories=True)) ==\
+           {'as/df', 'as/qw', 'as/'}
+
 
 def test_filter():
     pkg = Package()
@@ -726,6 +730,14 @@ def test_filter():
         ('as/df', pkg['as/df'])
     ]
 
+    pkg['as'].set_meta({'foo': 'bar'})
+    assert list(pkg.filter(lambda lk, entry: lk == 'as/df')) == [
+        ('as/df', pkg['as/df'])
+    ]
+    assert list(pkg.filter(lambda lk, entry: lk == 'as/', include_directories=True)) == [
+        ('as/', pkg['as'])
+    ]
+
 
 def test_reduce():
     pkg = Package()
@@ -733,7 +745,16 @@ def test_reduce():
     pkg.set('as/qw', LOCAL_MANIFEST)
     assert pkg.reduce(lambda a, b: a) == ('as/df', pkg['as/df'])
     assert pkg.reduce(lambda a, b: b) == ('as/qw', pkg['as/qw'])
-    assert pkg.reduce(lambda a, b: a + [b], []) == [
+    assert list(pkg.reduce(lambda a, b: a + [b], [])) == [
+        ('as/df', pkg['as/df']),
+        ('as/qw', pkg['as/qw'])
+    ]
+
+    pkg['as'].set_meta({'foo': 'bar'})
+    assert pkg.reduce(lambda a, b: b, include_directories=True) ==\
+           ('as/qw', pkg['as/qw'])
+    assert list(pkg.reduce(lambda a, b: a + [b], [], include_directories=True)) == [
+        ('as/', pkg['as']),
         ('as/df', pkg['as/df']),
         ('as/qw', pkg['as/qw'])
     ]
