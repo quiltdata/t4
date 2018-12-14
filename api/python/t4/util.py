@@ -88,7 +88,7 @@ def parse_s3_url(s3_url):
     Takes in the result of urlparse, and returns a tuple (bucket, path, version_id)
     """
     if s3_url.scheme != 's3' or not s3_url.netloc or (s3_url.path and not s3_url.path.startswith('/')):
-        raise ValueError("Malformed S3 URI")
+        raise ValueError("Expected URI scheme 's3://', not '{}'".format(s3_url.scheme))
     bucket = s3_url.netloc
     path = unquote(s3_url.path)[1:]
     # Parse the version ID the way the Java SDK does:
