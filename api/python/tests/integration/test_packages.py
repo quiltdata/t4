@@ -78,7 +78,7 @@ def test_read_manifest(tmpdir):
     out_path = os.path.join(tmpdir, 'new_manifest.jsonl')
     with open(out_path, 'w') as fd:
         pkg.dump(fd)
-    
+
     # Insepct the jsonl to verify everything is maintained, i.e.
     # that load/dump results in an equivalent set.
     # todo: Use load/dump once __eq__ implemented.
@@ -261,7 +261,7 @@ def test_package_deserialize(tmpdir):
 def test_local_set_dir(tmpdir):
     """ Verify building a package from a local directory. """
     pkg = Package()
-    
+
     # Create some nested example files that contain their names.
     foodir = pathlib.Path("foo_dir")
     bazdir = pathlib.Path(foodir, "baz_dir")
@@ -270,7 +270,7 @@ def test_local_set_dir(tmpdir):
         fd.write(fd.name)
     with open('foo', 'w') as fd:
         fd.write(fd.name)
-    with open(bazdir / 'baz', 'w') as fd: 
+    with open(bazdir / 'baz', 'w') as fd:
         fd.write(fd.name)
     with open(foodir / 'bar', 'w') as fd:
         fd.write(fd.name)
@@ -581,7 +581,7 @@ def test_dir_meta(tmpdir):
     assert pkg2['asdf'].get_meta() == test_meta
     assert pkg2['qwer']['as'].get_meta() == test_meta
     assert pkg2.get_meta() == test_meta
-    
+
 def test_top_hash_stable():
     """Ensure that top_hash() never changes for a given manifest"""
 
@@ -710,6 +710,7 @@ def test_manifest():
     pkg2 = Package.browse(pkg_hash=top_hash)
     assert list(pkg.manifest) == list(pkg2.manifest)
 
+
 def test_map():
     pkg = Package()
     pkg.set('as/df', LOCAL_MANIFEST)
@@ -721,7 +722,9 @@ def test_filter():
     pkg = Package()
     pkg.set('as/df', LOCAL_MANIFEST)
     pkg.set('as/qw', LOCAL_MANIFEST)
-    assert pkg.filter(lambda lk, entry: lk == 'as/df') == [('as/df', pkg['as/df'])]
+    assert list(pkg.filter(lambda lk, entry: lk == 'as/df')) == [
+        ('as/df', pkg['as/df'])
+    ]
 
 
 def test_reduce():
