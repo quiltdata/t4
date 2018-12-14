@@ -15,6 +15,7 @@ except ImportError:
 # Third-Party
 import ruamel.yaml
 from appdirs import user_data_dir
+import requests
 
 
 APP_NAME = "T4"
@@ -210,3 +211,31 @@ class HeliumConfig(OrderedDict):
     def __repr__(self):
         return "<{} at {!r} {}>".format(type(self).__name__, str(self.filepath), json.dumps(self, indent=4))
 
+
+def find_bucket_config(bucket_name, catalog_config_url):
+    config_request = requests.get(CATALOG_CONFIG_URL)
+    if not config_request.ok:
+        raise QuiltException("Failed to get catalog config")
+    config_json = json.loads(config_request.text)
+    federations = config_json.get('federations', None)
+    if not federations:
+        raise QuiltException("Failed to find federations in catalog config")
+    federations.reverse() # want to get results from last federation first
+    for federation in federations:
+        federation_request = requests.get(federation)
+        if not federation_request.ok:
+            continue
+        federation = json.loads(federation_request.text)
+        buckets = federation.get('buckets', None)
+        if not buckets:
+            continue
+        for bucket in buckets:
+            if isinstance(bucket, str):
+                bucket_request = requests.get(bucket)
+                if not bucket_request.ok:
+                    continue
+                bucket = json.loads(bucket_request.text)
+            if bucket['name'] == bucket_name:
+                return bucket
+
+    raise QuiltException("Failed to find a config for the chosen bucket")

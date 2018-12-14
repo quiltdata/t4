@@ -14,7 +14,7 @@ from .data_transfer import (TargetType, copy_file, copy_object, delete_object,
                             deserialize_obj, get_bytes, get_size_and_meta,
                             list_objects, put_bytes, select, serialize_obj)
 from .search_util import search
-from .util import QuiltException, fix_url, parse_s3_url
+from .util import QuiltException, find_bucket_config, fix_url, parse_s3_url
 
 
 CONFIG_URL = "https://t4.quiltdata.com/config.json"
@@ -47,18 +47,8 @@ class Bucket(object):
         """
         Updates this bucket's search endpoint based on a federation config.
         """
-        response = requests.get(config_url)
-        if not response.ok:
-            raise QuiltException("Failed to retrieve bucket search "
-                                 "config at config_url")
-        raw_buckets = json.loads(response.text).get('buckets', None)
-        if not raw_buckets:
-            raise QuiltException("Config at config_url malformed")
-        buckets = {raw_bucket['name']: raw_bucket for raw_bucket in raw_buckets}
-        if self._bucket in buckets:
-            self._search_endpoint = buckets[self._bucket]['searchEndpoint']
-        else:
-            raise QuiltException("Config info not found for this bucket")
+        bucket_config = find_bucket_config(self._bucket, config_url)
+        self._search_endpoint = bucket_config['searchEndpoint']
 
     def search(self, query):
         """
