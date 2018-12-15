@@ -326,7 +326,6 @@ def _calculate_etag(file_obj):
             etag = '%s-%d' % (hashlib.md5(b''.join(hashes)).hexdigest(), len(hashes))
     return '"%s"' % etag
 
-
 def upload_file(src_path, bucket, key, override_meta=None):
     src_file = pathlib.Path(src_path)
     is_dir = src_file.is_dir()
@@ -394,7 +393,21 @@ def upload_file(src_path, bucket, key, override_meta=None):
             for future in futures:
                 future.result()
         else:
-            if total_size < s3_transfer_config.multipart_threshold:
+            f = src_file_list[0]
+            etag = src_etag_list[0]
+            if override_meta is None:
+                meta = _parse_file_metadata(f)
+            else:
+                meta = override_meta
+            existing_src = existing_etags.get(etag)
+            extra_args = dict(Metadata={HELIUM_METADATA: json.dumps(meta)})
+            if existing_src:
+                extra_args['MetadataDirective'] = 'REPLACE'
+                s3_manager.copy(
+                    dict(Bucket=bucket, Key=existing_src[0], VersionId=existing_src[1]),
+                    bucket, key, extra_args, [callback]
+                    ).result()
+            elif total_size < s3_transfer_config.multipart_threshold:
                 def meta_callback(bucket, key, versioned_key):
                     def cb(resp):
                         version_id = resp.get('VersionId', 'null')  # Absent in unversioned buckets.
@@ -403,19 +416,17 @@ def upload_file(src_path, bucket, key, override_meta=None):
                             if version_id != 'null':  # Yes, 'null'
                                 obj_url += '?versionId=%s' % quote(version_id)
                                 versioned_key[0] = obj_url
-                    return cb
-                f = src_file_list[0]
+                    return cb                
                 if override_meta is None:
                     meta = _parse_file_metadata(f)
                 else:
                     meta = override_meta
-                extra_args = dict(Metadata={HELIUM_METADATA: json.dumps(meta)},
-                                  Callback=meta_callback(bucket, key, versioned_key))
-                s3_manager.upload(str(f), bucket, key, extra_args, [callback])
+                extra_args['Callback'] = meta_callback(bucket, key, versioned_key)
+                s3_manager.upload(str(f), bucket, key, extra_args, [callback]).result()
             else:
                 response = s3_client.create_multipart_upload(Bucket=bucket, Key=key)
                 parts = []
-                with open(src_file_list[0], 'rb') as f:
+                with open(f, 'rb') as f:
                     i = 1
                     while True:
                         chunk = f.read(s3_transfer_config.multipart_threshold)
