@@ -363,7 +363,7 @@ def upload_file(src_path, bucket, key, override_meta=None):
         src_etag_list = list(src_etag_iter)
 
     with tqdm(total=total_size, unit='B', unit_scale=True) as progress:
-        callback = ProgressCallback(progress)               
+        callback = ProgressCallback(progress)
 
         if is_dir:
             futures = []
@@ -416,7 +416,7 @@ def upload_file(src_path, bucket, key, override_meta=None):
                             if version_id != 'null':  # Yes, 'null'
                                 obj_url += '?versionId=%s' % quote(version_id)
                                 versioned_key[0] = obj_url
-                    return cb                
+                    return cb
                 if override_meta is None:
                     meta = _parse_file_metadata(f)
                 else:
