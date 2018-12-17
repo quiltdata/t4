@@ -593,7 +593,9 @@ def get_bytes(src):
 
 def get_size_and_meta(src):
     """
-    Gets metadata for the object at a given URL, including size and version.
+    Gets metadata for the object at a given URL.
+    If no S3 versionId is present in the URL it will return a versionId for a current object.
+    If an S3 versionId is present in the input then the returned version will be none.
     """
     src_url = urlparse(src)
     version = None
@@ -612,7 +614,7 @@ def get_size_and_meta(src):
         resp = s3_client.head_object(**params)
         size = resp['ContentLength']
         meta = _parse_metadata(resp)
-        if resp.get('VersionId', 'null') != 'null':  # Yes, 'null'
+        if not version_id and resp.get('VersionId', 'null') != 'null':  # Yes, 'null'
             version = resp['VersionId']
     else:
         raise NotImplementedError
