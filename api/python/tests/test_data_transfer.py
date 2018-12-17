@@ -16,6 +16,8 @@ from t4.data_transfer import TargetType, deserialize_obj
 
 
 ### Third-party imports
+import boto3
+from botocore.stub import Stubber
 import pandas as pd
 import pytest
 
@@ -154,3 +156,36 @@ def test_select():
         # result ignored -- returned data isn't compressed, and this has already been tested.
         data_transfer.select('s3://foo/bar/baz.json.gz', 'select * from S3Object')
         patched.assert_called_once_with(**expected_args)
+
+def test_get_size_and_meta_no_version():
+    stubber = Stubber()
+    response = {
+        'ETag': '12345',
+        'VersionId': '1.0',
+    }
+    expected_params = {
+        'Bucket': 'my_bucket',
+        'Key': 'my_obj',
+    }
+    stubber.add_response('head_object', response, expected_params)
+
+    with stubber:
+        # Verify the verion is present
+        assert data_transfer.get_size_and_meta('s3://my_bucket/my_obj')[2] == '1.0'
+
+def test_get_size_and_meta_version():
+    stubber = Stubber()
+    response = {
+        'ETag': '12345',
+        'VersionId': '1.0',
+    }
+    expected_params = {
+        'Bucket': 'my_bucket',
+        'Key': 'my_obj',
+        'VersionId': 'asdagfa'
+    }
+    stubber.add_response('head_object', response, expected_params)
+
+    with stubber:
+        # Verify the verion is None
+        assert not data_transfer.get_size_and_meta('s3://my_bucket/my_obj?versionId=asdagfa')[2]
