@@ -12,11 +12,16 @@ export const createBoundary = (handle, name = 'ErrorBoundary') =>
 
     static propTypes = {
       children: PT.node,
+      id: PT.string,
     };
 
     constructor(props) {
       super(props);
       this.state = { handled: null };
+    }
+
+    componentDidUpdate({ id: oldId }) {
+      if (this.props.id !== oldId) this.reset();
     }
 
     componentDidCatch(error, info) {

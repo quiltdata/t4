@@ -13,7 +13,7 @@ from .data_transfer import (TargetType, copy_file, deserialize_obj, get_bytes,
 from .packages import get_package_registry
 from .util import (HeliumConfig, QuiltException, CONFIG_PATH,
                    CONFIG_TEMPLATE, fix_url, parse_file_url, parse_s3_url, read_yaml, validate_url,
-                   write_yaml, yaml_has_comments, PACKAGE_NAME_FORMAT)
+                   write_yaml, yaml_has_comments, validate_package_name)
 
 # backports
 from six.moves import urllib
@@ -102,6 +102,25 @@ def delete(target):
     delete_object(bucket, path)
 
 
+def delete_dir(target):
+    """Delete a remote directory.
+
+    Parameters:
+            target (str): URI of the directory to delete
+    """
+    url = urlparse(target)
+    if url.scheme != 's3':
+        raise NotImplementedError
+
+    bucket, path, version = parse_s3_url(url)
+    if version:
+        raise ValueError("Versions don't make sense for directories")
+
+    results = list_objects(bucket, path)
+    for result in results:
+        delete('s3://' + bucket + '/' + result['Key'])
+
+        
 def _tophashes_with_packages(registry=None):
     """Return a dictionary of tophashes and their corresponding packages
 
@@ -146,8 +165,7 @@ def delete_package(name, registry=None):
         name (str): Name of the package
         registry (str): The registry the package will be removed from
     """
-    if not re.match(PACKAGE_NAME_FORMAT, name):
-        raise QuiltException("Invalid package name, must contain exactly one /.")
+    validate_package_name(name)
 
     if name not in list_packages(registry):
         raise QuiltException("No such package exists in the given directory.")

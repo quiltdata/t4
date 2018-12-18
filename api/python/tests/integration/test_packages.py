@@ -11,7 +11,8 @@ import pytest
 
 import t4
 from t4 import Package
-from t4.util import QuiltException, APP_NAME, APP_AUTHOR, BASE_DIR, BASE_PATH, parse_file_url
+from t4.util import (QuiltException, APP_NAME, APP_AUTHOR, BASE_DIR, BASE_PATH,
+                     validate_package_name, parse_file_url)
 
 LOCAL_MANIFEST = os.path.join(os.path.dirname(__file__), 'data', 'local_manifest.jsonl')
 REMOTE_MANIFEST = os.path.join(os.path.dirname(__file__), 'data', 't4_manifest.jsonl')
@@ -520,22 +521,22 @@ def test_list_remote_packages():
 
 
 def test_validate_package_name():
-    Package.validate_package_name("a/b")
-    Package.validate_package_name("21312/bes")
+    validate_package_name("a/b")
+    validate_package_name("21312/bes")
     with pytest.raises(QuiltException):
-        Package.validate_package_name("b")
+        validate_package_name("b")
     with pytest.raises(QuiltException):
-        Package.validate_package_name("a/b/")
+        validate_package_name("a/b/")
     with pytest.raises(QuiltException):
-        Package.validate_package_name("a\\/b")
+        validate_package_name("a\\/b")
     with pytest.raises(QuiltException):
-        Package.validate_package_name("a/b/c")
+        validate_package_name("a/b/c")
     with pytest.raises(QuiltException):
-        Package.validate_package_name("a/")
+        validate_package_name("a/")
     with pytest.raises(QuiltException):
-        Package.validate_package_name("/b")
+        validate_package_name("/b")
     with pytest.raises(QuiltException):
-        Package.validate_package_name("b")
+        validate_package_name("b")
 
 def test_diff():
     new_pkg = Package()
@@ -708,3 +709,28 @@ def test_manifest():
 
     pkg2 = Package.browse(pkg_hash=top_hash)
     assert list(pkg.manifest) == list(pkg2.manifest)
+
+def test_map():
+    pkg = Package()
+    pkg.set('as/df', LOCAL_MANIFEST)
+    pkg.set('as/qw', LOCAL_MANIFEST)
+    assert set(pkg.map(lambda lk, entry: lk)) == {'as/df', 'as/qw'}
+
+
+def test_filter():
+    pkg = Package()
+    pkg.set('as/df', LOCAL_MANIFEST)
+    pkg.set('as/qw', LOCAL_MANIFEST)
+    assert pkg.filter(lambda lk, entry: lk == 'as/df') == [('as/df', pkg['as/df'])]
+
+
+def test_reduce():
+    pkg = Package()
+    pkg.set('as/df', LOCAL_MANIFEST)
+    pkg.set('as/qw', LOCAL_MANIFEST)
+    assert pkg.reduce(lambda a, b: a) == ('as/df', pkg['as/df'])
+    assert pkg.reduce(lambda a, b: b) == ('as/qw', pkg['as/qw'])
+    assert pkg.reduce(lambda a, b: a + [b], []) == [
+        ('as/df', pkg['as/df']),
+        ('as/qw', pkg['as/qw'])
+    ]

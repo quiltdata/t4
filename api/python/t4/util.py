@@ -1,3 +1,4 @@
+import re
 from collections import Mapping, Sequence, Set, OrderedDict
 import datetime
 import json
@@ -243,3 +244,9 @@ def find_bucket_config(bucket_name, catalog_config_url):
                 return bucket
 
     raise QuiltException("Failed to find a config for the chosen bucket")
+
+def validate_package_name(name):
+    """ Verify that a package name is two alphanumerics strings separated by a slash."""
+    if not re.match(PACKAGE_NAME_FORMAT, name):
+        raise QuiltException("Invalid package name, must contain exactly one /.")
+
