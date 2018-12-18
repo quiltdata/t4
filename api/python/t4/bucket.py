@@ -8,8 +8,6 @@ import json
 import pathlib
 from urllib.parse import urlparse
 
-import requests
-
 from .data_transfer import (TargetType, copy_file, copy_object, delete_object,
                             deserialize_obj, get_bytes, get_size_and_meta,
                             list_objects, put_bytes, select, serialize_obj)
