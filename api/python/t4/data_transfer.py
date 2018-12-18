@@ -2,6 +2,7 @@ from codecs import iterdecode
 from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 import hashlib
+import itertools
 import json
 import pathlib
 import platform
@@ -326,7 +327,6 @@ def _calculate_etag(file_obj):
             etag = '%s-%d' % (hashlib.md5(b''.join(hashes)).hexdigest(), len(hashes))
     return '"%s"' % etag
 
-
 def upload_file(src_path, bucket, key, override_meta=None):
     src_file = pathlib.Path(src_path)
     is_dir = src_file.is_dir()
@@ -366,44 +366,84 @@ def upload_file(src_path, bucket, key, override_meta=None):
     with tqdm(total=total_size, unit='B', unit_scale=True) as progress:
         callback = ProgressCallback(progress)
 
-        futures = []
-        for f, etag in zip(src_file_list, src_etag_list):
-            real_dest_path = key + str(f.relative_to(src_root)) if (not key or key.endswith('/')) else key
+        if is_dir:
+            futures = []
+            for f, etag in zip(src_file_list, src_etag_list):
+                real_dest_path = key + str(f.relative_to(src_root)) if (not key or key.endswith('/')) else key
+                if override_meta is None:
+                    meta = _parse_file_metadata(f)
+                else:
+                    meta = override_meta
 
+                extra_args = dict(Metadata={HELIUM_METADATA: json.dumps(meta)})
+                existing_src = existing_etags.get(etag)
+                if existing_src is not None:
+                    # We found an existing object with the same ETag, so copy it instead of uploading
+                    # the bytes. (In the common case, it's the same key - the object is already there -
+                    # but we still copy it onto itself just in case the metadata has changed.)
+                    extra_args['MetadataDirective'] = 'REPLACE'
+                    future = s3_manager.copy(
+                        dict(Bucket=bucket, Key=existing_src[0], VersionId=existing_src[1]),
+                        bucket, real_dest_path, extra_args, [callback]
+                    )
+                else:
+                    # Upload the file.
+                    future = s3_manager.upload(str(f), bucket, real_dest_path, extra_args, [callback])
+                futures.append(future)
+
+            for future in futures:
+                future.result()
+        else:
+            f = src_file_list[0]
+            etag = src_etag_list[0]
             if override_meta is None:
                 meta = _parse_file_metadata(f)
             else:
                 meta = override_meta
-
-            def meta_callback(bucket, real_dest_path, versioned_key):
-                def cb(resp):
-                    version_id = resp.get('VersionId', 'null')  # Absent in unversioned buckets.
-                    if versioned_key is not None:
-                        obj_url = 's3://%s/%s' % (bucket, real_dest_path)
-                        if version_id != 'null':  # Yes, 'null'
-                            obj_url += '?versionId=%s' % quote(version_id)
-                        versioned_key[0] = obj_url
-                return cb
-
-            extra_args = dict(Metadata={HELIUM_METADATA: json.dumps(meta)},
-                              Callback=meta_callback(bucket, real_dest_path, versioned_key))
             existing_src = existing_etags.get(etag)
-            if existing_src is not None:
-                # We found an existing object with the same ETag, so copy it instead of uploading
-                # the bytes. (In the common case, it's the same key - the object is already there -
-                # but we still copy it onto itself just in case the metadata has changed.)
+            extra_args = dict(Metadata={HELIUM_METADATA: json.dumps(meta)})
+            if existing_src:
                 extra_args['MetadataDirective'] = 'REPLACE'
-                future = s3_manager.copy(
+                s3_manager.copy(
                     dict(Bucket=bucket, Key=existing_src[0], VersionId=existing_src[1]),
-                    bucket, real_dest_path, extra_args, [callback]
-                )
+                    bucket, key, extra_args, [callback]
+                    ).result()
+            elif total_size < s3_transfer_config.multipart_threshold:
+                def meta_callback(bucket, key, versioned_key):
+                    def cb(resp):
+                        version_id = resp.get('VersionId', 'null')  # Absent in unversioned buckets.
+                        if versioned_key is not None:
+                            obj_url = 's3://%s/%s' % (bucket, key)
+                            if version_id != 'null':  # Yes, 'null'
+                                obj_url += '?versionId=%s' % quote(version_id)
+                                versioned_key[0] = obj_url
+                    return cb
+                if override_meta is None:
+                    meta = _parse_file_metadata(f)
+                else:
+                    meta = override_meta
+                extra_args['Callback'] = meta_callback(bucket, key, versioned_key)
+                s3_manager.upload(str(f), bucket, key, extra_args, [callback]).result()
             else:
-                # Upload the file.
-                future = s3_manager.upload(str(f), bucket, real_dest_path, extra_args, [callback])
-            futures.append(future)
-
-        for future in futures:
-            future.result()
+                response = s3_client.create_multipart_upload(Bucket=bucket, Key=key)
+                parts = []
+                with open(f, 'rb') as f:
+                    for i in itertools.count(1):
+                        chunk = f.read(s3_transfer_config.multipart_threshold)
+                        if not len(chunk):
+                            break
+                        part = s3_client.upload_part(Body=chunk,
+                                                     Bucket=bucket,
+                                                     Key=key,
+                                                     UploadId=response['UploadId'],
+                                                     PartNumber=i)
+                        parts.append({"PartNumber": i, "ETag": part["ETag"]})
+                        progress.update(len(chunk))
+                result = s3_client.complete_multipart_upload(Bucket=bucket,
+                                                             Key=key,
+                                                             UploadId=response['UploadId'],
+                                                             MultipartUpload={"Parts": parts})
+                versioned_key[0] = result['VersionId']
     return versioned_key
 
 def delete_object(bucket, key):
