@@ -2,7 +2,7 @@ from collections import Mapping, Sequence, Set, OrderedDict
 import datetime
 import json
 import os
-from urllib.parse import parse_qs, unquote, urlparse
+from urllib.parse import parse_qs, unquote, urljoin, urlparse
 from urllib.request import url2pathname
 
 # backports
@@ -213,7 +213,7 @@ class HeliumConfig(OrderedDict):
 
 
 def find_bucket_config(bucket_name, catalog_config_url):
-    config_request = requests.get(CATALOG_CONFIG_URL)
+    config_request = requests.get(catalog_config_url)
     if not config_request.ok:
         raise QuiltException("Failed to get catalog config")
     config_json = json.loads(config_request.text)
@@ -222,6 +222,10 @@ def find_bucket_config(bucket_name, catalog_config_url):
         raise QuiltException("Failed to find federations in catalog config")
     federations.reverse() # want to get results from last federation first
     for federation in federations:
+        parsed = urlparse(federation)
+        if not parsed.netloc:
+            # relative URL
+            federation = urljoin(catalog_config_url, federation)
         federation_request = requests.get(federation)
         if not federation_request.ok:
             continue
