@@ -158,7 +158,7 @@ def test_select():
         patched.assert_called_once_with(**expected_args)
 
 def test_get_size_and_meta_no_version():
-    stubber = Stubber()
+    stubber = Stubber(data_transfer.s3_client)
     response = {
         'ETag': '12345',
         'VersionId': '1.0',
@@ -174,7 +174,7 @@ def test_get_size_and_meta_no_version():
         assert data_transfer.get_size_and_meta('s3://my_bucket/my_obj')[2] == '1.0'
 
 def test_get_size_and_meta_version():
-    stubber = Stubber()
+    stubber = Stubber(data_transfer.s3_client)
     response = {
         'ETag': '12345',
         'VersionId': '1.0',
