@@ -2,6 +2,7 @@ from codecs import iterdecode
 from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 import hashlib
+import itertools
 import json
 import pathlib
 import platform
@@ -427,8 +428,7 @@ def upload_file(src_path, bucket, key, override_meta=None):
                 response = s3_client.create_multipart_upload(Bucket=bucket, Key=key)
                 parts = []
                 with open(f, 'rb') as f:
-                    i = 1
-                    while True:
+                    for i in itertools.count(1):
                         chunk = f.read(s3_transfer_config.multipart_threshold)
                         if not len(chunk):
                             break
@@ -439,7 +439,6 @@ def upload_file(src_path, bucket, key, override_meta=None):
                                                      PartNumber=i)
                         parts.append({"PartNumber": i, "ETag": part["ETag"]})
                         progress.update(len(chunk))
-                        i += 1
                 result = s3_client.complete_multipart_upload(Bucket=bucket,
                                                              Key=key,
                                                              UploadId=response['UploadId'],
