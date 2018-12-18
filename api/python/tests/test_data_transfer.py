@@ -162,10 +162,12 @@ def test_get_size_and_meta_no_version():
     response = {
         'ETag': '12345',
         'VersionId': '1.0',
+        'ContentLength': '123',
     }
     expected_params = {
         'Bucket': 'my_bucket',
         'Key': 'my_obj',
+        'ContentLength': '123',
     }
     stubber.add_response('head_object', response, expected_params)
 
