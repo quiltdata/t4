@@ -163,6 +163,7 @@ def test_get_size_and_meta_no_version():
         'ETag': '12345',
         'VersionId': '1.0',
         'ContentLength': 123,
+        'Metadata': {}
     }
     expected_params = {
         'Bucket': 'my_bucket',
@@ -180,6 +181,7 @@ def test_get_size_and_meta_version():
         'ETag': '12345',
         'VersionId': '1.0',
         'ContentLength': 123,
+        'Metadata': {}
     }
     expected_params = {
         'Bucket': 'my_bucket',
