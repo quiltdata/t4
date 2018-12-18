@@ -63,18 +63,19 @@ $ npm install
 ```
 
 ### Build
-We use `webpack` to build the `t4-navigator` package from source. To build a new package instance, run the following:
+To build a static code bundle, as would be necessary in order to serve the catalog:
 
 ```bash
 $ npm run build
-$ npm run build:dll
 ```
 
-You will now be able to run a local instance of the catalog:
+To run the catalog is developer mode:
 
 ```bash
 $ npm start
 ```
+
+This uses `webpack` under the hood to compile code changes on the fly and provide live reloading, useful when developing.
 
 Make sure that any images you check into the repository are [optimized](https://kinsta.com/blog/optimize-images-for-web/) at check-in time.
 
