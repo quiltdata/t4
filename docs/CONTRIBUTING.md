@@ -69,7 +69,7 @@ To build a static code bundle, as would be necessary in order to serve the catal
 $ npm run build
 ```
 
-To run the catalog is developer mode:
+To run the catalog in developer mode:
 
 ```bash
 $ npm start
