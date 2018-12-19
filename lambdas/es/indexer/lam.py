@@ -7,6 +7,7 @@ from aws_requests_auth.aws_auth import AWSRequestsAuth
 import botocore
 import boto3
 from elasticsearch import Elasticsearch, RequestsHttpConnection
+import nbformat
 
 S3_CLIENT = boto3.client("s3")
 
@@ -20,6 +21,8 @@ DEFAULT_CONFIG = {
     'json': True,
     'ipynb': True,
 }
+
+NB_VERSION = 4 # default notebook version for nbformat
 
 def get_config(bucket):
     try:
@@ -63,31 +66,27 @@ def transform_meta(meta):
     }
     return result
 
-def format_codecell(cell):
-    # outputs: [{output_type: stream, text: [str]}]
-    # OR [{output_type: execute_result, data: {'text/plain': [str]}}]
-    #
-    # source: [str]
-    formatted_source = ' '.join(cell['source'])
-    formatted_output = ''
-    if cell['outputs']:
-        first_output = cell['outputs'][0]
-        if first_output['output_type'] == 'stream':
-            formatted_output = ' '.join(first_output['text'])
-        if (first_output['output_type'] == 'data'
-                and first_output['data'].get('text/plain', None)):
-            formatted_output = ' '.join(first_output['data']['text/plain'])
+def format_notebook(notebook_str):
+    """ Extract code and markdown
+    Args:
+        * nb - notebook as a string
+    Returns:
+        * str - select code and markdown source (and outputs)
+    Pre:
+        * cell is well-formed per notebook version 4
+        * 'cell_type' is defined for all cells
+    Throws:
+        * Anything nbformat.reads() can throw :( which is diverse and poorly
+        documented, hence the `except Exception` in handler()
+    See also:
+        * Format reference https://nbformat.readthedocs.io/en/latest/format_description.html
+    """
+    formatted = nbformat.reads(notebook_str, as_version=NB_VERSION)
+    cells = formatted.get('cells', [])
+    code = [c['source'] for c in cells if c['cell_type'] == 'code']
+    markdown = [m['source'] for m in cells if m['cell_type'] == 'markdown']
 
-    return formatted_source + formatted_output
-
-def format_notebook(nb):
-    cells = nb['cells']
-    codecells = filter(lambda x: x['cell_type'] == 'code', cells)
-    formatted = map(format_codecell, codecells)
-    text = ' '.join(list(formatted))
-    markdowncells = filter(lambda x: x['cell_type'] == 'markdown', cells)
-    markdowntext = ' '.join([' '.join(cell['source']) for cell in markdowncells])
-    return text + ' ' + markdowntext
+    return '\n'.join(code + markdown)
 
 def post_to_es(event_type, size, text, key, meta, version_id=''):
     data = {
@@ -165,11 +164,12 @@ def handler(event, context):
                     notebook = json.load(response['Body'])
                     text = format_notebook(notebook)
                 except json.JSONDecodeError:
-                    print("Invalid JSON in .ipynb file")
-                except KeyError:
-                    print("Could not format .ipynb file -- format not as expected")
+                    print("Invalid JSON in .ipynb file: {}".format(key))
+                except KeyError as k_error:
+                    print("Missing expected key in .ipynb file: {}. {}".format(key, k_error))
+                except Exception as e:
+                    print("Exception while parsing .ipynb file: {}".format(key))
             # TODO: more plaintext types here
-
             # decode helium metadata
             try:
                 meta['helium'] = json.loads(meta['helium'])
