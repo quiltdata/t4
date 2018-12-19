@@ -83,3 +83,23 @@ class TestAPI():
 
         assert np.array_equal(data, data2)
         assert meta == meta2
+
+    @patch('t4.data_transfer.s3_client')
+    def test_remote_delete(self, s3_client):
+        he.delete('s3://test-bucket/file.json')
+        call_kwargs = {'Bucket': 'test-bucket', 'Key': 'file.json'}
+        s3_client.head_object.assert_called_with(**call_kwargs)
+        s3_client.delete_object.assert_called_with(**call_kwargs)
+
+    @patch('t4.data_transfer.s3_client')
+    def test_remote_delete_dir(self, s3_client):
+        s3_client.list_objects_v2.return_value = {
+            'IsTruncated': False,
+            'Contents': [{'Key': 'a'}, {'Key': 'b'}],
+        }
+        he.delete_dir('s3://test-bucket/dir/')
+
+        a_kwargs = {'Bucket': 'test-bucket', 'Key': 'a'}
+        b_kwargs = {'Bucket': 'test-bucket', 'Key': 'b'}
+        s3_client.delete_object.assert_any_call(**a_kwargs)
+        s3_client.delete_object.assert_any_call(**b_kwargs)

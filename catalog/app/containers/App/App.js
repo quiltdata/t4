@@ -34,7 +34,7 @@ export default composeComponent('App',
   NamedRoutes.inject(),
   withRouter,
   ({ location: l, paths, urls }) => (
-    <CatchNotFound key={`${l.pathname}${l.search}${l.hash}`}>
+    <CatchNotFound id={`${l.pathname}${l.search}${l.hash}`}>
       <Switch>
         <Route path={paths.home} component={ProtectedHome} exact />
         <Route path={paths.signIn} component={SignIn} exact />

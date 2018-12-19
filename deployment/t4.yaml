@@ -30,9 +30,9 @@ Mappings:
       hash: f0cc75b
     # static website content
     navigator:
-      hash: c842508
+      hash: 6c16507
     indexer:
-      hash: bf2c4fb
+      hash: 5d2334a
     put-mappings:
       hash: 76df9d0
 
@@ -231,7 +231,7 @@ Resources:
             }
           };
       Timeout: 30
-      Runtime: nodejs4.3
+      Runtime: nodejs8.10
 
   # API
 
