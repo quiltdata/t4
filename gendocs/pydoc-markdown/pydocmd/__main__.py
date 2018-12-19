@@ -50,18 +50,19 @@ def read_config():
 
 def default_config(config):
   args = parser.parse_args()
-  config.setdefault('docs_dir', 'sources')
-  config.setdefault('gens_dir', '_build/pydocmd')
-  config.setdefault('site_dir', '_build/site')
-  if args.command == 'simple':
-    config.setdefault('headers', 'markdown')
-  else:
-    config.setdefault('headers', 'html')
-  config.setdefault('theme', 'readthedocs')
-  config.setdefault('loader', 'pydocmd.loader.PythonLoader')
-  config.setdefault('preprocessor', 'pydocmd.preprocessor.Preprocessor')
-  config.setdefault('additional_search_paths', [])
-  return config
+  defaults = {
+    'additional_search_paths': [],
+    'docs_dir': 'sources',
+    'gens_dir': '_build/pydocmd',
+    'headers': 'markdown' if args.command == 'simple' else 'html',
+    'site_dir': '_build/site',
+    'sort': 'name',
+    'theme': 'readthedocs',
+    'loader': 'pydocmd.loader.PythonLoader',
+    'preprocessor': 'pydocmd.preprocessor.Preprocessor',
+  }
+  defaults.update(config)
+  return defaults
 
 
 def write_temp_mkdocs_config(inconf):
