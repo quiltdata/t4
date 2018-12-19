@@ -9,13 +9,6 @@ import boto3
 from elasticsearch import Elasticsearch, RequestsHttpConnection
 import nbformat
 
-S3_CLIENT = boto3.client("s3")
-
-ES_URL = os.environ['ES_URL']
-ES_HOST = ES_URL[8:] # strip https://
-
-ES_INDEX = 'drive'
-
 DEFAULT_CONFIG = {
     'md': True,
     'json': True,
@@ -23,6 +16,8 @@ DEFAULT_CONFIG = {
 }
 
 NB_VERSION = 4 # default notebook version for nbformat
+
+S3_CLIENT = boto3.client("s3")
 
 def get_config(bucket):
     try:
@@ -66,29 +61,43 @@ def transform_meta(meta):
     }
     return result
 
-def format_notebook(notebook_str):
+def extract_text(notebook_str):
     """ Extract code and markdown
     Args:
         * nb - notebook as a string
     Returns:
         * str - select code and markdown source (and outputs)
     Pre:
-        * cell is well-formed per notebook version 4
+        * notebook is well-formed per notebook version 4
         * 'cell_type' is defined for all cells
+        * 'source' defined for all 'code' and 'markdown' cells
     Throws:
         * Anything nbformat.reads() can throw :( which is diverse and poorly
         documented, hence the `except Exception` in handler()
+    Notes:
+        * Deliberately decided not to index output streams and display strings
+        because they were noisy and low value
+        * Tested this code against ~6400 Jupyter notebooks in
+        https://alpha.quiltdata.com/b/alpha-quilt-storage/tree/notebook-search/
+        * Might be useful to index "cell_type" : "raw" in the future
     See also:
         * Format reference https://nbformat.readthedocs.io/en/latest/format_description.html
     """
     formatted = nbformat.reads(notebook_str, as_version=NB_VERSION)
-    cells = formatted.get('cells', [])
+    # prevent common error after calling nbformat: missing 'source' key
+    cells = [c for c in formatted.get('cells', []) 
+             if 'source' in c and 'cell_type' in c]
     code = [c['source'] for c in cells if c['cell_type'] == 'code']
     markdown = [m['source'] for m in cells if m['cell_type'] == 'markdown']
 
     return '\n'.join(code + markdown)
 
 def post_to_es(event_type, size, text, key, meta, version_id=''):
+
+    ES_URL = os.environ['ES_URL']
+    ES_HOST = ES_URL[8:] # strip https://
+    ES_INDEX = 'drive'
+
     data = {
         'type': event_type,
         'size': size,
@@ -162,7 +171,7 @@ def handler(event, context):
             elif key.endswith('.ipynb') and config['ipynb']:
                 try:
                     notebook = json.load(response['Body'])
-                    text = format_notebook(notebook)
+                    text = extract_text(notebook)
                 except json.JSONDecodeError:
                     print("Invalid JSON in .ipynb file: {}".format(key))
                 except KeyError as k_error:
