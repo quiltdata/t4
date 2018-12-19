@@ -6,3 +6,4 @@
 		* https://nvbn.github.io/2015/09/09/pytest-docker/
 
 * [ ] parameterize Python version (Lambda functions can be 2.7, 3.6, etc.)
+* [ ] integrate withe rest of unit testing suite?
