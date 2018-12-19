@@ -24,3 +24,6 @@ This version is modified to:
 * Use signatures as title, not under title in a code block
 * Minor display improvements/preferences
 * Handle google docstrings to render them as markdown
+* Fix handling of codeblocks under sections
+* Add handling for doctest-style code examples:
+
