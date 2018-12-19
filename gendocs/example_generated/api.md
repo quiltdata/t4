@@ -3,21 +3,36 @@
 Set or read the T4 configuration
 
 To retrieve the current config, call directly, without arguments:
+
+```python
     >>> import t4 as he
     >>> he.config()
 
+```
 To trigger autoconfiguration, call with just the navigator URL:
+
+```python
     >>> he.config('https://example.com')
 
+```
 To set config values, call with one or more key=value pairs:
+
+```python
     >>> he.config(navigator_url='http://example.com',
     ...           elastic_search_url='http://example.com/queries')
+
+```
 When setting config values, unrecognized values are rejected.  Acceptable
 config values can be found in `t4.util.CONFIG_TEMPLATE`
 
-:param autoconfig_url: URL indicating a location to configure from
-:param **config_values: `key=value` pairs to set in the config
-:returns: HeliumConfig object (an ordered Mapping)
+__Arguments__
+
+* __autoconfig\_url__:  A (single) URL indicating a location to configure from
+* __\*\*config\_values__:  `key=value` pairs to set in the config
+
+__Returns__
+
+`HeliumConfig`: (an ordered Mapping)
 
 
 # copy(src, dest)
@@ -90,15 +105,17 @@ __Arguments__
 
 __Returns__
 
-```list```: Return value structure has not yet been permanently decided
-Currently, it's a ``tuple`` of ``list`` objects, containing the
-following:
-result[0]
-    directory info
-result[1]
-    file/object info
-result[2]
-    delete markers
+`tuple`: Return value structure has not yet been permanently decided
+
+Currently, it's a `tuple` of `list` objects, structured as follows:
+
+```python
+(
+   <directory info>,
+   <file/object info>,
+   <delete markers>,
+)
+```
 
 
 # put(obj, dest, meta=None)
