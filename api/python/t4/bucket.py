@@ -21,8 +21,7 @@ CONFIG_URL = "https://t4.quiltdata.com/config.json"
 
 
 class Bucket(object):
-    """
-    Implements Bucket interface for T4.
+    """Bucket interface for T4.
     """
     def __init__(self, bucket_uri):
         """
@@ -68,19 +67,24 @@ class Bucket(object):
         """
         Execute a search against the configured search endpoint.
 
-        query: query string to search
+        Args:
+            query (str): query string to search
 
-        Returns either the request object (in case of an error) or
-                a list of objects with the following keys:
-            key: key of the object
-            version_id: version_id of object version
-            operation: Create or Delete
-            meta: metadata attached to object
-            size: size of object in bytes
-            text: indexed text of object
-            source: source document for object (what is actually stored in ElasticSeach)
-            time: timestamp for operation
-
+        Returns:
+            either the request object (in case of an error) or
+            a list of objects with the following structure:
+            ```
+            [{
+                "key": <key of the object>,
+                "version_id": <version_id of object version>,
+                "operation": <"Create" or "Delete">,
+                "meta": <metadata attached to object>,
+                "size": <size of object in bytes>,
+                "text": <indexed text of object>,
+                "source": <source document for object (what is actually stored in ElasticSeach)>,
+                "time": <timestamp for operation>,
+            }...]
+            ```
         """
         if not self._search_endpoint:
             self.config()
@@ -97,8 +101,9 @@ class Bucket(object):
             deserialized object
 
         Raises:
-            KeyError if key does not exist
-            if deserialization fails
+            KeyError: if key does not exist
+            QuiltException: if deserialization fails in a known way
+            * if a deserializer raises an unexpected error
         """
         data, meta = get_bytes(self._uri + key)
         target = meta.get('target', None)
@@ -109,8 +114,12 @@ class Bucket(object):
         return deserialize_obj(data, target)
 
     def __call__(self, key):
-        """
-        Shorthand for deserialize(key)
+        """Deserializes object at key from bucket.
+
+        `bucket(key)`, Shorthand for `bucket.deserialize(key)`
+
+        Args:
+            key: Key of object to deserialize
         """
         return self.deserialize(key)
 
@@ -144,8 +153,8 @@ class Bucket(object):
             None
 
         Raises:
-            if no file exists at path
-            if copy fails
+            * if no file exists at path
+            * if copy fails
         """
         dest = self._uri + key
         copy_file(fix_url(path), dest)
@@ -162,8 +171,8 @@ class Bucket(object):
             None
 
         Raises:
-            if directory isn't a valid local directory
-            if writing to bucket fails
+            * if directory isn't a valid local directory
+            * if writing to bucket fails
         """
         # Ensure key ends in '/'.
         if key[-1] != '/':
@@ -197,7 +206,7 @@ class Bucket(object):
             None
 
         Raises:
-            if delete fails
+            * if delete fails
         """
         delete_object(self._bucket, key)
 
@@ -205,8 +214,9 @@ class Bucket(object):
         """
         Fetches file (or files) at key to path.
 
-        If key ends in '/', then all files with the prefix key will match and will
-            be stored in a directory at path.
+        If key ends in '/', then all files with the prefix key will match and
+        will be stored in a directory at path.
+
         Otherwise, only one file will be fetched and it will be stored at path.
 
         Args:
@@ -217,8 +227,8 @@ class Bucket(object):
             None
 
         Raises:
-            if path doesn't exist
-            if download fails
+            * if path doesn't exist
+            * if download fails
         """
         source_uri = self._uri + key
         dest_uri = fix_url(path)
@@ -235,7 +245,7 @@ class Bucket(object):
             dict of meta
 
         Raises:
-            if download fails
+            * if download fails
         """
         src_uri = self._uri + key
         return get_size_and_meta(src_uri)[1]
@@ -252,7 +262,7 @@ class Bucket(object):
             None
 
         Raises:
-            if put to bucket fails
+            * if put to bucket fails
         """
         existing_meta = self.get_meta(key)
         existing_meta['user_meta'] = meta
@@ -267,8 +277,9 @@ class Bucket(object):
             query(str): query to execute (SQL by default)
             query_type(str): other query type accepted by S3 service
             raw(bool): return the raw (but parsed) response
+
         Returns:
-            pandas.DataFrame with results of query
+            pandas.DataFrame: with results of query
         """
         meta = self.get_meta(key)
         uri = self._uri + key
