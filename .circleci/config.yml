@@ -35,8 +35,7 @@ jobs:
           name: Run Pytest
           command: |
             . venv/bin/activate
-            cd lambdas && pytest --cov=./ && cd ..
-            cd api/python && pytest --cov=./
+            cd api/python && pytest --cov=./ && cd ../../lambdas/es/indexer && pytest --cov=./
             codecov
   build:
     docker:
@@ -59,8 +58,7 @@ jobs:
           name: run tests
           command: |
             . venv/bin/activate
-            cd lambdas && pytest --cov=./ && cd ..
-            cd api/python && pytest --cov=./
+            cd api/python && pytest --cov=./ && cd ../../lambdas/es/indexer && pytest --cov=./
             codecov
       - store_artifacts:
           path: htmlcov/
