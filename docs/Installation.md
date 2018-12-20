@@ -6,7 +6,9 @@ T4 has two different components:
 
 If you have an already-provisioned catalog, only the Python package is needed.
 
-## T4 client (Python 3.6)
+## T4 client
+
+Python 3.6 is required.
 
 ```bash
 $ pip install t4
@@ -45,8 +47,8 @@ For more advanced deployment scripts, see [`deploy_navigator.sh`](../deployment/
 
 
 ## AWS T4 Instance (via CloudFormation)
-The following section uses CloudFormation to manage S3 buckets, ElasticSearch endpoints, and CloudFront to deploy
-a T4 instance in your VPC.
+The following section uses AWS CloudFormation to deploy and manage the resources
+required to run a T4 bucket and catalog in your own VPC.
 
 ### Known limitations
 
