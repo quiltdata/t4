@@ -84,11 +84,14 @@ def extract_text(notebook_str):
         * Format reference https://nbformat.readthedocs.io/en/latest/format_description.html
     """
     formatted = nbformat.reads(notebook_str, as_version=NB_VERSION)
-    # prevent common error after calling nbformat: missing 'source' key
-    cells = [c for c in formatted.get('cells', []) 
-             if 'source' in c and 'cell_type' in c]
-    code = [c['source'] for c in cells if c['cell_type'] == 'code']
-    markdown = [m['source'] for m in cells if m['cell_type'] == 'markdown']
+    code = []
+    markdown = []
+    for cell in formatted.get('cells', []):
+        if 'source' in cell and 'cell_type' in cell:
+            if cell['cell_type'] == 'code':
+                code.append(cell['source'])
+            elif cell['cell_type'] == 'markdown':
+                markdown.append(cell['source'])
 
     return '\n'.join(code + markdown)
 
