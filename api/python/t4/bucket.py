@@ -200,6 +200,9 @@ class Bucket(object):
         Raises:
             if delete fails
         """
+        if key[-1] == '/':
+            raise QuiltException("Must use delete_dir to delete directories")
+
         delete_object(self._bucket, key)
 
     def delete_dir(self, path):

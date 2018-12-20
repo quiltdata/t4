@@ -186,6 +186,9 @@ def test_remote_delete(s3_client):
     s3_client.head_object.assert_called_with(**call_kwargs)
     s3_client.delete_object.assert_called_with(**call_kwargs)
 
+    with pytest.raises(QuiltException):
+        bucket.delete('s3://test-bucket/dir/')
+
 
 @patch('t4.data_transfer.s3_client')
 def test_remote_delete_dir(s3_client):
@@ -200,3 +203,6 @@ def test_remote_delete_dir(s3_client):
     b_kwargs = {'Bucket': 'test-bucket', 'Key': 'b'}
     s3_client.delete_object.assert_any_call(**a_kwargs)
     s3_client.delete_object.assert_any_call(**b_kwargs)
+
+    with pytest.raises(ValueError):
+        bucket.delete_dir('s3://test-bucket/dir')
