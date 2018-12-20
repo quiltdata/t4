@@ -21,7 +21,7 @@ from .data_transfer import (
 from .exceptions import PackageException
 from .util import (
     QuiltException, BASE_PATH, fix_url, get_local_registry, get_remote_registry,
-    parse_file_url, parse_s3_url, validate_package_name
+    parse_file_url, parse_s3_url, validate_package_name, quiltignore_filter
 )
 
 
@@ -544,7 +544,15 @@ class Package(object):
             src_path = pathlib.Path(parse_file_url(url))
             if not src_path.is_dir():
                 raise PackageException("The specified directory doesn't exist")
+
+            # TODO: keep working on this ignore rules code
             files = src_path.rglob('*')
+            ignore = src_path / '.quiltignore'
+            if ignore.exists():
+                ignore_rules = ignore.read_text('utf-8').split("\n")
+                filenames = [f.name for f in src_path.rglob('*')]
+                files = quiltignore_filter(src_path.rglob('*'), ignore_rules, 'file')
+
             for f in files:
                 if not f.is_file():
                     continue
@@ -553,6 +561,7 @@ class Package(object):
                 # TODO: Warn if overwritting a logical key?
                 root.set(logical_key, entry)
         elif url.scheme == 's3':
+            import pdb; pdb.set_trace()
             src_bucket, src_key, src_version = parse_s3_url(url)
             if src_version:
                 raise PackageException("Directories cannot have versions")

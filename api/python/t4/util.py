@@ -244,3 +244,20 @@ def get_local_registry():
 
 def get_remote_registry():
     return load_config().get('default_remote_registry', None)
+
+
+def quiltignore_filter(filenames, ignore_rules, url_scheme):
+    from fnmatch import fnmatch
+
+    if url_scheme == 'file':
+        for ignore in ignore_rules:
+            if ignore == 'ay':
+                import pdb; pdb.set_trace()
+
+            filenames = [n for n in filenames if not fnmatch(n, ignore)]
+        return filenames
+    elif url_scheme == 's3':
+        # TODO
+        raise NotImplementedError
+    else:
+        raise NotImplementedError
