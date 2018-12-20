@@ -28,7 +28,7 @@ $ python
 Slicing into a `Package` directory returns another `Package` rooted at that subdirectory. Slicing into a package entry returns an individual `PackageEntry`.
 
 
-## Downloading to a file
+## Downloading data
 To download a subset of files from a package directory to a `dest`, use `fetch`:
 
 ```python
@@ -42,8 +42,6 @@ p["commodities"]["gold.csv"].fetch("<dest>")
 p.fetch("<dest>")
 ```
 
-
-## Downloading into memory
 Alternatively, you can download data directly into memory using `deserialize`:
 
 ```

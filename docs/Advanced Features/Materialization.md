@@ -1,6 +1,6 @@
 ## `build` versus `push`
 
-The sections ["Building a Package"](../Walkthrough/Building a Package.md) and ["Pushing a Package"](../Walkthrough/Pushing a Package.md) explain how to distribute data packages. They focus on two commands `build` and `push`, which have the following behaviors:
+The section ["Saving a Package"](../Walkthrough/Saving%20a%20Package.md) explains how to distribute data packages. It focuses on two commands `build` and `push`, which have the following behaviors:
 
 * `build` calculates a tophash based on the package entry data, package entry metadata, and top-level package metadata, injects that into the package manifest, and stores the package manifest in the local registry.
 * `push` uploads the entries in the package to a remote registry, performs the same tophash calculations, and stores a package manifest referencing the remote files in the remote registry.
