@@ -95,7 +95,7 @@ def extract_text(notebook_str):
 def post_to_es(event_type, size, text, key, meta, version_id=''):
 
     ES_URL = os.environ['ES_URL']
-    ES_HOST = ES_URL[8:] # strip https://
+    ES_HOST = ES_URL.lstrip('https://')
     ES_INDEX = 'drive'
 
     data = {
@@ -172,12 +172,14 @@ def handler(event, context):
                 try:
                     notebook = json.load(response['Body'])
                     text = extract_text(notebook)
-                except json.JSONDecodeError:
-                    print("Invalid JSON in .ipynb file: {}".format(key))
-                except KeyError as k_error:
-                    print("Missing expected key in .ipynb file: {}. {}".format(key, k_error))
-                except Exception as e:
-                    print("Exception while parsing .ipynb file: {}".format(key))
+                except (json.JSONDecodeError, nbformat.reader.NotJSONError):
+                    print("Invalid JSON in {}.".format(key))
+                except (KeyError, AttributeError)  as err:
+                    print("Missing key in {}: {}".format(key, err))
+                # there might be more errors than covered by test_read_notebook
+                # better not to fail altogether
+                except Exception as exc:#pylint: disable=broad-except
+                    print("Exception in file {}: {}".format(key, exc))
             # TODO: more plaintext types here
             # decode helium metadata
             try:
