@@ -177,3 +177,26 @@ def test_bucket_put():
         copy_dest = copy_mock.call_args_list[0][0][1]
         assert urlparse(copy_dest).scheme == 's3'
 
+
+@patch('t4.data_transfer.s3_client')
+def test_remote_delete(s3_client):
+    bucket = Bucket('s3://test-bucket')
+    bucket.delete('file.json')
+    call_kwargs = {'Bucket': 'test-bucket', 'Key': 'file.json'}
+    s3_client.head_object.assert_called_with(**call_kwargs)
+    s3_client.delete_object.assert_called_with(**call_kwargs)
+
+
+@patch('t4.data_transfer.s3_client')
+def test_remote_delete_dir(s3_client):
+    s3_client.list_objects_v2.return_value = {
+        'IsTruncated': False,
+        'Contents': [{'Key': 'a'}, {'Key': 'b'}],
+    }
+    bucket = Bucket('s3://test-bucket')
+    bucket.delete_dir('s3://test-bucket/dir/')
+
+    a_kwargs = {'Bucket': 'test-bucket', 'Key': 'a'}
+    b_kwargs = {'Bucket': 'test-bucket', 'Key': 'b'}
+    s3_client.delete_object.assert_any_call(**a_kwargs)
+    s3_client.delete_object.assert_any_call(**b_kwargs)
