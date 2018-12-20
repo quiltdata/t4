@@ -35,6 +35,7 @@ jobs:
           name: Run Pytest
           command: |
             . venv/bin/activate
+            cd lambdas && pytest --cov=./ && cd ..
             cd api/python && pytest --cov=./
             codecov
   build:
@@ -58,6 +59,7 @@ jobs:
           name: run tests
           command: |
             . venv/bin/activate
+            cd lambdas && pytest --cov=./ && cd ..
             cd api/python && pytest --cov=./
             codecov
       - store_artifacts:
