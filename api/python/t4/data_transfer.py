@@ -634,8 +634,12 @@ def get_bytes(src):
 def get_size_and_meta(src):
     """
     Gets metadata for the object at a given URL.
+
+    Returns:
+        size, meta(dict), version(str)
     """
     src_url = urlparse(src)
+    version = None
     if src_url.scheme == 'file':
         src_path = pathlib.Path(parse_file_url(src_url))
         size = src_path.stat().st_size
@@ -651,9 +655,11 @@ def get_size_and_meta(src):
         resp = s3_client.head_object(**params)
         size = resp['ContentLength']
         meta = _parse_metadata(resp)
+        if resp.get('VersionId', 'null') != 'null':  # Yes, 'null'
+            version = resp['VersionId']
     else:
         raise NotImplementedError
-    return size, meta
+    return size, meta, version
 
 def calculate_sha256(src_list, total_size):
     lock = Lock()

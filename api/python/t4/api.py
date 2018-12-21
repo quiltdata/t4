@@ -132,27 +132,46 @@ def _tophashes_with_packages(registry=None):
     """
     registry_base_path = get_package_registry(fix_url(registry) if registry else None)
     registry_url = urlparse(registry_base_path)
-    if registry_url.scheme != 'file':
-        raise NotImplementedError
-
-    registry_dir = pathlib.Path(parse_file_url(registry_url))
-
     out = {}
-    for pkg_namespace_path in (registry_dir / 'named_packages').iterdir():
-        pkg_namespace = pkg_namespace_path.name
 
-        for pkg_subname_path in pkg_namespace_path.iterdir():
-            pkg_subname = pkg_subname_path.name
-            pkg_name = pkg_namespace + '/' + pkg_subname
+    if registry_url.scheme == 'file':
+        registry_dir = pathlib.Path(parse_file_url(registry_url))
 
-            package_tophashes = [tophash.name for tophash in pkg_subname_path.iterdir()
-                                 if tophash.name != 'latest']
+        for pkg_namespace_path in (registry_dir / 'named_packages').iterdir():
+            pkg_namespace = pkg_namespace_path.name
 
-            for tophash in package_tophashes:
-                if tophash in out:
-                    out[tophash].append(pkg_name)
-                else:
-                    out[tophash] = [pkg_name]
+            for pkg_subname_path in pkg_namespace_path.iterdir():
+                pkg_subname = pkg_subname_path.name
+                pkg_name = pkg_namespace + '/' + pkg_subname
+
+                package_timestamps = [ts.name for ts in pkg_subname_path.iterdir()
+                                      if ts.name != 'latest']
+
+                for timestamp in package_timestamps:
+                    tophash = (pkg_namespace_path / pkg_subname / timestamp).read_text()
+                    if tophash in out:
+                        out[tophash].update({pkg_name})
+                    else:
+                        out[tophash] = {pkg_name}
+
+    elif registry_url.scheme == 's3':
+        bucket, path, version = parse_s3_url(registry_url)
+
+        pkg_namespace_path = path + '/named_packages/'
+
+        for pkg_entry in list_objects(bucket, pkg_namespace_path):
+            pkg_entry_path = pkg_entry['Key']
+            tophash, meta = get_bytes('s3://' + bucket + '/' + pkg_entry_path)
+            tophash = tophash.decode('utf-8')
+            pkg_name = "/".join(pkg_entry_path.split("/")[-3:-1])
+
+            if tophash in out:
+                out[tophash].update({pkg_name})
+            else:
+                out[tophash] = {pkg_name}
+
+    else:
+        raise NotImplementedError
 
     return out
 
@@ -172,31 +191,52 @@ def delete_package(name, registry=None):
 
     registry_base_path = get_package_registry(fix_url(registry) if registry else None)
     registry_url = urlparse(registry_base_path)
-    if registry_url.scheme != 'file':
-        raise NotImplementedError
-
     pkg_namespace, pkg_subname = name.split("/")
-
-    registry_dir = pathlib.Path(parse_file_url(registry_url))
-    pkg_namespace_dir = registry_dir / 'named_packages' / pkg_namespace
-    pkg_dir = pkg_namespace_dir / pkg_subname
-    packages_path = registry_dir / 'packages'
 
     tophashes_with_packages = _tophashes_with_packages(registry)
 
-    for tophash_file in pkg_dir.iterdir():
-        # skip latest, which always duplicates a tophashed file
-        tophash = tophash_file.name
+    if registry_url.scheme == 'file':
 
-        if tophash != 'latest' and len(tophashes_with_packages[tophash]) == 1:
-            (packages_path / tophash_file.read_text()).unlink()
+        registry_dir = pathlib.Path(parse_file_url(registry_url))
+        pkg_namespace_dir = registry_dir / 'named_packages' / pkg_namespace
+        pkg_dir = pkg_namespace_dir / pkg_subname
+        packages_path = registry_dir / 'packages'
 
-        tophash_file.unlink()
+        for tophash_file in pkg_dir.iterdir():
+            # skip latest, which always duplicates a tophashed file
+            timestamp = tophash_file.name
+            tophash = tophash_file.read_text()
 
-    pkg_dir.rmdir()
+            if timestamp != 'latest' and len(tophashes_with_packages[tophash]) == 1:
+                (packages_path / tophash).unlink()
 
-    if not list(pkg_namespace_dir.iterdir()):
-        pkg_namespace_dir.rmdir()
+            tophash_file.unlink()
+
+        pkg_dir.rmdir()
+
+        if not list(pkg_namespace_dir.iterdir()):
+            pkg_namespace_dir.rmdir()
+
+    elif registry_url.scheme == 's3':
+        bucket, path, version = parse_s3_url(registry_url)
+        pkg_namespace_dir = path + '/named_packages/' + pkg_namespace
+        pkg_dir = pkg_namespace_dir + '/' + pkg_subname + '/'
+        packages_path = path + '/packages/'
+
+        for tophash_obj_repr in list_objects(bucket, pkg_dir):
+            tophash_file = tophash_obj_repr['Key']
+            timestamp = tophash_file.split("/")[-1]
+            tophash_path = 's3://' + bucket + '/' + tophash_file
+            tophash, meta = get_bytes(tophash_path)
+            tophash = tophash.decode('utf-8')
+
+            if timestamp != 'latest' and len(tophashes_with_packages[tophash]) == 1:
+                delete_object(bucket, packages_path + tophash)
+
+            delete_object(bucket, tophash_file)
+
+    else:
+        raise NotImplementedError
 
 
 def ls(target, recursive=False):
