@@ -170,8 +170,10 @@ def handler(event, context):
                     print("Unicode decode error in .md file")
             elif key.endswith('.ipynb') and config['ipynb']:
                 try:
-                    notebook = json.load(response['Body'])
+                    notebook = response['Body'].read().decode('utf-8')
                     text = extract_text(notebook)
+                except UnicodeDecodeError as uni:
+                    print("Unicode decode error in {}: {} ".format(key, uni))
                 except (json.JSONDecodeError, nbformat.reader.NotJSONError):
                     print("Invalid JSON in {}.".format(key))
                 except (KeyError, AttributeError)  as err:
