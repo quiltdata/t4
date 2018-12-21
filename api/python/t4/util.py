@@ -43,7 +43,15 @@ navigator_url:
 # Used to satisfy search queries
 # elastic_search_url: https://example.com/es
 elastic_search_url:
-"""
+
+# default_local_registry: <url string, default: local appdirs>
+# default target registry for operations like install and build
+default_local_registry: {}
+
+# default_remote_registry: <url string, default: null>
+# default target for operations like push and browse
+default_remote_registry:
+""".format(BASE_PATH.as_uri())
 
 
 class QuiltException(Exception):
@@ -216,3 +224,11 @@ def validate_package_name(name):
     """ Verify that a package name is two alphanumerics strings separated by a slash."""
     if not re.match(PACKAGE_NAME_FORMAT, name):
         raise QuiltException("Invalid package name, must contain exactly one /.")
+
+def load_config():
+    config_template = read_yaml(CONFIG_TEMPLATE)
+    if CONFIG_PATH.exists():
+        local_config = read_yaml(CONFIG_PATH)
+    else:
+        local_config = config_template
+    return local_config

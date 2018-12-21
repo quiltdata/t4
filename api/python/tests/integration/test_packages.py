@@ -69,6 +69,54 @@ def test_build(tmpdir):
         pkg = Package.load(fd)
         assert test_file.resolve().as_uri() == pkg['bar'].physical_keys[0]
 
+@patch('appdirs.user_data_dir', lambda x,y: os.path.join('test_appdir', x))
+def test_default_registry(tmpdir):
+    new_pkg = Package()
+
+    # Create a dummy file to add to the package.
+    test_file_name = 'bar'
+    with open(test_file_name, "w") as fd:
+        fd.write('test_file_content_string')
+        test_file = Path(fd.name)
+
+    # Build a new package into the local registry.
+    new_pkg = new_pkg.set('foo', test_file_name)
+    top_hash = new_pkg.build("Quilt/Test")
+
+    # Verify manifest is registered by hash.
+    out_path = Path(BASE_PATH, ".quilt/packages", top_hash)
+    with open(out_path) as fd:
+        pkg = Package.load(fd)
+        assert test_file.resolve().as_uri() == pkg['foo'].physical_keys[0]
+
+    # Verify latest points to the new location.
+    named_pointer_path = Path(BASE_PATH, ".quilt/named_packages/Quilt/Test/latest")
+    with open(named_pointer_path) as fd:
+        assert fd.read().replace('\n', '') == top_hash
+
+    # Test unnamed packages.
+    new_pkg = Package()
+    new_pkg = new_pkg.set('bar', test_file_name)
+    top_hash = new_pkg.build()
+    out_path = Path(BASE_PATH, ".quilt/packages", top_hash)
+    with open(out_path) as fd:
+        pkg = Package.load(fd)
+        assert test_file.resolve().as_uri() == pkg['bar'].physical_keys[0]
+
+    new_base_path = Path(BASE_PATH, ".quilttest")
+    with patch('t4.packages.load_config') as mock_config:
+        mock_config.return_value = {'default_local_registry': new_base_path}
+        top_hash = new_pkg.build("Quilt/Test")
+        out_path = Path(new_base_path, ".quilt/packages", top_hash).resolve()
+        with open(out_path) as fd:
+            pkg = Package.load(fd)
+            assert test_file.resolve().as_uri() == pkg['bar'].physical_keys[0]
+
+        mock_config.return_value = {'default_remote_registry': new_base_path}
+        new_pkg.push("Quilt/Test", Path(tmpdir, 'test_dest').resolve().as_uri())
+        with open(out_path) as fd:
+            pkg = Package.load(fd)
+            assert pkg['bar'].physical_keys[0].endswith('test_dest/Quilt/Test/bar')
 
 def test_read_manifest(tmpdir):
     """ Verify reading serialized manifest from disk. """
