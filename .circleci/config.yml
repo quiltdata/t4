@@ -5,6 +5,7 @@ workflows:
   test:
     jobs:
       - test-3.6
+      - test-lambdas
   build_and_deploy:
     jobs:
       - build:
