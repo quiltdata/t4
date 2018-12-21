@@ -6,5 +6,6 @@ setup(
     py_modules=['index'],
     install_requires=[
         'nbconvert==5.3.1',
+        'pandas==0.23.4',
     ],
 )
