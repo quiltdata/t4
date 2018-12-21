@@ -174,22 +174,3 @@ def test_get_size_and_meta_no_version():
     with stubber:
         # Verify the verion is present
         assert data_transfer.get_size_and_meta('s3://my_bucket/my_obj')[2] == '1.0'
-
-def test_get_size_and_meta_version():
-    stubber = Stubber(data_transfer.s3_client)
-    response = {
-        'ETag': '12345',
-        'VersionId': '1.0',
-        'ContentLength': 123,
-        'Metadata': {}
-    }
-    expected_params = {
-        'Bucket': 'my_bucket',
-        'Key': 'my_obj',
-        'VersionId': 'asdagfa'
-    }
-    stubber.add_response('head_object', response, expected_params)
-
-    with stubber:
-        # Verify the verion is None
-        assert not data_transfer.get_size_and_meta('s3://my_bucket/my_obj?versionId=asdagfa')[2]
