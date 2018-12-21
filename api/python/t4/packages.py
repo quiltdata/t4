@@ -737,7 +737,7 @@ class Package(object):
         """
         if isinstance(entry, (string_types, getattr(os, 'PathLike', str))):
             url = fix_url(str(entry))
-            _, _, current_version = parse_s3_url(url)
+            _, _, current_version = parse_s3_url(urlparse(url))
             size, orig_meta, version = get_size_and_meta(url)
             if not current_version and version:
                 url += '?versionId=%s' % quote(version)
