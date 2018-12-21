@@ -11,6 +11,7 @@ setup(
     ],
     extras_require={
         'tests': [
+            'boto3',
             'codecov',
             'pytest',
             'pytest-cov',
