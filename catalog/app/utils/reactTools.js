@@ -195,7 +195,8 @@ export const RenderChildren = composeComponent('RenderChildren',
 export const nest = (...components) =>
   components.reduceRight((children, comp) => {
     const [Component, props = {}] = [].concat(comp);
-    return <Component {...props}>{children}</Component>;
+    const actualProps = children ? { ...props, children } : props;
+    return <Component {...actualProps} />;
   }, undefined);
 
 /**
