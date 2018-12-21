@@ -49,7 +49,7 @@ jobs:
           command: |
             virtualenv venv
             . venv/bin/activate
-            pip install lambdas/es/indexer
+            pip install lambdas/es/indexer[tests]
       - run:
           name: Pytest
           command: |
