@@ -9,4 +9,11 @@ setup(
         'elasticsearch==6.3.1',
         'nbconvert>=5.4',
     ],
+    extras_require={
+        'tests': [
+            'codecov',
+            'pytest',
+            'pytest-cov',
+        ],
+    },
 )
