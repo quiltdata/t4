@@ -7,6 +7,8 @@ import { branch, renderComponent } from 'recompose';
 import { reduxForm, Field, SubmissionError } from 'redux-form/immutable';
 import { createStructuredSelector } from 'reselect';
 
+import * as Config from 'utils/Config';
+import * as Wait from 'utils/Wait';
 import defer from 'utils/defer';
 import { captureError } from 'utils/errorReporting';
 import { composeComponent } from 'utils/reactTools';
@@ -25,7 +27,6 @@ const Container = Layout.mkLayout(<FM {...msg.signInHeading} />);
 export default composeComponent('AWSAuth.SignIn',
   connect(createStructuredSelector({
     authenticated: selectors.authenticated,
-    signInRedirect: selectors.signInRedirect,
   })),
   reduxForm({
     form: 'AWSAuth.SignIn',
@@ -45,8 +46,13 @@ export default composeComponent('AWSAuth.SignIn',
   }),
   withParsedQuery,
   branch(get('authenticated'),
-    renderComponent(({ location: { query }, signInRedirect }) =>
-      <Redirect to={query.next || signInRedirect} />)),
+    renderComponent(({ location: { query } }) => (
+      <Config.Inject>
+        {Wait.wait(({ signInRedirect }) => (
+          <Redirect to={query.next || signInRedirect} />
+        ))}
+      </Config.Inject>
+    ))),
   ({ handleSubmit, submitting, submitFailed, invalid, error }) => (
     <Container>
       <form onSubmit={handleSubmit}>

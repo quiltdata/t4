@@ -13,6 +13,7 @@ import { withStyles } from '@material-ui/core/styles';
 import Markdown from 'components/Markdown';
 import { S3, Signer } from 'utils/AWS';
 import AsyncResult from 'utils/AsyncResult';
+import * as BucketConfig from 'utils/BucketConfig';
 import * as Config from 'utils/Config';
 import * as NamedRoutes from 'utils/NamedRoutes';
 import * as Resource from 'utils/Resource';
@@ -173,9 +174,19 @@ const HANDLERS = [
       <Config.Inject>
         {AsyncResult.case({
           Ok: (config) => (
-            <IframeContent
-              src={`${config.apiGatewayEndpoint}/preview?url=${encodeURIComponent(url)}`}
-            />
+            <BucketConfig.WithCurrentBucketConfig>
+              {AsyncResult.case({
+                Ok: (bucket) => {
+                  const endpoint =
+                    (bucket && bucket.apiGatewayEndpoint)
+                      || config.apiGatewayEndpoint;
+                  const src =
+                    `${endpoint}/preview?url=${encodeURIComponent(url)}`;
+                  return <IframeContent src={src} />;
+                },
+                _: () => <Placeholder />,
+              })}
+            </BucketConfig.WithCurrentBucketConfig>
           ),
           _: () => <Placeholder />,
         })}
