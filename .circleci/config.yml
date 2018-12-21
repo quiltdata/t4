@@ -55,7 +55,6 @@ jobs:
           command: |
             . venv/bin/activate
             cd lambdas/es/indexer && pytest --cov=./
-            codecov
 
   build:
     docker:

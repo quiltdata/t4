@@ -25,6 +25,7 @@ def iterate_sequence(seq_fn, max_iter, c):
         if (z.real * z.real + z.imag * z.imag) > 4:
             return 1
     return 0
+# Model results visualization
 def generate_X(unit):
     c_list = []
     width  = 3 * unit
@@ -50,6 +51,7 @@ class FakeModel():
 fake_model = FakeModel()
 res        = generate_visualization(fake_model, 48)
 plt.imshow(res)
+# Training samples generation
 nb_samples = 100000
 samples       = np.random.rand(nb_samples, 2)
 samples[:, 0] = samples[:, 0] * 3 - 2
@@ -60,6 +62,7 @@ inside  = samples[sample_img == 0][np.random.choice(samples.shape[0] - outside.s
 X       = np.concatenate([inside, outside])
 y       = np.concatenate([np.zeros(inside.shape[0]), np.zeros(outside.shape[0]) + 1]).astype(np.int32)
 y       = to_categorical(y)
+# Model definition
 model = Sequential([
     Dense(512, input_dim = 2, activation = 'relu'),
     Dense(512, activation = 'relu'),
@@ -95,7 +98,4 @@ model.fit(X, y, nb_epoch = 6, batch_size = 256, shuffle = True)
 model.fit(X, y, nb_epoch = 6, batch_size = 256, shuffle = True)
 model.fit(X, y, nb_epoch = 6, batch_size = 256, shuffle = True)
 plt.imshow(generate_visualization(model, 256))
-
-# Model results visualization
-# Training samples generation
-# Model definition"""
+"""

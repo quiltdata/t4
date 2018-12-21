@@ -84,16 +84,13 @@ def extract_text(notebook_str):
         * Format reference https://nbformat.readthedocs.io/en/latest/format_description.html
     """
     formatted = nbformat.reads(notebook_str, as_version=NB_VERSION)
-    code = []
-    markdown = []
+    text = []
     for cell in formatted.get('cells', []):
         if 'source' in cell and 'cell_type' in cell:
-            if cell['cell_type'] == 'code':
-                code.append(cell['source'])
-            elif cell['cell_type'] == 'markdown':
-                markdown.append(cell['source'])
+            if cell['cell_type'] == 'code' or cell['cell_type'] == 'markdown':
+                text.append(cell['source'])
 
-    return '\n'.join(code + markdown)
+    return '\n'.join(text)
 
 def post_to_es(event_type, size, text, key, meta, version_id=''):
 
