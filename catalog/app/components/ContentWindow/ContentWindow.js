@@ -176,6 +176,15 @@ const HANDLERS = [
     ),
   },
   {
+    name: 'parquet',
+    detect: '.parquet',
+    render: (url) => (
+      <IframeContent
+        src={`${config.apiGatewayUrl}/preview?url=${encodeURIComponent(url)}`}
+      />
+    ),
+  },
+  {
     name: 'html',
     detect: '.html',
     render: (url) => <IframeContent src={url} />,
