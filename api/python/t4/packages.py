@@ -20,7 +20,7 @@ from .data_transfer import (
 )
 from .exceptions import PackageException
 from .util import (
-    QuiltException, BASE_PATH, fix_url, load_config,
+    QuiltException, BASE_PATH, fix_url, get_local_registry, get_remote_registry,
     parse_file_url, parse_s3_url, validate_package_name
 )
 
@@ -319,7 +319,7 @@ class Package(object):
             A new Package that points to files on your local machine.
         """
         if dest_registry is None:
-            dest_registry = load_config().get('default_local_registry', None)
+            dest_registry = get_local_registry()
 
         pkg = cls.browse(name=name, registry=registry, pkg_hash=pkg_hash)
         if dest:
@@ -338,9 +338,9 @@ class Package(object):
             registry(string): location of registry to load package from
             pkg_hash(string): top hash of package version to load
         """
-        if not registry:
+        if registry is None:
             # use default remote registry if present
-            registry = load_config().get('default_local_registry', None)
+            registry = get_local_registry()
 
         registry_prefix = get_package_registry(fix_url(registry) if registry else None)
 
@@ -652,7 +652,7 @@ class Package(object):
         self._set_commit_message(message)
 
         if registry is None:
-            registry = load_config().get('default_local_registry', None)
+            registry = get_local_registry()
 
         registry_prefix = get_package_registry(fix_url(registry) if registry else None)
 
@@ -665,7 +665,6 @@ class Package(object):
             manifest.getvalue(),
             registry_prefix + '/packages/' + hash_string
         )
-        print(registry_prefix + '/packages/' + hash_string)
 
         if name:
             # Sanitize name.
@@ -841,8 +840,8 @@ class Package(object):
         validate_package_name(name)
         self._set_commit_message(message)
 
-        if not registry:
-            registry = load_config().get('default_remote_registry', None)
+        if registry is None:
+            registry = get_remote_registry()
             if not registry:
                 raise QuiltException("No registry specified and no default remote "
                                      "registry configured. Please specify a registry "

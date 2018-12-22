@@ -104,15 +104,16 @@ def test_default_registry(tmpdir):
         assert test_file.resolve().as_uri() == pkg['bar'].physical_keys[0]
 
     new_base_path = Path(BASE_PATH, ".quilttest")
-    with patch('t4.packages.load_config') as mock_config:
-        mock_config.return_value = {'default_local_registry': new_base_path}
+    with patch('t4.packages.get_local_registry') as mock_config:
+        mock_config.return_value = new_base_path
         top_hash = new_pkg.build("Quilt/Test")
         out_path = Path(new_base_path, ".quilt/packages", top_hash).resolve()
         with open(out_path) as fd:
             pkg = Package.load(fd)
             assert test_file.resolve().as_uri() == pkg['bar'].physical_keys[0]
 
-        mock_config.return_value = {'default_remote_registry': new_base_path}
+    with patch('t4.packages.get_remote_registry') as mock_config:
+        mock_config.return_value = new_base_path
         new_pkg.push("Quilt/Test", Path(tmpdir, 'test_dest').resolve().as_uri())
         with open(out_path) as fd:
             pkg = Package.load(fd)
@@ -149,8 +150,8 @@ def test_materialize_from_remote(tmpdir):
         with patch('t4.data_transfer._download_single_file', new=no_op_mock), \
                 patch('t4.data_transfer._download_dir', new=no_op_mock), \
                 patch('t4.Package.build', new=no_op_mock), \
-                patch('t4.packages.load_config') as config_mock:
-            config_mock.return_value = {'default_remote_registry': tmpdir}
+                patch('t4.packages.get_remote_registry') as config_mock:
+            config_mock.return_value = tmpdir
             mat_pkg = pkg.push('Quilt/test_pkg_name', tmpdir / 'pkg')
 
 def test_browse_package_from_registry():
@@ -249,8 +250,8 @@ def test_load_into_t4(tmpdir):
     """ Verify loading local manifest and data into S3. """
     with patch('t4.packages.put_bytes') as bytes_mock, \
          patch('t4.packages.copy_file') as file_mock, \
-         patch('t4.packages.load_config') as config_mock:
-        config_mock.return_value = {'default_remote_registry': 's3://my_test_bucket'}
+         patch('t4.packages.get_remote_registry') as config_mock:
+        config_mock.return_value = 's3://my_test_bucket'
         new_pkg = Package()
         # Create a dummy file to add to the package.
         test_file = os.path.join(tmpdir, 'bar')
@@ -274,8 +275,8 @@ def test_local_push(tmpdir):
     """ Verify loading local manifest and data into S3. """
     with patch('t4.packages.put_bytes') as bytes_mock, \
          patch('t4.packages.copy_file') as file_mock, \
-         patch('t4.packages.load_config') as config_mock:
-        config_mock.return_value = {'default_remote_registry': tmpdir / 'package_contents'}
+         patch('t4.packages.get_remote_registry') as config_mock:
+        config_mock.return_value = tmpdir / 'package_contents'
         new_pkg = Package()
         test_file = os.path.join(tmpdir, 'bar')
         with open(test_file, 'w') as fd:
@@ -687,8 +688,8 @@ def test_commit_message_on_push(tmpdir):
         with patch('t4.data_transfer._download_single_file', new=no_op_mock), \
                 patch('t4.data_transfer._download_dir', new=no_op_mock), \
                 patch('t4.Package.build', new=no_op_mock), \
-                patch('t4.packages.load_config') as config_mock:
-            config_mock.return_value = {'default_remote_registry': BASE_DIR}
+                patch('t4.packages.get_remote_registry') as config_mock:
+            config_mock.return_value = BASE_DIR
             pkg.push('Quilt/test_pkg_name', tmpdir / 'pkg', message='test_message')
             assert pkg._meta['message'] == 'test_message'
 
