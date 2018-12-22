@@ -120,8 +120,7 @@ Resources:
       MemorySize: 1024
       Environment:
         Variables:
-          # TODO Calvin: rename to ESHost, drop https://, and modify lambdas
-          ES_URL: !Sub "https://${Search.DomainEndpoint}"
+          ES_HOST: !GetAtt Search.DomainEndpoint
       Code:
         S3Bucket: !Sub "quilt-lambda-${AWS::Region}"
         S3Key: !Sub
@@ -134,7 +133,7 @@ Resources:
       - Search
     Properties:
       ServiceToken: !GetAtt SearchMappingsLambda.Arn
-      ES_URL: !Sub "https://${Search.DomainEndpoint}"
+      ES_HOST: !GetAtt Search.DomainEndpoint
 
   SearchMappingsLambda:
     Type: AWS::Lambda::Function
