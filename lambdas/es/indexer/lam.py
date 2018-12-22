@@ -95,7 +95,7 @@ def extract_text(notebook_str):
 def post_to_es(event_type, size, text, key, meta, version_id=''):
 
     ES_URL = os.environ['ES_URL']
-    ES_HOST = ES_URL.lstrip('https://')
+    ES_HOST = ES_URL[8:] # len("https://") == 8, so trim the first 8 chars
     ES_INDEX = 'drive'
 
     data = {
