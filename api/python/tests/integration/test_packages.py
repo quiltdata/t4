@@ -69,6 +69,55 @@ def test_build(tmpdir):
         pkg = Package.load(fd)
         assert test_file.resolve().as_uri() == pkg['bar'].physical_keys[0]
 
+@patch('appdirs.user_data_dir', lambda x,y: os.path.join('test_appdir', x))
+def test_default_registry(tmpdir):
+    new_pkg = Package()
+
+    # Create a dummy file to add to the package.
+    test_file_name = 'bar'
+    with open(test_file_name, "w") as fd:
+        fd.write('test_file_content_string')
+        test_file = Path(fd.name)
+
+    # Build a new package into the local registry.
+    new_pkg = new_pkg.set('foo', test_file_name)
+    top_hash = new_pkg.build("Quilt/Test")
+
+    # Verify manifest is registered by hash.
+    out_path = Path(BASE_PATH, ".quilt/packages", top_hash)
+    with open(out_path) as fd:
+        pkg = Package.load(fd)
+        assert test_file.resolve().as_uri() == pkg['foo'].physical_keys[0]
+
+    # Verify latest points to the new location.
+    named_pointer_path = Path(BASE_PATH, ".quilt/named_packages/Quilt/Test/latest")
+    with open(named_pointer_path) as fd:
+        assert fd.read().replace('\n', '') == top_hash
+
+    # Test unnamed packages.
+    new_pkg = Package()
+    new_pkg = new_pkg.set('bar', test_file_name)
+    top_hash = new_pkg.build()
+    out_path = Path(BASE_PATH, ".quilt/packages", top_hash)
+    with open(out_path) as fd:
+        pkg = Package.load(fd)
+        assert test_file.resolve().as_uri() == pkg['bar'].physical_keys[0]
+
+    new_base_path = Path(BASE_PATH, ".quilttest")
+    with patch('t4.packages.get_local_registry') as mock_config:
+        mock_config.return_value = new_base_path
+        top_hash = new_pkg.build("Quilt/Test")
+        out_path = Path(new_base_path, ".quilt/packages", top_hash).resolve()
+        with open(out_path) as fd:
+            pkg = Package.load(fd)
+            assert test_file.resolve().as_uri() == pkg['bar'].physical_keys[0]
+
+    with patch('t4.packages.get_remote_registry') as mock_config:
+        mock_config.return_value = new_base_path
+        new_pkg.push("Quilt/Test", Path(tmpdir, 'test_dest').resolve().as_uri())
+        with open(out_path) as fd:
+            pkg = Package.load(fd)
+            assert pkg['bar'].physical_keys[0].endswith('test_dest/Quilt/Test/bar')
 
 def test_read_manifest(tmpdir):
     """ Verify reading serialized manifest from disk. """
@@ -100,7 +149,9 @@ def test_materialize_from_remote(tmpdir):
             pkg = Package.load(fd)
         with patch('t4.data_transfer._download_single_file', new=no_op_mock), \
                 patch('t4.data_transfer._download_dir', new=no_op_mock), \
-                patch('t4.Package.build', new=no_op_mock):
+                patch('t4.Package.build', new=no_op_mock), \
+                patch('t4.packages.get_remote_registry') as config_mock:
+            config_mock.return_value = tmpdir
             mat_pkg = pkg.push('Quilt/test_pkg_name', tmpdir / 'pkg')
 
 def test_browse_package_from_registry():
@@ -198,7 +249,9 @@ def test_fetch(tmpdir):
 def test_load_into_t4(tmpdir):
     """ Verify loading local manifest and data into S3. """
     with patch('t4.packages.put_bytes') as bytes_mock, \
-         patch('t4.packages.copy_file') as file_mock:
+         patch('t4.packages.copy_file') as file_mock, \
+         patch('t4.packages.get_remote_registry') as config_mock:
+        config_mock.return_value = 's3://my_test_bucket'
         new_pkg = Package()
         # Create a dummy file to add to the package.
         test_file = os.path.join(tmpdir, 'bar')
@@ -221,7 +274,9 @@ def test_load_into_t4(tmpdir):
 def test_local_push(tmpdir):
     """ Verify loading local manifest and data into S3. """
     with patch('t4.packages.put_bytes') as bytes_mock, \
-         patch('t4.packages.copy_file') as file_mock:
+         patch('t4.packages.copy_file') as file_mock, \
+         patch('t4.packages.get_remote_registry') as config_mock:
+        config_mock.return_value = tmpdir / 'package_contents'
         new_pkg = Package()
         test_file = os.path.join(tmpdir, 'bar')
         with open(test_file, 'w') as fd:
@@ -695,7 +750,9 @@ def test_commit_message_on_push(tmpdir):
             pkg = Package.load(fd)
         with patch('t4.data_transfer._download_single_file', new=no_op_mock), \
                 patch('t4.data_transfer._download_dir', new=no_op_mock), \
-                patch('t4.Package.build', new=no_op_mock):
+                patch('t4.Package.build', new=no_op_mock), \
+                patch('t4.packages.get_remote_registry') as config_mock:
+            config_mock.return_value = BASE_DIR
             pkg.push('Quilt/test_pkg_name', tmpdir / 'pkg', message='test_message')
             assert pkg._meta['message'] == 'test_message'
 

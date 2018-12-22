@@ -20,7 +20,8 @@ from .data_transfer import (
 )
 from .exceptions import PackageException
 from .util import (
-    QuiltException, BASE_PATH, fix_url, parse_file_url, parse_s3_url, validate_package_name
+    QuiltException, BASE_PATH, fix_url, get_local_registry, get_remote_registry,
+    parse_file_url, parse_s3_url, validate_package_name
 )
 
 
@@ -318,7 +319,7 @@ class Package(object):
             A new Package that points to files on your local machine.
         """
         if dest_registry is None:
-            dest_registry = BASE_PATH
+            dest_registry = get_local_registry()
 
         pkg = cls.browse(name=name, registry=registry, pkg_hash=pkg_hash)
         if dest:
@@ -337,6 +338,10 @@ class Package(object):
             registry(string): location of registry to load package from
             pkg_hash(string): top hash of package version to load
         """
+        if registry is None:
+            # use default remote registry if present
+            registry = get_local_registry()
+
         registry_prefix = get_package_registry(fix_url(registry) if registry else None)
 
         if pkg_hash is not None:
@@ -646,6 +651,9 @@ class Package(object):
         """
         self._set_commit_message(message)
 
+        if registry is None:
+            registry = get_local_registry()
+
         registry_prefix = get_package_registry(fix_url(registry) if registry else None)
 
         self._fix_sha256()
@@ -840,7 +848,11 @@ class Package(object):
         self._set_commit_message(message)
 
         if registry is None:
-            registry = dest
+            registry = get_remote_registry()
+            if not registry:
+                raise QuiltException("No registry specified and no default remote "
+                                     "registry configured. Please specify a registry "
+                                     "or configure a default remote registry with t4.config")
 
         self._fix_sha256()
 
