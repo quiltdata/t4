@@ -34,6 +34,16 @@ p = t4.Package.install(
 
 Once you `install` a remote package it becomes a local package, available in your local registry.
 
+T4 can be configured with a default remote registry. You may omit the registry argument if you provide one:
+
+```python
+# set a default remote registry
+t4.config(default_remote_registry="s3://your-bucket")
+
+# install from there implicitly
+t4.Package.install("username/packagename")
+```
+
 ## Browsing
 To open a local package, use `browse`:
 
