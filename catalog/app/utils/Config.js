@@ -14,9 +14,9 @@ export class ConfigError extends BaseError {
   static displayName = 'ConfigError'
 }
 
-const parseJSON =
+const parseJSON = (msg = 'invalid JSON') =>
   R.tryCatch(JSON.parse, (e, src) => {
-    throw new ConfigError(`invalid JSON:\n${src}`, { src, originalError: e });
+    throw new ConfigError(`${msg}:\n${src}`, { src, originalError: e });
   });
 
 const validateConfig = conforms({
@@ -54,10 +54,10 @@ const fetchConfig = async (path) => {
       );
     }
     return R.pipe(
-      parseJSON,
+      parseJSON(`invalid config JSON at "${path}"`),
       R.unless(validateConfig, (json) => {
         throw new ConfigError(
-          `invalid config format:\n${JSON.stringify(json, null, 2)}`,
+          `invalid config format at "${path}":\n${JSON.stringify(json, null, 2)}`,
           { json },
         );
       }),
@@ -81,10 +81,10 @@ const fetchBucket = async (b) => {
       );
     }
     return R.pipe(
-      parseJSON,
+      parseJSON(`invalid bucket config JSON at "${b}"`),
       R.unless(validateBucket, (json) => {
         throw new ConfigError(
-          `invalid bucket config format:\n${JSON.stringify(json, null, 2)}`,
+          `invalid bucket config format at "${b}":\n${JSON.stringify(json, null, 2)}`,
           { json },
         );
       }),
@@ -121,10 +121,12 @@ const fetchFederations = R.pipe(
           { path: f, response: res, text },
         );
       }
-      const json = parseJSON(text);
+      const json = parseJSON(`invalid federation config JSON at "${f}"`)(text);
       if (!validateFederation(json)) {
         throw new ConfigError(
-          `invalid federation config format:\n${JSON.stringify(json, null, 2)}`,
+          // eslint-disable-next-line prefer-template
+          `invalid federation config format at "${f}":\n`
+            + JSON.stringify(json, null, 2),
           { json },
         );
       }
