@@ -25,6 +25,7 @@ import * as AWSAuth from 'containers/AWSAuth';
 import * as Notifications from 'containers/Notifications';
 import routes from 'constants/routes';
 import * as style from 'constants/style';
+import AsyncResult from 'utils/AsyncResult';
 import * as AWS from 'utils/AWS';
 import * as Config from 'utils/Config';
 import * as Data from 'utils/Data';
@@ -58,21 +59,21 @@ fontLoader('Roboto', 'Roboto Mono').then(() => {
   document.body.classList.add('fontLoaded');
 });
 
-const ErrorBoundary = createBoundary(() => (e) => {
-  // TODO: capture error?
-  // eslint-disable-next-line no-console
-  console.warn('Unhandled error');
-  // eslint-disable-next-line no-console
-  console.error(e);
-  return (
-    <Layout>
-      <Error
-        headline="Unexpected Error"
-        detail="Something went wrong"
-      />
-    </Layout>
-  );
-});
+// TODO: capture errors
+const ErrorBoundary = createBoundary(() => () => (
+  <Layout bare>
+    <Error
+      headline="Unexpected Error"
+      detail="Something went wrong"
+    />
+  </Layout>
+));
+
+const FinalBoundary = createBoundary(() => () => (
+  <h1 style={{ textAlign: 'center' }}>
+    Something went wrong
+  </h1>
+));
 
 // Create redux store with history
 const initialState = {};
@@ -83,18 +84,26 @@ const MOUNT_NODE = document.getElementById('app');
 // TODO: make storage injectable
 const storage = mkStorage({ credentials: 'CREDENTIALS' });
 
+const fallback = AsyncResult.case({
+  Err: (e) => { throw e; },
+  _: () => <Placeholder />,
+});
+
 const render = (messages) => {
   ReactDOM.render(
     nest(
+      FinalBoundary,
       [MuiThemeProviderV0, { muiTheme: style.themeV0 }],
       [MuiThemeProvider, { theme: style.theme }],
-      ErrorBoundary,
       [StoreProvider, { store }],
-      [Wait.Placeholder, { fallback: () => <Placeholder /> }],
+      [NamedRoutes.Provider, { routes }],
+      [RouterProvider, { history }],
+      [LanguageProvider, { messages }],
+      ErrorBoundary,
+      [Wait.Placeholder, { fallback }],
       Data.Provider,
       [Config.Provider, { path: '/config.json' }],
       FormProvider,
-      [LanguageProvider, { messages }],
       Notifications.Provider,
       [AWSAuth.Provider, { storage }],
       [AWS.Config.Provider, {
@@ -102,9 +111,7 @@ const render = (messages) => {
       }],
       AWS.S3.Provider,
       AWS.Signer.Provider,
-      [RouterProvider, { history }],
       Notifications.WithNotifications,
-      [NamedRoutes.Provider, { routes }],
       App,
     ),
     MOUNT_NODE
