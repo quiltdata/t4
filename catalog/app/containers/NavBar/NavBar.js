@@ -119,37 +119,51 @@ const SignIn = composeComponent('NavBar.SignIn',
     );
   });
 
+export const Container = composeComponent('NavBar.Container',
+  withStyles(({ palette }) => ({
+    root: {
+      backgroundColor: palette.primary.dark,
+      color: palette.getContrastText(palette.primary.dark),
+    },
+  })),
+  ({ classes, children }) => (
+    <AppBar className={classes.root} color="default" position="static">
+      <Toolbar>
+        <Logo />
+        {children}
+      </Toolbar>
+    </AppBar>
+  ));
+
+const Spacer = composeComponent('NavBar.Spacer',
+  withStyles(() => ({
+    root: {
+      flexGrow: 1,
+    },
+  })),
+  ({ classes }) => <div className={classes.root} />);
+
 const whenNot = (path, fn) => (
   <Route path={path} exact>
     {({ match }) => !match && fn()}
   </Route>
 );
 
-export default composeComponent('NavBar',
+export const NavBar = composeComponent('NavBar',
   connect(createStructuredSelector(
     R.pick(['error', 'waiting', 'authenticated'], authSelectors)
   ), undefined, undefined, { pure: false }),
-  withStyles(({ palette }) => ({
-    root: {
-      backgroundColor: palette.primary.dark,
-      color: palette.getContrastText(palette.primary.dark),
-    },
-    spacer: {
-      flexGrow: 1,
-    },
-  })),
   NamedRoutes.inject(),
-  ({ classes, paths, error, waiting, authenticated }) => (
-    <AppBar className={classes.root} color="default" position="static">
-      <Toolbar>
-        <Logo />
-        {whenNot(paths.signIn, () => <BucketControls />)}
-        <div className={classes.spacer} />
-        {authenticated
-          ? <NavMenu />
-          : whenNot(paths.signIn, () =>
-            <SignIn error={error} waiting={waiting} />)
-        }
-      </Toolbar>
-    </AppBar>
+  ({ paths, error, waiting, authenticated }) => (
+    <Container>
+      {whenNot(paths.signIn, () => <BucketControls />)}
+      <Spacer />
+      {authenticated
+        ? <NavMenu />
+        : whenNot(paths.signIn, () =>
+          <SignIn error={error} waiting={waiting} />)
+      }
+    </Container>
   ));
+
+export default NavBar;
