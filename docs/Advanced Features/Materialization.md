@@ -1,6 +1,6 @@
 ## `build` versus `push`
 
-The section ["Saving a Package"](../Walkthrough/Saving%20a%20Package.md) explains how to distribute data packages. It focuses on two commands `build` and `push`, which have the following behaviors:
+`build` and `push` have the following behaviors:
 
 * `build` calculates a tophash based on the package entry data, package entry metadata, and top-level package metadata, injects that into the package manifest, and stores the package manifest in the local registry.
 * `push` uploads the entries in the package to a remote registry, performs the same tophash calculations, and stores a package manifest referencing the remote files in the remote registry.
@@ -22,7 +22,7 @@ To push an _umaterialized_ file to a remote registry, provide `build` with a `re
 
 ```python
 import t4
-p = t4.Package("example.csv", "example.csv")
+p = t4.Package().set("example.csv", "example.csv")
 p.build("username/packagename", registry="s3://my-bucket")
 ```
 

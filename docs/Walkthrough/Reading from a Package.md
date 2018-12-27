@@ -1,5 +1,3 @@
-In the sections ["Creating A Package""](Creating%20a%20Package.md) and ["Installing A Package"](./Installing A Package), we saw how to create a package from scratch and how to download a package from somewhere else, respectively.
-
 Once you have a package it's easy to introspect it. Suppose we have the following example package:
 
 ```python
@@ -33,28 +31,25 @@ To download a subset of files from a package directory to a `dest`, use `fetch`:
 
 ```python
 # download a subfolder
-p["commodities"].fetch("<dest>")
+p["commodities"].fetch("./")
 
 # download a file
-p["commodities"]["gold.csv"].fetch("<dest>")
+p["commodities"]["gold.csv"].fetch("gold.csv")
 
 # download everything
-p.fetch("<dest>")
+p.fetch("trade-info/")
 ```
 
-Alternatively, you can download data directly into memory using `deserialize`:
+Alternatively, to download data directly into memory:
 
 ```
 $ python
->>> p["commodities"]["gold.csv"].deserialize()
-<<< <pandas.DataFrame object at ...>
-
->>> p["commodities"]["gold.csv"]()  # sugar
+>>> p["commodities"]["gold.csv"]()
 <<< <pandas.DataFrame object at ...>
 ```
 
 ## Reading metadata
-Finally, to read the metadata for a file, folder, or package use `get_meta`:
+Use `get_meta` to load metadata:
 
 ```python
 # get entry metadata
