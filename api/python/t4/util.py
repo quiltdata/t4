@@ -247,6 +247,16 @@ def get_remote_registry():
 
 
 def quiltignore_filter(paths, ignore_rules, url_scheme):
+    """Given a list paths, filter out the paths which are captured by the given
+    ignore rules.
+
+    Args:
+        paths (list): a list or iterable of paths
+        ignore_rules (list): a list or iterable of ignore rules, in Unix shell
+            style wildcard format
+        url_scheme (str): the URL scheme, only the "file" scheme is currently
+            supported
+    """
     if url_scheme == 'file':
         from fnmatch import fnmatch
 
@@ -259,10 +269,14 @@ def quiltignore_filter(paths, ignore_rules, url_scheme):
 
         for ignore_rule in ignore_rules:
             ignore_rule = os.getcwd() + '/' + ignore_rule
-            files = set(n for n in files if not fnmatch(n, ignore_rule))
-            dirs = set(n for n in dirs if not fnmatch(n.as_posix() + "/", ignore_rule))
 
-        import pdb; pdb.set_trace()
+            for dir in dirs:
+                if fnmatch(dir.as_posix() + "/", ignore_rule):
+                    files = set(n for n in files if dir not in n.parents)
+                    dirs = dirs - {dir}
+
+            files = set(n for n in files if not fnmatch(n, ignore_rule))
+
         return files.union(dirs)
     else:
         raise NotImplementedError

@@ -545,7 +545,6 @@ class Package(object):
             if not src_path.is_dir():
                 raise PackageException("The specified directory doesn't exist")
 
-            # TODO: keep working on this ignore rules code
             files = src_path.rglob('*')
             ignore = src_path / '.quiltignore'
             if ignore.exists():
