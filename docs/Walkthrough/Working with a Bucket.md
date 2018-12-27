@@ -69,9 +69,6 @@ b.delete("foo.csv")
 
 # delete a directory
 b.delete_dir("foo/")
-
-# delete a package
-b.delete_package("username/packagename")
 ```
 
 
