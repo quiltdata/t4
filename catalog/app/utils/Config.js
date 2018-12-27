@@ -26,6 +26,10 @@ const validateConfig = conforms({
   defaultBucket: R.is(String),
   signInRedirect: R.is(String),
   signOutRedirect: R.is(String),
+  guestCredentials: conforms({
+    accessKeyId: R.is(String),
+    secretAccessKey: R.is(String),
+  }),
   suggestedBuckets: isArrayOf(R.is(String)),
   federations: isArrayOf(R.is(String)),
 });
