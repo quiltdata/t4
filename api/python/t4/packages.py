@@ -550,8 +550,7 @@ class Package(object):
             ignore = src_path / '.quiltignore'
             if ignore.exists():
                 ignore_rules = ignore.read_text('utf-8').split("\n")
-                filenames = [f.name for f in src_path.rglob('*')]
-                files = quiltignore_filter(src_path.rglob('*'), ignore_rules, 'file')
+                files = quiltignore_filter(files, ignore_rules, 'file')
 
             for f in files:
                 if not f.is_file():
@@ -561,7 +560,6 @@ class Package(object):
                 # TODO: Warn if overwritting a logical key?
                 root.set(logical_key, entry)
         elif url.scheme == 's3':
-            import pdb; pdb.set_trace()
             src_bucket, src_key, src_version = parse_s3_url(url)
             if src_version:
                 raise PackageException("Directories cannot have versions")
