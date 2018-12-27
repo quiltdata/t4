@@ -56,3 +56,19 @@ t4.config(default_remote_registry="s3://your-bucket")
 t4.Package().push("username/packagename")
 ```
 -->
+
+## Deletion
+
+To delete a package from a registry:
+
+```python
+import t4
+
+# delete from local registry
+t4.delete_package("username/packagename")
+
+# delete from remote registry
+t4.delete_package("username/packagename", "s3://your-bucket")
+```
+
+Only do this with test packages or if you really, really need to, as this will break immutability!
