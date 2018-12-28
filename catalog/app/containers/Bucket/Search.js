@@ -1,29 +1,215 @@
+import PT from 'prop-types';
 import * as React from 'react';
+import { Link } from 'react-router-dom';
+import * as RC from 'recompose';
+import Button from '@material-ui/core/Button';
+import Card from '@material-ui/core/Card';
+import CardContent from '@material-ui/core/CardContent';
+import Typography from '@material-ui/core/Typography';
+import * as colors from '@material-ui/core/colors';
+import { withStyles } from '@material-ui/core/styles';
 
+import Error from 'components/Error';
+import Tag from 'components/Tag';
 import Working from 'components/Working';
-import SearchResults from 'containers/SearchResults';
 import AsyncResult from 'utils/AsyncResult';
 import * as AWS from 'utils/AWS';
 import * as BucketConfig from 'utils/BucketConfig';
-import SearchProvider from 'utils/SearchProvider';
+import Data from 'utils/Data';
+import * as NamedRoutes from 'utils/NamedRoutes';
 import * as RT from 'utils/reactTools';
+import { readableBytes } from 'utils/string';
 import withParsedQuery from 'utils/withParsedQuery';
 
 import Message from './Message';
+import * as requests from './requests';
 
 
-export const Provider = SearchProvider;
+const Version = RT.composeComponent('Bucket.Search.Version',
+  RC.setPropTypes({
+    id: PT.string.isRequired,
+    ts: PT.instanceOf(Date).isRequired,
+    latest: PT.bool,
+  }),
+  withStyles(({ typography }) => ({
+    root: {
+      opacity: 0.7,
+    },
+    ts: {
+      fontWeight: typography.fontWeightRegular,
+    },
+  })),
+  ({ classes, id, ts, latest = false }) => (
+    <li className={classes.root}>
+      <code>{id}</code>
+      <span> from </span>
+      <span className={classes.ts}>{ts.toLocaleString()}</span>
+      {latest && <Tag>latest</Tag>}
+    </li>
+  ));
 
-export const Results = RT.composeComponent('Bucket.Search.Results',
+const Hit = RT.composeComponent('Bucket.Search.Hit',
+  RC.setPropTypes({
+    path: PT.string.isRequired,
+    bucket: PT.string.isRequired,
+    timestamp: PT.instanceOf(Date).isRequired,
+    size: PT.number.isRequired,
+    text: PT.string,
+    meta: PT.any,
+    versions: PT.array.isRequired,
+  }),
+  NamedRoutes.inject(),
+  withStyles(({ palette, spacing: { unit } }) => ({
+    root: {
+      '& + &': {
+        marginTop: 2 * unit,
+      },
+    },
+    content: {
+      paddingBottom: 0, // TODO: check if necessary
+    },
+    heading: {
+      fontSize: '1.5em', // TODO: typog
+      fontWeight: 400, // TODO: use typog
+      margin: 0,
+    },
+    sectionHeading: {
+      fontSize: 18, // TODO: use typog
+      fontWeight: 400, // TODO: use typog
+      marginBottom: 0,
+      marginTop: 3 * unit,
+
+      '$heading + &': {
+        marginTop: 1.5 * unit,
+      },
+    },
+    text: {
+      background: palette.grey[50],
+      borderColor: palette.grey[400],
+      opacity: 0.7,
+    },
+    meta: {
+      background: colors.lightBlue[50],
+      borderColor: colors.lightBlue[400],
+      opacity: 0.7,
+    },
+    versions: {
+      listStyle: 'none',
+      paddingLeft: 0,
+    },
+    footer: {
+      color: palette.grey[500],
+      marginTop: '1.5em', // TODO: use units
+    },
+  })),
+  ({
+    classes,
+    urls,
+    path,
+    bucket,
+    timestamp,
+    size,
+    text,
+    meta,
+    versions,
+  }) => (
+    <Card className={classes.root}>
+      <CardContent className={classes.content}>
+        <h1 className={classes.heading}>
+          {/* TODO: use breadcrumbs */}
+          <Link to={urls.bucketTree(bucket, path)}>{path}</Link>
+        </h1>
+        {!!text && <pre className={classes.text}>{text}</pre>}
+        {!!meta && (
+          <React.Fragment>
+            <h2 className={classes.sectionHeading}>Metadata</h2>
+            <pre className={classes.meta}>{JSON.stringify(meta, null, 2)}</pre>
+          </React.Fragment>
+        )}
+        {versions.length && (
+          <React.Fragment>
+            <h2 className={classes.sectionHeading}>Versions</h2>
+            <ul className={classes.versions}>
+              {versions.map(({ id, timestamp: ts }, idx) => (
+                <Version
+                  key={id}
+                  latest={idx === 0}
+                  id={id}
+                  ts={ts}
+                />
+              ))}
+            </ul>
+          </React.Fragment>
+        )}
+        <div className={classes.footer}>
+          Updated {timestamp.toLocaleString()}
+          &nbsp;&nbsp;&nbsp;&nbsp;
+          {readableBytes(size)}
+        </div>
+      </CardContent>
+    </Card>
+  ));
+
+const NothingFound = () => (
+  <Card>
+    <CardContent>
+      {/* TODO: use appropriate typography */}
+      <Typography>Nothing found</Typography>
+      <Typography>We have not found anything matching your query</Typography>
+    </CardContent>
+  </Card>
+);
+
+const Browse = RT.composeComponent('Bucket.Search.Browse',
+  RC.setPropTypes({
+    bucket: PT.string.isRequired,
+  }),
+  ({ bucket }) => (
+    <NamedRoutes.Inject>
+      {({ urls }) => (
+        <Button component={Link} to={urls.bucketRoot(bucket)}>
+          Browse the bucket
+        </Button>
+      )}
+    </NamedRoutes.Inject>
+  ));
+
+export default RT.composeComponent('Bucket.Search',
   withParsedQuery,
-  ({ location: { query: { q } } }) => (
+  ({ location: { query: { q: query = '' } } }) => (
     <BucketConfig.WithCurrentBucketConfig>
       {AsyncResult.case({
         // eslint-disable-next-line react/prop-types
         Ok: ({ name, searchEndpoint }) => searchEndpoint
           ? (
             <AWS.ES.Provider host={searchEndpoint} log="trace">
-              <SearchResults bucket={name} q={q} />
+              <AWS.ES.Inject>
+                {(es) => (
+                  <Data fetch={requests.search} params={{ es, query }}>
+                    {AsyncResult.case({
+                      Ok: (results) => (
+                        <React.Fragment>
+                          <h1>Search Results</h1>
+                          {results.length
+                            ? results.map((result) =>
+                              <Hit key={result.path} bucket={name} {...result} />)
+                            : <NothingFound />
+                          }
+                          <Browse bucket={name} />
+                        </React.Fragment>
+                      ),
+                      Err: (error) => (
+                        // TODO: use Message
+                        <Error {...error} />
+                      ),
+                      _: () => (
+                        // TODO: use consistent placeholder
+                        <Working>Searching</Working>
+                      ),
+                    })}
+                  </Data>
+                )}
+              </AWS.ES.Inject>
             </AWS.ES.Provider>
           )
           : (
@@ -31,6 +217,7 @@ export const Results = RT.composeComponent('Bucket.Search.Results',
               This bucket has no configured search endpoint.
             </Message>
           ),
+        // TODO: use consistent placeholder
         _: () => <Working />,
       })}
     </BucketConfig.WithCurrentBucketConfig>

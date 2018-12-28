@@ -240,3 +240,81 @@ export const getPackageRevisions = ({ s3, bucket, name }) =>
 export const fetchPackageTree = ({ s3, bucket, name, revision }) =>
   loadRevision({ s3, bucket })(getRevisionKeyFromId(name, revision))
     .catch(catchErrors());
+
+// eslint-disable-next-line no-underscore-dangle
+const getKey = (h) => h._source.key;
+
+const getTimestamp = (x) => x.timestamp || new Date(0);
+
+const latest = (a, b) => getTimestamp(a) > getTimestamp(b) ? a : b;
+
+const mergeVersions = (
+  {
+    versions = [],
+    score = 0,
+    ...rest
+  } = {},
+  {
+    _score,
+    _source: {
+      version_id: version,
+      updated,
+      key,
+      size,
+      text,
+      type,
+      user_meta: meta,
+      comment,
+    },
+  },
+) => {
+  const timestamp = new Date(updated);
+  return {
+    ...latest(rest, {
+      path: key,
+      timestamp,
+      version,
+      size,
+      text,
+      meta,
+      comment,
+    }),
+    score: Math.max(score, _score),
+    versions: R.sortBy(
+      (v) => -v.timestamp.getTime(),
+      versions.concat({
+        id: version,
+        timestamp,
+        data: { size, text, meta },
+        score: _score,
+        type,
+      }),
+    ),
+  };
+};
+
+const formatQuery = (query) => ({
+  query: {
+    query_string: {
+      default_field: 'content',
+      quote_analyzer: 'keyword',
+      query,
+    },
+  },
+});
+
+export const search = ({ es, query }) =>
+  es.search({
+    index: 'drive',
+    type: '_doc',
+    body: formatQuery(query),
+  }).then(R.pipe(
+    R.path(['hits', 'hits']),
+    R.reduce((acc, hit) => ({
+      ...acc,
+      [getKey(hit)]: mergeVersions(acc[getKey(hit)], hit),
+    }), {}),
+    R.values,
+  ));
+  // TODO: sort
+  // TODO: catch / throw errors

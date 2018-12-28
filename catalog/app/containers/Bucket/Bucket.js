@@ -16,7 +16,7 @@ import Overview from './Overview';
 import PackageDetail from './PackageDetail';
 import PackageList from './PackageList';
 import PackageTree from './PackageTree';
-import * as Search from './Search';
+import Search from './Search';
 import Tree from './Tree';
 
 
@@ -93,48 +93,46 @@ export default RT.composeComponent('Bucket',
   ({ location, match: { params: { bucket } } }) => (
     <NamedRoutes.Inject>
       {({ paths }) => (
-        <Search.Provider>
-          <BucketLayout
-            bucket={bucket}
-            section={getBucketSection(location.pathname, paths)}
-          >
-            <Switch>
-              <Route
-                path={paths.bucketRoot}
-                component={Overview}
-                exact
-              />
-              <Route
-                path={paths.bucketTree}
-                component={Tree}
-                exact
-              />
-              <Route
-                path={paths.bucketSearch}
-                component={Search.Results}
-                exact
-              />
-              <Route
-                path={paths.bucketPackageList}
-                component={PackageList}
-                exact
-              />
-              <Route
-                path={paths.bucketPackageDetail}
-                component={PackageDetail}
-                exact
-              />
-              <Route
-                path={paths.bucketPackageTree}
-                component={PackageTree}
-                exact
-              />
-              <Route
-                component={ThrowNotFound}
-              />
-            </Switch>
-          </BucketLayout>
-        </Search.Provider>
+        <BucketLayout
+          bucket={bucket}
+          section={getBucketSection(location.pathname, paths)}
+        >
+          <Switch>
+            <Route
+              path={paths.bucketRoot}
+              component={Overview}
+              exact
+            />
+            <Route
+              path={paths.bucketTree}
+              component={Tree}
+              exact
+            />
+            <Route
+              path={paths.bucketSearch}
+              component={Search}
+              exact
+            />
+            <Route
+              path={paths.bucketPackageList}
+              component={PackageList}
+              exact
+            />
+            <Route
+              path={paths.bucketPackageDetail}
+              component={PackageDetail}
+              exact
+            />
+            <Route
+              path={paths.bucketPackageTree}
+              component={PackageTree}
+              exact
+            />
+            <Route
+              component={ThrowNotFound}
+            />
+          </Switch>
+        </BucketLayout>
       )}
     </NamedRoutes.Inject>
   ));

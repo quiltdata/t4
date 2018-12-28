@@ -4,8 +4,8 @@ import PT from 'prop-types';
 import * as R from 'ramda';
 import * as React from 'react';
 import { connect } from 'react-redux';
+import { Route } from 'react-router-dom';
 import * as RC from 'recompose';
-import { createStructuredSelector } from 'reselect';
 import CircularProgress from '@material-ui/core/CircularProgress';
 import Icon from '@material-ui/core/Icon';
 import InputAdornment from '@material-ui/core/InputAdornment';
@@ -16,8 +16,8 @@ import { fade } from '@material-ui/core/styles/colorManipulator';
 import * as BucketConfig from 'utils/BucketConfig';
 import Delay from 'utils/Delay';
 import * as NamedRoutes from 'utils/NamedRoutes';
-import { setSearchText, selectSearchText } from 'utils/SearchProvider';
 import * as Wait from 'utils/Wait';
+import parse from 'utils/parseSearch';
 import * as RT from 'utils/reactTools';
 
 
@@ -78,42 +78,77 @@ const State = RT.composeComponent('NavBar.Search.State',
   RC.setPropTypes({
     children: PT.func.isRequired,
     bucket: PT.string.isRequired,
+    query: PT.string.isRequired,
   }),
-  connect(createStructuredSelector({
-    searchText: selectSearchText,
-  })),
+  connect(undefined, undefined, undefined, { pure: false }),
   NamedRoutes.inject(),
+  RC.withStateHandlers({
+    value: null,
+  }, {
+    focus: (_state, { query }) => () => ({ value: query }),
+    blur: () => () => ({ value: null }),
+    change: () => (value) => ({ value }),
+  }),
   RC.withHandlers({
-    handleChange: ({ dispatch }) => (evt) => {
-      dispatch(setSearchText(evt.target.value));
+    onChange: ({ change }) => (evt) => {
+      change(evt.target.value);
     },
-    handleEnter: ({ dispatch, urls, bucket, searchText }) => (evt) => {
-      if (evt.key === 'Enter') {
-        /* suppress onSubmit (didn't actually find this to be a problem tho) */
-        evt.preventDefault();
-        dispatch(push(urls.bucketSearch(bucket, searchText)));
+    onKeyDown: ({ dispatch, urls, bucket, value, query }) => (evt) => {
+      // eslint-disable-next-line default-case
+      switch (evt.key) {
+        case 'Enter':
+          /* suppress onSubmit (didn't actually find this to be a problem tho) */
+          evt.preventDefault();
+          if (query !== value) {
+            dispatch(push(urls.bucketSearch(bucket, value)));
+          }
+          evt.target.blur();
+          break;
+        case 'Escape':
+          evt.target.blur();
+          break;
       }
     },
+    onFocus: ({ focus }) => () => {
+      focus();
+    },
+    onBlur: ({ blur }) => () => {
+      blur();
+    },
   }),
-  ({ children, ...props }) =>
-    children(R.pick(['searchText', 'handleChange', 'handleEnter'], props)));
+  ({ children, value, query, ...props }) => children({
+    value: value === null ? query : value,
+    ...R.pick(['onChange', 'onKeyDown', 'onFocus', 'onBlur'], props),
+  }));
 
 const fallback = () => <Delay>{() => <CircularProgress />}</Delay>;
+
+const WithQuery = RT.composeComponent('NavBar.Search.WithQuery',
+  RC.setPropTypes({
+    children: PT.func.isRequired,
+  }),
+  ({ children }) => (
+    <NamedRoutes.Inject>
+      {({ paths }) => (
+        <Route path={paths.bucketSearch}>
+          {({ location: l, match }) => children((match && parse(l.search).q) || '')}
+        </Route>
+      )}
+    </NamedRoutes.Inject>
+  ));
 
 export default RT.composeComponent('NavBar.Search', () => (
   <Wait.Placeholder fallback={fallback}>
     <BucketConfig.WithCurrentBucketConfig>
       {Wait.wait(({ name, searchEndpoint }) => searchEndpoint
         ? (
-          <State bucket={name}>
-            {({ searchText, handleChange, handleEnter }) => (
-              <SearchBox
-                value={searchText}
-                onChange={handleChange}
-                onKeyPress={handleEnter}
-              />
+          <WithQuery>
+            {(query) => (
+              <State bucket={name} query={query}>
+                {(state) => <SearchBox {...state} />}
+              </State>
             )}
-          </State>
+          </WithQuery>
         )
         : <SearchBox disabled value="Search not available" />)}
     </BucketConfig.WithCurrentBucketConfig>
