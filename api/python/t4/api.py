@@ -84,42 +84,6 @@ def get(src):
         raise QuiltException("Unknown serialization target: %r" % target_str)
     return deserialize_obj(data, target), meta.get('user_meta')
 
-
-def delete(target):
-    """Delete an object.
-
-    Parameters:
-        target (str): URI of the object to delete
-    """
-    url = urlparse(target)
-    if url.scheme != 's3':
-        raise NotImplementedError
-
-    bucket, path, version = parse_s3_url(url)
-    if version:
-        raise ValueError("Cannot delete a version")
-
-    delete_object(bucket, path)
-
-
-def delete_dir(target):
-    """Delete a remote directory.
-
-    Parameters:
-            target (str): URI of the directory to delete
-    """
-    url = urlparse(target)
-    if url.scheme != 's3':
-        raise NotImplementedError
-
-    bucket, path, version = parse_s3_url(url)
-    if version:
-        raise ValueError("Versions don't make sense for directories")
-
-    results = list_objects(bucket, path)
-    for result in results:
-        delete('s3://' + bucket + '/' + result['Key'])
-
         
 def _tophashes_with_packages(registry=None):
     """Return a dictionary of tophashes and their corresponding packages
@@ -237,40 +201,6 @@ def delete_package(name, registry=None):
 
     else:
         raise NotImplementedError
-
-
-def ls(target, recursive=False):
-    """List data from the specified path.
-
-    Parameters:
-        target (str): URI to list
-        recursive (bool): show subdirectories and their contents as well
-
-    Returns:
-        ``list``: Return value structure has not yet been permanently decided
-        Currently, it's a ``tuple`` of ``list`` objects, containing the
-        following:
-        result[0]
-            directory info
-        result[1]
-            file/object info
-        result[2]
-            delete markers
-    """
-    url = urlparse(target)
-    if url.scheme != 's3':
-        raise NotImplementedError
-
-    bucket, path, version = parse_s3_url(url)
-    if version:
-        raise ValueError("Versions don't make sense for directories")
-
-    if path and not path.endswith('/'):
-        path += '/'
-
-    results = list_object_versions(bucket, path, recursive=recursive)
-
-    return results
 
 
 def list_packages(registry=None):

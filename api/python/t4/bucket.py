@@ -12,7 +12,8 @@ import requests
 
 from .data_transfer import (TargetType, copy_file, copy_object, delete_object,
                             deserialize_obj, get_bytes, get_size_and_meta,
-                            list_objects, put_bytes, select, serialize_obj)
+                            list_objects, put_bytes, select, serialize_obj,
+                            list_object_versions)
 from .search_util import search
 from .util import QuiltException, fix_url, parse_s3_url
 
@@ -199,7 +200,49 @@ class Bucket(object):
         Raises:
             if delete fails
         """
+        if not key:
+            raise QuiltException("Must specify the key to delete")
+
+        if key[-1] == '/':
+            raise QuiltException("Must use delete_dir to delete directories")
+
         delete_object(self._bucket, key)
+
+    def delete_dir(self, path):
+        """Delete a directory and all of its contents from the bucket.
+
+        Parameters:
+                path (str): path to the directory to delete
+        """
+        results = list_objects(self._bucket, path)
+        for result in results:
+            self.delete(result['Key'])
+
+    def ls(self, path=None, recursive=False):
+        """List data from the specified path.
+
+        Parameters:
+            path (str): bucket path to list
+            recursive (bool): show subdirectories and their contents as well
+
+        Returns:
+            ``list``: Return value structure has not yet been permanently decided
+            Currently, it's a ``tuple`` of ``list`` objects, containing the
+            following:
+            result[0]
+                directory info
+            result[1]
+                file/object info
+            result[2]
+                delete markers
+        """
+        if path and not path.endswith('/'):
+            path += '/'
+        elif not path:
+            path = ""  # enumerate top-of-bucket
+
+        results = list_object_versions(self._bucket, path, recursive=recursive)
+        return results
 
     def fetch(self, key, path):
         """
