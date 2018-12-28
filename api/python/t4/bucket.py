@@ -200,6 +200,9 @@ class Bucket(object):
         Raises:
             if delete fails
         """
+        if not key:
+            raise QuiltException("Must specify the key to delete")
+
         if key[-1] == '/':
             raise QuiltException("Must use delete_dir to delete directories")
 
