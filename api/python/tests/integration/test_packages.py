@@ -347,6 +347,22 @@ def test_local_set_dir(tmpdir):
     # todo nested at set_dir site or relative to set_dir path.
     assert (bazdir / 'baz').resolve().as_uri() == pkg['my_keys/baz'].physical_keys[0]
 
+    # Verify ignoring files in the presence of a dot-quiltignore
+    with open('.quiltignore', 'w') as fd:
+        fd.write('foo\nbar')
+
+    pkg = Package()
+    pkg = pkg.set_dir("/", ".")
+    assert 'foo_dir' in pkg.keys()
+    assert 'foo' not in pkg.keys() and 'bar' not in pkg.keys()
+
+    with open('.quiltignore', 'w') as fd:
+        fd.write('foo_dir')
+
+    pkg = Package()
+    pkg = pkg.set_dir("/", ".")
+    assert 'foo_dir' not in pkg.keys()
+
 
 def test_s3_set_dir(tmpdir):
     """ Verify building a package from an S3 directory. """
