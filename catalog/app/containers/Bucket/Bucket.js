@@ -20,18 +20,20 @@ import Search from './Search';
 import Tree from './Tree';
 
 
-const getBucketSection = (pathname, paths) => {
-  if (matchPath(pathname, { path: paths.bucketRoot, exact: true })) {
-    return 'overview';
-  }
-  if (matchPath(pathname, { path: paths.bucketPackageList })) {
-    return 'packages';
-  }
-  if (matchPath(pathname, { path: paths.bucketTree })) {
-    return 'tree';
+const match = (cases) => (pathname) => {
+  // eslint-disable-next-line no-restricted-syntax
+  for (const [section, opts] of Object.entries(cases)) {
+    if (matchPath(pathname, opts)) return section;
   }
   return false;
 };
+
+const getBucketSection = (paths) => match({
+  overview: { path: paths.bucketRoot, exact: true },
+  packages: { path: paths.bucketPackageList },
+  tree: { path: paths.bucketTree },
+  search: { path: paths.bucketSearch },
+});
 
 const NavTab = RT.composeComponent('Bucket.Layout.Tab',
   withStyles(({ spacing: { unit } }) => ({
@@ -81,6 +83,13 @@ const BucketLayout = RT.composeComponent('Bucket.Layout',
               value="tree"
               to={urls.bucketTree(bucket)}
             />
+            {section === 'search' && (
+              <NavTab
+                label="Search"
+                value="search"
+                to={urls.bucketSearch(bucket)}
+              />
+            )}
           </Tabs>
         </AppBar>
       }
@@ -95,7 +104,7 @@ export default RT.composeComponent('Bucket',
       {({ paths }) => (
         <BucketLayout
           bucket={bucket}
-          section={getBucketSection(location.pathname, paths)}
+          section={getBucketSection(paths)(location.pathname)}
         >
           <Switch>
             <Route
