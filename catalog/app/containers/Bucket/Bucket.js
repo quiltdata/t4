@@ -1,4 +1,5 @@
 import PT from 'prop-types';
+import * as R from 'ramda';
 import * as React from 'react';
 import { Link, Route, Switch, matchPath } from 'react-router-dom';
 import * as RC from 'recompose';
@@ -28,12 +29,16 @@ const match = (cases) => (pathname) => {
   return false;
 };
 
-const getBucketSection = (paths) => match({
-  overview: { path: paths.bucketRoot, exact: true },
-  packages: { path: paths.bucketPackageList },
-  tree: { path: paths.bucketTree },
-  search: { path: paths.bucketSearch },
-});
+const sections = {
+  overview: { path: 'bucketRoot', exact: true },
+  packages: { path: 'bucketPackageList' },
+  tree: { path: 'bucketTree' },
+  search: { path: 'bucketSearch' },
+};
+
+const getBucketSection = (paths) =>
+  match(R.map(({ path, ...opts }) =>
+    ({ path: paths[path], ...opts }), sections));
 
 const NavTab = RT.composeComponent('Bucket.Layout.Tab',
   withStyles(({ spacing: { unit } }) => ({
@@ -48,7 +53,7 @@ const NavTab = RT.composeComponent('Bucket.Layout.Tab',
 const BucketLayout = RT.composeComponent('Bucket.Layout',
   RC.setPropTypes({
     bucket: PT.string.isRequired,
-    section: PT.oneOf(['overview', 'packages', 'tree', false]),
+    section: PT.oneOf([...Object.keys(sections), false]),
   }),
   NamedRoutes.inject(),
   withStyles(({ palette }) => ({
