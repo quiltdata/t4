@@ -259,7 +259,7 @@ const mergeVersions = (
     _source: {
       version_id: version,
       updated,
-      key,
+      key: path,
       size,
       text,
       type,
@@ -271,7 +271,7 @@ const mergeVersions = (
   const timestamp = new Date(updated);
   return {
     ...latest(rest, {
-      path: key,
+      path,
       timestamp,
       version,
       size,
