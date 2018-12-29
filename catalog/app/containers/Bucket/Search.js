@@ -6,6 +6,8 @@ import * as RC from 'recompose';
 import Button from '@material-ui/core/Button';
 import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
+import Icon from '@material-ui/core/Icon';
+import IconButton from '@material-ui/core/IconButton';
 import Typography from '@material-ui/core/Typography';
 import * as colors from '@material-ui/core/colors';
 import { withStyles } from '@material-ui/core/styles';
@@ -44,7 +46,7 @@ const Version = RT.composeComponent('Bucket.Search.Version',
   })),
   ({ classes, id, ts, latest = false }) => (
     <li className={classes.root}>
-      <code>{id}</code>
+      <code>{id || '<EMPTY>'}</code>
       <span> from </span>
       <span className={classes.ts}>{ts.toLocaleString()}</span>
       {latest && <Tag>latest</Tag>}
@@ -71,6 +73,50 @@ const Crumbs = RT.composeComponent('Bucket.Search.Crumbs',
     </NamedRoutes.Inject>
   ));
 
+const HitHeading = RT.composeComponent('Bucket.Search.HitHeading',
+  RC.setPropTypes({
+    bucket: PT.string.isRequired,
+    path: PT.string.isRequired,
+  }),
+  withStyles(() => ({
+    root: {
+      alignItems: 'center',
+      display: 'flex',
+    },
+    spacer: {
+      flexGrow: 1,
+    },
+    buttonContainer: {
+      alignItems: 'center',
+      display: 'flex',
+      height: 24,
+      justifyContent: 'center',
+      width: 24,
+    },
+    button: {
+      textDecoration: 'none !important',
+    },
+  })),
+  ({ classes, bucket, path }) => (
+    <div className={classes.root}>
+      <Crumbs bucket={bucket} path={path} />
+      <div className={classes.spacer} />
+      <AWS.Signer.Inject>
+        {(signer) => (
+          <span className={classes.buttonContainer}>
+            <IconButton
+              className={classes.button}
+              href={signer.getSignedS3URL({ bucket, key: path })}
+              title="Download"
+            >
+              <Icon>arrow_downward</Icon>
+            </IconButton>
+          </span>
+        )}
+      </AWS.Signer.Inject>
+    </div>
+  ));
+
 const Hit = RT.composeComponent('Bucket.Search.Hit',
   RC.setPropTypes({
     path: PT.string.isRequired,
@@ -83,27 +129,16 @@ const Hit = RT.composeComponent('Bucket.Search.Hit',
   }),
   withStyles(({ palette, spacing: { unit } }) => ({
     root: {
-      '& + &': {
-        marginTop: 2 * unit,
-      },
+      marginBottom: 2 * unit,
     },
     content: {
       paddingBottom: 0, // TODO: check if necessary
-    },
-    heading: {
-      fontSize: '1.5em', // TODO: typog
-      fontWeight: 400, // TODO: use typog
-      margin: 0,
     },
     sectionHeading: {
       fontSize: 18, // TODO: use typog
       fontWeight: 400, // TODO: use typog
       marginBottom: 0,
       marginTop: 3 * unit,
-
-      '$heading + &': {
-        marginTop: 1.5 * unit,
-      },
     },
     text: {
       background: palette.grey[50],
@@ -136,7 +171,7 @@ const Hit = RT.composeComponent('Bucket.Search.Hit',
   }) => (
     <Card className={classes.root}>
       <CardContent className={classes.content}>
-        <Crumbs bucket={bucket} path={path} />
+        <HitHeading bucket={bucket} path={path} />
         {!!text && <pre className={classes.text}>{text}</pre>}
         {!!meta && (
           <React.Fragment>
@@ -185,7 +220,11 @@ const Browse = RT.composeComponent('Bucket.Search.Browse',
   ({ bucket }) => (
     <NamedRoutes.Inject>
       {({ urls }) => (
-        <Button component={Link} to={urls.bucketRoot(bucket)}>
+        <Button
+          component={Link}
+          to={urls.bucketRoot(bucket)}
+          variant="outlined"
+        >
           Browse the bucket
         </Button>
       )}
