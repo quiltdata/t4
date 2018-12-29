@@ -12,25 +12,14 @@ injectGlobal`
     height: 100%;
     width: 100%;
   }
+
   body {
     color: ${bodyColor};
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+
     a {
-      color: #0f4a8c;
+      color: inherit;
       text-decoration: none;
-    }
-    a:hover,
-    a:focus {
-      color: #1a5fad;
-      cursor: pointer;
-      text-decoration: underline;
-    }
-    a:focus {
-      outline: 5px auto -webkit-focus-ring-color;
-      outline-offset: -2px;
-    }
-    a:visited {
-      color: #0f4a8c;
     }
 
     code, pre {

@@ -1,6 +1,5 @@
 import * as R from 'ramda';
 import * as React from 'react';
-import { Link } from 'react-router-dom';
 import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
 import CircularProgress from '@material-ui/core/CircularProgress';
@@ -11,6 +10,7 @@ import AsyncResult from 'utils/AsyncResult';
 import * as AWS from 'utils/AWS';
 import { withData } from 'utils/Data';
 import * as NamedRoutes from 'utils/NamedRoutes';
+import Link from 'utils/StyledLink';
 import * as RT from 'utils/reactTools';
 
 import Message from './Message';
@@ -42,7 +42,7 @@ export default RT.composeComponent('Bucket.PackageList',
       Ok: R.ifElse(R.isEmpty,
         () => (
           <Message headline="No packages">
-            <a href="https://github.com/quiltdata/t4/blob/master/UserDocs.md#publishing-a-package-to-t4">Learn how to create a package</a>.
+            <Link href="https://github.com/quiltdata/t4/blob/master/UserDocs.md#publishing-a-package-to-t4">Learn how to create a package</Link>.
           </Message>
         ),
         R.pipe(

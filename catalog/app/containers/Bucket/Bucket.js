@@ -38,11 +38,8 @@ const getBucketSection = (paths) => match({
 const NavTab = RT.composeComponent('Bucket.Layout.Tab',
   withStyles(({ spacing: { unit } }) => ({
     root: {
-      color: 'inherit !important',
       minHeight: 8 * unit,
       minWidth: 120,
-      outline: 'none !important',
-      textDecoration: 'none !important',
     },
   })),
   RC.withProps({ component: Link }),

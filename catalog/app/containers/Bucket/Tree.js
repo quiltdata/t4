@@ -15,11 +15,12 @@ import AsyncResult from 'utils/AsyncResult';
 import * as AWS from 'utils/AWS';
 import { withData } from 'utils/Data';
 import * as NamedRoutes from 'utils/NamedRoutes';
+import Link from 'utils/StyledLink';
+import { composeComponent } from 'utils/reactTools';
 import {
   getBreadCrumbs,
   isDir,
 } from 'utils/s3paths';
-import { composeComponent } from 'utils/reactTools';
 
 import BreadCrumbs, { Crumb } from './BreadCrumbs';
 import CodeButton from './CodeButton';
@@ -125,11 +126,11 @@ export default composeComponent('Bucket.Tree',
                     result={result}
                     whenEmpty={() => (
                       <Message headline="No files">
-                        <a
+                        <Link
                           href="https://github.com/quiltdata/t4/blob/master/UserDocs.md#working-with-buckets"
                         >
                           Learn how to upload files
-                        </a>.
+                        </Link>.
                       </Message>
                     )}
                   />

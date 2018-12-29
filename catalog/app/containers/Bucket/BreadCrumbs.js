@@ -1,10 +1,10 @@
 import PT from 'prop-types';
 import * as React from 'react';
-import { Link } from 'react-router-dom';
 import * as RC from 'recompose';
 import Typography from '@material-ui/core/Typography';
 import { withStyles } from '@material-ui/core/styles';
 
+import Link from 'utils/StyledLink';
 import * as RT from 'utils/reactTools';
 import tagged from 'utils/tagged';
 

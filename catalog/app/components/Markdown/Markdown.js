@@ -1,15 +1,16 @@
+import cx from 'classnames';
 import hljs from 'highlight.js';
-import flow from 'lodash/flow';
-import id from 'lodash/identity';
 import memoize from 'lodash/memoize';
 import PT from 'prop-types';
-import React from 'react';
-import { setPropTypes } from 'recompose';
+import * as R from 'ramda';
+import * as React from 'react';
+import * as RC from 'recompose';
 import Remarkable from 'remarkable';
 import { replaceEntities, escapeHtml, unescapeMd } from 'remarkable/lib/common/utils';
-import styled from 'styled-components';
+import { withStyles } from '@material-ui/core/styles';
 
-import { composeComponent } from 'utils/reactTools';
+import { linkStyle } from 'utils/StyledLink';
+import * as RT from 'utils/reactTools';
 
 
 // TODO: switch to pluggable react-aware renderer
@@ -37,7 +38,7 @@ const highlight = (str, lang) => {
   return ''; // use external default escaping
 };
 
-const escape = flow(replaceEntities, escapeHtml);
+const escape = R.pipe(replaceEntities, escapeHtml);
 
 /**
  * A Markdown (Remarkable) plugin. Takes a Remarkable instance and adjusts it.
@@ -61,7 +62,7 @@ const escape = flow(replaceEntities, escapeHtml);
  */
 const imageHandler = ({
   disable = false,
-  process = id,
+  process = R.identity,
 }) => (md) => {
   // eslint-disable-next-line no-param-reassign
   md.renderer.rules.image = (tokens, idx) => {
@@ -77,6 +78,7 @@ const imageHandler = ({
     const src = escapeHtml(t.src);
     const alt = t.alt ? escape(unescapeMd(t.alt)) : '';
     const title = t.title ? ` title="${escape(t.title)}"` : '';
+    // TODO: rm inline width
     return `<img src="${src}" alt="${alt}"${title} width="33%"/>`;
   };
 };
@@ -95,7 +97,7 @@ const imageHandler = ({
  */
 const linkHandler = ({
   nofollow = true,
-  process = id,
+  process = R.identity,
 }) => (md) => {
   // eslint-disable-next-line no-param-reassign
   md.renderer.rules.link_open = (tokens, idx) => {
@@ -137,39 +139,41 @@ const getRenderer = memoize(({
   return md;
 });
 
-// Ensure that markdown styles are smaller than page h1, h2, etc. since
-// they should appear as subordinate to the page's h1, h2
-const Style = styled.div`
-  display: block;
-  overflow: auto;
-
-  h1 code {
-    background-color: inherit;
-  }
-
-  /* prevent horizontal overflow */
-  img {
-    max-width: 100%;
-  }
-`;
-
-export default composeComponent('Markdown',
-  setPropTypes({
+export default RT.composeComponent('Markdown',
+  RC.setPropTypes({
     data: PT.string,
     className: PT.string,
     images: PT.bool,
     processImg: PT.func,
     processLink: PT.func,
   }),
+  withStyles(() => ({
+    root: {
+      overflow: 'auto',
+
+      '& h1 code': {
+        backgroundColor: 'inherit',
+      },
+
+      /* prevent horizontal overflow */
+      '& img': {
+        maxWidth: '100%',
+      },
+
+      '& a': linkStyle,
+    },
+  })),
   ({
+    classes,
     data,
-    className = '',
+    className,
     images = true,
     processImg,
     processLink,
   }) => (
-    <Style
-      className={`markdown ${className}`}
+    <div
+      className={cx(className, classes.root)}
+      // eslint-disable-next-line react/no-danger
       dangerouslySetInnerHTML={{
         // would prefer to render in a saga but md.render() fails when called
         // in a generator

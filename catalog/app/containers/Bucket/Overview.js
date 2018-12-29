@@ -1,7 +1,7 @@
 import * as React from 'react';
-import { Link } from 'react-router-dom';
 
 import * as NamedRoutes from 'utils/NamedRoutes';
+import Link from 'utils/StyledLink';
 import * as RT from 'utils/reactTools';
 
 import Message from './Message';

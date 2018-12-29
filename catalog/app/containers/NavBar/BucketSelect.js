@@ -19,6 +19,7 @@ import * as style from 'constants/style';
 import * as BucketConfig from 'utils/BucketConfig';
 import Delay from 'utils/Delay';
 import * as NamedRoutes from 'utils/NamedRoutes';
+import Link from 'utils/StyledLink';
 import * as Wait from 'utils/Wait';
 import * as RT from 'utils/reactTools';
 
@@ -222,9 +223,9 @@ export default RT.composeComponent('NavBar.BucketSelect',
                             </MenuItem>
                           ))}
                           <li className={classes.help}>
-                            <a href={LINK_INSTALLATION}>
+                            <Link href={LINK_INSTALLATION}>
                               Learn how to create your own registry
-                            </a>
+                            </Link>
                           </li>
                         </MenuList>
                       </Paper>

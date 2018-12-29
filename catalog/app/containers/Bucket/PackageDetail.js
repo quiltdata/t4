@@ -1,5 +1,6 @@
 import * as R from 'ramda';
 import * as React from 'react';
+import { Link } from 'react-router-dom';
 import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
 import CircularProgress from '@material-ui/core/CircularProgress';
@@ -10,7 +11,6 @@ import AsyncResult from 'utils/AsyncResult';
 import * as AWS from 'utils/AWS';
 import { withData } from 'utils/Data';
 import * as NamedRoutes from 'utils/NamedRoutes';
-import Link from 'utils/PlainLink';
 import * as RT from 'utils/reactTools';
 
 import { displayError } from './errors';

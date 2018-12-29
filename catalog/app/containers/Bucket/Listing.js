@@ -1,6 +1,7 @@
 import PT from 'prop-types';
 import * as R from 'ramda';
 import * as React from 'react';
+import { Link } from 'react-router-dom';
 import * as RC from 'recompose';
 import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
@@ -11,7 +12,6 @@ import Typography from '@material-ui/core/Typography';
 import { withStyles } from '@material-ui/core/styles';
 
 import AsyncResult from 'utils/AsyncResult';
-import Link from 'utils/PlainLink';
 import { composeComponent } from 'utils/reactTools';
 import { readableBytes } from 'utils/string';
 import tagged from 'utils/tagged';
