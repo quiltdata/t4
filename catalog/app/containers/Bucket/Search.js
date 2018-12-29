@@ -1,4 +1,5 @@
 import PT from 'prop-types';
+import * as R from 'ramda';
 import * as React from 'react';
 import { Link } from 'react-router-dom';
 import * as RC from 'recompose';
@@ -18,9 +19,11 @@ import * as BucketConfig from 'utils/BucketConfig';
 import Data from 'utils/Data';
 import * as NamedRoutes from 'utils/NamedRoutes';
 import * as RT from 'utils/reactTools';
+import { getBreadCrumbs } from 'utils/s3paths';
 import { readableBytes } from 'utils/string';
 import withParsedQuery from 'utils/withParsedQuery';
 
+import BreadCrumbs, { Crumb } from './BreadCrumbs';
 import Message from './Message';
 import * as requests from './requests';
 
@@ -48,6 +51,26 @@ const Version = RT.composeComponent('Bucket.Search.Version',
     </li>
   ));
 
+
+const Crumbs = RT.composeComponent('Bucket.Search.Crumbs',
+  RC.setPropTypes({
+    bucket: PT.string.isRequired,
+    path: PT.string.isRequired,
+  }),
+  ({ bucket, path }) => (
+    <NamedRoutes.Inject>
+      {({ urls }) => {
+        const items = R.intersperse(Crumb.Sep(' / '),
+          getBreadCrumbs(path).map(({ label, path: segPath }) =>
+            Crumb.Segment({
+              label,
+              to: urls.bucketTree(bucket, segPath),
+            })));
+        return <BreadCrumbs items={items} />;
+      }}
+    </NamedRoutes.Inject>
+  ));
+
 const Hit = RT.composeComponent('Bucket.Search.Hit',
   RC.setPropTypes({
     path: PT.string.isRequired,
@@ -58,7 +81,6 @@ const Hit = RT.composeComponent('Bucket.Search.Hit',
     meta: PT.any,
     versions: PT.array.isRequired,
   }),
-  NamedRoutes.inject(),
   withStyles(({ palette, spacing: { unit } }) => ({
     root: {
       '& + &': {
@@ -104,7 +126,6 @@ const Hit = RT.composeComponent('Bucket.Search.Hit',
   })),
   ({
     classes,
-    urls,
     path,
     bucket,
     timestamp,
@@ -115,10 +136,7 @@ const Hit = RT.composeComponent('Bucket.Search.Hit',
   }) => (
     <Card className={classes.root}>
       <CardContent className={classes.content}>
-        <h1 className={classes.heading}>
-          {/* TODO: use breadcrumbs */}
-          <Link to={urls.bucketTree(bucket, path)}>{path}</Link>
-        </h1>
+        <Crumbs bucket={bucket} path={path} />
         {!!text && <pre className={classes.text}>{text}</pre>}
         {!!meta && (
           <React.Fragment>
