@@ -24,7 +24,7 @@ export const ListingItem = tagged([
   'File', // { name, to, size, modified }
 ]);
 
-const Item = composeComponent('Bucket.Tree.Listing.Item',
+const Item = composeComponent('Bucket.Listing.Item',
   RC.setPropTypes({
     icon: PT.string,
     name: PT.string.isRequired,
@@ -42,6 +42,7 @@ const Item = composeComponent('Bucket.Tree.Listing.Item',
       },
     },
     name: {
+      alignItems: 'center',
       display: 'flex',
     },
     info: {
@@ -68,7 +69,7 @@ const Item = composeComponent('Bucket.Tree.Listing.Item',
     </ListItem>
   ));
 
-const Stats = composeComponent('Bucket.Tree.Listing.Stats',
+const Stats = composeComponent('Bucket.Listing.Stats',
   RC.setPropTypes({
     items: PT.array.isRequired,
   }),
@@ -106,7 +107,7 @@ const Stats = composeComponent('Bucket.Tree.Listing.Stats',
     </div>
   ));
 
-export default composeComponent('Bucket.Tree.Listing',
+export default composeComponent('Bucket.Listing',
   RC.setPropTypes({
     // AsyncResult of ListingItems
     result: PT.object.isRequired,
