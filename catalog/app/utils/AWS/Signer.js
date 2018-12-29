@@ -101,3 +101,5 @@ export const Provider = composeComponent('AWS.Signer.Provider',
 
 export const inject = (prop = 'signer') =>
   composeHOC('AWS.Signer.inject', consume(Ctx, prop));
+
+export const Inject = Ctx.Consumer;
