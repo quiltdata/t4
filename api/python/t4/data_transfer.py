@@ -14,10 +14,9 @@ from botocore import UNSIGNED
 from botocore.client import Config
 from botocore.exceptions import ClientError, NoCredentialsError
 import boto3
-from boto3.s3.transfer import TransferConfig, create_transfer_manager
-from s3transfer.subscribers import BaseSubscriber
+from boto3.s3.transfer import TransferConfig
 from six import BytesIO, binary_type, text_type
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 
 import warnings
 with warnings.catch_warnings():
@@ -26,7 +25,7 @@ with warnings.catch_warnings():
 
 import jsonlines
 
-from .util import QuiltException, parse_file_url, parse_s3_url
+from .util import QuiltException, make_s3_url, parse_file_url, parse_s3_url
 from . import xattr
 
 
@@ -49,31 +48,7 @@ except (ClientError, NoCredentialsError):
     s3_client = boto3.client('s3', config=Config(signature_version=UNSIGNED))
 
 s3_transfer_config = TransferConfig()
-s3_manager = create_transfer_manager(s3_client, s3_transfer_config)
-
-# s3transfer does not give us a way to access the metadata of an object it's uploading/downloading,
-# even though it has access to it. To get around this, we patch the s3 client to get a callback
-# with the response.
-# See https://github.com/boto/s3transfer/issues/104
-
-def _add_callback(method):
-    def wrapper(self, **kwargs):
-        callback = kwargs.pop('Callback', None)
-        resp = method(**kwargs)
-        if callback is not None:
-            callback(resp)
-        return resp
-    return type(method)(wrapper, method.__self__)
-
-for name in ['get_object', 'put_object', 'copy_object']:
-    orig_method = getattr(s3_client, name)
-    new_method = _add_callback(orig_method)
-    setattr(s3_client, name, new_method)
-
-s3_manager.ALLOWED_DOWNLOAD_ARGS = s3_manager.ALLOWED_DOWNLOAD_ARGS + ['Callback']
-s3_manager.ALLOWED_UPLOAD_ARGS = s3_manager.ALLOWED_UPLOAD_ARGS + ['Callback']
-s3_manager.ALLOWED_COPY_ARGS = s3_manager.ALLOWED_COPY_ARGS + ['Callback']
-
+s3_threads = 4
 
 class TargetType(Enum):
     """
@@ -162,24 +137,6 @@ def serialize_obj(obj):
     return data, target
 
 
-class SizeCallback(BaseSubscriber):
-    def __init__(self, size):
-        self.size = size
-
-    def on_queued(self, future, **kwargs):
-        future.meta.provide_transfer_size(self.size)
-
-
-class ProgressCallback(BaseSubscriber):
-    def __init__(self, progress):
-        self._progress = progress
-        self._lock = Lock()
-
-    def on_progress(self, future, bytes_transferred, **kwargs):
-        with self._lock:
-            self._progress.update(bytes_transferred)
-
-
 def _parse_metadata(resp):
     return json.loads(resp['Metadata'].get(HELIUM_METADATA, '{}'))
 
@@ -210,98 +167,195 @@ def _list_object_versions(**kwargs):
     return _response_generator(s3_client.list_object_versions, ['KeyMarker', 'VersionIdMarker'], kwargs)
 
 
-def _download_single_file(bucket, key, dest_path, version=None):
-    params = dict(Bucket=bucket, Key=key)
-    if version is not None:
-        params.update(dict(VersionId=version))
-    resp = s3_client.head_object(**params)
-    size = resp['ContentLength']
-    meta = _parse_metadata(resp)
-    extra = dict(VersionId=version) if version is not None else {}
+def _copy_local_file(callback, size, src_path, dest_path, override_meta):
+    pathlib.Path(dest_path).parent.mkdir(parents=True, exist_ok=True)
 
-    if dest_path.endswith('/'):
-        dest_path += pathlib.PurePosixPath(key).name
+    # TODO(dima): More detailed progress.
+    shutil.copyfile(src_path, dest_path)
+    callback(size)
+    shutil.copymode(src_path, dest_path)
 
-    if pathlib.Path(dest_path).is_reserved():
-        raise ValueError("Cannot download %r: reserved file name" % dest_path)
-
-    with tqdm(total=size, unit='B', unit_scale=True) as progress:
-        future = s3_manager.download(
-            bucket, key, dest_path, subscribers=[SizeCallback(size), ProgressCallback(progress)],
-            extra_args=extra
-        )
-        future.result()
-        xattr.setxattr(dest_path, HELIUM_XATTR, json.dumps(meta).encode('utf-8'))
-
-
-def _download_dir(bucket, prefix, dest_path):
-    if not dest_path.endswith('/'):
-        raise ValueError("Destination path must end in /")
-
-    dest_dir = pathlib.Path(dest_path)
-
-    total_size = 0
-    tuples_list = []
-
-    for resp in _list_objects(Bucket=bucket, Prefix=prefix):
-        for item in resp.get('Contents', []):
-            key = item['Key']
-            size = item['Size']
-            total_size += size
-
-            rel_key = key[len(prefix):]
-            dest_file = dest_dir / rel_key
-
-            # Make sure it doesn't contain '..' or anything like that
-            try:
-                dest_file.resolve().relative_to(dest_dir.resolve())
-            except ValueError:
-                raise ValueError("Cannot download %r: outside of destination directory" % dest_file)
-
-            if dest_file.is_reserved():
-                raise ValueError("Cannot download %r: reserved file name" % dest_file)
-
-            tuples_list.append((key, dest_file, size))
-
-    if not tuples_list:
-        raise QuiltException("No objects to download.")
-
-    with tqdm(total=total_size, unit='B', unit_scale=True) as progress:
-        callback = ProgressCallback(progress)
-
-        metadata = {}
-        lock = Lock()
-
-        futures = []
-        for key, dest_file, size in tuples_list:
-            def meta_callback(key):
-                def cb(resp):
-                    meta = _parse_metadata(resp)
-                    with lock:
-                        metadata[key] = meta
-                return cb
-            dest_file.parent.mkdir(parents=True, exist_ok=True)
-            future = s3_manager.download(
-                bucket, key, str(dest_file),
-                extra_args=dict(Callback=meta_callback(key)), subscribers=[SizeCallback(size), callback]
-            )
-            futures.append(future)
-
-        for future in futures:
-            future.result()
-
-        for key, dest_file, _ in tuples_list:
-            meta = metadata[key]
-            xattr.setxattr(dest_file, HELIUM_XATTR, json.dumps(meta).encode('utf-8'))
-
-
-def download_file(bucket, key, dest_path, version=None):
-    if key.endswith('/'):
-        if version is not None:
-            raise QuiltException("Cannot specify a Version ID for a directory.")
-        _download_dir(bucket, key, dest_path)
+    if override_meta is None:
+        meta = _parse_file_metadata(src_path)
     else:
-        _download_single_file(bucket, key, dest_path, version=version)
+        meta = override_meta
+
+    xattr.setxattr(dest_path, HELIUM_XATTR, json.dumps(meta).encode('utf-8'))
+
+    return pathlib.Path(dest_path).as_uri()
+
+
+def _upload_file(callback, size, src_path, dest_bucket, dest_key, override_meta):
+    if override_meta is None:
+        meta = _parse_file_metadata(src_path)
+    else:
+        meta = override_meta
+
+    if size < s3_transfer_config.multipart_threshold:
+        # TODO(dima): Use OSUtils.open_file_chunk_reader for progress callbacks.
+        with open(src_path, 'rb') as fd:
+            resp = s3_client.put_object(
+                Body=fd,
+                Bucket=dest_bucket,
+                Key=dest_key,
+                Metadata={HELIUM_METADATA: json.dumps(meta)},
+            )
+            callback(fd.tell())
+
+        version_id = resp.get('VersionId')  # Absent in unversioned buckets.
+        return make_s3_url(dest_bucket, dest_key, version_id)
+    else:
+        resp = s3_client.create_multipart_upload(
+            Bucket=dest_bucket,
+            Key=dest_key,
+            Metadata={HELIUM_METADATA: json.dumps(meta)},
+        )
+        upload_id = resp['UploadId']
+        parts = []
+        with open(src_path, 'rb') as fd:
+            for i in itertools.count(1):
+                # TODO(dima): Better progress callback.
+                chunk = fd.read(s3_transfer_config.multipart_threshold)
+                if not chunk:
+                    break
+                part = s3_client.upload_part(
+                    Body=chunk,
+                    Bucket=dest_bucket,
+                    Key=dest_key,
+                    UploadId=upload_id,
+                    PartNumber=i
+                )
+                parts.append({"PartNumber": i, "ETag": part["ETag"]})
+                callback(len(chunk))
+        resp = s3_client.complete_multipart_upload(
+            Bucket=dest_bucket,
+            Key=dest_key,
+            UploadId=upload_id,
+            MultipartUpload={"Parts": parts}
+        )
+        version_id = resp.get('VersionId')  # Absent in unversioned buckets.
+        return make_s3_url(dest_bucket, dest_key, version_id)
+
+
+def _download_file(callback, src_bucket, src_key, src_version, dest_path, override_meta):
+    dest_file = pathlib.Path(dest_path)
+    if dest_file.is_reserved():
+        raise ValueError("Cannot download to %r: reserved file name" % dest_path)
+
+    params = dict(Bucket=src_bucket, Key=src_key)
+    if src_version is not None:
+        params.update(dict(VersionId=src_version))
+    resp = s3_client.get_object(**params)
+
+    if override_meta is None:
+        meta = _parse_metadata(resp)
+    else:
+        meta = override_meta
+
+    body = resp['Body']
+    with open(dest_path, 'wb') as fd:
+        while True:
+            chunk = body.read(1024)
+            if not chunk:
+                break
+            fd.write(chunk)
+            callback(len(chunk))
+
+    xattr.setxattr(dest_path, HELIUM_XATTR, json.dumps(meta).encode('utf-8'))
+
+    return pathlib.Path(dest_path).as_uri()
+
+
+NO_OP_COPY_ERROR_MESSAGE = ("An error occurred (InvalidRequest) when calling "
+                            "the CopyObject operation: This copy request is illegal "
+                            "because it is trying to copy an object to itself "
+                            "without changing the object's metadata, storage "
+                            "class, website redirect location or encryption "
+                            "attributes.")
+
+
+def _copy_remote_file(callback, size, src_bucket, src_key, src_version, dest_bucket, dest_key, override_meta):
+    src_params = dict(
+        Bucket=src_bucket,
+        Key=src_key
+    )
+    if src_version is not None:
+        src_params.update(
+            VersionId=src_version
+        )
+
+    params = dict(
+        CopySource=src_params,
+        Bucket=dest_bucket,
+        Key=dest_key
+    )
+    if override_meta is None:
+        params.update(dict(
+            MetadataDirective='COPY'
+        ))
+    else:
+        params.update(dict(
+            MetadataDirective='REPLACE',
+            Metadata={HELIUM_METADATA: json.dumps(override_meta)}
+        ))
+
+    try:
+        resp = s3_client.copy_object(**params)
+        callback(size)
+        version_id = resp.get('VersionId')  # Absent in unversioned buckets.
+        return make_s3_url(dest_bucket, dest_key, version_id)
+    except ClientError as e:
+        # suppress error from copying a file to itself
+        if str(e) == NO_OP_COPY_ERROR_MESSAGE:
+            return
+        raise
+
+
+def _copy_file_list_internal(file_list):
+    total_size = sum(size for _, _, size, _ in file_list)
+
+    with tqdm(desc="Copying", total=total_size, unit='B', unit_scale=True) as progress:
+        progress_lock = Lock()
+
+        def progress_callback(size):
+            with progress_lock:
+                progress.update(size)
+
+        def worker(args):
+            src_url, dest_url, size, override_meta = args
+            if src_url.scheme == 'file':
+                src_path = parse_file_url(src_url)
+                if dest_url.scheme == 'file':
+                    dest_path = parse_file_url(dest_url)
+                    return _copy_local_file(progress_callback, size, src_path, dest_path, override_meta)
+                elif dest_url.scheme == 's3':
+                    dest_bucket, dest_path, dest_version_id = parse_s3_url(dest_url)
+                    if dest_version_id:
+                        raise ValueError("Cannot set VersionId on destination")
+                    return _upload_file(progress_callback, size, src_path, dest_bucket, dest_path, override_meta)
+                else:
+                    raise NotImplementedError
+            elif src_url.scheme == 's3':
+                src_bucket, src_path, src_version_id = parse_s3_url(src_url)
+                if dest_url.scheme == 'file':
+                    dest_path = parse_file_url(dest_url)
+                    pathlib.Path(dest_path).parent.mkdir(parents=True, exist_ok=True)
+                    return _download_file(progress_callback, src_bucket, src_path, src_version_id, dest_path, override_meta)
+                elif dest_url.scheme == 's3':
+                    dest_bucket, dest_path, dest_version_id = parse_s3_url(dest_url)
+                    if dest_version_id:
+                        raise ValueError("Cannot set VersionId on destination")
+                    return _copy_remote_file(progress_callback, size, src_bucket, src_path, src_version_id,
+                                             dest_bucket, dest_path, override_meta)
+                else:
+                    raise NotImplementedError
+            else:
+                raise NotImplementedError
+
+        with ThreadPoolExecutor(s3_threads) as executor:
+            results = list(executor.map(worker, file_list))
+
+    return results
 
 
 def _calculate_etag(file_obj):
@@ -327,124 +381,6 @@ def _calculate_etag(file_obj):
             etag = '%s-%d' % (hashlib.md5(b''.join(hashes)).hexdigest(), len(hashes))
     return '"%s"' % etag
 
-def upload_file(src_path, bucket, key, override_meta=None):
-    src_file = pathlib.Path(src_path)
-    is_dir = src_file.is_dir()
-    if src_path.endswith('/'):
-        if not is_dir:
-            raise ValueError("Source path not a directory")
-        if not key.endswith('/'):
-            raise ValueError("Destination path must end in /")
-    else:
-        if is_dir:
-            raise ValueError("Source path is a directory; must end in /")
-
-    if is_dir:
-        src_root = src_file
-        src_file_list = list(f for f in src_file.rglob('*') if f.is_file())
-        versioned_key = None
-    else:
-        src_root = src_file.parent
-        src_file_list = [src_file]
-        versioned_key = [None]
-
-    total_size = sum(f.stat().st_size for f in src_file_list)
-
-    with ThreadPoolExecutor() as executor:
-        # Calculate local ETags in parallel.
-        src_etag_iter = executor.map(_calculate_etag, src_file_list)
-
-        # While waiting for the above, get ETags for the destination dir in the bucket.
-        # (Listing the whole bucket is slow, but the target dir might be a good compromise.)
-        existing_etags = {}
-        for response in _list_object_versions(Bucket=bucket, Prefix=key):
-            for obj in response.get('Versions', []):
-                existing_etags[obj['ETag']] = (obj['Key'], obj['VersionId'])
-
-        src_etag_list = list(src_etag_iter)
-
-    with tqdm(total=total_size, unit='B', unit_scale=True) as progress:
-        callback = ProgressCallback(progress)
-
-        if is_dir:
-            futures = []
-            for f, etag in zip(src_file_list, src_etag_list):
-                real_dest_path = key + str(f.relative_to(src_root)) if (not key or key.endswith('/')) else key
-                if override_meta is None:
-                    meta = _parse_file_metadata(f)
-                else:
-                    meta = override_meta
-
-                extra_args = dict(Metadata={HELIUM_METADATA: json.dumps(meta)})
-                existing_src = existing_etags.get(etag)
-                if existing_src is not None:
-                    # We found an existing object with the same ETag, so copy it instead of uploading
-                    # the bytes. (In the common case, it's the same key - the object is already there -
-                    # but we still copy it onto itself just in case the metadata has changed.)
-                    extra_args['MetadataDirective'] = 'REPLACE'
-                    future = s3_manager.copy(
-                        dict(Bucket=bucket, Key=existing_src[0], VersionId=existing_src[1]),
-                        bucket, real_dest_path, extra_args, [callback]
-                    )
-                else:
-                    # Upload the file.
-                    future = s3_manager.upload(str(f), bucket, real_dest_path, extra_args, [callback])
-                futures.append(future)
-
-            for future in futures:
-                future.result()
-        else:
-            f = src_file_list[0]
-            etag = src_etag_list[0]
-            if override_meta is None:
-                meta = _parse_file_metadata(f)
-            else:
-                meta = override_meta
-            existing_src = existing_etags.get(etag)
-            extra_args = dict(Metadata={HELIUM_METADATA: json.dumps(meta)})
-            if existing_src:
-                extra_args['MetadataDirective'] = 'REPLACE'
-                s3_manager.copy(
-                    dict(Bucket=bucket, Key=existing_src[0], VersionId=existing_src[1]),
-                    bucket, key, extra_args, [callback]
-                    ).result()
-            elif total_size < s3_transfer_config.multipart_threshold:
-                def meta_callback(bucket, key, versioned_key):
-                    def cb(resp):
-                        version_id = resp.get('VersionId', 'null')  # Absent in unversioned buckets.
-                        if versioned_key is not None:
-                            obj_url = 's3://%s/%s' % (bucket, key)
-                            if version_id != 'null':  # Yes, 'null'
-                                obj_url += '?versionId=%s' % quote(version_id)
-                                versioned_key[0] = obj_url
-                    return cb
-                if override_meta is None:
-                    meta = _parse_file_metadata(f)
-                else:
-                    meta = override_meta
-                extra_args['Callback'] = meta_callback(bucket, key, versioned_key)
-                s3_manager.upload(str(f), bucket, key, extra_args, [callback]).result()
-            else:
-                response = s3_client.create_multipart_upload(Bucket=bucket, Key=key)
-                parts = []
-                with open(f, 'rb') as f:
-                    for i in itertools.count(1):
-                        chunk = f.read(s3_transfer_config.multipart_threshold)
-                        if not len(chunk):
-                            break
-                        part = s3_client.upload_part(Body=chunk,
-                                                     Bucket=bucket,
-                                                     Key=key,
-                                                     UploadId=response['UploadId'],
-                                                     PartNumber=i)
-                        parts.append({"PartNumber": i, "ETag": part["ETag"]})
-                        progress.update(len(chunk))
-                result = s3_client.complete_multipart_upload(Bucket=bucket,
-                                                             Key=key,
-                                                             UploadId=response['UploadId'],
-                                                             MultipartUpload={"Parts": parts})
-                versioned_key[0] = result['VersionId']
-    return versioned_key
 
 def delete_object(bucket, key):
     if key.endswith('/'):
@@ -455,50 +391,9 @@ def delete_object(bucket, key):
         s3_client.head_object(Bucket=bucket, Key=key)  # Make sure it exists
         s3_client.delete_object(Bucket=bucket, Key=key)  # Actually delete it
 
-NO_OP_COPY_ERROR_MESSAGE = ("An error occurred (InvalidRequest) when calling "
-                            "the CopyObject operation: This copy request is illegal "
-                            "because it is trying to copy an object to itself "
-                            "without changing the object's metadata, storage "
-                            "class, website redirect location or encryption "
-                            "attributes.")
 
 def copy_object(src_bucket, src_key, dest_bucket, dest_key, override_meta=None, version=None):
-    src_params = dict(
-        Bucket=src_bucket,
-        Key=src_key
-    )
-    if version is not None:
-        src_params.update(
-            VersionId=version
-        )
-
-    params = dict(
-        CopySource=src_params,
-        Bucket=dest_bucket,
-        Key=dest_key
-    )
-    if override_meta is None:
-        params.update(dict(
-            MetadataDirective='COPY'
-        ))
-    else:
-        params.update(dict(
-            MetadataDirective='REPLACE',
-            Metadata={HELIUM_METADATA: json.dumps(override_meta)}
-        ))
-
-    try:
-        resp = s3_client.copy_object(**params)
-        version_id = resp.get('VersionId', 'null')  # Absent in unversioned buckets.
-        obj_url = 's3://%s/%s' % (dest_bucket, dest_key)
-        if version_id != 'null':  # Yes, 'null'
-            obj_url += '?versionId=%s' % quote(version_id)
-        return [obj_url]
-    except ClientError as e:
-        # suppress error from copying a file to itself
-        if str(e) == NO_OP_COPY_ERROR_MESSAGE:
-            return
-        raise
+    _copy_remote_file(lambda x: None, 0, src_bucket, src_key, version, dest_bucket, dest_key, override_meta)
 
 
 def list_object_versions(bucket, prefix, recursive=True):
@@ -550,45 +445,99 @@ def list_objects(bucket, prefix, recursive=True):
         return prefixes, objects
 
 
-def copy_file(src, dest, override_meta=None):
+def list_url(src):
     src_url = urlparse(src)
-    dest_url = urlparse(dest)
     if src_url.scheme == 'file':
-        if dest_url.scheme == 'file':
-            src_path = parse_file_url(src_url)
-            dest_path = parse_file_url(dest_url)
-            pathlib.Path(dest_path).parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(src_path, dest_path)
-            shutil.copymode(src_path, dest_path)
+        src_path = parse_file_url(src_url)
+        src_file = pathlib.Path(src_path)
+        if not src_file.is_dir():
+            raise ValueError("Not a directory: %r" % src_url)
+
+        for f in src_file.rglob('*'):
             try:
-                meta_bytes = xattr.getxattr(src_path, HELIUM_XATTR)
-            except IOError:
-                # No metadata
+                size = f.stat().st_size
+                yield f.relative_to(src_file).as_posix(), size
+            except FileNotFoundError:
+                # If a file does not exist, is it really a file?
                 pass
-            else:
-                xattr.setxattr(dest_path, HELIUM_XATTR, meta_bytes)
-        elif dest_url.scheme == 's3':
-            dest_bucket, dest_path, dest_version_id = parse_s3_url(dest_url)
-            if dest_version_id:
-                raise ValueError("Cannot set VersionId on destination")
-            return upload_file(parse_file_url(src_url), dest_bucket, dest_path, override_meta)
-        else:
-            raise NotImplementedError
     elif src_url.scheme == 's3':
         src_bucket, src_path, src_version_id = parse_s3_url(src_url)
-        if dest_url.scheme == 'file':
-            pathlib.Path(parse_file_url(dest_url)).parent.mkdir(parents=True, exist_ok=True)
-            download_file(src_bucket, src_path, parse_file_url(dest_url), src_version_id)
-        elif dest_url.scheme == 's3':
-            dest_bucket, dest_path, dest_version_id = parse_s3_url(dest_url)
-            if dest_version_id:
-                raise ValueError("Cannot set VersionId on destination")
-            return copy_object(src_bucket, src_path, dest_bucket, dest_path, override_meta,
-                               src_version_id)
-        else:
-            raise NotImplementedError
+        if src_version_id is not None:
+            raise ValueError("Directories cannot have version IDs: %r" % src_url)
+        if src_path and not src_path.endswith('/'):
+            src_path += '/'
+        for response in _list_objects(Bucket=src_bucket, Prefix=src_path):
+            for obj in response.get('Contents', []):
+                key = obj['Key']
+                if not key.startswith(src_path):
+                    raise ValueError("Unexpected key: %r" % key)
+                yield key[len(src_path):], obj['Size']
     else:
         raise NotImplementedError
+
+
+def _looks_like_dir(s):
+    return not s or s.endswith('/')
+
+
+def copy_file_list(file_list):
+    def worker(args):
+        src, dest, override_meta = args
+
+        src_url = urlparse(src)
+        src_path = unquote(src_url.path)
+        dest_url = urlparse(dest)
+        dest_path = unquote(dest_url.path)
+
+        if _looks_like_dir(src_path) or _looks_like_dir(dest_path):
+            raise ValueError("Directories are not allowed")
+
+        size, _, _ = get_size_and_meta(src)
+        return (src_url, dest_url, size, override_meta)
+
+    with ThreadPoolExecutor(s3_threads) as executor:
+        processed_file_list = list(executor.map(worker, file_list))
+
+    return _copy_file_list_internal(processed_file_list)
+
+
+def copy_file(src, dest, override_meta=None):
+    def sanity_check(rel_path):
+        for part in rel_path.split('/'):
+            if part in ('', '.', '..'):
+                raise ValueError("Invalid relative path: %r" % rel_path)
+
+    def url_append(url, path):
+        return url._replace(path=url.path + quote(path))
+
+    src_url = urlparse(src)
+    dest_url = urlparse(dest)
+    src_path = unquote(src_url.path)
+    dest_path = unquote(dest_url.path)
+
+    url_list = []
+    if _looks_like_dir(src_path):
+        if not _looks_like_dir(dest_path):
+            raise ValueError("Destination path must end in /")
+        if override_meta is not None:
+            raise ValueError("override_meta does not make sense for directories")
+
+        for rel_path, size in list_url(src):
+            sanity_check(rel_path)
+            new_src_url = url_append(src_url, rel_path)
+            new_dest_url = url_append(dest_url, rel_path)
+            url_list.append((new_src_url, new_dest_url, size, None))
+        if not url_list:
+            raise QuiltException("No objects to download.")
+    else:
+        if _looks_like_dir(dest_path):
+            name = src_path.rsplit('/', 1)[1]
+            dest_url = url_append(dest_url, name)
+        size, _, _ = get_size_and_meta(src)
+        url_list.append((src_url, dest_url, size, override_meta))
+
+    _copy_file_list_internal(url_list)
+
 
 def put_bytes(data, dest, meta=None):
     dest_url = urlparse(dest)
@@ -664,7 +613,7 @@ def get_size_and_meta(src):
 def calculate_sha256(src_list, total_size):
     lock = Lock()
 
-    with tqdm(total=total_size, unit='B', unit_scale=True) as progress:
+    with tqdm(desc="Hashing", total=total_size, unit='B', unit_scale=True) as progress:
         def _process_url(src):
             src_url = urlparse(src)
             hash_obj = hashlib.sha256()

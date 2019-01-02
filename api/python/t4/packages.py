@@ -14,7 +14,7 @@ import jsonlines
 from six import string_types
 
 from .data_transfer import (
-    calculate_sha256, copy_file, deserialize_obj,
+    calculate_sha256, copy_file, copy_file_list, deserialize_obj,
     get_bytes, get_size_and_meta, list_object_versions, put_bytes,
     TargetType
 )
@@ -891,16 +891,20 @@ class Package(object):
         pkg = self.__class__()
         pkg._meta = self._meta
         # Since all that is modified is physical keys, pkg will have the same top hash
+        file_list = []
         for logical_key, entry in self.walk():
             # Copy the datafiles in the package.
             physical_key = _to_singleton(entry.physical_keys)
             new_physical_key = dest_url + "/" + quote(logical_key)
-            versioned_key = copy_file(physical_key, new_physical_key, entry.meta)
+            file_list.append((physical_key, new_physical_key, entry.meta))
 
+        results = copy_file_list(file_list)
+
+        for (logical_key, entry), versioned_key in zip(self.walk(), results):
             # Create a new package entry pointing to the new remote key.
+            assert versioned_key is not None
             new_entry = entry._clone()
-            new_physical_key = versioned_key[0] if versioned_key else new_physical_key
-            new_entry.physical_keys = [new_physical_key]
+            new_entry.physical_keys = [versioned_key]
             pkg.set(logical_key, new_entry)
         return pkg
 
