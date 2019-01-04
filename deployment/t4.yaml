@@ -328,6 +328,8 @@ Resources:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Ref ConfigBucketName
+      VersioningConfiguration:
+        Status: Enabled
 
   NavigatorInitRole:
     Type: AWS::IAM::Role
