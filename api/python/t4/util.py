@@ -259,33 +259,26 @@ def quiltignore_filter(paths, ignore_rules, url_scheme):
             supported
     """
     if url_scheme == 'file':
+        from fnmatch import fnmatch
 
-        files, dirs = set(), []
+        files, dirs = set(), set()
         for path in paths:
             if path.is_file():
                 files.add(path)
             else:
-                dirs.append(path)
+                dirs.add(path)
 
+        filtered_dirs = dirs.copy()
         for ignore_rule in ignore_rules:
             ignore_rule = os.getcwd() + '/' + ignore_rule
 
-            if dirs:
-                dir_idx = 0
-                while True:
-                    pkg_dir = dirs[dir_idx]
-
-                    # copy git behavior --- git matches paths and directories equivalently.
-                    # e.g. both foo and foo/ will match the ignore rule "foo"
-                    # but only foo/ will match the ignore rule "foo/"
-                    if fnmatch(pkg_dir.as_posix() + "/", ignore_rule) or fnmatch(pkg_dir.as_posix(), ignore_rule):
-                        files = set(n for n in files if pkg_dir not in n.parents)
-                        dirs = dirs[:dir_idx] + dirs[dir_idx + 1:]
-                    else:
-                        dir_idx += 1
-
-                    if dir_idx >= len(dirs):
-                        break
+            for pkg_dir in filtered_dirs.copy():
+                # copy git behavior --- git matches paths and directories equivalently.
+                # e.g. both foo and foo/ will match the ignore rule "foo"
+                # but only foo/ will match the ignore rule "foo/"
+                if fnmatch(pkg_dir.as_posix() + "/", ignore_rule) or fnmatch(pkg_dir.as_posix(), ignore_rule):
+                    files = set(n for n in files if pkg_dir not in n.parents)
+                    dirs = dirs - {pkg_dir}
 
             files = set(n for n in files if not fnmatch(n, ignore_rule))
 
