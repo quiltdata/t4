@@ -349,7 +349,8 @@ def test_local_set_dir(tmpdir):
 
     # Verify ignoring files in the presence of a dot-quiltignore
     with open('.quiltignore', 'w') as fd:
-        fd.write('foo\nbar')
+        fd.write('foo\n')
+        fd.write('bar')
 
     pkg = Package()
     pkg = pkg.set_dir("/", ".")
@@ -362,6 +363,14 @@ def test_local_set_dir(tmpdir):
     pkg = Package()
     pkg = pkg.set_dir("/", ".")
     assert 'foo_dir' not in pkg.keys()
+
+    with open('.quiltignore', 'w') as fd:
+        fd.write('foo_dir\n')
+        fd.write('foo_dir/baz_dir')
+
+    pkg = Package()
+    pkg = pkg.set_dir("/", ".")
+    assert 'foo_dir/baz_dir' not in pkg.keys() and 'foo_dir' not in pkg.keys()
 
 
 def test_s3_set_dir(tmpdir):

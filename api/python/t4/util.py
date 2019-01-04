@@ -5,6 +5,7 @@ import json
 import os
 from urllib.parse import parse_qs, unquote, urlparse
 from urllib.request import url2pathname
+from fnmatch import fnmatch
 
 # backports
 from six.moves import urllib
@@ -258,25 +259,33 @@ def quiltignore_filter(paths, ignore_rules, url_scheme):
             supported
     """
     if url_scheme == 'file':
-        from fnmatch import fnmatch
 
-        files, dirs = set(), set()
+        files, dirs = set(), []
         for path in paths:
             if path.is_file():
                 files.add(path)
             else:
-                dirs.add(path)
+                dirs.append(path)
 
         for ignore_rule in ignore_rules:
             ignore_rule = os.getcwd() + '/' + ignore_rule
 
-            for dir in dirs:
-                # copy git behavior --- git matches paths and directories equivalently.
-                # e.g. both foo and foo/ will match the ignore rule "foo"
-                # but only foo/ will match the ignore rule "foo/"
-                if fnmatch(dir.as_posix() + "/", ignore_rule) or fnmatch(dir.as_posix(), ignore_rule):
-                    files = set(n for n in files if dir not in n.parents)
-                    dirs = dirs - {dir}
+            if dirs:
+                dir_idx = 0
+                while True:
+                    dir = dirs[dir_idx]
+
+                    # copy git behavior --- git matches paths and directories equivalently.
+                    # e.g. both foo and foo/ will match the ignore rule "foo"
+                    # but only foo/ will match the ignore rule "foo/"
+                    if fnmatch(dir.as_posix() + "/", ignore_rule) or fnmatch(dir.as_posix(), ignore_rule):
+                        files = set(n for n in files if dir not in n.parents)
+                        dirs = dirs[:dir_idx] + dirs[dir_idx + 1:]
+                    else:
+                        dir_idx += 1
+
+                    if dir_idx >= len(dirs):
+                        break
 
             files = set(n for n in files if not fnmatch(n, ignore_rule))
 
