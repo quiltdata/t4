@@ -273,13 +273,13 @@ def quiltignore_filter(paths, ignore_rules, url_scheme):
             if dirs:
                 dir_idx = 0
                 while True:
-                    dir = dirs[dir_idx]
+                    pkg_dir = dirs[dir_idx]
 
                     # copy git behavior --- git matches paths and directories equivalently.
                     # e.g. both foo and foo/ will match the ignore rule "foo"
                     # but only foo/ will match the ignore rule "foo/"
-                    if fnmatch(dir.as_posix() + "/", ignore_rule) or fnmatch(dir.as_posix(), ignore_rule):
-                        files = set(n for n in files if dir not in n.parents)
+                    if fnmatch(pkg_dir.as_posix() + "/", ignore_rule) or fnmatch(pkg_dir.as_posix(), ignore_rule):
+                        files = set(n for n in files if pkg_dir not in n.parents)
                         dirs = dirs[:dir_idx] + dirs[dir_idx + 1:]
                     else:
                         dir_idx += 1
