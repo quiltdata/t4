@@ -62,7 +62,9 @@ def config(dest_bucket, dest_dir, es_url, api_url, s3_bucket,
         'guestCredentials': {
             'accessKeyID': '',
             'secretAccessKey': ''
-        }
+        },
+        'signInRedirect': '/',
+        'signOutRedirect': '/'
     }
 
     s3_client.put_object(
