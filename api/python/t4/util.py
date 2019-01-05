@@ -5,6 +5,7 @@ import json
 import os
 from urllib.parse import parse_qs, unquote, urlparse
 from urllib.request import url2pathname
+from fnmatch import fnmatch
 
 # backports
 from six.moves import urllib
@@ -244,3 +245,43 @@ def get_local_registry():
 
 def get_remote_registry():
     return load_config().get('default_remote_registry', None)
+
+
+def quiltignore_filter(paths, ignore_rules, url_scheme):
+    """Given a list paths, filter out the paths which are captured by the given
+    ignore rules.
+
+    Args:
+        paths (list): a list or iterable of paths
+        ignore_rules (list): a list or iterable of ignore rules, in Unix shell
+            style wildcard format
+        url_scheme (str): the URL scheme, only the "file" scheme is currently
+            supported
+    """
+    if url_scheme == 'file':
+        from fnmatch import fnmatch
+
+        files, dirs = set(), set()
+        for path in paths:
+            if path.is_file():
+                files.add(path)
+            else:
+                dirs.add(path)
+
+        filtered_dirs = dirs.copy()
+        for ignore_rule in ignore_rules:
+            ignore_rule = os.getcwd() + '/' + ignore_rule
+
+            for pkg_dir in filtered_dirs.copy():
+                # copy git behavior --- git matches paths and directories equivalently.
+                # e.g. both foo and foo/ will match the ignore rule "foo"
+                # but only foo/ will match the ignore rule "foo/"
+                if fnmatch(pkg_dir.as_posix() + "/", ignore_rule) or fnmatch(pkg_dir.as_posix(), ignore_rule):
+                    files = set(n for n in files if pkg_dir not in n.parents)
+                    dirs = dirs - {pkg_dir}
+
+            files = set(n for n in files if not fnmatch(n, ignore_rule))
+
+        return files.union(dirs)
+    else:
+        raise NotImplementedError
