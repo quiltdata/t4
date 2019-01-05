@@ -218,9 +218,14 @@ def find_bucket_config(bucket_name, catalog_config_url):
     if not config_request.ok:
         raise QuiltException("Failed to get catalog config")
     config_json = json.loads(config_request.text)
-    federations = config_json.get('federations', None)
-    if not federations:
-        raise QuiltException("Failed to find federations in catalog config")
+    if 'federations' not in config_json:
+        # try old config format
+        try:
+            return config_json['configs'][bucket_name]
+        except KeyError:
+            raise QuiltException("Catalog config malformed")
+
+    federations = config_json['federations']
     federations.reverse() # want to get results from last federation first
     for federation in federations:
         parsed = urlparse(federation)
@@ -231,9 +236,9 @@ def find_bucket_config(bucket_name, catalog_config_url):
         if not federation_request.ok:
             continue
         federation = json.loads(federation_request.text)
-        buckets = federation.get('buckets', None)
-        if not buckets:
+        if 'buckets' not in federation:
             continue
+        buckets = federation['buckets']
         for bucket in buckets:
             if isinstance(bucket, str):
                 bucket_request = requests.get(bucket)

@@ -46,7 +46,11 @@ class Bucket(object):
         Updates this bucket's search endpoint based on a federation config.
         """
         bucket_config = find_bucket_config(self._bucket, config_url)
-        self._search_endpoint = bucket_config['searchEndpoint']
+        if 'searchEndpoint' in bucket_config:
+            self._search_endpoint = bucket_config['searchEndpoint']
+        elif 'search_endpoint' in bucket_config:
+            # old format
+            self._search_endpoint = bucket_config['search_endpoint']
 
     def search(self, query):
         """
