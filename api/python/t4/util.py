@@ -3,7 +3,7 @@ from collections import Mapping, Sequence, Set, OrderedDict
 import datetime
 import json
 import os
-from urllib.parse import parse_qs, unquote, urljoin, urlparse
+from urllib.parse import parse_qs, quote, unquote, urlencode, urljoin, urlparse, urlunparse
 from urllib.request import url2pathname
 from fnmatch import fnmatch
 
@@ -114,6 +114,14 @@ def parse_s3_url(s3_url):
     if query:
         raise ValueError("Unexpected S3 query string: %r" % s3_url.query)
     return bucket, path, version_id
+
+
+def make_s3_url(bucket, path, version_id=None):
+    params = {}
+    if version_id not in (None, 'null'):
+        params = {'versionId': version_id}
+
+    return urlunparse(('s3', bucket, quote(path), None, urlencode(params), None))
 
 
 def parse_file_url(file_url):
