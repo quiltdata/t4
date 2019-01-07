@@ -15,8 +15,10 @@ generate:
     - t4.ls
     - t4.put
     - t4.search
+# Uncomment the following two lines in include these classes directly in api.md
 #    - Bucket+
 #    - Package+
+
 - api_Bucket.md:
   - t4.Bucket+
 
