@@ -20,17 +20,29 @@ Parameters:
   Users:
     Type: CommaDelimitedList
     Description: Required, comma-separated list of ARNs for IAM users who can search QuiltBucket. NOTE - Users with search access can see the contents of all indexed documents. Only include trusted users.
+  BucketTitle:
+    Type: String
+    Description: Title for your bucket
+    Default: "Title here"
+  BucketIcon:
+    Type: String
+    Description: Icon for your bucket
+    Default: "placeholder icon here"
+  BucketDescription:
+    Type: String
+    Description: Description for your bucket
+    Default: "placeholder description here"
 
 Mappings:
   VersionMap:
     # initializes config.js and config.json for static website
     navigator-config:
-      hash: 19dee98
+      hash: 46218d4
     nbconvert:
       hash: f0cc75b
     # static website content
     navigator:
-      hash: 6c16507
+      hash: 836166e
     indexer:
       hash: 5d2334a
     put-mappings:
@@ -378,6 +390,9 @@ Resources:
   NavigatorInit:
     Type: Custom::S3Sync
     Properties:
+      BucketTitle: !Ref BucketTitle
+      BucketIcon: !Ref BucketIcon
+      BucketDescription: !Ref BucketDescription
       ServiceToken: !GetAtt NavigatorInitHandler.Arn
       DestBucket: !Ref ConfigBucketName
       DestDir: ""
@@ -400,6 +415,13 @@ Resources:
           ViewerProtocolPolicy: redirect-to-https
         CacheBehaviors:
         - PathPattern: /config.js*
+          TargetOriginId: config
+          DefaultTTL: 300
+          Compress: true
+          ForwardedValues:
+            QueryString: false
+          ViewerProtocolPolicy: redirect-to-https
+        - PathPattern: /federation.json
           TargetOriginId: config
           DefaultTTL: 300
           Compress: true
