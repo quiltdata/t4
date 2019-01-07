@@ -9,8 +9,7 @@ ES_INDEX = 'drive'
 
 def handler(event, context):
     try:
-        es_url = event['ResourceProperties']['ES_URL']
-        es_host = es_url[8:] # clip off https://
+        es_host = event['ResourceProperties']['ES_HOST']
         session = boto3.session.Session()
 
         mappings = {
