@@ -9,6 +9,9 @@ from elasticsearch.exceptions import RequestError
 ES_INDEX = 'drive'
 
 def handler(event, context):
+    if event['RequestType'] == 'Delete':
+        cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+        return
     try:
         es_host = event['ResourceProperties']['ES_HOST']
         session = boto3.session.Session()
