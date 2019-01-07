@@ -46,7 +46,7 @@ Mappings:
     indexer:
       hash: 231cb5f
     put-mappings:
-      hash: 7cb1d31
+      hash: 74ff513
 
 Resources:
 
@@ -147,7 +147,7 @@ Resources:
       ServiceToken: !GetAtt SearchMappingsLambda.Arn
       ES_HOST: !GetAtt Search.DomainEndpoint
       ES_URL: !Sub # Included for backwards compatibility (CF updates lambdas in an unhelpful way)
-        - "https://{ES_HOST}"
+        - "https://${ES_HOST}"
         - ES_HOST: !GetAtt Search.DomainEndpoint
 
   SearchMappingsLambda:
