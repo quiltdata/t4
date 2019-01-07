@@ -37,3 +37,5 @@ export const inject = ({ paths, urls } = {}) =>
     ...expose('paths', paths, named),
     ...expose('urls', urls, named),
   })));
+
+export const Inject = Ctx.Consumer;

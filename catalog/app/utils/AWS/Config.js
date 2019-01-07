@@ -37,7 +37,7 @@ export const Provider = composeComponent('AWS.Config.Provider',
   connect(createStructuredSelector({
     credentials: (state, { credentialsSelector, credentials }) =>
       credentialsSelector ? credentialsSelector(state) : credentials,
-  })),
+  }), undefined, undefined, { pure: false }),
   withPropsOnChange(shouldReinstantiate, (props) => ({
     config: new AWS.Config(extractConfig(props)),
   })),

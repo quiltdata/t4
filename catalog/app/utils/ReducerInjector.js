@@ -3,20 +3,12 @@ import isEmpty from 'lodash/isEmpty';
 import isFunction from 'lodash/isFunction';
 import isString from 'lodash/isString';
 import PT from 'prop-types';
-import React, { Fragment } from 'react';
-import {
-  lifecycle,
-  setPropTypes,
-  getContext,
-  withContext,
-} from 'recompose';
+import * as R from 'ramda';
+import * as React from 'react';
+import * as RC from 'recompose';
 
-import {
-  composeComponent,
-  composeHOC,
-  restoreProps,
-  saveProps,
-} from 'utils/reactTools';
+import Lifecycle from 'components/Lifecycle';
+import * as RT from 'utils/reactTools';
 import { withInitialState } from 'utils/reduxTools';
 
 
@@ -56,33 +48,25 @@ export const createReducerInjector = (onSet) => {
   };
 };
 
-const ReducerInjectorShape = PT.shape({
-  inject: PT.func.isRequired,
-});
+const Ctx = React.createContext();
 
 /**
  * Provider component for reducer injection system.
  */
-export const ReducerInjector = composeComponent('ReducerInjector',
-  setPropTypes({
+export const ReducerInjector = RT.composeComponent('ReducerInjector',
+  RC.setPropTypes({
     /**
      * A reducer injector function.
      */
     inject: PT.func.isRequired,
   }),
-  saveProps({ keep: ['inject'] }),
-  withContext(
-    { reducerInjector: ReducerInjectorShape.isRequired },
-    ({ inject }) => ({ reducerInjector: { inject } }),
-  ),
-  restoreProps(),
-  Fragment);
+  RT.provide(Ctx, R.pick(['inject'])));
 
 /**
  * Component that injects a given reducer into the store on mount.
  */
-export const InjectReducer = composeComponent('InjectReducer',
-  setPropTypes({
+export const Inject = RT.composeComponent('ReducerInjector.Inject',
+  RC.setPropTypes({
     /**
      * A key under which the reducer gets injected.
      */
@@ -92,23 +76,24 @@ export const InjectReducer = composeComponent('InjectReducer',
      */
     reducer: PT.func.isRequired,
   }),
-  saveProps({ keep: ['mount', 'reducer'] }),
-  getContext({
-    reducerInjector: ReducerInjectorShape.isRequired,
-  }),
-  lifecycle({
-    componentWillMount() {
-      this.props.reducerInjector.inject(this.props.mount, this.props.reducer);
-    },
-  }),
-  restoreProps(),
-  Fragment);
+  ({ children, mount, reducer }) => (
+    <Ctx.Consumer>
+      {({ inject }) => (
+        <Lifecycle
+          key={mount}
+          willMount={() => inject(mount, reducer)}
+        >
+          {children}
+        </Lifecycle>
+      )}
+    </Ctx.Consumer>
+  ));
 
 
 /**
  * Create a HOC that creates a reducer based on props and injects it into the
  * store on mount.
- * InjectReducer component is used under the hood.
+ * Inject component is used under the hood.
  *
  * @param {string} mount
  *   A key under which the reducer gets injected.
@@ -119,18 +104,18 @@ export const InjectReducer = composeComponent('InjectReducer',
  * @returns {reactTools.HOC}
  */
 export const injectReducerFactory = (mount, reducerFactory) =>
-  composeHOC(`injectReducer(${mount})`, (Component) => (props) => (
-    <InjectReducer
+  RT.composeHOC(`injectReducer(${mount})`, (Component) => (props) => (
+    <Inject
       mount={mount}
       reducer={reducerFactory(props)}
     >
       <Component {...props} />
-    </InjectReducer>
+    </Inject>
   ));
 
 /**
  * Create a HOC that injects a given reducer into the store on mount.
- * InjectReducer component is used under the hood.
+ * Inject component is used under the hood.
  *
  * @param {string} mount
  *   A key under which the reducer gets injected.

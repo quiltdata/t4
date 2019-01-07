@@ -14,7 +14,11 @@ const hooks = {
 
 // eslint-disable-next-line react/prefer-stateless-function
 export default class Lifecycle extends Component {
-  render() { return null; }
+  static propTypes = {
+    children: PT.any,
+  }
+
+  render() { return this.props.children || null; }
 }
 
 Lifecycle.propTypes = mapValues(hooks, () => PT.func);

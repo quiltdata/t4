@@ -3,8 +3,9 @@ from collections import Mapping, Sequence, Set, OrderedDict
 import datetime
 import json
 import os
-from urllib.parse import parse_qs, unquote, urlparse
+from urllib.parse import parse_qs, unquote, urljoin, urlparse
 from urllib.request import url2pathname
+from fnmatch import fnmatch
 
 # backports
 from six.moves import urllib
@@ -16,6 +17,7 @@ except ImportError:
 # Third-Party
 import ruamel.yaml
 from appdirs import user_data_dir
+import requests
 
 
 APP_NAME = "T4"
@@ -43,7 +45,15 @@ navigator_url:
 # Used to satisfy search queries
 # elastic_search_url: https://example.com/es
 elastic_search_url:
-"""
+
+# default_local_registry: <url string, default: local appdirs>
+# default target registry for operations like install and build
+default_local_registry: "{}"
+
+# default_remote_registry: <url string, default: null>
+# default target for operations like push and browse
+default_remote_registry:
+""".format(BASE_PATH.as_uri())
 
 
 class QuiltException(Exception):
@@ -83,12 +93,18 @@ def fix_url(url):
     return fixed_url
 
 
+EXAMPLE = "Example: 's3://my-bucket/path/'."
 def parse_s3_url(s3_url):
     """
     Takes in the result of urlparse, and returns a tuple (bucket, path, version_id)
     """
-    if s3_url.scheme != 's3' or not s3_url.netloc or (s3_url.path and not s3_url.path.startswith('/')):
-        raise ValueError("Malformed S3 URI")
+    if s3_url.scheme != 's3':
+        raise ValueError("Expected URI scheme 's3', not '{}'. {}".format(s3_url.scheme, EXAMPLE))
+    if not s3_url.netloc:
+        raise ValueError("Expected non-empty URI location. {}".format(EXAMPLE))
+    # based on testing, the next case can never happen; TODO: remove this case
+    if (s3_url.path and not s3_url.path.startswith('/')):
+        raise ValueError("Expected URI path to start with '/', not '{}'. {}".format(s3_url.scheme, EXAMPLE))
     bucket = s3_url.netloc
     path = unquote(s3_url.path)[1:]
     # Parse the version ID the way the Java SDK does:
@@ -212,7 +228,97 @@ class HeliumConfig(OrderedDict):
         return "<{} at {!r} {}>".format(type(self).__name__, str(self.filepath), json.dumps(self, indent=4))
 
 
+def find_bucket_config(bucket_name, catalog_config_url):
+    config_request = requests.get(catalog_config_url)
+    if not config_request.ok:
+        raise QuiltException("Failed to get catalog config")
+    config_json = json.loads(config_request.text)
+    if 'federations' not in config_json:
+        # try old config format
+        try:
+            return config_json['configs'][bucket_name]
+        except KeyError:
+            raise QuiltException("Catalog config malformed")
+
+    federations = config_json['federations']
+    federations.reverse() # want to get results from last federation first
+    for federation in federations:
+        parsed = urlparse(federation)
+        if not parsed.netloc:
+            # relative URL
+            federation = urljoin(catalog_config_url, federation)
+        federation_request = requests.get(federation)
+        if not federation_request.ok:
+            continue
+        federation = json.loads(federation_request.text)
+        if 'buckets' not in federation:
+            continue
+        buckets = federation['buckets']
+        for bucket in buckets:
+            if isinstance(bucket, str):
+                bucket_request = requests.get(bucket)
+                if not bucket_request.ok:
+                    continue
+                bucket = json.loads(bucket_request.text)
+            if bucket['name'] == bucket_name:
+                return bucket
+
+    raise QuiltException("Failed to find a config for the chosen bucket")
+
 def validate_package_name(name):
     """ Verify that a package name is two alphanumerics strings separated by a slash."""
     if not re.match(PACKAGE_NAME_FORMAT, name):
         raise QuiltException("Invalid package name, must contain exactly one /.")
+
+def load_config():
+    if CONFIG_PATH.exists():
+        local_config = read_yaml(CONFIG_PATH)
+    else:
+        config_template = read_yaml(CONFIG_TEMPLATE)
+        local_config = config_template
+    return local_config
+
+def get_local_registry():
+    return load_config().get('default_local_registry', None)
+
+def get_remote_registry():
+    return load_config().get('default_remote_registry', None)
+
+def quiltignore_filter(paths, ignore_rules, url_scheme):
+    """Given a list paths, filter out the paths which are captured by the given
+    ignore rules.
+
+    Args:
+        paths (list): a list or iterable of paths
+        ignore_rules (list): a list or iterable of ignore rules, in Unix shell
+            style wildcard format
+        url_scheme (str): the URL scheme, only the "file" scheme is currently
+            supported
+    """
+    if url_scheme == 'file':
+        from fnmatch import fnmatch
+
+        files, dirs = set(), set()
+        for path in paths:
+            if path.is_file():
+                files.add(path)
+            else:
+                dirs.add(path)
+
+        filtered_dirs = dirs.copy()
+        for ignore_rule in ignore_rules:
+            ignore_rule = os.getcwd() + '/' + ignore_rule
+
+            for pkg_dir in filtered_dirs.copy():
+                # copy git behavior --- git matches paths and directories equivalently.
+                # e.g. both foo and foo/ will match the ignore rule "foo"
+                # but only foo/ will match the ignore rule "foo/"
+                if fnmatch(pkg_dir.as_posix() + "/", ignore_rule) or fnmatch(pkg_dir.as_posix(), ignore_rule):
+                    files = set(n for n in files if pkg_dir not in n.parents)
+                    dirs = dirs - {pkg_dir}
+
+            files = set(n for n in files if not fnmatch(n, ignore_rule))
+
+        return files.union(dirs)
+    else:
+        raise NotImplementedError

@@ -3,7 +3,6 @@ coverage
 build
 quilt_packages
 stats.json
-static/config.js
 
 # Cruft
 .DS_Store
@@ -14,5 +13,6 @@ npm-debug.log
 .firebaserc
 firebase.json
 
-# Local env overrides
-.env
+# Local config
+static/config.json
+static/federation.json

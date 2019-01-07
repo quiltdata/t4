@@ -18,7 +18,3 @@ export const credentials = createSelector(getIn([REDUX_KEY, 'credentials']), toJ
 
 export const authenticated = createSelector(credentials, state,
   (c, s) => !!c && s === 'SIGNED_IN');
-
-export const signInRedirect = createSelector(getIn([REDUX_KEY, 'signInRedirect']), id);
-
-export const signOutRedirect = createSelector(getIn([REDUX_KEY, 'signOutRedirect']), id);

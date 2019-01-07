@@ -11,9 +11,10 @@ import Typography from '@material-ui/core/Typography';
 import { withStyles } from '@material-ui/core/styles';
 
 import Markdown from 'components/Markdown';
-import config from 'constants/config';
 import { S3, Signer } from 'utils/AWS';
 import AsyncResult from 'utils/AsyncResult';
+import * as BucketConfig from 'utils/BucketConfig';
+import * as Config from 'utils/Config';
 import * as NamedRoutes from 'utils/NamedRoutes';
 import * as Resource from 'utils/Resource';
 import Result from 'utils/Result';
@@ -170,9 +171,26 @@ const HANDLERS = [
     name: 'ipynb',
     detect: '.ipynb',
     render: (url) => (
-      <IframeContent
-        src={`${config.apiGatewayUrl}/preview?url=${encodeURIComponent(url)}`}
-      />
+      <Config.Inject>
+        {AsyncResult.case({
+          Ok: (config) => (
+            <BucketConfig.WithCurrentBucketConfig>
+              {AsyncResult.case({
+                Ok: (bucket) => {
+                  const endpoint =
+                    (bucket && bucket.apiGatewayEndpoint)
+                      || config.apiGatewayEndpoint;
+                  const src =
+                    `${endpoint}/preview?url=${encodeURIComponent(url)}`;
+                  return <IframeContent src={src} />;
+                },
+                _: () => <Placeholder />,
+              })}
+            </BucketConfig.WithCurrentBucketConfig>
+          ),
+          _: () => <Placeholder />,
+        })}
+      </Config.Inject>
     ),
   },
   {

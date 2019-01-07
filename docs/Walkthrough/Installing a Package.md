@@ -3,7 +3,7 @@ Before you can install a package you need to know that it exists, and how to get
 
 As explained in ["Building a Package"](Building%20a%20Package.md), packages are managed using **registries**. There is a one local registry on your machine, and potentially many remote registries elsewhere "in the world".
 
-Use `list_packages` to see which packages are available where. `list_packages` works on local and remote registries alike:
+Use `list_packages` to see the packages available on a registry:
 
 ```
 $ python
@@ -30,48 +30,44 @@ p = t4.Package.install(
 )
 ```
 
-`install` starts by downloading the **package manifest**&mdash;essentially a `list` of things in the package. It then takes each file referenced by the package and downloads it to your `dest`.
+Installing a package downloads all of the data in the package (to `dest`) and populates the package in your local registry.
 
-Once you `install` a remote package it becomes a local package, available in your local registry.
+<!-- TODO: reintroduce this once default file dl config is done
+T4 can be configured with a default remote registry (and, in the future, a default file download location), allowing you to omit registry:
+
+```python
+# set a default remote registry
+t4.config(default_remote_registry="s3://your-bucket")
+
+# install from there implicitly
+t4.Package.install("username/packagename")
+```
+-->
 
 ## Browsing
-To open a local package, use `browse`:
+To download a package manifest without downloading its data, use `browse`:
 
 ```python
 import t4
+
+# load a package from the local registry
 p  = t4.Package.browse("username/packagename")
-```
 
-You can also use `browse` on a remote package:
-
-```python
+# load a package from a remote registry
 p = t4.Package.browse("username/packagename", registry="s3://name-of-your-bucket")
 ```
 
-`browse` opens (if necessary, downloads) a package manifest. It does not move any data. This is advantageous (over `install`) when you don't want to download a large package all at once; you just want to see what's inside it.
-
-To learn how to introspect a package see the next section: [Inspecting A Package](Introspecting%20A%20Package.md).
+`browse` is advantageous over `install` when you don't want to download a large package all at once; you just want to see what's inside.
 
 ## Versions
-As explained in the section ["Building a Package"](Building%20a%20Package.md), individual packages are versioned using a _tophash_. Different packages with the same name but different data will have different tophashes.
-
-Use the `tophash` parameter to `install` or `browse` a specific version of a package.
+Packages are versioned using a _tophash_. To load a specific version of a package by tophash:
 
 ```python
 import t4
-
-# install a specific package version
-p = t4.Package.install(
+t4.Package.install(
     "username/packagename", 
     "s3://name-of-your-bucket",
-    dest="path/to/a/file/location",
-    tophash="abcd1234"
-)
-
-# browse a specific package version
-p = t4.Package.browse(
-    "username/packagename", 
-    registry="s3://name-of-your-bucket",
-    tophash="abcd1234"
+    dest="./",
+    pkg_hash="abcd1234"
 )
 ```
