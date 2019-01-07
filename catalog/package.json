@@ -42,8 +42,7 @@
     "test:clean": "rimraf ./coverage",
     "test": "cross-env NODE_ENV=test jest --coverage",
     "test:watch": "cross-env NODE_ENV=test jest --watchAll",
-    "coveralls": "cat ./coverage/lcov.info | coveralls",
-    "config": "sh -c 'set -a; . \"$0\"; set +a; envsubst < config.js.tmpl > static/config.js'"
+    "coveralls": "cat ./coverage/lcov.info | coveralls"
   },
   "lint-staged": {
     "*.js": "npm run lint:eslint --"
@@ -261,7 +260,6 @@
     "connected-react-router": "^5.0.0",
     "cross-env": "^5.2.0",
     "dedent": "^0.7.0",
-    "dotenv": "^5.0.1",
     "elasticsearch-browser": "^15.2.0",
     "express": "^4.16.4",
     "fontfaceobserver": "^2.0.13",

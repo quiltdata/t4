@@ -5,7 +5,6 @@ import { createMuiTheme } from '@material-ui/core/styles';
 import { fade, lighten } from '@material-ui/core/styles/colorManipulator';
 
 
-export const appBackgroundColor = colors.grey[50];
 export const backgroundColor = 'rgb(16, 16, 16)';
 export const bodyColor = colors.grey[900];
 export const bodySize = '1em';
