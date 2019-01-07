@@ -260,7 +260,6 @@ def test_load_into_t4(tmpdir):
         new_pkg.push('Quilt/package', 's3://my_test_bucket/')
 
         # Manifest copied
-        print(bytes_mock.call_args_list)
         top_hash = new_pkg.top_hash()
         bytes_mock.assert_any_call(top_hash.encode(), 's3://my_test_bucket/.quilt/named_packages/Quilt/package/latest')
         bytes_mock.assert_any_call(ANY, 's3://my_test_bucket/.quilt/packages/' + top_hash)

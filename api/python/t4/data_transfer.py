@@ -312,6 +312,10 @@ def _copy_remote_file(callback, size, src_bucket, src_key, src_version, dest_buc
 
 
 def _copy_file_list_internal(file_list):
+    """
+    Takes a list of tuples (src, dest, size, override_meta) and copies the data in parallel.
+    Returns versioned URLs for S3 destinations and regular file URLs for files.
+    """
     total_size = sum(size for _, _, size, _ in file_list)
 
     with tqdm(desc="Copying", total=total_size, unit='B', unit_scale=True) as progress:
@@ -481,6 +485,11 @@ def _looks_like_dir(s):
 
 
 def copy_file_list(file_list):
+    """
+    Takes a list of tuples (src, dest, override_meta) and copies them in parallel.
+    URLs must be regular files, not directories.
+    Returns versioned URLs for S3 destinations and regular file URLs for files.
+    """
     def worker(args):
         src, dest, override_meta = args
 
@@ -502,6 +511,11 @@ def copy_file_list(file_list):
 
 
 def copy_file(src, dest, override_meta=None):
+    """
+    Copies a single file or directory.
+    If src is a file, dest can be a file or a directory.
+    If src is a directory, dest must be a directory.
+    """
     def sanity_check(rel_path):
         for part in rel_path.split('/'):
             if part in ('', '.', '..'):
