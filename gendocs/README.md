@@ -9,16 +9,16 @@ formalized, implementing changes is also less convoluted than for sphinx.
 
 
 ### From the `gendocs` dir:
-1. If you already have pydoc-markdown installed, use this version instead.
-  1. Install to the same Venv that has the version of T4 you want to document
-  2. `pip install --editable ./pydoc-markdown`
-3. `pydocmd generate`
-  1. Files should be in the `./_build` dir.
+Using the venv that t4 is installed with, execute build.py.
+If params are given, they are passed through to pydocmd.  Otherwise, 'build' is
+assumed.
 
-Configuration is stored in `pydocmd.yml`.  Original project can be found on 
-github at https://github.com/NiklasRosenstein/pydoc-markdown
+If the quilt version of pydocmd is not installed, build.py will ask to install it.
 
-This version is modified to:
+Configuration for pydocmd is stored in `pydocmd.yml`.  Original project can be 
+found on github at https://github.com/NiklasRosenstein/pydoc-markdown
+
+The Quilt version of pydocmd is modified to:
 * include additional __special_methods__ and to easily to exclude them
 * Fix issue reading classmethod/staticmethod signatures
 * Use signatures as title, not under title in a code block
