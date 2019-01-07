@@ -32,21 +32,27 @@ Parameters:
     Type: String
     Description: Description for your bucket
     Default: "placeholder description here"
+  NavigatorConfigHash:
+    Type: String
+    Default: "46218d4"
+    Description: Advanced setting. Selects which version of the navigator-config lambda to use.
+  NBConvertHash:
+    Type: String
+    Default: "f0cc75b"
+    Description: Advanced setting. Selects which version of the nbconvert lambda to use.
+  NavigatorHash:
+    Type: String
+    Default: "45f840e"
+    Description: Advanced setting. Selects which version of navigator to use.
+  IndexerHash:
+    Type: String
+    Default: "5d2334a"
+    Description: Advanced setting. Selects which version of the indexer lambda to use.
+  PutMappingsHash:
+    Type: String
+    Default: "5d2334a"
+    Description: Advanced setting. Selects which version of the put-mappings lambda to use.
 
-Mappings:
-  VersionMap:
-    # initializes config.js and config.json for static website
-    navigator-config:
-      hash: 46218d4
-    nbconvert:
-      hash: f0cc75b
-    # static website content
-    navigator:
-      hash: 45f840e
-    indexer:
-      hash: 5d2334a
-    put-mappings:
-      hash: 76df9d0
 
 Resources:
 
@@ -137,7 +143,7 @@ Resources:
         S3Bucket: !Sub "quilt-lambda-${AWS::Region}"
         S3Key: !Sub
           - "indexer/${Hash}.zip"
-          - Hash: !FindInMap [VersionMap, "indexer", "hash"]
+          - Hash: !Ref IndexerHash
 
   SearchMappings:
     Type: Custom::ESMappingsSetter
@@ -158,7 +164,7 @@ Resources:
         S3Bucket: !Sub "quilt-lambda-${AWS::Region}"
         S3Key: !Sub
           - "put_mappings/${Hash}.zip"
-          - Hash: !FindInMap [VersionMap, "put-mappings", "hash"]
+          - Hash: !Ref PutMappingsHash
 
   # Bucket Notifications
 
@@ -291,7 +297,7 @@ Resources:
         S3Bucket: !Sub "quilt-lambda-${AWS::Region}"
         S3Key: !Sub
           - "nbconvert/${Hash}.zip"
-          - Hash: !FindInMap [VersionMap, "nbconvert", "hash"]
+          - Hash: !Ref NBConvertHash
 
   PreviewResource:
     Type: AWS::ApiGateway::Resource
@@ -384,7 +390,7 @@ Resources:
         S3Bucket: !Sub "quilt-lambda-${AWS::Region}"
         S3Key: !Sub
           - "navigator_config/${Hash}.zip"
-          - Hash: !FindInMap [VersionMap, "navigator-config", "hash"]
+          - Hash: !Ref NavigatorConfigHash
 
   NavigatorInit:
     Type: Custom::S3Sync
@@ -398,7 +404,7 @@ Resources:
       ConfigEsUrl: !Sub "https://${Search.DomainEndpoint}"
       ConfigApiUrl: !Sub "https://${Api}.execute-api.${AWS::Region}.amazonaws.com/prod"
       ConfigS3Bucket: !Ref QuiltBucketName
-      Version: !FindInMap [VersionMap, "navigator-config", "hash"]  # Not actually used, but triggers an update
+      Version: !Ref NavigatorConfigHash # Not actually used, but triggers an update
 
   Navigator:
     Type: AWS::CloudFront::Distribution
@@ -443,7 +449,7 @@ Resources:
           DomainName: quilt-web-public.s3.amazonaws.com
           OriginPath: !Sub
             - "/navigator/${Hash}"
-            - Hash: !FindInMap [VersionMap, "navigator", "hash"]
+            - Hash: !Ref NavigatorHash
           S3OriginConfig:
             OriginAccessIdentity: ""
         - Id: config
