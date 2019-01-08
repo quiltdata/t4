@@ -5,14 +5,17 @@ site_name: "QuiltData -- T4"
 # is a tree of Python member names (modules, classes, etc.) that should be
 # documented. Higher indentation leads to smaller header size.
 generate:
-- api.md:
+- index.md:
+  # By referencing this directly, we include its docstring.
+  - t4:
+    # If we end up wanting to include Bucket and Package inline in api.md, we
+    # might just want to specify "__all__" in t4.__init__ and use 't4+' on the
+    # line above this comment.  Specified explicitly for this example.
     - t4.config
     - t4.copy
-    - t4.delete
     - t4.delete_package
     - t4.get
     - t4.list_packages
-    - t4.ls
     - t4.put
     - t4.search
 # Uncomment the following two lines in include these classes directly in api.md
@@ -20,10 +23,11 @@ generate:
 #    - Package+
 
 - api_Bucket.md:
-  - t4.Bucket+
+  - t4.Bucket+    # All *documented* members, except _private_members.
 
 - api_Package.md:
-  - t4.Package+
+  - t4.Package+   # All *documented* members, except _private_members.
+
 
 # MkDocs pages configuration. The `<<` operator is sugar added by pydocmd
 # that allows you to use an external Markdown file (eg. your project's README)
@@ -31,15 +35,15 @@ generate:
 # This configuration is not mandatory if you have your own mkdocs.yml config file.
 pages:
 #- Home: index.md << ../README.md
- - T4 API: api.md
+ - T4 API: index.md
  - T4 Bucket API: api_Bucket.md
  - T4 Package API: api_Package.md
 
 # These options all show off their default values. You don't have to add
 # them to your configuration if you're fine with the default.
 docs_dir: sources
-gens_dir: _build/pydocmd     # This will end up as the MkDocs 'docs_dir'
-site_dir: _build/site
+gens_dir: _build/markdown     # This will end up as the MkDocs 'docs_dir'
+site_dir: _build/html
 theme:    readthedocs
 loader:   pydocmd.loader.PythonLoader
 preprocessor: pydocmd.google_docstrings.Preprocessor
