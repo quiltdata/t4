@@ -5,24 +5,14 @@ import isFunction from 'lodash/isFunction';
 import isString from 'lodash/isString';
 import isSymbol from 'lodash/isSymbol';
 import PT from 'prop-types';
-import { Fragment } from 'react';
-import {
-  lifecycle,
-  setPropTypes,
-  withState,
-  withHandlers,
-  getContext,
-  withContext,
-} from 'recompose';
+import * as R from 'ramda';
+import * as React from 'react';
+import * as RC from 'recompose';
 import { applyMiddleware } from 'redux';
 import createSagaMiddleware from 'redux-saga';
 
-import {
-  composeComponent,
-  composeHOC,
-  restoreProps,
-  saveProps,
-} from 'utils/reactTools';
+import Lifecycle from 'components/Lifecycle';
+import * as RT from 'utils/reactTools';
 
 
 const scope = 'app/utils/SagaInjector';
@@ -31,26 +21,22 @@ export const RESTART_ON_REMOUNT = Symbol(`${scope}/RESTART_ON_REMOUNT`);
 export const DAEMON = Symbol(`${scope}/DAEMON`);
 export const ONCE_TILL_UNMOUNT = Symbol(`${scope}/ONCE_TILL_UNMOUNT`);
 
-export const MODES = { RESTART_ON_REMOUNT, DAEMON, ONCE_TILL_UNMOUNT };
+export const modes = { RESTART_ON_REMOUNT, DAEMON, ONCE_TILL_UNMOUNT };
 
 const DONE = Symbol(`${scope}/DONE`);
 
-const SagaInjectorShape = PT.shape({
-  inject: PT.func.isRequired,
-  eject: PT.func.isRequired,
-});
-
 const isValidKey = (key) => isString(key) && !isEmpty(key);
 
-const isValidMode = (mode) => isSymbol(mode) && Object.values(MODES).includes(mode);
+const isValidMode = (mode) => isSymbol(mode) && Object.values(modes).includes(mode);
 
-export const SagaInjector = composeComponent('SagaInjector',
-  setPropTypes({
+const Ctx = React.createContext();
+
+export const SagaInjector = RT.composeComponent('SagaInjector',
+  RC.setPropTypes({
     run: PT.func.isRequired,
   }),
-  saveProps({ keep: ['run'] }),
-  withState('descriptors', 'setDescriptors', {}),
-  withHandlers({
+  RC.withState('descriptors', 'setDescriptors', {}),
+  RC.withHandlers({
     inject: ({ descriptors, setDescriptors, run }) =>
       (key, { saga, mode = RESTART_ON_REMOUNT } = {}, ...args) => {
         const innerScope = `${scope}/SagaInjector/inject`;
@@ -94,33 +80,35 @@ export const SagaInjector = composeComponent('SagaInjector',
       }
     },
   }),
-  withContext(
-    { sagaInjector: SagaInjectorShape.isRequired },
-    ({ inject, eject }) => ({ sagaInjector: { inject, eject } }),
-  ),
-  restoreProps(),
-  Fragment);
+  RT.provide(Ctx, R.pick(['inject', 'eject'])));
 
-const ownPropsKey = 'ownProps';
+export const Inject = RT.composeComponent('SagaInjector.Inject',
+  RC.setPropTypes({
+    name: PT.string.isRequired,
+    saga: PT.func.isRequired,
+    mode: PT.oneOf(Object.values(modes)),
+    args: PT.array,
+  }),
+  ({ name, saga, mode, args = [], children }) => (
+    <Ctx.Consumer>
+      {(injector) => (
+        <Lifecycle
+          key={name}
+          willMount={() => injector.inject(name, { saga, mode }, ...args)}
+          willUnmount={() => injector.eject(name)}
+        >
+          {children}
+        </Lifecycle>
+      )}
+    </Ctx.Consumer>
+  ));
 
-export const injectSaga = (key, saga, {
+export const injectSaga = (name, saga, {
   mode,
   args = (props) => [props],
 } = {}) =>
-  composeHOC(`injectSaga(${key})`,
-    saveProps({ key: ownPropsKey }),
-    getContext({
-      sagaInjector: SagaInjectorShape.isRequired,
-    }),
-    lifecycle({
-      componentWillMount() {
-        this.props.sagaInjector.inject(key, { saga, mode }, ...args(this.props[ownPropsKey]));
-      },
-      componentWillUnmount() {
-        this.props.sagaInjector.eject(key);
-      },
-    }),
-    restoreProps({ key: ownPropsKey }));
+  RT.composeHOC(`injectSaga(${name})`,
+    RT.wrap(Inject, (props) => ({ name, saga, mode, args: args(props) })));
 
 export const withSaga = (...sagaMWArgs) => (createStore) => (...args) => {
   const sagaMiddleware = createSagaMiddleware(...sagaMWArgs);

@@ -7,14 +7,16 @@
 ### Walkthrough
 
 * [Creating a Package](Walkthrough/Creating a Package.md)
-* [Building a Package](Walkthrough/Building a Package.md)
-* [Pushing a Package](Walkthrough/Pushing a Package.md)
+* [Distributing a Package](Walkthrough/Distributing%20a%20Package.md)
 * [Installing a Package](Walkthrough/Installing a Package.md)
-* [Reading a Package](Walkthrough/Reading a Package.md)
+* [Reading from a Package](Walkthrough/Reading%20from%20a%20Package.md)
 * [Working with a Bucket](Walkthrough/Working with a Bucket.md)
 
 ### Advanced Usage
-* [Materialization](Advanced%20Features/Materialization.md)
+* [Parsing a Package](Advanced%20Features/Parsing%20a%20Package.md)
+* [Materialization](Advanced Features/Materialization.md)
+* [Working with Manifests](Advanced Features/Working with Manifests.md)
+* [S3 Select](Advanced%20Features/S3%20Select.md)
 
 ### References
 

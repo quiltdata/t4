@@ -6,7 +6,7 @@ import shutil
 from urllib.parse import urlparse
 
 import jsonlines
-from mock import patch, call
+from mock import patch, call, ANY
 import pytest
 
 import t4
@@ -69,6 +69,55 @@ def test_build(tmpdir):
         pkg = Package.load(fd)
         assert test_file.resolve().as_uri() == pkg['bar'].physical_keys[0]
 
+@patch('appdirs.user_data_dir', lambda x,y: os.path.join('test_appdir', x))
+def test_default_registry(tmpdir):
+    new_pkg = Package()
+
+    # Create a dummy file to add to the package.
+    test_file_name = 'bar'
+    with open(test_file_name, "w") as fd:
+        fd.write('test_file_content_string')
+        test_file = Path(fd.name)
+
+    # Build a new package into the local registry.
+    new_pkg = new_pkg.set('foo', test_file_name)
+    top_hash = new_pkg.build("Quilt/Test")
+
+    # Verify manifest is registered by hash.
+    out_path = Path(BASE_PATH, ".quilt/packages", top_hash)
+    with open(out_path) as fd:
+        pkg = Package.load(fd)
+        assert test_file.resolve().as_uri() == pkg['foo'].physical_keys[0]
+
+    # Verify latest points to the new location.
+    named_pointer_path = Path(BASE_PATH, ".quilt/named_packages/Quilt/Test/latest")
+    with open(named_pointer_path) as fd:
+        assert fd.read().replace('\n', '') == top_hash
+
+    # Test unnamed packages.
+    new_pkg = Package()
+    new_pkg = new_pkg.set('bar', test_file_name)
+    top_hash = new_pkg.build()
+    out_path = Path(BASE_PATH, ".quilt/packages", top_hash)
+    with open(out_path) as fd:
+        pkg = Package.load(fd)
+        assert test_file.resolve().as_uri() == pkg['bar'].physical_keys[0]
+
+    new_base_path = Path(BASE_PATH, ".quilttest")
+    with patch('t4.packages.get_local_registry') as mock_config:
+        mock_config.return_value = new_base_path
+        top_hash = new_pkg.build("Quilt/Test")
+        out_path = Path(new_base_path, ".quilt/packages", top_hash).resolve()
+        with open(out_path) as fd:
+            pkg = Package.load(fd)
+            assert test_file.resolve().as_uri() == pkg['bar'].physical_keys[0]
+
+    with patch('t4.packages.get_remote_registry') as mock_config:
+        mock_config.return_value = new_base_path
+        new_pkg.push("Quilt/Test", Path(tmpdir, 'test_dest').resolve().as_uri())
+        with open(out_path) as fd:
+            pkg = Package.load(fd)
+            assert pkg['bar'].physical_keys[0].endswith('test_dest/Quilt/Test/bar')
 
 def test_read_manifest(tmpdir):
     """ Verify reading serialized manifest from disk. """
@@ -78,7 +127,7 @@ def test_read_manifest(tmpdir):
     out_path = os.path.join(tmpdir, 'new_manifest.jsonl')
     with open(out_path, 'w') as fd:
         pkg.dump(fd)
-    
+
     # Insepct the jsonl to verify everything is maintained, i.e.
     # that load/dump results in an equivalent set.
     # todo: Use load/dump once __eq__ implemented.
@@ -98,9 +147,10 @@ def test_materialize_from_remote(tmpdir):
     with patch('botocore.client.BaseClient._make_api_call', new=mock_make_api_call):
         with open(REMOTE_MANIFEST) as fd:
             pkg = Package.load(fd)
-        with patch('t4.data_transfer._download_single_file', new=no_op_mock), \
-                patch('t4.data_transfer._download_dir', new=no_op_mock), \
-                patch('t4.Package.build', new=no_op_mock):
+        with patch('t4.data_transfer._download_file'), \
+                patch('t4.Package.build', new=no_op_mock), \
+                patch('t4.packages.get_remote_registry') as config_mock:
+            config_mock.return_value = tmpdir
             mat_pkg = pkg.push('Quilt/test_pkg_name', tmpdir / 'pkg')
 
 def test_browse_package_from_registry():
@@ -198,49 +248,48 @@ def test_fetch(tmpdir):
 def test_load_into_t4(tmpdir):
     """ Verify loading local manifest and data into S3. """
     with patch('t4.packages.put_bytes') as bytes_mock, \
-         patch('t4.packages.copy_file') as file_mock:
+         patch('t4.data_transfer._upload_file') as file_mock, \
+         patch('t4.packages.get_remote_registry') as config_mock:
+        config_mock.return_value = 's3://my_test_bucket'
         new_pkg = Package()
         # Create a dummy file to add to the package.
-        test_file = os.path.join(tmpdir, 'bar')
-        with open(test_file, 'w') as fd:
-            fd.write(test_file)
+        contents = 'blah'
+        test_file = pathlib.Path(tmpdir) / 'bar'
+        test_file.write_text(contents)
         new_pkg = new_pkg.set('foo', test_file)
-        new_pkg.push('Quilt/package_name', 's3://my_test_bucket/')
-
-        # Get the second argument (destination) from the non-keyword args list
-        bytes_dest_args = [x[0][1] for x in bytes_mock.call_args_list]
-        file_dest_args = [x[0][1] for x in file_mock.call_args_list]
+        new_pkg.push('Quilt/package', 's3://my_test_bucket/')
 
         # Manifest copied
-        assert 's3://my_test_bucket/.quilt/packages/' + new_pkg.top_hash() in bytes_dest_args
-        assert 's3://my_test_bucket/.quilt/named_packages/Quilt/package_name/latest' in bytes_dest_args
+        top_hash = new_pkg.top_hash()
+        bytes_mock.assert_any_call(top_hash.encode(), 's3://my_test_bucket/.quilt/named_packages/Quilt/package/latest')
+        bytes_mock.assert_any_call(ANY, 's3://my_test_bucket/.quilt/packages/' + top_hash)
 
         # Data copied
-        assert 's3://my_test_bucket/Quilt/package_name/foo' in file_dest_args
+        file_mock.assert_called_once_with(ANY, len(contents), str(test_file), 'my_test_bucket', 'Quilt/package/foo', {})
 
 def test_local_push(tmpdir):
     """ Verify loading local manifest and data into S3. """
     with patch('t4.packages.put_bytes') as bytes_mock, \
-         patch('t4.packages.copy_file') as file_mock:
+         patch('t4.data_transfer._copy_local_file') as file_mock, \
+         patch('t4.packages.get_remote_registry') as config_mock:
+        config_mock.return_value = tmpdir / 'package_contents'
         new_pkg = Package()
-        test_file = os.path.join(tmpdir, 'bar')
-        with open(test_file, 'w') as fd:
-            fd.write(test_file)
+        contents = 'blah'
+        test_file = pathlib.Path(tmpdir) / 'bar'
+        test_file.write_text(contents)
         new_pkg = new_pkg.set('foo', test_file)
         new_pkg.push('Quilt/package', tmpdir / 'package_contents')
 
         push_uri = pathlib.Path(tmpdir, 'package_contents').as_uri()
 
-        # Get the second argument (destination) from the non-keyword args list
-        bytes_dest_args = [x[0][1] for x in bytes_mock.call_args_list]
-        file_dest_args = [x[0][1] for x in file_mock.call_args_list]
-
         # Manifest copied
-        assert push_uri + '/.quilt/packages/' + new_pkg.top_hash() in bytes_dest_args
-        assert push_uri + '/.quilt/named_packages/Quilt/package/latest' in bytes_dest_args
+        top_hash = new_pkg.top_hash()
+        bytes_mock.assert_any_call(top_hash.encode(), push_uri + '/.quilt/named_packages/Quilt/package/latest')
+        bytes_mock.assert_any_call(ANY, push_uri + '/.quilt/packages/' + top_hash)
 
         # Data copied
-        assert push_uri + '/Quilt/package/foo' in file_dest_args
+        file_mock.assert_called_once_with(ANY, len(contents), str(test_file), str(tmpdir / 'package_contents/Quilt/package/foo'), {})
+
 
 def test_package_deserialize(tmpdir):
     """ Verify loading data from a local file. """
@@ -261,7 +310,7 @@ def test_package_deserialize(tmpdir):
 def test_local_set_dir(tmpdir):
     """ Verify building a package from a local directory. """
     pkg = Package()
-    
+
     # Create some nested example files that contain their names.
     foodir = pathlib.Path("foo_dir")
     bazdir = pathlib.Path(foodir, "baz_dir")
@@ -270,7 +319,7 @@ def test_local_set_dir(tmpdir):
         fd.write(fd.name)
     with open('foo', 'w') as fd:
         fd.write(fd.name)
-    with open(bazdir / 'baz', 'w') as fd: 
+    with open(bazdir / 'baz', 'w') as fd:
         fd.write(fd.name)
     with open(foodir / 'bar', 'w') as fd:
         fd.write(fd.name)
@@ -291,6 +340,31 @@ def test_local_set_dir(tmpdir):
     pkg = pkg.set_dir('my_keys', 'foo_dir/baz_dir/')
     # todo nested at set_dir site or relative to set_dir path.
     assert (bazdir / 'baz').resolve().as_uri() == pkg['my_keys/baz'].physical_keys[0]
+
+    # Verify ignoring files in the presence of a dot-quiltignore
+    with open('.quiltignore', 'w') as fd:
+        fd.write('foo\n')
+        fd.write('bar')
+
+    pkg = Package()
+    pkg = pkg.set_dir("/", ".")
+    assert 'foo_dir' in pkg.keys()
+    assert 'foo' not in pkg.keys() and 'bar' not in pkg.keys()
+
+    with open('.quiltignore', 'w') as fd:
+        fd.write('foo_dir')
+
+    pkg = Package()
+    pkg = pkg.set_dir("/", ".")
+    assert 'foo_dir' not in pkg.keys()
+
+    with open('.quiltignore', 'w') as fd:
+        fd.write('foo_dir\n')
+        fd.write('foo_dir/baz_dir')
+
+    pkg = Package()
+    pkg = pkg.set_dir("/", ".")
+    assert 'foo_dir/baz_dir' not in pkg.keys() and 'foo_dir' not in pkg.keys()
 
 
 def test_s3_set_dir(tmpdir):
@@ -581,7 +655,7 @@ def test_dir_meta(tmpdir):
     assert pkg2['asdf'].get_meta() == test_meta
     assert pkg2['qwer']['as'].get_meta() == test_meta
     assert pkg2.get_meta() == test_meta
-    
+
 def test_top_hash_stable():
     """Ensure that top_hash() never changes for a given manifest"""
 
@@ -693,9 +767,10 @@ def test_commit_message_on_push(tmpdir):
     with patch('botocore.client.BaseClient._make_api_call', new=mock_make_api_call):
         with open(REMOTE_MANIFEST) as fd:
             pkg = Package.load(fd)
-        with patch('t4.data_transfer._download_single_file', new=no_op_mock), \
-                patch('t4.data_transfer._download_dir', new=no_op_mock), \
-                patch('t4.Package.build', new=no_op_mock):
+        with patch('t4.data_transfer._download_file'), \
+                patch('t4.Package.build', new=no_op_mock), \
+                patch('t4.packages.get_remote_registry') as config_mock:
+            config_mock.return_value = BASE_DIR
             pkg.push('Quilt/test_pkg_name', tmpdir / 'pkg', message='test_message')
             assert pkg._meta['message'] == 'test_message'
 
@@ -773,18 +848,33 @@ def test_manifest():
     pkg2 = Package.browse(pkg_hash=top_hash)
     assert list(pkg.manifest) == list(pkg2.manifest)
 
+
 def test_map():
     pkg = Package()
     pkg.set('as/df', LOCAL_MANIFEST)
     pkg.set('as/qw', LOCAL_MANIFEST)
     assert set(pkg.map(lambda lk, entry: lk)) == {'as/df', 'as/qw'}
 
+    pkg['as'].set_meta({'foo': 'bar'})
+    assert set(pkg.map(lambda lk, entry: lk, include_directories=True)) ==\
+           {'as/df', 'as/qw', 'as/'}
+
 
 def test_filter():
     pkg = Package()
     pkg.set('as/df', LOCAL_MANIFEST)
     pkg.set('as/qw', LOCAL_MANIFEST)
-    assert pkg.filter(lambda lk, entry: lk == 'as/df') == [('as/df', pkg['as/df'])]
+    assert list(pkg.filter(lambda lk, entry: lk == 'as/df')) == [
+        ('as/df', pkg['as/df'])
+    ]
+
+    pkg['as'].set_meta({'foo': 'bar'})
+    assert list(pkg.filter(lambda lk, entry: lk == 'as/df')) == [
+        ('as/df', pkg['as/df'])
+    ]
+    assert list(pkg.filter(lambda lk, entry: lk == 'as/', include_directories=True)) == [
+        ('as/', pkg['as'])
+    ]
 
 
 def test_reduce():
@@ -793,7 +883,16 @@ def test_reduce():
     pkg.set('as/qw', LOCAL_MANIFEST)
     assert pkg.reduce(lambda a, b: a) == ('as/df', pkg['as/df'])
     assert pkg.reduce(lambda a, b: b) == ('as/qw', pkg['as/qw'])
-    assert pkg.reduce(lambda a, b: a + [b], []) == [
+    assert list(pkg.reduce(lambda a, b: a + [b], [])) == [
+        ('as/df', pkg['as/df']),
+        ('as/qw', pkg['as/qw'])
+    ]
+
+    pkg['as'].set_meta({'foo': 'bar'})
+    assert pkg.reduce(lambda a, b: b, include_directories=True) ==\
+           ('as/qw', pkg['as/qw'])
+    assert list(pkg.reduce(lambda a, b: a + [b], [], include_directories=True)) == [
+        ('as/', pkg['as']),
         ('as/df', pkg['as/df']),
         ('as/qw', pkg['as/qw'])
     ]

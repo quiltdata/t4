@@ -1,13 +1,12 @@
 import { injectGlobal } from 'styled-components';
 
-import { appBackgroundColor, backgroundColor, bodyColor, bodySize, headerColor } from 'constants/style';
+import { bodyColor, bodySize, headerColor } from 'constants/style';
 
 // TODO: deprecate this, use MUI baseline, theme and typography
 /* eslint no-unused-expressions: 0 */
 injectGlobal`
   html,
   body {
-    background-color: ${backgroundColor};
     cursor: auto;
     text-rendering: optimizeLegibility;
     height: 100%;
@@ -149,7 +148,6 @@ injectGlobal`
   }
 
   #app {
-    background-color: ${appBackgroundColor};
     min-width: 100%;
   }
 `;

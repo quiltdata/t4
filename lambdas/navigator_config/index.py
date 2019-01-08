@@ -12,44 +12,65 @@ def handler(event, context):
 
     try:
         props = event['ResourceProperties']
-        config(props['DestBucket'], props['DestDir'], props['ConfigEsUrl'], props['ConfigApiUrl'], props['ConfigS3Bucket'])
+        config(props['DestBucket'], props['DestDir'], props['ConfigEsUrl'],
+               props['ConfigApiUrl'], props['ConfigS3Bucket'],
+               props['BucketTitle'], props['BucketIcon'], props['BucketDescription'])
         cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
     except Exception as e:
         cfnresponse.send(event, context, cfnresponse.FAILED, {})
         raise
 
-def config(dest_bucket, dest_dir, es_url, api_url, s3_bucket):
+def config(dest_bucket, dest_dir, es_url, api_url, s3_bucket,
+           bucket_title, bucket_icon, bucket_description):
     region = boto3.session.Session().region_name
 
-    config = dict(
-        region=region,
-        elastic_search_url=es_url,
-        api_gateway_url=api_url
-    )
+    bucket_config = {
+        'name': s3_bucket,
+        'title': bucket_title,
+        'icon': bucket_icon,
+        'description': bucket_description,
+        'searchEndpoint': es_url,
+        'apiGatewayUrl': api_url,
+        'region': region
+    }
+
+    federation = {
+        'buckets': [
+            bucket_config
+        ]
+    }
 
     s3_client.put_object(
         ACL='public-read',
-        Body=json.dumps(config),
+        Body=json.dumps(federation),
         Bucket=dest_bucket,
-        Key=dest_dir + 'config.json',
+        Key=dest_dir + 'federation.json',
         ContentType='application/json'
     )
 
-    js_config = dict(
-        alwaysRequiresAuth=True,
-        api="N/A",
-        aws=dict(
-            region=region,
-            s3Bucket=s3_bucket,
-            apiGatewayUrl=api_url,
-            elasticSearchUrl=es_url,
-        )
-    )
+    catalog_config = {
+        'federations': [
+            '/federation.json'
+        ],
+        'suggestedBuckets': [
+            s3_bucket
+        ],
+        'apiGatewayEndpoint': api_url,
+        'sentryDSN': '',
+        'alwaysRequiresAuth': True,
+        'defaultBucket': s3_bucket,
+        'guestCredentials': {
+            'accessKeyID': '',
+            'secretAccessKey': ''
+        },
+        'signInRedirect': '/',
+        'signOutRedirect': '/'
+    }
 
     s3_client.put_object(
         ACL='public-read',
-        Body="window.__CONFIG = %s;\n" % json.dumps(js_config),
+        Body=json.dumps(catalog_config),
         Bucket=dest_bucket,
-        Key=dest_dir + 'config.js',
-        ContentType='application/javascript'
+        Key=dest_dir + 'config.json',
+        ContentType='application/json'
     )

@@ -44,17 +44,13 @@ meta = b.get_meta("path/to/file")
 
 
 ## Writing
-You can also go the other way and write data to a bucket.
+You can write data to a bucket.
 
 ```python
 # put a file to a bucket
-b.put_file("foo.csv", "/path/to/local/disk/foo.csv")
-# with metadata
 b.put_file("foo.csv", "/path/to/local/disk/foo.csv", meta={"foo": "bar"})
 
 # put an in-memory object to a bucket
-b.put("my-dict.json", {"a": "b"})
-# with metadata
 b.put("my-dict.json", {"a": "b"}, meta={"how": "lazily"})
 
 # or put everything in a directory at once
@@ -62,6 +58,18 @@ b.put_dir("stuff", "/path/to/folder/with/stuff/", meta={"origin": "unknown"})
 ```
 
 Note that `set` operations on a `Package` are `put` operations on a `Bucket`.
+
+
+## Deletion
+```python
+# always be careful when deleting
+
+# delete a fle
+b.delete("foo.csv")
+
+# delete a directory
+b.delete_dir("foo/")
+```
 
 
 ## Searching
@@ -93,6 +101,6 @@ Only a subset of the files in the bucket are indexed: `md` (Markdown) and `ipynb
 ```
 
 > There are currently some important limitations with search:
-> * Queries containing the tilde (~), forward slash (/), back slash, and angle bracket ({, }, (, ), [, ]) must be quoted. For example search for `'~aleksey'`, not `~aleksey`.
+> * Queries containing the tilde (~), forward slash (/), back slash, and angle bracket ({, }, (, ), [, ]) must be quoted. For example search for `'~foo'`, not `~foo`.
 > * The search index will only pick up objects written to S3 _after_ T4 was enabled on that bucket.
 > * Files over 10 MB in size may cause search to fail.

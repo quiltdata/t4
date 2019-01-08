@@ -4,7 +4,7 @@ import { connect } from 'react-redux';
 import { defaultProps, setPropTypes, withProps } from 'recompose';
 
 import { composeComponent } from 'utils/reactTools';
-import { InjectReducer } from 'utils/ReducerInjector';
+import * as ReducerInjector from 'utils/ReducerInjector';
 
 import * as actions from './actions';
 import { REDUX_KEY } from './constants';
@@ -15,7 +15,7 @@ import Notification from './Notification';
 
 export const Provider = composeComponent('Notifications.Provider',
   withProps({ mount: REDUX_KEY, reducer }),
-  InjectReducer);
+  ReducerInjector.Inject);
 
 export const Display = composeComponent('Notifications.Display',
   connect(selector, actions),
