@@ -50,7 +50,7 @@ Parameters:
     Description: Advanced setting. Selects which version of the indexer lambda to use.
   PutMappingsHash:
     Type: String
-    Default: "5d2334a"
+    Default: "c730ae8"
     Description: Advanced setting. Selects which version of the put-mappings lambda to use.
 
 
@@ -152,6 +152,9 @@ Resources:
     Properties:
       ServiceToken: !GetAtt SearchMappingsLambda.Arn
       ES_HOST: !GetAtt Search.DomainEndpoint
+      ES_URL: !Sub # Included for backwards compatibility (CF updates lambdas in an unhelpful way)
+        - "https://${ES_HOST}"
+        - ES_HOST: !GetAtt Search.DomainEndpoint
 
   SearchMappingsLambda:
     Type: AWS::Lambda::Function
