@@ -5,7 +5,6 @@ import io
 import json
 import pathlib
 import os
-import re
 
 import time
 
@@ -16,14 +15,14 @@ from six import string_types, binary_type
 
 
 from .data_transfer import (
-    calculate_sha256, copy_file, get_bytes, get_size_and_meta, 
+    calculate_sha256, copy_file, copy_file_list, get_bytes, get_size_and_meta, 
     list_object_versions, put_bytes
 )
 from .exceptions import PackageException
 from .formats import FormatRegistry
 from .util import (
-    QuiltException, BASE_PATH, fix_url, PACKAGE_NAME_FORMAT,
-    parse_file_url, parse_s3_url
+    QuiltException, BASE_PATH, fix_url, get_local_registry, get_remote_registry,
+    parse_file_url, parse_s3_url, validate_package_name, quiltignore_filter
 )
 
 
@@ -312,12 +311,6 @@ class Package(object):
         return _create_str(results_dict)
 
     @classmethod
-    def validate_package_name(cls, name):
-        """ Verify that a package name is two alphanumerics strings separated by a slash."""
-        if not re.match(PACKAGE_NAME_FORMAT, name):
-            raise QuiltException("Invalid package name, must contain exactly one /.")
-
-    @classmethod
     def install(cls, name, registry, pkg_hash=None, dest=None, dest_registry=None):
         """
         Installs a named package to the local registry and downloads its files.
@@ -333,7 +326,7 @@ class Package(object):
             A new Package that points to files on your local machine.
         """
         if dest_registry is None:
-            dest_registry = BASE_PATH
+            dest_registry = get_local_registry()
 
         pkg = cls.browse(name=name, registry=registry, pkg_hash=pkg_hash)
         if dest:
@@ -352,6 +345,10 @@ class Package(object):
             registry(string): location of registry to load package from
             pkg_hash(string): top hash of package version to load
         """
+        if registry is None:
+            # use default remote registry if present
+            registry = get_local_registry()
+
         registry_prefix = get_package_registry(fix_url(registry) if registry else None)
 
         if pkg_hash is not None:
@@ -359,7 +356,7 @@ class Package(object):
             pkg_path = '{}/packages/{}'.format(registry_prefix, pkg_hash)
             return cls._from_path(pkg_path)
         else:
-            cls.validate_package_name(name)
+            validate_package_name(name)
 
         pkg_path = '{}/named_packages/{}/latest'.format(registry_prefix, quote(name))
         latest_bytes, _ = get_bytes(pkg_path)
@@ -554,7 +551,13 @@ class Package(object):
             src_path = pathlib.Path(parse_file_url(url))
             if not src_path.is_dir():
                 raise PackageException("The specified directory doesn't exist")
+
             files = src_path.rglob('*')
+            ignore = src_path / '.quiltignore'
+            if ignore.exists():
+                ignore_rules = ignore.read_text('utf-8').split("\n")
+                files = quiltignore_filter(files, ignore_rules, 'file')
+
             for f in files:
                 if not f.is_file():
                     continue
@@ -661,6 +664,9 @@ class Package(object):
         """
         self._set_commit_message(message)
 
+        if registry is None:
+            registry = get_local_registry()
+
         registry_prefix = get_package_registry(fix_url(registry) if registry else None)
 
         self._fix_sha256()
@@ -675,7 +681,7 @@ class Package(object):
 
         if name:
             # Sanitize name.
-            self.validate_package_name(name)
+            validate_package_name(name)
 
             named_path = registry_prefix + '/named_packages/' + quote(name) + '/'
             # todo: use a float to string formater instead of double casting
@@ -752,7 +758,14 @@ class Package(object):
         """
         if isinstance(entry, (string_types, getattr(os, 'PathLike', str))):
             url = fix_url(str(entry))
-            size, orig_meta = get_size_and_meta(url)
+            size, orig_meta, version = get_size_and_meta(url)
+
+            # Deterimine if a new version needs to be appended.
+            parsed_url = urlparse(url)
+            if parsed_url.scheme == 's3':
+                _, _, current_version = parse_s3_url(parsed_url)
+                if not current_version and version:
+                    url += '?versionId=%s' % quote(version)
             entry = PackageEntry([url], size, None, orig_meta)
         elif isinstance(entry, PackageEntry):
             entry = entry._clone()
@@ -844,11 +857,15 @@ class Package(object):
         Returns:
             A new package that points to the copied objects
         """
-        self.validate_package_name(name)
+        validate_package_name(name)
         self._set_commit_message(message)
 
         if registry is None:
-            registry = dest
+            registry = get_remote_registry()
+            if not registry:
+                raise QuiltException("No registry specified and no default remote "
+                                     "registry configured. Please specify a registry "
+                                     "or configure a default remote registry with t4.config")
 
         self._fix_sha256()
 
@@ -881,16 +898,20 @@ class Package(object):
         pkg = self.__class__()
         pkg._meta = self._meta
         # Since all that is modified is physical keys, pkg will have the same top hash
+        file_list = []
         for logical_key, entry in self.walk():
             # Copy the datafiles in the package.
             physical_key = _to_singleton(entry.physical_keys)
             new_physical_key = dest_url + "/" + quote(logical_key)
-            versioned_key = copy_file(physical_key, new_physical_key, entry.meta)
+            file_list.append((physical_key, new_physical_key, entry.meta))
 
+        results = copy_file_list(file_list)
+
+        for (logical_key, entry), versioned_key in zip(self.walk(), results):
             # Create a new package entry pointing to the new remote key.
+            assert versioned_key is not None
             new_entry = entry._clone()
-            new_physical_key = versioned_key[0] if versioned_key else new_physical_key
-            new_entry.physical_keys = [new_physical_key]
+            new_entry.physical_keys = [versioned_key]
             pkg.set(logical_key, new_entry)
         return pkg
 
@@ -921,3 +942,85 @@ class Package(object):
         added = list(sorted(other_entries))
         
         return added, modified, deleted
+
+    def map(self, f, include_directories=False):
+        """
+        Performs a user-specified operation on each entry in the package.
+
+        Args:
+            f: function
+                The function to be applied to each package entry.
+                It should take two inputs, a logical key and a PackageEntry.
+            include_directories: bool
+                Whether or not to include directory entries in the map.
+
+        Returns: list
+            The list of results generated by the map.
+        """
+        if include_directories:
+            for lk, _ in self._walk_dir_meta():
+                yield f(lk, self[lk.rstrip("/")])
+
+        for lk, entity in self.walk():
+            yield f(lk, entity)
+
+    def filter(self, f, include_directories=False):
+        """
+        Applies a user-specified operation to each entry in the package,
+        removing results that evaluate to False from the output.
+
+        Args:
+            f: function
+                The function to be applied to each package entry.
+                This function should return a boolean.
+            include_directories: bool
+                Whether or not to include directory entries in the map.
+
+        Returns: list
+            A list of truthy (logical key, entry) tuples.
+        """
+        if include_directories:
+            for lk, _ in self._walk_dir_meta():
+                if f(lk, self[lk.rstrip("/")]):
+                    yield (lk, self[lk.rstrip("/")])
+
+        for lk, entity in self.walk():
+            if f(lk, entity):
+                yield (lk, entity)
+
+    def reduce(self, f, default=None, include_directories=False):
+        """
+        Applies a reduce operation across neighboring package entries,
+        in left-right order.
+
+        Args:
+            f: function
+                The function to be applied to each package entry.
+                This function should take two arguments. By default these
+                will be the (logical key, PackageEntry) for the left entry and
+                the (logical key, PackageEntry) argument for the right entry.
+                As you iterate over the package entries, the left argument will
+                be replaced by the output of the previous reduce operation.
+            default: initial value
+                The default argument. If left unspecified, the (logical key,
+                PackageEntry) pair for the first package entry in the package
+                will be used.
+            include_directories: bool
+                Whether or not to include directory entries in the map.
+
+        Returns: list
+            A list of truthy (logical key, entry) tuples.
+        """
+        entities = []
+
+        if include_directories:
+            entities += [(lk, self[lk.rstrip("/")]) for lk, _ in self._walk_dir_meta()]
+
+        entities += list(self.walk())
+        out = default if default is not None else entities[0]
+        iters = entities if default is not None else entities[1:]
+
+        for entry in iters:
+            out = f(out, entry)
+            
+        return out

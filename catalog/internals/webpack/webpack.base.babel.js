@@ -47,26 +47,8 @@ module.exports = (options) => ({
         use: ['style-loader', 'css-loader'],
       },
       {
-        test: /\.(eot|svg|otf|ttf|woff|woff2)$/,
+        test: /\.(eot|svg|otf|ttf|woff|woff2|jpg|png|gif)$/,
         use: 'file-loader',
-      },
-      {
-        test: /\.(jpg|png|gif)$/,
-        use: [
-          'file-loader',
-          {
-            loader: 'image-webpack-loader',
-            options: {
-              progressive: true,
-              optimizationLevel: 7,
-              interlaced: false,
-              pngquant: {
-                quality: '65-90',
-                speed: 4,
-              },
-            },
-          },
-        ],
       },
       {
         test: /\.html$/,

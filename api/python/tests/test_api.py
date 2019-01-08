@@ -26,6 +26,9 @@ class TestAPI():
         yaml = YAML()
         config = yaml.load(util.CONFIG_PATH)
 
+        content['default_local_registry'] = util.BASE_PATH.as_uri()
+        content['default_remote_registry'] = None
+
         assert config == content
 
     @responses.activate

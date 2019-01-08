@@ -20,21 +20,33 @@ Parameters:
   Users:
     Type: CommaDelimitedList
     Description: Required, comma-separated list of ARNs for IAM users who can search QuiltBucket. NOTE - Users with search access can see the contents of all indexed documents. Only include trusted users.
+  BucketTitle:
+    Type: String
+    Description: Title for your bucket
+    Default: "Title here"
+  BucketIcon:
+    Type: String
+    Description: Icon for your bucket
+    Default: "placeholder icon here"
+  BucketDescription:
+    Type: String
+    Description: Description for your bucket
+    Default: "placeholder description here"
 
 Mappings:
   VersionMap:
     # initializes config.js and config.json for static website
     navigator-config:
-      hash: 19dee98
+      hash: 46218d4
     nbconvert:
       hash: f0cc75b
     # static website content
     navigator:
-      hash: c842508
+      hash: 45f840e
     indexer:
-      hash: bf2c4fb
+      hash: 5d2334a
     put-mappings:
-      hash: 76df9d0
+      hash: c730ae8
 
 Resources:
 
@@ -120,8 +132,7 @@ Resources:
       MemorySize: 1024
       Environment:
         Variables:
-          # TODO Calvin: rename to ESHost, drop https://, and modify lambdas
-          ES_URL: !Sub "https://${Search.DomainEndpoint}"
+          ES_HOST: !GetAtt Search.DomainEndpoint
       Code:
         S3Bucket: !Sub "quilt-lambda-${AWS::Region}"
         S3Key: !Sub
@@ -134,7 +145,10 @@ Resources:
       - Search
     Properties:
       ServiceToken: !GetAtt SearchMappingsLambda.Arn
-      ES_URL: !Sub "https://${Search.DomainEndpoint}"
+      ES_HOST: !GetAtt Search.DomainEndpoint
+      ES_URL: !Sub # Included for backwards compatibility (CF updates lambdas in an unhelpful way)
+        - "https://${ES_HOST}"
+        - ES_HOST: !GetAtt Search.DomainEndpoint
 
   SearchMappingsLambda:
     Type: AWS::Lambda::Function
@@ -231,7 +245,7 @@ Resources:
             }
           };
       Timeout: 30
-      Runtime: nodejs4.3
+      Runtime: nodejs8.10
 
   # API
 
@@ -328,6 +342,8 @@ Resources:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Ref ConfigBucketName
+      VersioningConfiguration:
+        Status: Enabled
 
   NavigatorInitRole:
     Type: AWS::IAM::Role
@@ -376,6 +392,9 @@ Resources:
   NavigatorInit:
     Type: Custom::S3Sync
     Properties:
+      BucketTitle: !Ref BucketTitle
+      BucketIcon: !Ref BucketIcon
+      BucketDescription: !Ref BucketDescription
       ServiceToken: !GetAtt NavigatorInitHandler.Arn
       DestBucket: !Ref ConfigBucketName
       DestDir: ""
@@ -398,6 +417,13 @@ Resources:
           ViewerProtocolPolicy: redirect-to-https
         CacheBehaviors:
         - PathPattern: /config.js*
+          TargetOriginId: config
+          DefaultTTL: 300
+          Compress: true
+          ForwardedValues:
+            QueryString: false
+          ViewerProtocolPolicy: redirect-to-https
+        - PathPattern: /federation.json
           TargetOriginId: config
           DefaultTTL: 300
           Compress: true

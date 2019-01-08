@@ -5,7 +5,7 @@ import { withStyles } from '@material-ui/core/styles';
 
 import Footer from 'components/Footer';
 import { Pad } from 'components/LayoutHelpers';
-import NavBar from 'containers/NavBar';
+import * as NavBar from 'containers/NavBar';
 import { composeComponent } from 'utils/reactTools';
 
 
@@ -13,9 +13,11 @@ export default composeComponent('Layout',
   RC.setPropTypes({
     children: PT.node,
     pre: PT.node,
+    bare: PT.bool,
   }),
-  withStyles(() => ({
+  withStyles(({ palette }) => ({
     root: {
+      background: palette.background.default,
       display: 'flex',
       flexDirection: 'column',
       minHeight: '100vh',
@@ -24,9 +26,9 @@ export default composeComponent('Layout',
       flexGrow: 1,
     },
   })),
-  ({ classes, children, pre }) => (
+  ({ bare, classes, children, pre }) => (
     <div className={classes.root}>
-      <NavBar />
+      {bare ? <NavBar.Container /> : <NavBar.NavBar />}
       {!!pre && pre}
       <Pad top left right bottom>
         {children}

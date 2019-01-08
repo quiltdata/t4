@@ -7,8 +7,6 @@ from .api import (
     copy,
     put,
     get,
-    delete,
-    ls,
     list_packages,
     search,
     config,

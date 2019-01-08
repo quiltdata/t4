@@ -7,19 +7,17 @@ from aws_requests_auth.aws_auth import AWSRequestsAuth
 import botocore
 import boto3
 from elasticsearch import Elasticsearch, RequestsHttpConnection
-
-S3_CLIENT = boto3.client("s3")
-
-ES_URL = os.environ['ES_URL']
-ES_HOST = ES_URL[8:] # strip https://
-
-ES_INDEX = 'drive'
+import nbformat
 
 DEFAULT_CONFIG = {
     'md': True,
     'json': True,
     'ipynb': True,
 }
+
+NB_VERSION = 4 # default notebook version for nbformat
+
+S3_CLIENT = boto3.client("s3")
 
 def get_config(bucket):
     try:
@@ -63,31 +61,42 @@ def transform_meta(meta):
     }
     return result
 
-def format_codecell(cell):
-    # outputs: [{output_type: stream, text: [str]}]
-    # OR [{output_type: execute_result, data: {'text/plain': [str]}}]
-    #
-    # source: [str]
-    formatted_source = ' '.join(cell['source'])
-    formatted_output = ''
-    if cell['outputs']:
-        first_output = cell['outputs'][0]
-        if first_output['output_type'] == 'stream':
-            formatted_output = ' '.join(first_output['text'])
-        if (first_output['output_type'] == 'data'
-                and first_output['data'].get('text/plain', None)):
-            formatted_output = ' '.join(first_output['data']['text/plain'])
+def extract_text(notebook_str):
+    """ Extract code and markdown
+    Args:
+        * nb - notebook as a string
+    Returns:
+        * str - select code and markdown source (and outputs)
+    Pre:
+        * notebook is well-formed per notebook version 4
+        * 'cell_type' is defined for all cells
+        * 'source' defined for all 'code' and 'markdown' cells
+    Throws:
+        * Anything nbformat.reads() can throw :( which is diverse and poorly
+        documented, hence the `except Exception` in handler()
+    Notes:
+        * Deliberately decided not to index output streams and display strings
+        because they were noisy and low value
+        * Tested this code against ~6400 Jupyter notebooks in
+        https://alpha.quiltdata.com/b/alpha-quilt-storage/tree/notebook-search/
+        * Might be useful to index "cell_type" : "raw" in the future
+    See also:
+        * Format reference https://nbformat.readthedocs.io/en/latest/format_description.html
+    """
+    formatted = nbformat.reads(notebook_str, as_version=NB_VERSION)
+    text = []
+    for cell in formatted.get('cells', []):
+        if 'source' in cell and 'cell_type' in cell:
+            if cell['cell_type'] == 'code' or cell['cell_type'] == 'markdown':
+                text.append(cell['source'])
 
-    return formatted_source + formatted_output
-
-def format_notebook(nb):
-    cells = nb['cells']
-    codecells = filter(lambda x: x['cell_type'] == 'code', cells)
-    formatted = map(format_codecell, codecells)
-    text = ' '.join(list(formatted))
-    return text
+    return '\n'.join(text)
 
 def post_to_es(event_type, size, text, key, meta, version_id=''):
+
+    ES_HOST = os.environ['ES_HOST']
+    ES_INDEX = 'drive'
+
     data = {
         'type': event_type,
         'size': size,
@@ -160,14 +169,19 @@ def handler(event, context):
                     print("Unicode decode error in .md file")
             elif key.endswith('.ipynb') and config['ipynb']:
                 try:
-                    notebook = json.load(response['Body'])
-                    text = format_notebook(notebook)
-                except json.JSONDecodeError:
-                    print("Invalid JSON in .ipynb file")
-                except KeyError:
-                    print("Could not format .ipynb file -- format not as expected")
+                    notebook = response['Body'].read().decode('utf-8')
+                    text = extract_text(notebook)
+                except UnicodeDecodeError as uni:
+                    print("Unicode decode error in {}: {} ".format(key, uni))
+                except (json.JSONDecodeError, nbformat.reader.NotJSONError):
+                    print("Invalid JSON in {}.".format(key))
+                except (KeyError, AttributeError)  as err:
+                    print("Missing key in {}: {}".format(key, err))
+                # there might be more errors than covered by test_read_notebook
+                # better not to fail altogether
+                except Exception as exc:#pylint: disable=broad-except
+                    print("Exception in file {}: {}".format(key, exc))
             # TODO: more plaintext types here
-
             # decode helium metadata
             try:
                 meta['helium'] = json.loads(meta['helium'])

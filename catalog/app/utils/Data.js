@@ -1,6 +1,8 @@
 import { boundMethod } from 'autobind-decorator';
+import PT from 'prop-types';
 import * as R from 'ramda';
 import * as React from 'react';
+import * as RC from 'recompose';
 import { connect } from 'react-redux';
 import { call, put } from 'redux-saga/effects';
 import { createStructuredSelector } from 'reselect';
@@ -16,7 +18,7 @@ import tagged from 'utils/tagged';
 
 const REDUX_KEY = 'data';
 
-const Action = tagged(['Init', 'Request', 'Response']);
+const Action = tagged(['Init', 'Request', 'Response', 'Dispose']);
 
 function* handleRequest({ dataId, requestId, fetch, params }) {
   let result;
@@ -43,11 +45,9 @@ const reducer = reduxTools.withInitialState({}, Action.reducer({
   Response: ({ dataId, requestId, result }) => R.evolve({
     [dataId]: (s) => s.id === requestId ? { ...s, result } : s,
   }),
+  Dispose: (dataId) => R.dissoc(dataId),
   __: () => R.identity,
 }));
-
-const mkSelector = (dataId) => (state) =>
-  (state.get(REDUX_KEY)[dataId] || init);
 
 export const Provider = RT.composeComponent('Data.Provider',
   injectSaga(REDUX_KEY, saga),
@@ -65,44 +65,62 @@ const nextId = (() => {
   };
 })();
 
+export const Fetcher = RT.composeComponent('Data.Fetcher',
+  RC.setPropTypes({
+    params: PT.any,
+    fetch: PT.func.isRequired,
+    noAutoFetch: PT.bool,
+    children: PT.func.isRequired,
+  }),
+  RC.withPropsOnChange(['fetch'], () => ({ id: nextId() })),
+  connect(createStructuredSelector({
+    data: (state, { id }) => state.get(REDUX_KEY)[id] || init,
+  }), undefined, undefined, { pure: false }),
+  /* eslint-disable react/prop-types */
+  class FetcherInner extends React.Component {
+    componentDidMount() {
+      this.props.dispatch(Action.Init(this.props.id));
+      if (!this.props.noAutoFetch) this.fetch();
+    }
+
+    componentDidUpdate({ params }) {
+      if (!this.props.noAutoFetch) {
+        if (!R.equals(params, this.props.params)) this.fetch();
+      }
+    }
+
+    componentWillUnmount() {
+      this.props.dispatch(Action.Dispose(this.props.id));
+    }
+
+    @boundMethod
+    fetch() {
+      this.props.dispatch(Action.Request({
+        dataId: this.props.id,
+        requestId: this.props.data.id + 1,
+        fetch: this.props.fetch,
+        params: this.props.params,
+      }));
+    }
+
+    render() {
+      return this.props.children(this.props.data.result, { fetch: this.fetch });
+    }
+  /* eslint-enable react/prop-types */
+  });
+
+export default Fetcher;
+
 export const withData = ({
   params: getParams = R.identity,
   fetch,
   name = 'data',
-  id: dataId = nextId(),
   autoFetch = true,
 }) =>
-  RT.composeHOC('Data.withData',
-    connect(createStructuredSelector({
-      data: mkSelector(dataId),
-    }), undefined, undefined, { pure: false }),
-    (Component) =>
-      class DataFetcher extends React.Component {
-        componentDidMount() {
-          this.props.dispatch(Action.Init(dataId));
-          if (autoFetch) this.fetch(getParams(this.props));
-        }
-
-        componentDidUpdate(prevProps) {
-          if (autoFetch) {
-            const newParams = getParams(this.props);
-            if (!R.equals(newParams, getParams(prevProps))) this.fetch(newParams);
-          }
-        }
-
-        @boundMethod
-        fetch(params) {
-          this.props.dispatch(Action.Request({
-            dataId,
-            requestId: this.props.data.id + 1,
-            fetch,
-            params,
-          }));
-        }
-
-        render() {
-          const { dispatch, data: { result }, ...rest } = this.props;
-          const props = { ...rest, [name]: { result, fetch: this.fetch } };
-          return <Component {...props} />;
-        }
-      });
+  RT.composeHOC('Data.withData', (Component) => (props) => (
+    <Fetcher fetch={fetch} params={getParams(props)} noAutoFetch={!autoFetch}>
+      {(result, opts) =>
+        <Component {...{ ...props, [name]: { result, ...opts } }} />
+      }
+    </Fetcher>
+  ));

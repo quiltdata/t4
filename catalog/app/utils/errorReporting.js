@@ -1,7 +1,9 @@
 import Raven from 'raven-js';
 import createRavenMiddleware from 'raven-for-redux';
 
-import config from 'constants/config';
+// import config from 'constants/config';
+// TODO: figure out how to inject config here
+const config = {};
 
 
 // ignore irrelevant nonactionable stuff, e.g. browser extensions and 3rd-party scripts

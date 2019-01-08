@@ -6,6 +6,7 @@ import 'whatwg-fetch';
 // Import all the third party stuff
 import MuiThemeProviderV0 from 'material-ui/styles/MuiThemeProvider';
 import { MuiThemeProvider } from '@material-ui/core/styles';
+import * as React from 'react';
 import ReactDOM from 'react-dom';
 // import { LOCATION_CHANGE } from 'connected-react-router/immutable';
 import createHistory from 'history/createBrowserHistory';
@@ -15,19 +16,24 @@ import 'sanitize.css/sanitize.css';
 import '!!style-loader!css-loader!css/bootstrap-grid.css';
 
 // Import root app
+import Error from 'components/Error';
+import Layout from 'components/Layout';
 import App from 'containers/App';
+import Placeholder from 'containers/App/Placeholder';
 import LanguageProvider from 'containers/LanguageProvider';
 import * as AWSAuth from 'containers/AWSAuth';
-import * as BucketConfig from 'containers/Bucket/Config';
 import * as Notifications from 'containers/Notifications';
-import config from 'constants/config';
 import routes from 'constants/routes';
 import * as style from 'constants/style';
+import AsyncResult from 'utils/AsyncResult';
 import * as AWS from 'utils/AWS';
+import * as Config from 'utils/Config';
 import * as Data from 'utils/Data';
+import { createBoundary } from 'utils/ErrorBoundary';
 import * as NamedRoutes from 'utils/NamedRoutes';
 import FormProvider from 'utils/ReduxFormProvider';
 import StoreProvider from 'utils/StoreProvider';
+import * as Wait from 'utils/Wait';
 import fontLoader from 'utils/fontLoader';
 import { nest } from 'utils/reactTools';
 import RouterProvider from 'utils/router';
@@ -53,6 +59,21 @@ fontLoader('Roboto', 'Roboto Mono').then(() => {
   document.body.classList.add('fontLoaded');
 });
 
+// TODO: capture errors
+const ErrorBoundary = createBoundary(() => () => (
+  <Layout bare>
+    <Error
+      headline="Unexpected Error"
+      detail="Something went wrong"
+    />
+  </Layout>
+));
+
+const FinalBoundary = createBoundary(() => () => (
+  <h1 style={{ textAlign: 'center' }}>
+    Something went wrong
+  </h1>
+));
 
 // Create redux store with history
 const initialState = {};
@@ -60,33 +81,37 @@ const history = createHistory();
 const store = configureStore(initialState, history);
 const MOUNT_NODE = document.getElementById('app');
 
+// TODO: make storage injectable
 const storage = mkStorage({ credentials: 'CREDENTIALS' });
+
+const fallback = AsyncResult.case({
+  Err: (e) => { throw e; },
+  _: () => <Placeholder />,
+});
 
 const render = (messages) => {
   ReactDOM.render(
     nest(
+      FinalBoundary,
+      [MuiThemeProviderV0, { muiTheme: style.themeV0 }],
+      [MuiThemeProvider, { theme: style.theme }],
       [StoreProvider, { store }],
-      FormProvider,
       [LanguageProvider, { messages }],
+      [NamedRoutes.Provider, { routes }],
+      [RouterProvider, { history }],
+      ErrorBoundary,
+      [Wait.Placeholder, { fallback }],
+      Data.Provider,
+      [Config.Provider, { path: '/config.json' }],
+      FormProvider,
       Notifications.Provider,
-      // TODO: figure out AWS components order / race conditions
-      [AWSAuth.Provider, {
-        storage,
-        testBucket: config.defaultBucket,
-        signInRedirect: routes.bucketRoot.url(config.defaultBucket),
-      }],
+      [AWSAuth.Provider, { storage }],
       [AWS.Config.Provider, {
         credentialsSelector: AWSAuth.selectors.credentials,
       }],
       AWS.S3.Provider,
       AWS.Signer.Provider,
-      Data.Provider,
-      [BucketConfig.BucketsProvider, { buckets: config.buckets }],
-      [RouterProvider, { history }],
-      [MuiThemeProviderV0, { muiTheme: style.themeV0 }],
-      [MuiThemeProvider, { theme: style.theme }],
       Notifications.WithNotifications,
-      [NamedRoutes.Provider, { routes }],
       App,
     ),
     MOUNT_NODE

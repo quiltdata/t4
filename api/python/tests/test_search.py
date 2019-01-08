@@ -9,22 +9,39 @@ class ResponseMock(object):
 
 
 def get_configured_bucket():
-    with patch('t4.bucket.requests') as requests_mock:
-        mock_config = {
-                'configs': {
-                    'test-bucket': {
-                        'search_endpoint': 'test'
+    with patch('t4.util.requests') as requests_mock:
+        FEDERATION_URL = 'https://test.com/federation.json'
+        mock_federation = {
+                'buckets': [
+                    {
+                        'name': 'test-bucket',
+                        'searchEndpoint': 'test'
                     }
-                }
+                ]
             }
-        mock_response = ResponseMock()
-        setattr(mock_response, 'text', json.dumps(mock_config))
-        setattr(mock_response, 'ok', True)
-        def mock_get(url):
+        CONFIG_URL = 'https://test.com/config.json'
+        mock_config = {
+                'federations': [
+                    '/federation.json'
+                ]
+            }
+        def makeResponse(text):
+            mock_response = ResponseMock()
+            setattr(mock_response, 'text', text)
+            setattr(mock_response, 'ok', True)
             return mock_response
+
+        def mock_get(url):
+            if url == CONFIG_URL:
+                return makeResponse(json.dumps(mock_config))
+            elif url == FEDERATION_URL:
+                return makeResponse(json.dumps(mock_federation))
+            else:
+                raise Exception
+
         requests_mock.get = mock_get
         bucket = Bucket('s3://test-bucket')
-        bucket.config()
+        bucket.config('https://test.com/config.json')
         return bucket
 
 def test_bucket_config():
