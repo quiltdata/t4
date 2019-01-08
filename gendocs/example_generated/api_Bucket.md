@@ -14,7 +14,7 @@ __Returns__
 
 a new Bucket
 
-## Bucket.config(self, config\_url='https://t4.quiltdata.com/config.json', quiet=False)
+## Bucket.config(self, config\_url='https://t4.quiltdata.com/config.json')
 
 Updates this bucket's search endpoint based on a federation config.
 
@@ -147,6 +147,35 @@ None
 __Raises__
 
 * if delete fails
+
+
+## Bucket.delete\_dir(self, path)
+Delete a directory and all of its contents from the bucket.
+
+__Arguments__
+
+* __path (str)__:  path to the directory to delete
+
+
+## Bucket.ls(self, path=None, recursive=False)
+List data from the specified path.
+
+__Arguments__
+
+* __path (str)__:  bucket path to list
+* __recursive (bool)__:  show subdirectories and their contents as well
+
+__Returns__
+
+```list```: Return value structure has not yet been permanently decided
+Currently, it's a ``tuple`` of ``list`` objects, containing the
+following:
+result[0]
+    directory info
+result[1]
+    file/object info
+result[2]
+    delete markers
 
 
 ## Bucket.fetch(self, key, path)
