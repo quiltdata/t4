@@ -310,7 +310,7 @@ class Bucket(object):
             raw(bool): return the raw (but parsed) response
 
         Returns:
-            pandas.DataFrame: with results of query
+            pandas.DataFrame: results of query
         """
         meta = self.get_meta(key)
         uri = self._uri + key
