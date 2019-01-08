@@ -4,13 +4,16 @@ from aws_requests_auth.aws_auth import AWSRequestsAuth
 import boto3
 import cfnresponse
 from elasticsearch import Elasticsearch, RequestsHttpConnection
+from elasticsearch.exceptions import RequestError
 
 ES_INDEX = 'drive'
 
 def handler(event, context):
+    if event['RequestType'] == 'Delete':
+        cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+        return
     try:
-        es_url = event['ResourceProperties']['ES_URL']
-        es_host = es_url[8:] # clip off https://
+        es_host = event['ResourceProperties']['ES_HOST']
         session = boto3.session.Session()
 
         mappings = {
@@ -80,7 +83,12 @@ def handler(event, context):
             connection_class=RequestsHttpConnection
         )
 
-        es.indices.create(index=ES_INDEX, body=mappings)
+        try:
+            es.indices.create(index=ES_INDEX, body=mappings)
+        except RequestError as e:
+            print("RequestError encountered")
+            print("This is likely due to the index already existing -- nothing to worry about")
+            print(e)
 
         del event['ResourceProperties']['ServiceToken']
 
