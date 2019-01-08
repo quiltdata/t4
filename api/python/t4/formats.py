@@ -48,17 +48,19 @@ Format metadata has the following form:
 
 ```
 {
-  # 'name' is a unique format name, like csv, json, parquet, numpy, etc
-  'name': <format name>,
-  #
-  # 'opts', or Format Options / format_opts / meta['format']['opts']:
-  # * opts are options to help with serialization / deserialization.
-  # * opts are needed when a format is leaky or ill-defined, as is with CSV.
-  # * opts should not be mapped directly to underlying serializer/deserializer
-  #   args unless known to be safe or analyzed at runtime for safety.
-  # * opts should be kept as platform-independent as possible.
-  # * opts must be present in format_handler.opts to be used.
-  'opts': {<opt name>: <opt value>}
+  # 'name':
+  #     a unique format name, like csv, json, parquet, numpy, etc
+  'name': 'csv',
+
+  # 'opts', I.e. Format Options:
+  #     Options to help in serialization/deserialization.
+  #     * opts are needed when a format is leaky/ill-defined, as with CSV.
+  #     * opts should not exactly match underlying serializer/deserializer
+  #       args unless known to be safe or analyzed at runtime for safety.
+  #     * opts should be kept as platform-independent as possible.
+  #     * option names must be present in <format_handler>.opts, or a warning
+  #       will be shown, and the option will be ignored.
+  'opts': {<option name>: <option value>}
 }
 
 """
@@ -72,6 +74,7 @@ import csv
 import io
 import json
 import sys
+import warnings
 
 # Third Party imports
 from six import text_type
@@ -483,19 +486,22 @@ class BaseFormatHandler(ABC):
               meta(dict):  Object metadata.  Used if user_opts is not given,
                 and invalid options are dropped.
         """
+        if user_opts is not None:
+            opts = user_opts
+        else:
+            meta = meta if meta else {}
+            opts = meta.get('format', {}).get('opts', {})
         allowed = set(self.opts)
-        if user_opts:
-            assert isinstance(user_opts, Mapping)
-            for name in user_opts:
-                if name not in allowed or not isinstance(name, str):
-                    raise QuiltException("Invalid option: {!r}".format(name))
-            return copy.deepcopy(user_opts)
-        meta = meta if meta else {}
-        meta_opts = meta.get('format', {}).get('opts', {})
+        result = {}
 
-        return {name: meta_opts[name] for name in allowed
-                if name in meta_opts
-                and isinstance(name, str)}
+        for name, value in opts.items():
+            if name in allowed:
+                result[name] = value
+                continue
+            else:
+                warnings.warn('Invalid option name {!r} (ignored)'.format(name))
+
+        return copy.deepcopy(result)   # in case any values are mutable
 
 
 class GenericFormatHandler(BaseFormatHandler):
@@ -700,7 +706,7 @@ class CSVPandasFormatHandler(BaseFormatHandler):
                 'nonnumeric': csv.QUOTE_NONNUMERIC
             }
             return map.get(value, NOT_SET)
-        print("Unrecognized value for 'quoting' option: {!r}".format(value))
+        warnings.warn("Unrecognized value for 'quoting' option: {!r} (ignored)".format(value))
         return NOT_SET
 
     def get_ser_kwargs(self, opts):
