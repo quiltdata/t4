@@ -5,7 +5,7 @@ site_name: "QuiltData -- T4"
 # is a tree of Python member names (modules, classes, etc.) that should be
 # documented. Higher indentation leads to smaller header size.
 generate:
-- index.md:
+- api.md:
   # By referencing this directly, we include its docstring.
   - t4:
     # If we end up wanting to include Bucket and Package inline in api.md, we
@@ -22,10 +22,10 @@ generate:
 #    - Bucket+
 #    - Package+
 
-- api_Bucket.md:
+- Bucket.md:
   - t4.Bucket+    # All *documented* members, except _private_members.
 
-- api_Package.md:
+- Package.md:
   - t4.Package+   # All *documented* members, except _private_members.
 
 
@@ -35,26 +35,28 @@ generate:
 # This configuration is not mandatory if you have your own mkdocs.yml config file.
 pages:
 #- Home: index.md << ../README.md
- - T4 API: index.md
- - T4 Bucket API: api_Bucket.md
- - T4 Package API: api_Package.md
+ - t4: api.md
+ - t4.Bucket: Bucket.md
+ - t4.Package: Package.md
 
 # These options all show off their default values. You don't have to add
 # them to your configuration if you're fine with the default.
 docs_dir: sources
-gens_dir: _build/markdown     # This will end up as the MkDocs 'docs_dir'
+gens_dir: ../docs/API Reference
 site_dir: _build/html
 theme:    readthedocs
 loader:   pydocmd.loader.PythonLoader
 preprocessor: pydocmd.google_docstrings.Preprocessor
 
-# Whether to output headers as markdown or HTML.  Used to workaround
+# Whether to output headings as markdown or HTML.  Used to workaround
 # https://github.com/NiklasRosenstein/pydoc-markdown/issues/11.  The default is
 # to generate HTML with unique and meaningful id tags, which can't be done with
 # markdown.
 #
 # Note: if using the simple generator mode, this will default to 'markdown'
 # instead of 'html'.
+#
+# badly-named as 'headers' instead of 'headings'.
 #headers: html
 headers: markdown
 
