@@ -69,7 +69,7 @@ const defaultHandlers = [
   [R.is(AccessDenied), whenAuth({
     true: () => (
       <Message headline="Access Denied">
-        Seems like you don`t have access to this bucket.
+        Seems like you don&apos;t have access to this bucket.
         <br />
         <a href="https://github.com/quiltdata/t4/tree/master/deployment#permissions">
           Learn about access control in T4
