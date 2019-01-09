@@ -499,6 +499,10 @@ class BaseFormatHandler(ABC):
                 result[name] = value
                 continue
             else:
+                # We don't want to raise here, because metadata or other
+                # canned options can have invalid, irrelevant, or outdated
+                # options.  F.e., if we do an R client, there may be an
+                # R-specific option that gets stored.
                 warnings.warn('Invalid option name {!r} (ignored)'.format(name))
 
         return copy.deepcopy(result)   # in case any values are mutable
