@@ -66,3 +66,7 @@ headers: markdown
 additional_search_paths:
 - ..
 - ../docs/lib
+
+
+# Use gitbook-style Header IDs where supported
+markdown_header_id: bracehash

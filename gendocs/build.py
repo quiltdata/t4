@@ -13,7 +13,11 @@ from ruamel import yaml
 
 # To push out and use a new version of pydocmd to people generating docs,
 # increment this here and in the quilt pydocmd repo (setup.py and __init__.py)
-EXPECTED_VERSION_SUFFIX = '-quilt1'
+EXPECTED_VERSION_SUFFIX = '-quilt2'
+
+# Github HTTPS Revision
+# Just the branch name right now, but anything following '@' in a github repo URL
+GH_HTTPS_REV = 'quilt'
 
 
 if __name__ == "__main__":
@@ -42,7 +46,7 @@ if __name__ == "__main__":
 
         if version:
             pipmain(['uninstall', 'pydoc-markdown'])
-        pipmain(['install', 'git+https://github.com/quiltdata/pydoc-markdown.git@google_docstrings'])
+        pipmain(['install', f'git+https://github.com/quiltdata/pydoc-markdown.git@{GH_HTTPS_REV}'])
 
     import pydocmd
 
