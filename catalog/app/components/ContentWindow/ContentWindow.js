@@ -197,9 +197,26 @@ const HANDLERS = [
     name: 'parquet',
     detect: '.parquet',
     render: (url) => (
-      <IframeContent
-        src={`${config.apiGatewayUrl}/preview?url=${encodeURIComponent(url)}`}
-      />
+      <Config.Inject>
+        {AsyncResult.case({
+          Ok: (config) => (
+            <BucketConfig.WithCurrentBucketConfig>
+              {AsyncResult.case({
+                Ok: (bucket) => {
+                  const endpoint =
+                    (bucket && bucket.apiGatewayEndpoint)
+                      || config.apiGatewayEndpoint;
+                  const src =
+                    `${endpoint}/preview?url=${encodeURIComponent(url)}`;
+                  return <IframeContent src={src} />;
+                },
+                _: () => <Placeholder />,
+              })}
+            </BucketConfig.WithCurrentBucketConfig>
+          ),
+          _: () => <Placeholder />,
+        })}
+      </Config.Inject>
     ),
   },
   {
