@@ -3,10 +3,12 @@
 import sys
 import subprocess
 import pkg_resources
+
 try:
     from pip._internal import main as pipmain
 except ImportError:
     from pip import main as pipmain
+from ruamel import yaml
 
 
 # To push out and use a new version of pydocmd to people generating docs,
@@ -58,4 +60,8 @@ if __name__ == "__main__":
         print("Using custom args for mkdocs.")
 
     pydocmd_main()
-    print("Check the _build dir for generated files.")
+
+    # report where stuff is
+    pydocmd_config = yaml.safe_load(open('pydocmd.yml'))
+    print("Generated HTML in {!r}".format(pydocmd_config.get('site_dir')))
+    print("Generated markdown in {!r}".format(pydocmd_config.get('gens_dir')))
