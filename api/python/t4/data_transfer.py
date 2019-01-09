@@ -514,9 +514,16 @@ def get_size_and_meta(src):
         size, meta(dict), version(str)
     """
     src_url = urlparse(src)
+    path = unquote(src_url.path)
+
+    if not path or path.endswith('/'):
+        raise QuiltException("Invalid path: %r; cannot be a directory")
+
     version = None
     if src_url.scheme == 'file':
         src_path = pathlib.Path(parse_file_url(src_url))
+        if not src_path.is_file():
+            raise QuiltException("Not a file: %r" % str(src_path))
         size = src_path.stat().st_size
         meta = _parse_file_metadata(src_path)
     elif src_url.scheme == 's3':
