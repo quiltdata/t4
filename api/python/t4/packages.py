@@ -707,7 +707,7 @@ class Package(object):
     @property
     def manifest(self):
         """
-        Returns a generator of the dicts that make up the serialied package.
+        Provides a generator of the dicts that make up the serialied package.
         """
         yield self._meta
         for dir_key, meta in self._walk_dir_meta():
@@ -842,11 +842,13 @@ class Package(object):
         Copies each object in this package to path according to logical key structure,
         then adds to the registry a serialized version of this package
         with physical_keys that point to the new copies.
+
         Args:
             name: name for package in registry
             dest: where to copy the objects in the package
             registry: registry where to create the new package
             message: the commit message for the new package
+
         Returns:
             A new package that points to the copied objects
         """

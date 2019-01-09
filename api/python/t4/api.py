@@ -372,21 +372,28 @@ def config(*autoconfig_url, **config_values):
     """Set or read the T4 configuration
 
     To retrieve the current config, call directly, without arguments:
+
         >>> import t4 as he
         >>> he.config()
 
     To trigger autoconfiguration, call with just the navigator URL:
+
         >>> he.config('https://example.com')
 
     To set config values, call with one or more key=value pairs:
+
         >>> he.config(navigator_url='http://example.com',
         ...           elastic_search_url='http://example.com/queries')
+
     When setting config values, unrecognized values are rejected.  Acceptable
     config values can be found in `t4.util.CONFIG_TEMPLATE`
 
-    :param autoconfig_url: URL indicating a location to configure from
-    :param **config_values: `key=value` pairs to set in the config
-    :returns: HeliumConfig object (an ordered Mapping)
+    Args:
+        autoconfig_url: A (single) URL indicating a location to configure from
+        **config_values: `key=value` pairs to set in the config
+
+    Returns:
+        HeliumConfig: (an ordered Mapping)
     """
     if autoconfig_url and config_values:
         raise QuiltException("Expected either an auto-config URL or key=value pairs, but got both.")
