@@ -13,7 +13,7 @@ from ruamel import yaml
 
 # To push out and use a new version of pydocmd to people generating docs,
 # increment this here and in the quilt pydocmd repo (setup.py and __init__.py)
-EXPECTED_VERSION_SUFFIX = '-quilt2'
+EXPECTED_VERSION_SUFFIX = '-quilt3'
 
 # Github HTTPS Revision
 # Just the branch name right now, but anything following '@' in a github repo URL
