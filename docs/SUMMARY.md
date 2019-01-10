@@ -18,6 +18,11 @@
 * [Working with Manifests](Advanced Features/Working with Manifests.md)
 * [S3 Select](Advanced%20Features/S3%20Select.md)
 
+### API Reference
+* [t4](API%20Reference/api.md)
+* [t4.Package](API%20Reference/package.md)
+* [t4.Bucket](API%20Reference/bucket.md)
+
 ### References
 
 * [Contributing](CONTRIBUTING.md)
