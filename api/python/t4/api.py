@@ -25,7 +25,7 @@ except ImportError:
 
 def copy(src, dest):
     """
-    Copies ``src`` object from T4 to ``dest``
+    Copies ``src`` object from T4 to ``dest``.
 
     Either of ``src`` and ``dest`` may be S3 paths (starting with ``s3://``)
     or local file paths (starting with ``file:///``).
@@ -38,14 +38,12 @@ def copy(src, dest):
 
 
 def put(obj, dest, meta=None):
-    """Write an in-memory object to the specified T4 ``dest``
+    """Write an in-memory object to the specified T4 ``dest``.
 
     Note:
         Does not work with all objects -- object must be serializable.
 
     You may pass a dict to ``meta`` to store it with ``obj`` at ``dest``.
-
-    See User Docs for more info on object Serialization and Metadata.
 
     Parameters:
         obj: a serializable object
@@ -369,24 +367,31 @@ def log(key, pprint=False):
         return r
 
 def config(*autoconfig_url, **config_values):
-    """Set or read the T4 configuration
+    """Set or read the T4 configuration.
 
     To retrieve the current config, call directly, without arguments:
-        >>> import t4 as he
-        >>> he.config()
+
+        > import t4 as he
+        > he.config()
 
     To trigger autoconfiguration, call with just the navigator URL:
-        >>> he.config('https://example.com')
+
+        > he.config('https://example.com')
 
     To set config values, call with one or more key=value pairs:
-        >>> he.config(navigator_url='http://example.com',
-        ...           elastic_search_url='http://example.com/queries')
-    When setting config values, unrecognized values are rejected.  Acceptable
-    config values can be found in `t4.util.CONFIG_TEMPLATE`
 
-    :param autoconfig_url: URL indicating a location to configure from
-    :param **config_values: `key=value` pairs to set in the config
-    :returns: HeliumConfig object (an ordered Mapping)
+        > he.config(navigator_url='http://example.com',
+                    elastic_search_url='http://example.com/queries')
+
+    When setting config values, unrecognized values are rejected.  Acceptable
+    config values can be found in `t4.util.CONFIG_TEMPLATE`.
+
+    Args:
+        autoconfig_url: A (single) URL indicating a location to configure from
+        **config_values: `key=value` pairs to set in the config
+
+    Returns:
+        HeliumConfig: (an ordered Mapping)
     """
     if autoconfig_url and config_values:
         raise QuiltException("Expected either an auto-config URL or key=value pairs, but got both.")

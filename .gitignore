@@ -36,3 +36,6 @@ compiler/.pytest_cache/*
 registry/dpmd
 
 **/.ipynb_checkpoints
+
+# Doc Build
+_build

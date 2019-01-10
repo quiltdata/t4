@@ -73,7 +73,7 @@ class PackageEntry(object):
         Creates an entry.
 
         Args:
-            physical_keys is a nonempty list of URIs (either s3:// or file://)
+            physical_keys: a nonempty list of URIs (either `s3://` or `file://`)
             size(number): size of object in bytes
             hash({'type': string, 'value': string}): hash object
                 for example: {'type': 'SHA256', 'value': 'bb08a...'}
@@ -420,12 +420,8 @@ class Package(object):
 
     def fetch(self, dest):
         """
-        Copy all descendants to dest. Descendants are written under their logical
-        names _relative_ to self. So if p[a] has two children, p[a][b] and p[a][c],
-        then p[a].fetch("mydir") will produce the following:
-            mydir/
-                b
-                c
+        Copy all descendants to `dest`. Descendants are written under their logical
+        names _relative_ to self.
 
         Args:
             dest: where to put the files (locally)
@@ -486,7 +482,7 @@ class Package(object):
             readable_file: readable file-like object to deserialize package from
 
         Returns:
-            a new Package object
+            A new Package object
 
         Raises:
             file not found
@@ -519,10 +515,10 @@ class Package(object):
 
     def set_dir(self, lkey, path):
         """
-        Adds all files from path to the package.
+        Adds all files from `path` to the package.
 
-        Recursively enumerates every file in path, and adds them to
-            the package according to their relative location to path.
+        Recursively enumerates every file in `path`, and adds them to
+            the package according to their relative location to `path`.
 
         Args:
             lkey(string): prefix to add to every logical key,
@@ -533,7 +529,7 @@ class Package(object):
             self
 
         Raises:
-            when path doesn't exist
+            When `path` doesn't exist
         """
         lkey = lkey.strip("/")
         root = self._ensure_subpackage(self._split_key(lkey)) if lkey else self
@@ -653,7 +649,7 @@ class Package(object):
             message: the commit message of the package
 
         Returns:
-            the top hash as a string
+            The top hash as a string.
         """
         self._set_commit_message(message)
 
@@ -707,7 +703,7 @@ class Package(object):
     @property
     def manifest(self):
         """
-        Returns a generator of the dicts that make up the serialied package.
+        Provides a generator of the dicts that make up the serialied package.
         """
         yield self._meta
         for dir_key, meta in self._walk_dir_meta():
@@ -717,10 +713,10 @@ class Package(object):
 
     def update(self, new_keys_dict, meta=None, prefix=None):
         """
-        Updates the package with the keys and values in new_keys_dict.
+        Updates the package with the keys and values in `new_keys_dict`.
 
         If a metadata dict is provided, it is attached to and overwrites
-        metadata for all entries in new_keys_dict.
+        metadata for all entries in `new_keys_dict`.
 
         Args:
             new_dict(dict): dict of logical keys to update.
@@ -840,15 +836,17 @@ class Package(object):
         """
         Copies objects to path, then creates a new package that points to those objects.
         Copies each object in this package to path according to logical key structure,
-        then adds to the registry a serialized version of this package
-        with physical_keys that point to the new copies.
+        then adds to the registry a serialized version of this package with
+        physical keys that point to the new copies.
+
         Args:
             name: name for package in registry
             dest: where to copy the objects in the package
             registry: registry where to create the new package
             message: the commit message for the new package
+
         Returns:
-            A new package that points to the copied objects
+            A new package that points to the copied objects.
         """
         validate_package_name(name)
         self._set_commit_message(message)
