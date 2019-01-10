@@ -117,7 +117,7 @@ you by Quilt
 
   - **BucketTitle**
 
-    Title for your bucket in the dropdown menu.
+    Human-friendly title for your bucket to be displayed in the dropdown menu.
 
   - **CertificateArn**
 
