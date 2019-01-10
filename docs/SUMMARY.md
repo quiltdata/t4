@@ -20,8 +20,8 @@
 
 ### API Reference
 * [t4](API%20Reference/api.md)
-* [t4.Package](API%20Reference/package.md)
-* [t4.Bucket](API%20Reference/bucket.md)
+* [t4.Package](API%20Reference/Package.md)
+* [t4.Bucket](API%20Reference/Bucket.md)
 
 ### References
 
