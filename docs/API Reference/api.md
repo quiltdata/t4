@@ -3,7 +3,7 @@
 T4 API
 
 ## config(\*autoconfig\_url, \*\*config\_values)  {#config}
-Set or read the T4 configuration
+Set or read the T4 configuration.
 
 To retrieve the current config, call directly, without arguments:
 
@@ -20,7 +20,7 @@ To set config values, call with one or more key=value pairs:
     ...           elastic_search_url='http://example.com/queries')
 
 When setting config values, unrecognized values are rejected.  Acceptable
-config values can be found in `t4.util.CONFIG_TEMPLATE`
+config values can be found in `t4.util.CONFIG_TEMPLATE`.
 
 __Arguments__
 
@@ -34,7 +34,7 @@ __Returns__
 
 ## copy(src, dest)  {#copy}
 
-Copies ``src`` object from T4 to ``dest``
+Copies ``src`` object from T4 to ``dest``.
 
 Either of ``src`` and ``dest`` may be S3 paths (starting with ``s3://``)
 or local file paths (starting with ``file:///``).
@@ -85,14 +85,12 @@ A list of strings containing the names of the packages
 
 
 ## put(obj, dest, meta=None)  {#put}
-Write an in-memory object to the specified T4 ``dest``
+Write an in-memory object to the specified T4 ``dest``.
 
 Note:
     Does not work with all objects -- object must be serializable.
 
 You may pass a dict to ``meta`` to store it with ``obj`` at ``dest``.
-
-See User Docs for more info on object Serialization and Metadata.
 
 __Arguments__
 

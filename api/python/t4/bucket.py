@@ -30,7 +30,7 @@ class Bucket(object):
             bucket_uri(str): URI of bucket to target. Must start with 's3://'
 
         Returns:
-            a new Bucket
+            A new Bucket
         """
         parsed = urlparse(bucket_uri)
         bucket, path, version_id = parse_s3_url(parsed)
@@ -87,7 +87,7 @@ class Bucket(object):
             key(str): key in bucket to get
 
         Returns:
-            deserialized object
+            Deserialized object.
 
         Raises:
             KeyError: if key does not exist
@@ -103,18 +103,16 @@ class Bucket(object):
         return deserialize_obj(data, target)
 
     def __call__(self, key):
-        """Deserializes object at key from bucket.
-
-        `bucket(key)`, Shorthand for `bucket.deserialize(key)`
+        """Deserializes object at key from bucket. Syntactic sugar for `bucket.deserialize(key)`.
 
         Args:
-            key: Key of object to deserialize
+            key: Key of object to deserialize.
         """
         return self.deserialize(key)
 
     def put(self, key, obj, meta=None):
         """
-        Stores obj at key in bucket, optionally with user-provided metadata.
+        Stores `obj` at key in bucket, optionally with user-provided metadata.
 
         Args:
             key(str): key in bucket to put object to
@@ -150,7 +148,7 @@ class Bucket(object):
 
     def put_dir(self, key, directory):
         """
-        Stores all files under directory under the prefix key.
+        Stores all files in the `directory` under the prefix `key`.
 
         Args:
             key(str): prefix to store files under in bucket
@@ -180,7 +178,7 @@ class Bucket(object):
         Lists all keys in the bucket.
 
         Returns:
-            list of strings
+            List of strings
         """
         return [x.get('Key') for x in list_objects(self._bucket, '')]
 
@@ -225,13 +223,7 @@ class Bucket(object):
         Returns:
             ``list``: Return value structure has not yet been permanently decided
             Currently, it's a ``tuple`` of ``list`` objects, containing the
-            following:
-            result[0]
-                directory info
-            result[1]
-                file/object info
-            result[2]
-                delete markers
+            following: (directory info, file/object info, delete markers).
         """
         if path and not path.endswith('/'):
             path += '/'
@@ -243,12 +235,12 @@ class Bucket(object):
 
     def fetch(self, key, path):
         """
-        Fetches file (or files) at key to path.
+        Fetches file (or files) at `key` to `path`.
 
-        If key ends in '/', then all files with the prefix key will match and
-        will be stored in a directory at path.
+        If `key` ends in '/', then all files with the prefix `key` will match and
+        will be stored in a directory at `path`.
 
-        Otherwise, only one file will be fetched and it will be stored at path.
+        Otherwise, only one file will be fetched and it will be stored at `path`.
 
         Args:
             key(str): key in bucket to fetch
@@ -267,7 +259,7 @@ class Bucket(object):
 
     def get_meta(self, key):
         """
-        Gets the metadata associated with a key in bucket.
+        Gets the metadata associated with a `key` in the bucket.
 
         Args:
             key(str): key in bucket to get meta for
@@ -283,7 +275,7 @@ class Bucket(object):
 
     def set_meta(self, key, meta):
         """
-        Sets user metadata on key in bucket.
+        Sets user metadata on a `key` in the bucket.
 
         Args:
             key(str): key in bucket to set meta for

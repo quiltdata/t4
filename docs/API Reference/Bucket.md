@@ -12,7 +12,7 @@ __Arguments__
 
 __Returns__
 
-a new Bucket
+A new Bucket
 
 ## Bucket.config(self, config\_url='https://t4.quiltdata.com/config.json')  {#Bucket.config}
 
@@ -55,7 +55,7 @@ __Arguments__
 
 __Returns__
 
-deserialized object
+Deserialized object.
 
 __Raises__
 
@@ -65,18 +65,16 @@ __Raises__
 
 
 ## Bucket.\_\_call\_\_(self, key)  {#Bucket.\_\_call\_\_}
-Deserializes object at key from bucket.
-
-`bucket(key)`, Shorthand for `bucket.deserialize(key)`
+Deserializes object at key from bucket. Syntactic sugar for `bucket.deserialize(key)`.
 
 __Arguments__
 
-* __key__:  Key of object to deserialize
+* __key__:  Key of object to deserialize.
 
 
 ## Bucket.put(self, key, obj, meta=None)  {#Bucket.put}
 
-Stores obj at key in bucket, optionally with user-provided metadata.
+Stores `obj` at key in bucket, optionally with user-provided metadata.
 
 __Arguments__
 
@@ -106,7 +104,7 @@ __Raises__
 
 ## Bucket.put\_dir(self, key, directory)  {#Bucket.put\_dir}
 
-Stores all files under directory under the prefix key.
+Stores all files in the `directory` under the prefix `key`.
 
 __Arguments__
 
@@ -129,7 +127,7 @@ Lists all keys in the bucket.
 
 __Returns__
 
-list of strings
+List of strings
 
 
 ## Bucket.delete(self, key)  {#Bucket.delete}
@@ -169,23 +167,17 @@ __Returns__
 
 ```list```: Return value structure has not yet been permanently decided
 Currently, it's a ``tuple`` of ``list`` objects, containing the
-following:
-result[0]
-    directory info
-result[1]
-    file/object info
-result[2]
-    delete markers
+`following`: (directory info, file/object info, delete markers).
 
 
 ## Bucket.fetch(self, key, path)  {#Bucket.fetch}
 
-Fetches file (or files) at key to path.
+Fetches file (or files) at `key` to `path`.
 
-If key ends in '/', then all files with the prefix key will match and
-will be stored in a directory at path.
+If `key` ends in '/', then all files with the prefix `key` will match and
+will be stored in a directory at `path`.
 
-Otherwise, only one file will be fetched and it will be stored at path.
+Otherwise, only one file will be fetched and it will be stored at `path`.
 
 __Arguments__
 
@@ -204,7 +196,7 @@ __Raises__
 
 ## Bucket.get\_meta(self, key)  {#Bucket.get\_meta}
 
-Gets the metadata associated with a key in bucket.
+Gets the metadata associated with a `key` in the bucket.
 
 __Arguments__
 
@@ -221,7 +213,7 @@ __Raises__
 
 ## Bucket.set\_meta(self, key, meta)  {#Bucket.set\_meta}
 
-Sets user metadata on key in bucket.
+Sets user metadata on a `key` in the bucket.
 
 __Arguments__
 

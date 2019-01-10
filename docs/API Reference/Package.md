@@ -67,12 +67,8 @@ otherwise Package
 
 ## Package.fetch(self, dest)  {#Package.fetch}
 
-Copy all descendants to dest. Descendants are written under their logical
-names _relative_ to self. So if p[a] has two children, p[a][b] and p[a][c],
-then p[a].fetch("mydir") will produce the following:
-    mydir/
-        b
-        c
+Copy all descendants to `dest`. Descendants are written under their logical
+names _relative_ to self.
 
 __Arguments__
 
@@ -104,7 +100,7 @@ __Arguments__
 
 __Returns__
 
-a new Package object
+A new Package object
 
 __Raises__
 
@@ -115,10 +111,10 @@ invalid package exception
 
 ## Package.set\_dir(self, lkey, path)  {#Package.set\_dir}
 
-Adds all files from path to the package.
+Adds all files from `path` to the package.
 
-Recursively enumerates every file in path, and adds them to
-    the package according to their relative location to path.
+Recursively enumerates every file in `path`, and adds them to
+    the package according to their relative location to `path`.
 
 __Arguments__
 
@@ -132,7 +128,7 @@ self
 
 __Raises__
 
-when path doesn't exist
+When `path` doesn't exist
 
 
 ## Package.get(self, logical\_key)  {#Package.get}
@@ -177,7 +173,7 @@ __Arguments__
 
 __Returns__
 
-the top hash as a string
+The top hash as a string.
 
 
 ## Package.dump(self, writable\_file)  {#Package.dump}
@@ -200,10 +196,10 @@ fail to finish write
 
 ## Package.update(self, new\_keys\_dict, meta=None, prefix=None)  {#Package.update}
 
-Updates the package with the keys and values in new_keys_dict.
+Updates the package with the keys and values in `new_keys_dict`.
 
 If a metadata dict is provided, it is attached to and overwrites
-metadata for all entries in new_keys_dict.
+metadata for all entries in `new_keys_dict`.
 
 __Arguments__
 
@@ -262,8 +258,8 @@ A string that represents the top hash of the package
 
 Copies objects to path, then creates a new package that points to those objects.
 Copies each object in this package to path according to logical key structure,
-then adds to the registry a serialized version of this package
-with physical_keys that point to the new copies.
+then adds to the registry a serialized version of this package with
+physical keys that point to the new copies.
 
 __Arguments__
 
@@ -274,7 +270,7 @@ __Arguments__
 
 __Returns__
 
-A new package that points to the copied objects
+A new package that points to the copied objects.
 
 
 ## Package.diff(self, other\_pkg)  {#Package.diff}
