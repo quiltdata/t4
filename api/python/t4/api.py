@@ -74,7 +74,7 @@ def get(src):
     """
     clean_src = fix_url(src)
     data, meta = get_bytes(clean_src)
-    ext = pathlib.PurePosixPath(urlparse(unquote(clean_src)).path).suffix
+    ext = pathlib.PurePosixPath(unquote(urlparse(clean_src).path)).suffix
 
     return FormatRegistry.deserialize(data, meta, ext=ext), meta.get('user_meta')
 
