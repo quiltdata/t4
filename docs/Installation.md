@@ -105,7 +105,7 @@ you by Quilt
     <br/>
     <br/>
 
-    ![](./imgs/params.png)
+    ![](./imgs/params.jpg)
 
   - **BucketDescription**
 
