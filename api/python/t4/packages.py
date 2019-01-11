@@ -8,17 +8,18 @@ import os
 
 import time
 
-from urllib.parse import quote, urlparse
+from urllib.parse import quote, urlparse, unquote
 
 import jsonlines
-from six import string_types
+from six import string_types, binary_type
+
 
 from .data_transfer import (
-    calculate_sha256, copy_file, copy_file_list, deserialize_obj,
-    get_bytes, get_size_and_meta, list_object_versions, put_bytes,
-    TargetType
+    calculate_sha256, copy_file, copy_file_list, get_bytes, get_size_and_meta, 
+    list_object_versions, put_bytes
 )
 from .exceptions import PackageException
+from .formats import FormatRegistry
 from .util import (
     QuiltException, BASE_PATH, fix_url, get_local_registry, get_remote_registry,
     parse_file_url, parse_s3_url, validate_package_name, quiltignore_filter
@@ -177,10 +178,15 @@ class PackageEntry(object):
         """
         return _to_singleton(self.physical_keys)
 
-    def deserialize(self):
+    def deserialize(self, func=None, **format_opts):
         """
         Returns the object this entry corresponds to.
 
+        Args:
+            func: Skip normal deserialization process, and call func(bytes),
+                returning the result directly.
+            **format_opts: Some data formats may take options.  Though
+                normally handled by metadata, these can be overridden here.
         Returns:
             The deserialized object from the logical_key
 
@@ -189,20 +195,21 @@ class PackageEntry(object):
             hash verification fail
             when deserialization metadata is not present
         """
-        target_str = self.meta.get('target')
-        if target_str is None:
-            raise QuiltException("No serialization metadata")
-
-        try:
-            target = TargetType(target_str)
-        except ValueError:
-            raise QuiltException("Unknown serialization target: %r" % target_str)
-
         physical_key = _to_singleton(self.physical_keys)
         data, _ = get_bytes(physical_key)
+
+        if func is not None:
+            return func(data)
+
+        pkey_ext = pathlib.PurePosixPath(unquote(urlparse(physical_key).path)).suffix
+
+        # Verify format can be handled before checking hash..
+        FormatRegistry.deserialize(data, self.meta, pkey_ext, check_only=True, **format_opts)
+
+        # Verify hash before deserializing..
         self._verify_hash(data)
 
-        return deserialize_obj(data, target)
+        return FormatRegistry.deserialize(data, self.meta, pkey_ext, **format_opts)
 
     def fetch(self, dest):
         """
@@ -218,11 +225,11 @@ class PackageEntry(object):
         dest = fix_url(dest)
         copy_file(physical_key, dest, self.meta)
 
-    def __call__(self):
+    def __call__(self, func=None, **kwargs):
         """
         Shorthand for self.deserialize()
         """
-        return self.deserialize()
+        return self.deserialize(func=func, **kwargs)
 
 
 class Package(object):
@@ -578,7 +585,7 @@ class Package(object):
 
     def get(self, logical_key):
         """
-        Gets object from local_key and returns its physical path.
+        Gets object from logical_key and returns its physical path.
         Equivalent to self[logical_key].get().
 
         Args:

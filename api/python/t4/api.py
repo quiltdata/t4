@@ -5,11 +5,11 @@ import re
 from aws_requests_auth.boto_utils import BotoAWSRequestsAuth
 from elasticsearch import Elasticsearch, RequestsHttpConnection
 from six.moves import urllib
-from urllib.parse import urlparse, urlunparse
+from urllib.parse import urlparse, unquote
 
-from .data_transfer import (TargetType, copy_file, deserialize_obj, get_bytes,
-                            put_bytes, delete_object, list_objects,
-                            list_object_versions, serialize_obj)
+from .data_transfer import (copy_file, get_bytes, put_bytes, delete_object, list_objects,
+                            list_object_versions)
+from .formats import FormatRegistry
 from .packages import get_package_registry
 from .util import (HeliumConfig, QuiltException, CONFIG_PATH,
                    CONFIG_TEMPLATE, fix_url, parse_file_url, parse_s3_url, read_yaml, validate_url,
@@ -50,13 +50,13 @@ def put(obj, dest, meta=None):
         dest (str): A URI
         meta (dict): Optional. metadata dict to store with ``obj`` at ``dest``
     """
-    data, target = serialize_obj(obj)
-    all_meta = dict(
-        target=target.value,
-        user_meta=meta
-    )
+    all_meta = {'user_meta': meta}
+    clean_dest = fix_url(dest)
+    ext = pathlib.PurePosixPath(unquote(urlparse(clean_dest).path)).suffix
+    data, format_meta = FormatRegistry.serialize(obj, all_meta, ext)
+    all_meta.update(format_meta)
 
-    put_bytes(data, fix_url(dest), all_meta)
+    put_bytes(data, clean_dest, all_meta)
 
 
 def get(src):
@@ -70,17 +70,11 @@ def get(src):
     Returns:
         tuple: ``(data, metadata)``.  Does not work on all objects.
     """
-    data, meta = get_bytes(fix_url(src))
+    clean_src = fix_url(src)
+    data, meta = get_bytes(clean_src)
+    ext = pathlib.PurePosixPath(unquote(urlparse(clean_src).path)).suffix
 
-    target_str = meta.get('target')
-    if target_str is None:
-        raise QuiltException("No serialization metadata")
-
-    try:
-        target = TargetType(target_str)
-    except ValueError:
-        raise QuiltException("Unknown serialization target: %r" % target_str)
-    return deserialize_obj(data, target), meta.get('user_meta')
+    return FormatRegistry.deserialize(data, meta, ext=ext), meta.get('user_meta')
 
         
 def _tophashes_with_packages(registry=None):

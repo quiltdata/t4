@@ -8,10 +8,11 @@ import json
 import pathlib
 from urllib.parse import urlparse
 
-from .data_transfer import (TargetType, copy_file, copy_object, delete_object,
-                            deserialize_obj, get_bytes, get_size_and_meta,
-                            list_objects, put_bytes, select, serialize_obj,
-                            list_object_versions)
+import requests
+
+from .data_transfer import (copy_file, copy_object, delete_object, get_bytes,
+                            get_size_and_meta, list_objects, put_bytes, select)
+from .formats import FormatRegistry
 from .search_util import search
 from .util import QuiltException, find_bucket_config, fix_url, parse_s3_url
 
@@ -95,12 +96,7 @@ class Bucket(object):
             * if a deserializer raises an unexpected error
         """
         data, meta = get_bytes(self._uri + key)
-        target = meta.get('target', None)
-        if not target:
-            raise QuiltException("No deserialization metadata, cannot deserialize object")
-
-        target = TargetType(target)
-        return deserialize_obj(data, target)
+        return FormatRegistry.deserialize(data, meta, pathlib.PurePosixPath(key).suffix)
 
     def __call__(self, key):
         """Deserializes object at key from bucket. Syntactic sugar for `bucket.deserialize(key)`.
@@ -120,12 +116,9 @@ class Bucket(object):
             meta(dict): optional user-provided metadata to store
         """
         dest = self._uri + key
-        meta = meta or {}
-        data, target = serialize_obj(obj)
-        all_meta = dict(
-            target=target.value,
-            user_meta=meta
-        )
+        all_meta = dict(user_meta=meta or {})
+        data, format_meta = FormatRegistry.serialize(obj, all_meta)
+        all_meta.update(format_meta)
         put_bytes(data, dest, all_meta)
 
     def put_file(self, key, path):

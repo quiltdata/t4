@@ -12,7 +12,7 @@ except ImportError: import mock
 
 ### Project imports
 from t4 import data_transfer
-from t4.data_transfer import TargetType, deserialize_obj
+from t4.data_transfer import select
 
 
 ### Third-party imports
@@ -23,15 +23,8 @@ import pytest
 
 
 ### Code
-def test_buggy_parquet():
-    """
-    Test that T4 avoids crashing on bad Pandas metadata from
-    old pyarrow libaries.
-    """
-    path = pathlib.Path(__file__).parent
-    with open(path / 'data' / 'buggy_parquet.parquet', 'rb') as bad_parq:
-        # Make sure this doesn't crash.
-        deserialize_obj(bad_parq.read(), TargetType.PYARROW)
+
+# parquet test moved to test_formats.py
 
 
 def test_select():

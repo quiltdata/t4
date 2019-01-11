@@ -3,7 +3,6 @@ import os
 import pathlib
 from pathlib import Path
 import shutil
-from urllib.parse import urlparse
 
 import jsonlines
 from mock import patch, call, ANY
@@ -297,12 +296,14 @@ def test_package_deserialize(tmpdir):
         Package()
         .set('foo', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
              {'user_meta_foo': 'blah'})
-        .set('bar', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'))
+        .set('bar', os.path.join(os.path.dirname(__file__), 'data', 'foo.unrecognized.ext'))
+        .set('baz', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'))
     )
     pkg.build()
 
     pkg['foo'].meta['target'] = 'unicode'
     assert pkg['foo'].deserialize() == '123\n'
+    assert pkg['baz'].deserialize() == '123\n'
 
     with pytest.raises(QuiltException):
         pkg['bar'].deserialize()
