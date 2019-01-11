@@ -3,7 +3,7 @@ import urllib.request
 from nbconvert import HTMLExporter
 import nbformat
 import pandas as pd
-from urlib.parse import urlparse
+from urllib.parse import urlparse
 
 html_exporter = HTMLExporter()
 html_exporter.template_file = 'full'
