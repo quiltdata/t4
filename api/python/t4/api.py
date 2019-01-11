@@ -54,7 +54,7 @@ def put(obj, dest, meta=None):
     """
     all_meta = {'user_meta': meta}
     clean_dest = fix_url(dest)
-    ext = pathlib.PurePosixPath(urlparse(unquote(clean_dest)).path).suffix
+    ext = pathlib.PurePosixPath(unquote(urlparse(clean_dest).path)).suffix
     data, format_meta = FormatRegistry.serialize(obj, all_meta, ext)
     all_meta.update(format_meta)
 

@@ -201,7 +201,7 @@ class PackageEntry(object):
         if func is not None:
             return func(data)
 
-        pkey_ext = pathlib.PurePosixPath(urlparse(unquote(physical_key)).path).suffix
+        pkey_ext = pathlib.PurePosixPath(unquote(urlparse(physical_key).path)).suffix
 
         # Verify format can be handled before checking hash..
         FormatRegistry.deserialize(data, self.meta, pkey_ext, check_only=True, **format_opts)
