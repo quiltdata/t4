@@ -36,7 +36,15 @@ if platform.system() == 'Linux':
     # Linux only allows users to modify user.* xattrs.
     HELIUM_XATTR = 'user.%s' % HELIUM_XATTR
 
-s3_client = boto3.client('s3')
+#s3_client = boto3.client('s3')
+
+s3_client = boto3.client('s3',
+                         endpoint_url='http://localhost:9000',
+                         aws_access_key_id='AKIAIOSFODNN7EXAMPLE',
+                         aws_secret_access_key='wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
+                         config=Config(signature_version='s3v4'),
+                         region_name='us-east-1')
+
 try:
     # Ensure that user has AWS credentials that function.
     # quilt-example is readable by anonymous users, if the head fails
@@ -46,6 +54,14 @@ try:
 except (ClientError, NoCredentialsError):
     # Use unsigned boto if credentials can't head the default bucket
     s3_client = boto3.client('s3', config=Config(signature_version=UNSIGNED))
+
+if True: # switch to env variable
+    s3_client = boto3.client('s3',
+                            endpoint_url='http://localhost:9000',
+                            aws_access_key_id='AKIAIOSFODNN7EXAMPLE',
+                            aws_secret_access_key='wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
+                            config=Config(signature_version='s3v4'),
+                            region_name='us-east-1')
 
 s3_transfer_config = TransferConfig()
 s3_threads = 4
