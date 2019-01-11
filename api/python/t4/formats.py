@@ -179,7 +179,7 @@ class FormatRegistry:
         return ext_fmts
 
     @classmethod
-    def serialize(cls, obj, meta=None, ext=None, raw_args=None, **format_opts):
+    def serialize(cls, obj, meta=None, ext=None, **format_opts):
         """Match an object to a format, and serialize it to that format.
 
         `obj`, `meta`, and `ext` are used to `search()` for a format handler.
@@ -190,10 +190,6 @@ class FormatRegistry:
             obj: Object to serialize
             meta: Metadata (potentially) containing format info
             ext: File extension, if any
-            raw_args: Use these serialization args instead of the defaults.
-                Overrides both defaults and args generated from opts and
-                metadata.
-                raw_args are not stored in metadata if used.
             **format_opts:
                 Options specific to the format.  These are added to the
                 format-specific metadata that is returned with the bytes of
@@ -207,11 +203,10 @@ class FormatRegistry:
         """
         handlers = cls.search(type(obj), meta, ext)
         assert isinstance(handlers[0], BaseFormatHandler)
-        return handlers[0].serialize(obj, meta, ext, raw_args, **format_opts)
+        return handlers[0].serialize(obj, meta, ext, **format_opts)
 
     @classmethod
-    def deserialize(cls, bytes_obj, meta=None, ext=None, as_type=None, raw_args=None,
-                    **format_opts):
+    def deserialize(cls, bytes_obj, meta=None, ext=None, as_type=None, **format_opts):
         """Deserialize `bytes_obj` using the given info
 
         `meta`, and `ext` are used to `search()` for format handlers, and
@@ -224,8 +219,6 @@ class FormatRegistry:
             meta: Used to search for format handlers
             ext: Used to search for format handlers
             as_type: Used to filter format found handlers
-            raw_args: Use these deserialization args instead of the defaults
-                or generated deserializer args.
             check_only:
             **format_opts:
 
@@ -243,7 +236,7 @@ class FormatRegistry:
             handler = handlers[0]
         else:
             handler = cls.search(meta=meta, ext=ext)[0]
-        return handler.deserialize(bytes_obj, meta, ext, raw_args, **format_opts)
+        return handler.deserialize(bytes_obj, meta, ext, **format_opts)
 
     @classmethod
     def for_format(cls, name):
@@ -408,15 +401,12 @@ class BaseFormatHandler(ABC):
         return meta
 
     @abstractmethod
-    def serialize(self, obj, meta=None, ext=None, raw_args=None, **format_opts):
+    def serialize(self, obj, meta=None, ext=None, **format_opts):
         """Serialize an object using this format
 
         Args:
             obj: object to serialize
             meta: metadata to update
-            raw_args: passed directly to serializer, and not retained in
-                metadata.  Be cautious when using this, as the args are not
-                retained.
             **format_opts: Format options retained in metadata.  These are
                 needed for some poorly-specified formats, like CSV.  If
                 used in serialization, they are retained and used for
@@ -429,7 +419,7 @@ class BaseFormatHandler(ABC):
         pass
 
     @abstractmethod
-    def deserialize(self, bytes_obj, meta=None, ext=None, raw_args=None, **format_opts):
+    def deserialize(self, bytes_obj, meta=None, ext=None, **format_opts):
         """Deserialize some bytes using this format
 
         Converts bytes into an object.
@@ -439,8 +429,6 @@ class BaseFormatHandler(ABC):
         Args:
             bytes_obj: bytes to deserialize
             meta: object metadata, may contain deserialization prefs
-            raw_args: passed directly to deserializer, and not retained in
-                metadata.
             **format_opts: Format options retained in metadata.  These are
                 needed for some poorly-specified formats, like CSV.  If
                 used in serialization, they are retained and used for
@@ -503,7 +491,7 @@ class GenericFormatHandler(BaseFormatHandler):
         assert callable(serializer) and callable(deserializer)
         self._serializer, self._deserializer = serializer, deserializer
 
-    def serialize(self, obj, meta=None, ext=None, raw_args=None, **format_opts):
+    def serialize(self, obj, meta=None, ext=None, **format_opts):
         """Pass `obj` to serializer and update `meta`, returning the result
 
         `meta` is only updated if serialization succeeds without error.
@@ -512,21 +500,17 @@ class GenericFormatHandler(BaseFormatHandler):
             obj(object): object to serialize
             meta(dict): dict of associated metadata to update
             ext: File extension -- used f.e. when metadata is missing
-            raw_args: passed directly to serializer, and not retained in
-                metadata.  Be cautious when using this, as the args are not
-                retained.
             **format_opts: Format options retained in metadata.  These are
                 needed for some poorly-specified formats, like CSV.  If
                 used in serialization, they are retained and used for
                 deserialization.
         Returns:
-            `obj` encoded as `bytes`
-            :param raw_args:
+            bytes: encoded version of `obj`
         """
-        data = self._serializer(obj, **(raw_args if raw_args else {}))
+        data = self._serializer(obj)
         return data, self._update_meta(meta)
 
-    def deserialize(self, bytes_obj, meta=None, ext=None, raw_args=None, **format_opts):
+    def deserialize(self, bytes_obj, meta=None, ext=None, **format_opts):
         """Pass `bytes_obj` to deserializer and return the result
 
         Args:
@@ -534,7 +518,7 @@ class GenericFormatHandler(BaseFormatHandler):
             meta(dict): ignored for GenericFormat formats
             **kwargs: passed directly to deserializer
         """
-        return self._deserializer(bytes_obj, **(raw_args if raw_args else {}))
+        return self._deserializer(bytes_obj)
 
 
 GenericFormatHandler(
@@ -735,7 +719,7 @@ class CSVPandasFormatHandler(BaseFormatHandler):
         return result_kwargs
 
 
-    def serialize(self, obj, meta=None, ext=None, raw_args=None, **format_opts):
+    def serialize(self, obj, meta=None, ext=None, **format_opts):
         opts = self.get_opts(meta, format_opts)
 
         default_opts = copy.deepcopy(self.defaults)
@@ -768,7 +752,7 @@ class CSVPandasFormatHandler(BaseFormatHandler):
 
         # pandas bug workaround -- see _WriteEncodingWrapper definition
         encoded_buf = self._WriteEncodingWrapper(buf, encoding=kwargs['encoding'])
-        obj.to_csv(encoded_buf, **(raw_args if raw_args is not None else kwargs))
+        obj.to_csv(encoded_buf, **kwargs)
 
         return buf.getvalue(), self._update_meta(meta, additions={'opts': opts_with_defaults})
 
@@ -818,7 +802,7 @@ class CSVPandasFormatHandler(BaseFormatHandler):
 
         return result_kwargs
 
-    def deserialize(self, bytes_obj, meta=None, ext=None, raw_args=None, **format_opts):
+    def deserialize(self, bytes_obj, meta=None, ext=None, **format_opts):
         import pandas as pd     # large import / lazy
 
         opts = self.get_opts(meta, format_opts)
@@ -834,7 +818,7 @@ class CSVPandasFormatHandler(BaseFormatHandler):
         opts_with_defaults.update(opts)
 
         kwargs = self.get_des_kwargs(opts_with_defaults)
-        df = pd.read_csv(io.BytesIO(bytes_obj), **(raw_args if raw_args else kwargs))
+        df = pd.read_csv(io.BytesIO(bytes_obj), **kwargs)
 
         index_names = opts_with_defaults.get('index_names')
         index_names_are_keys = opts_with_defaults.get('index_names_are_keys')
@@ -883,28 +867,24 @@ class NumpyFormatHandler(BaseFormatHandler):
         self.handled_types.add(np.ndarray)
         return super().handles_type(typ)
 
-    def serialize(self, obj, meta=None, ext=None, raw_args=None, **format_opts):
+    def serialize(self, obj, meta=None, ext=None, **format_opts):
         import numpy as np
         buf = io.BytesIO()
 
-        # security -- require an explicit raw_args override to permit pickle usage.
+        # security
         kwargs = dict(allow_pickle=False)
-        if raw_args is not None and 'allow_pickle' not in raw_args:
-            raw_args['allow_pickle'] = False
 
-        np.save(buf, obj, **(kwargs if raw_args is None else raw_args))
+        np.save(buf, obj, **kwargs)
         return buf.getvalue(), self._update_meta(meta)
 
-    def deserialize(self, bytes_obj, meta=None, ext=None, raw_args=None, **format_opts):
+    def deserialize(self, bytes_obj, meta=None, ext=None, **format_opts):
         import numpy as np
 
-        # security -- require an explicit raw_args override to permit pickle usage.
+        # security
         kwargs = dict(allow_pickle=False)
-        if raw_args is not None and 'allow_pickle' not in raw_args:
-            raw_args['allow_pickle'] = False
 
         buf = io.BytesIO(bytes_obj)
-        return np.load(buf, **(kwargs if raw_args is None else raw_args))
+        return np.load(buf, **kwargs)
 
 
 NumpyFormatHandler().register()
@@ -945,7 +925,7 @@ class ParquetFormatHandler(BaseFormatHandler):
         self.handled_types.add(pd.DataFrame)
         return super().handles_type(typ)
 
-    def serialize(self, obj, meta=None, ext=None, raw_args=None, **format_opts):
+    def serialize(self, obj, meta=None, ext=None, **format_opts):
         import pyarrow as pa
         from pyarrow import parquet
 
@@ -967,12 +947,12 @@ class ParquetFormatHandler(BaseFormatHandler):
                     kwargs['compression'] = value
 
         buf = io.BytesIO()
-        parquet.write_table(table, buf, **(raw_args if raw_args is not None else kwargs))
+        parquet.write_table(table, buf, **kwargs)
 
         return buf.getvalue(), self._update_meta(meta, additions=opts_with_defaults)
 
 
-    def deserialize(self, bytes_obj, meta=None, ext=None, raw_args=None, **format_opts):
+    def deserialize(self, bytes_obj, meta=None, ext=None, **format_opts):
         import pyarrow as pa
         from pyarrow import parquet
 
