@@ -105,9 +105,27 @@ you by Quilt
     <br/>
     <br/>
 
-    ![](./imgs/params.png)
+    ![](./imgs/params.jpg)
 
-> Carefully note parameter descriptions to avoid stack failure
+  - **BucketDescription** - This is a short explanation of your bucket that will be displayed alongside its icon and title in the dropdown menu at the top-left of the navigator.
+
+  - **BucketIcon** - This is a URL that points to a square icon that will display as part of your bucket's entry in the dropdown manu.
+
+  - **BucketTitle** - Human-friendly title for your bucket to be displayed in the dropdown menu.
+
+  - **CertificateArn** - This is the arn for your AWS-managed SSL certificate for your QuiltWebHost domain. Use AWS Certificate Manager to set this up.
+
+  - **ConfigBucketName** - An unused bucket name for the template to create and populate with your navigator's configuration.
+
+  - **QuiltBucketName** - The name of an existing S3 bucket you want to use with T4. It will store your T4 data.
+
+  - **QuiltWebHost** - The URL you want to use to access your navigator on the Internet. You must have a valid SSL certificate for this domain in `CertificateArn` if you want to use https.
+
+  - **Users** - A non-empty comma-separated list of IAM User ARNs that will grant permission to those users to search. A good first entry in this list is your own ARN, which you can find in IAM.
+
+  - Notes - Updating BucketIcon, BucketDescription, or BucketTitle will not update your navigator configuration -- these parameters are only checked when a stack is being created at this time. You'll need to update your federation.json in your config bucket to update these values.
+
+
 1. Click Next
 1. You can safely skip the Options screen (below) by clicking Next
     <br/>
