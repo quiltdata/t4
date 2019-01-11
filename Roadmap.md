@@ -23,3 +23,9 @@ High-level overview of key features.
 * [ ] Phase 4 - Hive metastore integration
 	* [ ] Discovery mechanism for hive columns/annotations (use ElasticSearch)
 	* [ ] Ability to include Hive tables in packages
+	
+* [ ] Phase 5 - Cloud agnostic
+	* [ ] Transition all containers under K8s
+	* [ ] Transition Lambda functions
+	* [ ] Transition ElasticSearch
+
