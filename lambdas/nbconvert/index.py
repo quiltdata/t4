@@ -1,13 +1,12 @@
-from enum import Enum
 import json
 import os
-import urllib.request
+from tempfile import NamedTemporaryFile
 
 from jsonschema import Draft4Validator, ValidationError
 from nbconvert import HTMLExporter
 import nbformat
 import pandas as pd
-from urllib.parse import urlparse, unquote
+import requests
 
 WEB_ORIGIN = os.environ['WEB_ORIGIN']
 
@@ -18,17 +17,11 @@ SCHEMA = {
         'url': {
             'type': 'string'
         },
-        'output': {
-            'enum': ['html', 'json']
-        },
         'input': {
             'enum': ['ipynb', 'parquet']
-        },
-        'nbconvert_template': {
-            'enum': ['full', 'basic']
         }
     },
-    'required': ['url'],
+    'required': ['url', 'input'],
     'additionalProperties': False
 }
 
@@ -51,44 +44,35 @@ def lambda_handler(event, context):
     url = params['url']
     input_type = params.get('input')
 
-    # TODO(dima): Make it required.
-    if input_type is None:
-        parsed_url = urlparse(url)
-        path = unquote(parsed_url.path)
-        if path.endswith('.parquet'):
-            input_type = 'parquet'
-        else:
-            input_type = 'ipynb'
+    resp = requests.get(url)
+    if resp.ok:
+        with NamedTemporaryFile() as fd:
+            for chunk in resp.iter_content(chunk_size=1024):
+                fd.write(chunk)
+            fd.seek(0)
 
+            if input_type == 'ipynb':
+                html_exporter = HTMLExporter()
+                html_exporter.template_file = 'basic'
 
-    if input_type == 'ipynb':
-        html_exporter = HTMLExporter()
-        html_exporter.template_file = params.get('nbconvert_template', 'full')
+                notebook = nbformat.read(fd, 4)
+                html, _ = html_exporter.from_notebook_node(notebook)
+            elif input_type == 'parquet':
+                df = pd.read_parquet(fd.name)
+                html = df._repr_html_()
+            else:
+                assert False
 
-        response = urllib.request.urlopen(url).read().decode()
-        notebook = nbformat.reads(response, 4)
-        result, _ = html_exporter.from_notebook_node(notebook)
-    elif input_type == 'parquet':
-        df = pd.read_parquet(url)
-        result = df._repr_html_()
+        ret_val = {
+            'html': html
+        }
     else:
-        assert False
-
-    output = params.get('output', 'html')
-
-    if output == 'json':
-        body = json.dumps({
-            'body': result
-        })
-        content_type = 'application/json'
-    elif output == 'html':
-        body = result
-        content_type = 'text/html'
-    else:
-        assert False
+        ret_val = {
+            'error': resp.reason
+        }
 
     response_headers = {
-        "Content-Type": content_type
+        "Content-Type": 'application/json'
     }
     if headers.get('origin') == WEB_ORIGIN:
         response_headers.update({
@@ -100,6 +84,6 @@ def lambda_handler(event, context):
 
     return {
         "statusCode": 200,
-        "body": body,
+        "body": json.dumps(ret_val),
         "headers": response_headers
     }
