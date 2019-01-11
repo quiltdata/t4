@@ -9,7 +9,7 @@ High-level overview of key features.
 	* [ ] Full version browsing + rollback support in the catalog
 	* [ ] Standardize location for local/remote installs
 * [ ] Phase 2 - Minio (or Ceph), everything is a bucket
-	* [ ] S3-like interface for packakges, buckets, local stores
+	* [ ] S3-like interface for packages, buckets, local stores
 	* [ ] Examples of using packages in Spark, R, Java
 	* [ ] Seamless de/serialization hooks, user-provided de/serializers
 	* [ ] Improve "git for data"-layer of API
