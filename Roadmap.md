@@ -8,7 +8,7 @@ High-level overview of key features.
 	* [ ] T4 for AWS marketplace
 	* [ ] Full version browsing + rollback support in the catalog
 	* [ ] Standardize location for local/remote installs
-* [ ] Phase 2 - Minio (or Ceph), everything is a bucket
+* [ ] Phase 2 - Cloud agnostic storage (via minio or ceph)
 	* [ ] S3-like interface for packages, buckets, local stores
 	* [ ] Examples of using packages in Spark, R, Java
 	* [ ] Seamless de/serialization hooks, user-provided de/serializers
@@ -24,7 +24,7 @@ High-level overview of key features.
 	* [ ] Discovery mechanism for hive columns/annotations (use ElasticSearch)
 	* [ ] Ability to include Hive tables in packages
 	
-* [ ] Phase 5 - Cloud agnostic
+* [ ] Phase 5 - Cloud agnostic compute, via K8s
 	* [ ] Transition all containers under K8s
 	* [ ] Transition Lambda functions
 	* [ ] Transition ElasticSearch
