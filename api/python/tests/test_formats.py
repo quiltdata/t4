@@ -6,9 +6,12 @@ import pathlib
 ### Third Party imports
 import numpy as np
 import pandas as pd
+import pytest
 
 ### Project imports
 from t4.formats import FormatRegistry
+from t4.util import QuiltException
+
 
 ### Constants
 
@@ -20,7 +23,7 @@ def test_buggy_parquet():
     old pyarrow libaries.
     """
     path = pathlib.Path(__file__).parent
-    for parquet_handler in FormatRegistry.for_format('parquet', single=False):
+    for parquet_handler in FormatRegistry.for_format('parquet'):
         with open(path / 'data' / 'buggy_parquet.parquet', 'rb') as bad_parq:
             # Make sure this doesn't crash.
             parquet_handler.deserialize(bad_parq.read())
@@ -28,13 +31,13 @@ def test_buggy_parquet():
 def test_formats_for_obj():
     arr = np.ndarray(3)
 
-    fmt = FormatRegistry.for_obj(arr)
+    fmt = FormatRegistry.for_obj(arr)[0]
 
     assert 'npz' in fmt.handled_extensions
-    assert FormatRegistry.for_ext('npy') is fmt
+    assert FormatRegistry.for_ext('npy')[0] is fmt
 
     expected_string_fmt_names = ['utf-8', 'unicode', 'json']
-    found_string_fmt_names = list(f.name for f in FormatRegistry.for_obj('blah', single=False))
+    found_string_fmt_names = list(f.name for f in FormatRegistry.for_obj('blah'))
     assert found_string_fmt_names == expected_string_fmt_names
 
     bytes_obj = fmt.serialize(arr)[0]
@@ -42,14 +45,14 @@ def test_formats_for_obj():
 
 
 def test_formats_for_ext():
-    fmt = FormatRegistry.for_ext('json')
+    fmt = FormatRegistry.for_ext('json')[0]
     assert fmt.serialize({'blah': 'blah'})[0] == b'{"blah": "blah"}'
     assert fmt.deserialize(b'{"meow": "mix"}', ) == {'meow': 'mix'}
 
 
 def test_formats_for_meta():
-    bytes_fmt = FormatRegistry.for_meta({'target': 'bytes'})
-    json_fmt = FormatRegistry.for_meta({'target': 'json'})
+    bytes_fmt = FormatRegistry.for_meta({'target': 'bytes'})[0]
+    json_fmt = FormatRegistry.for_meta({'target': 'json'})[0]
 
     some_bytes = b'["phlipper", "piglet"]'
     assert bytes_fmt.serialize(some_bytes)[0] == some_bytes
@@ -57,8 +60,8 @@ def test_formats_for_meta():
 
 
 def test_formats_for_format():
-    bytes_fmt = FormatRegistry.for_format('bytes')
-    json_fmt = FormatRegistry.for_format('json')
+    bytes_fmt = FormatRegistry.for_format('bytes')[0]
+    json_fmt = FormatRegistry.for_format('json')[0]
 
     some_bytes = b'["phlipper", "piglet"]'
     assert bytes_fmt.serialize(some_bytes)[0] == some_bytes
@@ -145,3 +148,19 @@ def test_formats_csv_roundtrip():
 
     assert test_data == bin
     assert df1.equals(df2)
+
+
+def test_formats_search_fail_notfound():
+    # a search that finds nothing should raise with an explanation.
+    class Foo:
+        pass
+
+    bad_kwargs = [
+        dict(obj_type=Foo, meta=None, ext=None),
+        dict(obj_type=None, meta={}, ext=None),
+        dict(obj_type=None, meta=None, ext='.fizz'),
+    ]
+
+    for args in bad_kwargs:
+        with pytest.raises(QuiltException):
+            FormatRegistry.search(**args)

@@ -117,14 +117,12 @@ class FormatRegistry:
         handlers.insert(0, handler)
 
     @classmethod
-    def search(cls, obj_type=None, meta=None, ext=None, single=True, handlers=None):
+    def search(cls, obj_type=None, meta=None, ext=None):
         """Get a handler or handlers meeting the specified requirements
 
         Preference:
-            Args are checked, in order, for matches.  If `single` is False,
-            then all matching formats are returned, most-recently added
-            handlers first in the list.  If `single` is True, the most recent
-            matching handler is returned.
+            Args are checked, in order, for matches.  All matching formats
+            are returned, most-recently added handlers first in the list.
 
         Args:
             obj_type: type of object to convert from/to
@@ -136,18 +134,13 @@ class FormatRegistry:
             ext: The filename extension for the data
                 If given, then if other methods fail or are not specified,
                 the handler(s) for the extension `ext` will be returned.
-            single(True): Return only the most-preferred result if True.
-                Otherwise, return a list of results, most-recently-added
-                first.
-            handlers: restrict results to these handlers.
 
         Returns:
-            if not single (default): A list of formats in order of preference
-            if single: The first format by order of preference
+            list: Formats in order of preference (latest-added first)
         """
         # we want to retain order.
-        meta_fmts = cls.for_meta(meta, single=False)
-        typ_fmts = cls.for_type(obj_type, single=False)
+        meta_fmts = cls.for_meta(meta)
+        typ_fmts = cls.for_type(obj_type)
         fmt_name = cls._get_name_from_meta(meta)
 
         # Most critical param is obj_type -- hard fail if given, but not matched.
@@ -158,13 +151,13 @@ class FormatRegistry:
                 # a format was specified by metadata
                 typ_meta_fmts = [fmt for fmt in typ_fmts if fmt in meta_fmts]
                 if typ_meta_fmts:
-                    return typ_meta_fmts[0] if single else typ_meta_fmts
+                    return typ_meta_fmts
                 raise QuiltException(
                     "Metadata requires the {!r} format for type {!r}, but no registered handler can do that"
                     .format(fmt_name, obj_type)
                 )
             # matched by type alone
-            return typ_fmts[0] if single else typ_fmts
+            return typ_fmts
 
         # Look up by metadata
         if fmt_name:
@@ -174,16 +167,16 @@ class FormatRegistry:
                     "Metadata requires the {!r} format, but no handler is registered for it"
                     .format(fmt_name)
                 )
-            return meta_fmts[0] if single else meta_fmts
+            return meta_fmts
 
         # Fall back to using extension
         # Extension is a second-class citizen here to prevent a file's extension from
         # interfering with match in a situation where the format or object type has been
         # explicitly specified.
-        ext_fmts = cls.for_ext(ext, single=False)
+        ext_fmts = cls.for_ext(ext)
         if not ext_fmts:
             raise QuiltException("No serialization metadata, and guessing by extension failed.")
-        return ext_fmts[0] if single else ext_fmts
+        return ext_fmts
 
     @classmethod
     def serialize(cls, obj, meta=None, ext=None, raw_args=None, **format_opts):
@@ -212,9 +205,9 @@ class FormatRegistry:
             bytes: serialized object
             dict: format-specific metadata to be added to object metadata
         """
-        handler = cls.search(type(obj), meta, ext, single=True)
-        assert isinstance(handler, BaseFormatHandler)
-        return handler.serialize(obj, meta, ext, raw_args, **format_opts)
+        handlers = cls.search(type(obj), meta, ext)
+        assert isinstance(handlers[0], BaseFormatHandler)
+        return handlers[0].serialize(obj, meta, ext, raw_args, **format_opts)
 
     @classmethod
     def deserialize(cls, bytes_obj, meta=None, ext=None, as_type=None, raw_args=None,
@@ -249,61 +242,51 @@ class FormatRegistry:
                 )
             handler = handlers[0]
         else:
-            handler = cls.search(meta=meta, ext=ext, single=True)
+            handler = cls.search(meta=meta, ext=ext)[0]
         return handler.deserialize(bytes_obj, meta, ext, raw_args, **format_opts)
 
     @classmethod
-    def for_format(cls, name, single=True):
+    def for_format(cls, name):
         """Match a format handler by exact name."""
         if not name:
-            return None if single else []
+            return []
         matching_handlers = []
         for handler in cls.registered_handlers:
             if handler.name == name:
-                if single:
-                    return handler
                 matching_handlers.append(handler)
-        if single:
-            return None
         return matching_handlers
 
     @classmethod
-    def for_ext(cls, ext, single=True):
+    def for_ext(cls, ext):
         """Match a format handler (or handlers) by extension."""
         if not ext:
-            return None if single else []
+            return []
+
         ext = ext.lower().strip('. ')
         matching_handlers = []
+
         for handler in cls.registered_handlers:
             if handler.handles_ext(ext):
-                if single:
-                    return handler
                 matching_handlers.append(handler)
-        if single:
-            return None
         return matching_handlers
 
     @classmethod
-    def for_type(cls, typ, single=True):
+    def for_type(cls, typ):
         """Match a format handler (or handlers) for a serializable type"""
         if typ is None:
-            return None if single else []
+            return []
 
         matching_handlers = []
 
         for handler in cls.registered_handlers:
             if handler.handles_type(typ):
-                if single:
-                    return handler
                 matching_handlers.append(handler)
-        if single:
-            return None
         return matching_handlers
 
     @classmethod
-    def for_obj(cls, obj, single=True):
+    def for_obj(cls, obj):
         """Match a format handler (or handlers) for a serializable object"""
-        return cls.for_type(type(obj), single=single)
+        return cls.for_type(type(obj))
 
     @classmethod
     def _get_name_from_meta(cls, meta):
@@ -316,9 +299,9 @@ class FormatRegistry:
         return name
 
     @classmethod
-    def for_meta(cls, meta, single=True):
+    def for_meta(cls, meta):
         name = cls._get_name_from_meta(meta)
-        return cls.for_format(name, single=single)
+        return cls.for_format(name)
 
 
 class BaseFormatHandler(ABC):
