@@ -881,7 +881,7 @@ def test_filter():
 
     p_copy = pkg.filter(lambda lk, entry: lk == 'a/' or lk == 'a/df',
                         include_directories=True)
-    assert list(p_copy) == []
+    assert list(p_copy) == ['a'] and list(p_copy['a']) == ['df']
 
 
 def test_reduce():
