@@ -58,12 +58,13 @@ export default RT.composeComponent('AWSAuth.Provider',
   }),
   ({ children, storage }) => (
     <Config.Inject>
-      {Wait.wait(({ defaultBucket }) => (
+      {Wait.wait(({ defaultBucket, guestCredentials }) => (
         <Handlers storage={storage}>
           {(handlers) => {
             const init =
               fromJS(storage.load())
                 .filter(Boolean)
+                .set('guestCredentials', guestCredentials)
                 .update((s) =>
                   s.set('state', s.get('credentials') ? 'SIGNED_IN' : 'SIGNED_OUT'));
 

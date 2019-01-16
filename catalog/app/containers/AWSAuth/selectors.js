@@ -14,7 +14,7 @@ export const waiting = createSelector(state, (s) => waitingStates.includes(s));
 
 export const error = createSelector(getIn([REDUX_KEY, 'error']), id);
 
-export const credentials = createSelector(getIn([REDUX_KEY, 'credentials']), toJS());
+export const credentials = createSelector(domain,
+  (s) => s.credentials || s.guestCredentials);
 
-export const authenticated = createSelector(credentials, state,
-  (c, s) => !!c && s === 'SIGNED_IN');
+export const authenticated = createSelector(state, (s) => s === 'SIGNED_IN');
