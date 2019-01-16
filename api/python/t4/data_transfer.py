@@ -754,3 +754,12 @@ def select(url, query, meta=None, alt_s3_client=None, raw=False, **kwargs):
         # raw response.
     # !! if this response type is modified, update related docstrings on Bucket.select().
     return response
+
+def update_data_transfer_credentials(creds):
+    global s3_client
+    s3_client = boto3.client(
+            's3',
+            aws_access_key_id=creds['AccessKeyId'],
+            aws_secret_access_key=creds['SecretKey'],
+            aws_session_token=creds['SessionToken']
+            )

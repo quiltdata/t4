@@ -8,7 +8,7 @@ from six.moves import urllib
 from urllib.parse import urlparse, unquote
 
 from .data_transfer import (copy_file, get_bytes, put_bytes, delete_object, list_objects,
-                            list_object_versions)
+                            list_object_versions, update_data_transfer_credentials)
 from .formats import FormatRegistry
 from .packages import get_package_registry
 from .util import (HeliumConfig, QuiltException, CONFIG_PATH,
@@ -449,3 +449,6 @@ def config(*autoconfig_url, **config_values):
         write_yaml(local_config, CONFIG_PATH, keep_backup=True)
 
     return HeliumConfig(CONFIG_PATH, local_config)
+
+def update_credentials(creds):
+    update_data_transfer_credentials(creds)
