@@ -15,6 +15,7 @@ import {
 const Ctx = React.createContext();
 
 export const mkSearch = R.pipe(
+  R.reject(R.isNil),
   stringify,
   R.unless(R.isEmpty, R.concat('?')),
 );
