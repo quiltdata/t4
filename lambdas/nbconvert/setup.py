@@ -5,10 +5,10 @@ setup(
     version='0.0.1',
     py_modules=['index'],
     install_requires=[
+        'jsonschema==2.6.0',
         'nbconvert==5.3.1',
         'pandas==0.23.4',
         'pyarrow==0.11.1',
-        's3fs==0.2.0',
-        'urllib3==1.24.1',
+        'requests==2.19.1',
     ],
 )
