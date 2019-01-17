@@ -9,6 +9,6 @@ setup(
         'nbconvert==5.3.1',
         'pandas==0.23.4',
         'pyarrow==0.11.1',
-        'requests==2.19.1',
+        'requests==2.20.0',
     ],
 )
