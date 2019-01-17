@@ -26,7 +26,7 @@ echo "Building $zip_file..."
 primary_region=us-east-1
 regions=$(aws ec2 describe-regions --query "Regions[].{Name:RegionName}" --output text)
 
-lambda_name=$(basename "$(readlink -f .)")
+lambda_name=$(basename "$(pwd)")
 s3_key="$lambda_name/$short_hash.zip"
 
 echo "Uploading to $primary_region..."
