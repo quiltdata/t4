@@ -41,7 +41,7 @@ export const ensureSlash = (str) => `${ensureNoSlash(str)}/`;
  */
 export const up = (prefix) => {
   const d = dirname(prefix);
-  return d === '.' ? '' : ensureSlash(d);
+  return d === '.' || d === '/' ? '' : ensureSlash(d);
 };
 
 /**
