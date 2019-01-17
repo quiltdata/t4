@@ -23,6 +23,8 @@ import * as Wait from 'utils/Wait';
 import * as RT from 'utils/reactTools';
 
 
+const LINK_INSTALLATION = 'https://github.com/quiltdata/t4/blob/master/docs/Installation.md#aws-t4-instance-via-cloudformation';
+
 const withInvertedTheme =
   RT.wrap(MuiThemeProvider, () => ({ theme: style.themeInverted }));
 
@@ -154,6 +156,7 @@ const Styles = RT.composeComponent('NavBar.BucketSelect.Styles',
     },
     help: {
       paddingLeft: 2 * unit,
+      paddingRight: 2 * unit,
       paddingTop: unit,
     },
   })),
@@ -219,7 +222,7 @@ export default RT.composeComponent('NavBar.BucketSelect',
                             </MenuItem>
                           ))}
                           <li className={classes.help}>
-                            <a href="https://github.com/quiltdata/t4/tree/master/deployment#installation">
+                            <a href={LINK_INSTALLATION}>
                               Learn how to create your own registry
                             </a>
                           </li>
