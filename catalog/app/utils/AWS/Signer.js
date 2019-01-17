@@ -69,31 +69,38 @@ export const Provider = composeComponent('AWS.Signer.Provider',
         signer.addAuthorization(credentials, new Date());
       },
       signResource: ({ ctx, ptr }) => {
-        const sign = (bucket, key) =>
+        const sign = ({ bucket, key, version }) =>
           s3.getSignedUrl('getObject', {
             Bucket: bucket,
             Key: key,
+            VersionId: version,
             Expires: urlExpiration,
           });
 
         return Resource.Pointer.case({
           Web: (url) => url,
-          S3: (handle) =>
-            sign(handle.bucket || ctx.handle.bucket, handle.key),
-          S3Rel: (path) =>
-            sign(ctx.handle.bucket, resolveKey(ctx.handle.key, path)),
+          S3: ({ bucket, key, version }) =>
+            sign({ bucket: bucket || ctx.handle.bucket, key, version }),
+          S3Rel: (path) => sign({
+            bucket: ctx.handle.bucket,
+            key: resolveKey(ctx.handle.key, path),
+          }),
           Path: (path) =>
             Resource.ContextType.case({
               MDLink: () => path,
-              _: () => sign(ctx.handle.bucket, resolveKey(ctx.handle.key, path)),
+              _: () => sign({
+                bucket: ctx.handle.bucket,
+                key: resolveKey(ctx.handle.key, path),
+              }),
             }, ctx.type),
         }, ptr);
       },
-      getSignedS3URL: ({ bucket, key }) =>
+      getSignedS3URL: ({ bucket, key, version }) =>
         s3.getSignedUrl('getObject', {
           Bucket: bucket,
           Key: key,
           Expires: urlExpiration,
+          VersionId: version,
         }),
     },
   })),
