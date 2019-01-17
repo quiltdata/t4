@@ -21,6 +21,7 @@ import {
   getBreadCrumbs,
   isDir,
 } from 'utils/s3paths';
+import withParsedQuery from 'utils/withParsedQuery';
 
 import BreadCrumbs, { Crumb } from './BreadCrumbs';
 import CodeButton from './CodeButton';
@@ -71,6 +72,7 @@ const ListingData = composeComponent('Bucket.Tree.ListingData',
 export default composeComponent('Bucket.Tree',
   AWS.Signer.inject(),
   NamedRoutes.inject(),
+  withParsedQuery,
   withStyles(({ spacing: { unit } }) => ({
     topBar: {
       alignItems: 'center',
@@ -90,6 +92,7 @@ export default composeComponent('Bucket.Tree',
   })),
   ({
     match: { params: { bucket, path } },
+    location: { query: { version } },
     classes,
     signer,
     urls,
@@ -107,7 +110,7 @@ export default composeComponent('Bucket.Tree',
         {!isDir(path) && (
           <Button
             variant="outlined"
-            href={signer.getSignedS3URL({ bucket, key: path })}
+            href={signer.getSignedS3URL({ bucket, key: path, version })}
             className={classes.button}
           >
             Download file
@@ -143,7 +146,7 @@ export default composeComponent('Bucket.Tree',
         : (
           <Card>
             <CardContent>
-              <ContentWindow handle={{ bucket, key: path }} />
+              <ContentWindow handle={{ bucket, key: path, version }} />
             </CardContent>
           </Card>
         )
