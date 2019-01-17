@@ -27,10 +27,10 @@ export default RT.composeComponent('Bucket.BreadCrumbs',
     <Typography variant="h6" className={classes.root}>
       {items.map(Crumb.case({
         // eslint-disable-next-line react/prop-types
-        Segment: ({ label, to }) =>
+        Segment: ({ label, to }, i) =>
           to
-            ? <Link key={label} to={to}>{label}</Link>
-            : <span key={label}>{label}</span>,
+            ? <Link key={`${i}:${label}`} to={to}>{label}</Link>
+            : <span key={`${i}:${label}`}>{label}</span>,
         Sep: (s, i) => <span key={`__sep${i}`}>{s}</span>,
       }))}
     </Typography>
