@@ -7,7 +7,9 @@ ENV LANG=C.UTF-8
 RUN apt-get update && apt-get install -y \
     curl \
     gettext \
-    libssl-dev
+    libssl-dev \
+    build-essential \
+    libpng-dev
 RUN curl -sL https://deb.nodesource.com/setup_8.x | bash -
 RUN apt-get install -y nodejs
 
@@ -26,4 +28,4 @@ COPY . .
 COPY config.json.example static/config.json
 COPY federation.json.example static/federation.json
 RUN npm run build:dll
-RUN npm start
+CMD npm start
