@@ -1,3 +1,7 @@
+"""
+Preview file types in S3 by returning preview HTML and other metadata from
+a lambda function.
+"""
 import json
 import os
 from tempfile import NamedTemporaryFile
@@ -6,6 +10,7 @@ from jsonschema import Draft4Validator, ValidationError
 from nbconvert import HTMLExporter
 import nbformat
 import pandas as pd
+import pyarrow as pa
 import requests
 
 WEB_ORIGIN = os.environ['WEB_ORIGIN']
@@ -29,7 +34,12 @@ Draft4Validator.check_schema(SCHEMA)
 VALIDATOR = Draft4Validator(SCHEMA)
 
 
-def lambda_handler(event, context):
+def lambda_handler(event, _):
+    """
+    dynamically handle preview requests for bytes in S3
+
+    caller must specify input_type (since there may be no file extension)
+    """
     params = event['queryStringParameters'] or {}
     headers = event['headers'] or {}
 
@@ -58,13 +68,23 @@ def lambda_handler(event, context):
                 notebook = nbformat.read(fd, 4)
                 html, _ = html_exporter.from_notebook_node(notebook)
             elif input_type == 'parquet':
-                df = pd.read_parquet(fd.name)
-                html = df._repr_html_()
+                meta = pa.parquet.read_metadata(fd)
+                columns = {k.decode():json.loads(meta.metadata[k]) for k in meta.metadata}
+                fd.seek(0) # reset so pyarrow can read again
+
+                data = pd.read_parquet(fd.name)
+                desc = data.describe().to_dict()
+                html = data._repr_html_() # pylint: disable=protected-access
+                shape = data.shape
             else:
                 assert False
 
         ret_val = {
-            'html': html
+            'columns': columns,
+            'description': desc,
+            'html': html,
+            'metadata': meta,
+            'shape': shape
         }
     else:
         ret_val = {
