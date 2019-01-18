@@ -70,8 +70,8 @@ def lambda_handler(event, _):
             elif input_type == 'parquet':
                 meta = pa.parquet.read_metadata(fd)
                 columns = {k.decode():json.loads(meta.metadata[k]) for k in meta.metadata}
-                fd.seek(0) # reset so pyarrow can read again
 
+                fd.seek(0)
                 data = pd.read_parquet(fd.name)
                 desc = data.describe().to_dict()
                 html = data._repr_html_() # pylint: disable=protected-access
