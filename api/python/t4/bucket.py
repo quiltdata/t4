@@ -53,7 +53,7 @@ class Bucket(object):
             # old format
             self._search_endpoint = bucket_config['search_endpoint']
 
-    def search(self, query):
+    def search(self, query, size=None):
         """
         Execute a search against the configured search endpoint.
 
@@ -78,7 +78,7 @@ class Bucket(object):
         """
         if not self._search_endpoint:
             self.config()
-        return search(query, self._search_endpoint)
+        return search(query, self._search_endpoint, size=size)
 
     def deserialize(self, key):
         """
