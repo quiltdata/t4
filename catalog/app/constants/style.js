@@ -50,6 +50,9 @@ export const theme = createMuiTheme({
   },
   typography: {
     useNextVariants: true,
+    monospace: {
+      fontFamily: ['Roboto Mono', 'monospace'],
+    },
   },
 });
 
