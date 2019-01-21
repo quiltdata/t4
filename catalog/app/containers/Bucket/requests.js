@@ -26,6 +26,7 @@ const catchErrors = (pairs = []) => R.cond([
   [R.T, (e) => { throw e; }],
 ]);
 
+
 export const bucketListing = ({ s3, urls, bucket, path }) =>
   s3
     .listObjectsV2({
@@ -76,6 +77,7 @@ export const bucketListing = ({ s3, urls, bucket, path }) =>
       R.uniqBy(ListingItem.case({ Dir: R.prop('name'), File: R.prop('name') })),
     ))
     .catch(catchErrors());
+
 
 const mkHandle = (bucket) => (i) => ({
   bucket,
@@ -158,6 +160,7 @@ export const summarize = async ({ s3, handle }) => {
   }
 };
 
+
 const PACKAGES_PREFIX = '.quilt/named_packages/';
 const MANIFESTS_PREFIX = '.quilt/packages/';
 
@@ -185,6 +188,7 @@ export const listPackages = async ({ s3, bucket }) =>
       R.filter(({ name }) => name.includes('/')),
     ))
     .catch(catchErrors());
+
 
 const loadRevisionHash = ({ s3, bucket }) => async (key) =>
   s3
@@ -241,80 +245,73 @@ export const fetchPackageTree = ({ s3, bucket, name, revision }) =>
   loadRevision({ s3, bucket })(getRevisionKeyFromId(name, revision))
     .catch(catchErrors());
 
-// eslint-disable-next-line no-underscore-dangle
-const getKey = (h) => h._source.key;
 
-const getTimestamp = (x) => x.timestamp || new Date(0);
+const SEARCH_SIZE = 1000;
+const SEARCH_REQUEST_TIMEOUT = 120000;
+const SEARCH_FIELDS = [
+  'key',
+  'size',
+  'type',
+  'updated',
+  'user_meta',
+  'version_id',
+];
 
-const latest = (a, b) => getTimestamp(a) > getTimestamp(b) ? a : b;
+const takeR = (l, r) => r;
 
-const mergeVersions = (
-  {
-    versions = [],
-    score = 0,
-    ...rest
-  } = {},
-  {
-    _score,
-    _source: {
-      version_id: version,
-      updated,
-      key: path,
-      size,
-      text,
-      type,
-      user_meta: meta,
-      comment,
-    },
-  },
-) => {
-  const timestamp = new Date(updated);
-  return {
-    ...latest(rest, {
-      path,
-      timestamp,
-      version,
-      size,
-      text,
-      meta,
-      comment,
-    }),
-    score: Math.max(score, _score),
-    versions: R.sortBy(
-      (v) => -v.timestamp.getTime(),
-      versions.concat({
-        id: version,
-        timestamp,
-        data: { size, text, meta },
-        score: _score,
-        type,
-      }),
-    ),
-  };
-};
+const mkMerger = (cases) => (key, l, r) => (cases[key] || takeR)(l, r);
 
-const formatQuery = (query) => ({
-  query: {
-    query_string: {
-      default_field: 'content',
-      quote_analyzer: 'keyword',
-      query,
-    },
-  },
+const merger = mkMerger({
+  score: R.max,
+  versions: R.pipe(R.concat, R.sortBy((v) => -v.score)),
 });
 
-export const search = ({ es, query }) =>
-  es.search({
-    index: 'drive',
-    type: '_doc',
-    body: formatQuery(query),
-  }).then(R.pipe(
-    R.path(['hits', 'hits']),
-    R.reduce((acc, hit) => ({
-      ...acc,
-      [getKey(hit)]: mergeVersions(acc[getKey(hit)], hit),
-    }), {}),
-    R.values,
-  ));
-  // TODO: sort
-  // TODO: catch / throw errors
+const mergeHits = R.pipe(
+  R.reduce((acc, { _score: score, _source: src }) => R.mergeDeepWithKey(merger, acc, {
+    [src.key]: {
+      path: src.key,
+      score,
+      versions: [{
+        id: src.version_id,
+        score,
+        updated: new Date(src.updated),
+        size: src.size,
+        type: src.type,
+        meta: src.user_meta,
+      }],
+    },
+  }), {}),
+  R.values,
+  R.sortBy((h) => -h.score),
+);
+
+export const search = async ({ es, query }) => {
+  try {
+    const result = await es.search({
+      _source: SEARCH_FIELDS,
+      index: 'drive',
+      type: '_doc',
+      requestTimeout: SEARCH_REQUEST_TIMEOUT,
+      body: {
+        query: {
+          query_string: {
+            default_field: 'content',
+            quote_analyzer: 'keyword',
+            query,
+          },
+        },
+        size: SEARCH_SIZE,
+      },
+    });
+
+    const hits = mergeHits(result.hits.hits);
+    const total = Math.min(result.hits.total, result.hits.hits.length);
+
+    return { total, hits };
+  } catch (e) {
+    // TODO: handle errors
+    // eslint-disable-next-line no-console
+    console.log('search error', e);
+    throw e;
+  }
+};
