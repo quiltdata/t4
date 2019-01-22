@@ -35,7 +35,7 @@ def _create_es(search_endpoint, aws_region):
 
     return es_client
 
-def search(query, search_endpoint, aws_region='us-east-1'):
+def search(query, search_endpoint, size, aws_region='us-east-1'):
     """
     Searches your bucket. Query may contain plaintext and clauses of the 
         form $key:"$value" that search for exact matches on specific keys.
@@ -58,6 +58,9 @@ def search(query, search_endpoint, aws_region='us-east-1'):
         'query': query,
         'quote_analyzer': 'keyword',
         }}}
+
+    if size:
+        payload['size'] = size
 
     raw_response = es_client.search(index=ES_INDEX, body=payload)
 
