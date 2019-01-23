@@ -48,7 +48,7 @@ setup(
     author='quiltdata',
     author_email='contact@quiltdata.io',
     license='LICENSE',
-    url='https://github.com/quiltdata/quilt-new',
+    url='https://github.com/quiltdata/t4',
     keywords='',
     install_requires=[
         'appdirs>=1.4.0',
@@ -83,7 +83,7 @@ setup(
     },
     include_package_data=True,
     entry_points={
-        # 'console_scripts': ['quilt=quilt.tools.main:main'],
+        'console_scripts': ['t4=t4.main:main'],
     },
     cmdclass={
         'verify': VerifyVersionCommand,

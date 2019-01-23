@@ -53,6 +53,9 @@ default_local_registry: "{}"
 # default_remote_registry: <url string, default: null>
 # default target for operations like push and browse
 default_remote_registry:
+
+# Quilt2 registry URL
+registry_url: https://pkg.quiltdata.com
 """.format(BASE_PATH.as_uri())
 
 
