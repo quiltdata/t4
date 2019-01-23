@@ -15,7 +15,7 @@ nameOverride: ""
 fullnameOverride: ""
 
 service:
-  type: ClusterIP
+  type: NodePort
   port: 3000
 
 ingress:
@@ -38,3 +38,15 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
+# pre-install hook to setup PV for minio PVC?
+
+elasticsearch:
+    replicas: 1
+
+minio:
+    accessKey: AKIAIOSFODNN7EXAMPLE
+    secretKey: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+    defaultBucket:
+        enabled: True
+        name: config

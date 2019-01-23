@@ -1,8 +1,10 @@
 dependencies:
   - name: elasticsearch
     repository: https://helm.elastic.co
+    version: '6.4.2'
   - name: minio
-    repository: https://github.com/helm/charts/stable
+    repository: https://kubernetes-charts.storage.googleapis.com
+    version: '2.3.5'
 
 # knative installations?
 # helm install riff-incubator/istio --name istio --namespace istio-system --values http://riff-incubator.cfapps.io/values/values-istio-knative.yaml --set ingressgateway.service.type=NodePort

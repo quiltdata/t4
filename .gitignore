@@ -39,3 +39,6 @@ registry/dpmd
 
 # Doc Build
 _build
+
+# Zip files
+**.tgz

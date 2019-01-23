@@ -1,0 +1,9 @@
+dependencies:
+- name: elasticsearch
+  repository: https://helm.elastic.co
+  version: 6.4.2
+- name: minio
+  repository: https://kubernetes-charts.storage.googleapis.com
+  version: 2.3.5
+digest: sha256:af3ac95048e13e3b42fc79b4e1fc808fb771037220fed621234dc63dc5c26be6
+generated: 2019-01-23T13:49:18.248497-08:00
