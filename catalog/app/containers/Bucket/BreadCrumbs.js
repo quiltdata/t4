@@ -14,6 +14,21 @@ export const Crumb = tagged([
   'Sep', // value
 ]);
 
+export const Segment = RT.composeComponent('Bucket.BreadCrumbs.Segment',
+  RC.setPropTypes({
+    label: PT.string.isRequired,
+    to: PT.string,
+  }),
+  withStyles(() => ({
+    root: {
+      whiteSpace: 'nowrap',
+    },
+  })),
+  ({ classes, label, to }) => {
+    const Component = to ? Link : 'span';
+    return <Component to={to} className={classes.root}>{label}</Component>;
+  });
+
 export default RT.composeComponent('Bucket.BreadCrumbs',
   RC.setPropTypes({
     items: PT.array.isRequired,
@@ -27,10 +42,7 @@ export default RT.composeComponent('Bucket.BreadCrumbs',
     <Typography variant="h6" className={classes.root}>
       {items.map(Crumb.case({
         // eslint-disable-next-line react/prop-types
-        Segment: ({ label, to }, i) =>
-          to
-            ? <Link key={`${i}:${label}`} to={to}>{label}</Link>
-            : <span key={`${i}:${label}`}>{label}</span>,
+        Segment: (s, i) => <Segment key={`${i}:${s.label}`} {...s} />,
         Sep: (s, i) => <span key={`__sep${i}`}>{s}</span>,
       }))}
     </Typography>
