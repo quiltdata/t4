@@ -16,6 +16,7 @@ import { S3, Signer } from 'utils/AWS';
 import AsyncResult from 'utils/AsyncResult';
 import { withData } from 'utils/Data';
 import * as NamedRoutes from 'utils/NamedRoutes';
+import StyledLink from 'utils/StyledLink';
 import { composeComponent } from 'utils/reactTools';
 import {
   getPrefix,
@@ -56,9 +57,9 @@ const SummaryItemFile = composeComponent('Bucket.Summary.ItemFile',
   ({ handle, name, urls }) => (
     <SummaryItem
       title={
-        <Link to={urls.bucketTree(handle.bucket, handle.key)}>
+        <StyledLink to={urls.bucketTree(handle.bucket, handle.key)}>
           {name || basename(handle.key)}
-        </Link>
+        </StyledLink>
       }
     >
       <ContentWindow handle={handle} />

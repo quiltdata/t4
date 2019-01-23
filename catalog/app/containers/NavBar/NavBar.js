@@ -41,12 +41,6 @@ const Logo = composeComponent('NavBar.Logo',
   ));
 
 const Item = composeComponent('NavBar.MenuItem',
-  withStyles(() => ({
-    root: {
-      color: 'inherit !important',
-      textDecoration: 'none !important',
-    },
-  })),
   RC.withProps({ component: Link }),
   MenuItem);
 
@@ -84,10 +78,6 @@ const SignIn = composeComponent('NavBar.SignIn',
   }),
   NamedRoutes.inject(),
   withStyles(({ spacing: { unit } }) => ({
-    button: {
-      color: 'inherit !important',
-      textDecoration: 'none !important',
-    },
     icon: {
       marginRight: unit,
     },
@@ -111,7 +101,6 @@ const SignIn = composeComponent('NavBar.SignIn',
           to={urls.signIn()}
           variant="text"
           color="inherit"
-          className={classes.button}
         >
           Sign In
         </Button>

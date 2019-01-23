@@ -27,7 +27,8 @@ export default {
   },
   bucketTree: {
     path: '/b/:bucket/tree/:path(.*)?',
-    url: (bucket, path = '') => `/b/${bucket}/tree/${path}`,
+    url: (bucket, path = '', version) =>
+      `/b/${bucket}/tree/${path}${mkSearch({ version })}`,
   },
   bucketPackageList: {
     path: '/b/:bucket/packages/',

@@ -42,6 +42,8 @@ export const Provider = composeComponent('AWS.ES.Provider',
 export const inject = (prop = 'es') =>
   composeHOC('AWS.ES.inject', consume(Ctx, prop));
 
+export const Inject = Ctx.Consumer;
+
 const getRegion = R.pipe(
   R.prop('hostname'),
   R.match(/\.([a-z]{2}-[a-z]+-\d)\.es\.amazonaws\.com$/),

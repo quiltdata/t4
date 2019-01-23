@@ -1,4 +1,5 @@
 import PT from 'prop-types';
+import * as R from 'ramda';
 import * as React from 'react';
 import { Link, Route, Switch, matchPath } from 'react-router-dom';
 import * as RC from 'recompose';
@@ -16,31 +17,34 @@ import Overview from './Overview';
 import PackageDetail from './PackageDetail';
 import PackageList from './PackageList';
 import PackageTree from './PackageTree';
-import * as Search from './Search';
+import Search from './Search';
 import Tree from './Tree';
 
 
-const getBucketSection = (pathname, paths) => {
-  if (matchPath(pathname, { path: paths.bucketRoot, exact: true })) {
-    return 'overview';
-  }
-  if (matchPath(pathname, { path: paths.bucketPackageList })) {
-    return 'packages';
-  }
-  if (matchPath(pathname, { path: paths.bucketTree })) {
-    return 'tree';
+const match = (cases) => (pathname) => {
+  // eslint-disable-next-line no-restricted-syntax
+  for (const [section, opts] of Object.entries(cases)) {
+    if (matchPath(pathname, opts)) return section;
   }
   return false;
 };
 
+const sections = {
+  overview: { path: 'bucketRoot', exact: true },
+  packages: { path: 'bucketPackageList' },
+  tree: { path: 'bucketTree' },
+  search: { path: 'bucketSearch' },
+};
+
+const getBucketSection = (paths) =>
+  match(R.map(({ path, ...opts }) =>
+    ({ path: paths[path], ...opts }), sections));
+
 const NavTab = RT.composeComponent('Bucket.Layout.Tab',
   withStyles(({ spacing: { unit } }) => ({
     root: {
-      color: 'inherit !important',
       minHeight: 8 * unit,
       minWidth: 120,
-      outline: 'none !important',
-      textDecoration: 'none !important',
     },
   })),
   RC.withProps({ component: Link }),
@@ -49,7 +53,7 @@ const NavTab = RT.composeComponent('Bucket.Layout.Tab',
 const BucketLayout = RT.composeComponent('Bucket.Layout',
   RC.setPropTypes({
     bucket: PT.string.isRequired,
-    section: PT.oneOf(['overview', 'packages', 'tree', false]),
+    section: PT.oneOf([...Object.keys(sections), false]),
   }),
   NamedRoutes.inject(),
   withStyles(({ palette }) => ({
@@ -81,6 +85,13 @@ const BucketLayout = RT.composeComponent('Bucket.Layout',
               value="tree"
               to={urls.bucketTree(bucket)}
             />
+            {section === 'search' && (
+              <NavTab
+                label="Search"
+                value="search"
+                to={urls.bucketSearch(bucket)}
+              />
+            )}
           </Tabs>
         </AppBar>
       }
@@ -93,48 +104,46 @@ export default RT.composeComponent('Bucket',
   ({ location, match: { params: { bucket } } }) => (
     <NamedRoutes.Inject>
       {({ paths }) => (
-        <Search.Provider>
-          <BucketLayout
-            bucket={bucket}
-            section={getBucketSection(location.pathname, paths)}
-          >
-            <Switch>
-              <Route
-                path={paths.bucketRoot}
-                component={Overview}
-                exact
-              />
-              <Route
-                path={paths.bucketTree}
-                component={Tree}
-                exact
-              />
-              <Route
-                path={paths.bucketSearch}
-                component={Search.Results}
-                exact
-              />
-              <Route
-                path={paths.bucketPackageList}
-                component={PackageList}
-                exact
-              />
-              <Route
-                path={paths.bucketPackageDetail}
-                component={PackageDetail}
-                exact
-              />
-              <Route
-                path={paths.bucketPackageTree}
-                component={PackageTree}
-                exact
-              />
-              <Route
-                component={ThrowNotFound}
-              />
-            </Switch>
-          </BucketLayout>
-        </Search.Provider>
+        <BucketLayout
+          bucket={bucket}
+          section={getBucketSection(paths)(location.pathname)}
+        >
+          <Switch>
+            <Route
+              path={paths.bucketRoot}
+              component={Overview}
+              exact
+            />
+            <Route
+              path={paths.bucketTree}
+              component={Tree}
+              exact
+            />
+            <Route
+              path={paths.bucketSearch}
+              component={Search}
+              exact
+            />
+            <Route
+              path={paths.bucketPackageList}
+              component={PackageList}
+              exact
+            />
+            <Route
+              path={paths.bucketPackageDetail}
+              component={PackageDetail}
+              exact
+            />
+            <Route
+              path={paths.bucketPackageTree}
+              component={PackageTree}
+              exact
+            />
+            <Route
+              component={ThrowNotFound}
+            />
+          </Switch>
+        </BucketLayout>
       )}
     </NamedRoutes.Inject>
   ));

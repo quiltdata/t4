@@ -4,10 +4,10 @@ import { connect } from 'react-redux';
 import { Route, Link } from 'react-router-dom';
 import { createStructuredSelector } from 'reselect';
 import Button from '@material-ui/core/Button';
-import { withStyles } from '@material-ui/core/styles';
 
 import * as Auth from 'containers/AWSAuth';
 import * as NamedRoutes from 'utils/NamedRoutes';
+import StyledLink from 'utils/StyledLink';
 import { BaseError } from 'utils/error';
 import * as RT from 'utils/reactTools';
 
@@ -26,44 +26,33 @@ const WhenAuth = connect(createStructuredSelector({
 
 const whenAuth = (cases) => (...args) => <WhenAuth {...{ cases, args }} />;
 
-const SignIn = RT.composeComponent('Bucket.errors.SignIn',
-  withStyles(({ palette }) => ({
-    root: {
-      '&, &:visited': {
-        color: palette.primary.contrastText,
-      },
-    },
-  })),
-  ({ classes }) => (
-    <NamedRoutes.Inject>
-      {({ urls }) => (
-        <Route>
-          {({ location: l }) => (
-            <Button
-              component={Link}
-              to={urls.signIn(l.pathname + l.search + l.hash)}
-              variant="contained"
-              color="primary"
-              className={classes.root}
-            >
-              Sign In
-            </Button>
-          )}
-        </Route>
-      )}
-    </NamedRoutes.Inject>
-  ));
+const SignIn = RT.composeComponent('Bucket.errors.SignIn', () => (
+  <NamedRoutes.Inject>
+    {({ urls }) => (
+      <Route>
+        {({ location: l }) => (
+          <Button
+            component={Link}
+            to={urls.signIn(l.pathname + l.search + l.hash)}
+            variant="contained"
+            color="primary"
+          >
+            Sign In
+          </Button>
+        )}
+      </Route>
+    )}
+  </NamedRoutes.Inject>
+));
 
 const defaultHandlers = [
   [R.is(CORSError), () => (
     <Message headline="Error">
       Seems like this bucket is not configured for T4.
       <br />
-      <a
-        href="https://github.com/quiltdata/t4/tree/master/deployment#pre-requisites"
-      >
+      <StyledLink href="https://github.com/quiltdata/t4/tree/master/deployment#pre-requisites">
         Learn how to configure the bucket for T4
-      </a>.
+      </StyledLink>.
     </Message>
   )],
   [R.is(AccessDenied), whenAuth({
@@ -71,9 +60,9 @@ const defaultHandlers = [
       <Message headline="Access Denied">
         Seems like you don&apos;t have access to this bucket.
         <br />
-        <a href="https://github.com/quiltdata/t4/tree/master/deployment#permissions">
+        <StyledLink href="https://github.com/quiltdata/t4/tree/master/deployment#permissions">
           Learn about access control in T4
-        </a>.
+        </StyledLink>.
       </Message>
     ),
     false: () => (

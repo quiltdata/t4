@@ -23,3 +23,5 @@ export const Provider = composeComponent('AWS.S3.Provider',
 
 export const inject = (prop = 's3') =>
   composeHOC('AWS.S3.inject', consume(Ctx, prop));
+
+export const Inject = Ctx.Consumer;

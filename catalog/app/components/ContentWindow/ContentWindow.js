@@ -1,5 +1,6 @@
 import { dirname, extname, resolve } from 'path';
 
+import cx from 'classnames';
 import memoize from 'lodash/memoize';
 import PT from 'prop-types';
 import * as R from 'ramda';
@@ -45,6 +46,15 @@ const ImgContent = composeComponent('ContentWindow.ImgContent',
   })),
   ({ classes, ...props }) =>
     <img className={classes.root} alt="" {...props} />);
+
+const TextContent = composeComponent('ContentWindow.TextContent',
+  withStyles(() => ({
+    root: {
+      margin: 0,
+      width: '100%',
+    },
+  })),
+  ({ classes, children }) => <pre className={classes.root}>{children}</pre>);
 
 const IframeContent = composeComponent('ContentWindow.IframeContent',
   withStyles(() => ({
@@ -149,6 +159,7 @@ const HANDLERS = [
         const data = await s3.getObject({
           Bucket: handle.bucket,
           Key: handle.key,
+          VersionId: handle.version,
         }).promise();
         return Result.Ok(data.Body.toString('utf-8'));
       } catch (e) {
@@ -165,6 +176,29 @@ const HANDLERS = [
         processImg={signImg({ signer, handle })}
         processLink={processLink({ urls, signer, handle })}
       />
+    ),
+  },
+  {
+    name: 'txt',
+    detect: '.txt',
+    load: async ({ handle, s3 }) => {
+      try {
+        const data = await s3.getObject({
+          Bucket: handle.bucket,
+          Key: handle.key,
+          VersionId: handle.version,
+        }).promise();
+        return Result.Ok(data.Body.toString('utf-8'));
+      } catch (e) {
+        return Result.Err(
+          e.name === 'NoSuchKey'
+            ? PreviewError.DoesNotExist(handle)
+            : PreviewError.Unknown(e)
+        );
+      }
+    },
+    render: (data) => (
+      <TextContent>{data}</TextContent>
     ),
   },
   {
@@ -232,6 +266,7 @@ const HANDLERS = [
         const data = await s3.getObject({
           Bucket: handle.bucket,
           Key: handle.key,
+          VersionId: handle.version,
         }).promise();
         const json = data.Body.toString('utf-8');
         const spec = JSON.parse(json);
@@ -274,6 +309,7 @@ const PreviewError = tagged([
 
 export default composeComponent('ContentWindow',
   RC.setStatic('supports', (key) => !!getHandler(key)),
+  RC.setStatic('getType', R.pipe(getHandler, R.prop('name'))),
   RC.setPropTypes({
     handle: PT.object.isRequired,
   }),
@@ -327,8 +363,8 @@ export default composeComponent('ContentWindow',
       position: 'relative',
     },
   })),
-  ({ classes, state, ...props }) => (
-    <div className={classes.root}>
+  ({ className, classes, state, ...props }) => (
+    <div className={cx(className, classes.root)}>
       {AsyncResult.case({
         Err: (e) => (
           <Typography color="textSecondary">
