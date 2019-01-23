@@ -202,20 +202,20 @@ const VersionInfo = RT.composeComponent('Bucket.Search.VersionInfo',
             </span>
           )
         }
-        {versions.length > 1 && (
-          <React.Fragment>
-            {' '}
-            {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events */}
-            <span className={classes.seeOther} onClick={toggleVersions}>
-              {versionsShown ? 'hide ' : 'show '}
-              all versions ({versions.length})
-            </span>
-          </React.Fragment>
-        )}
       </Typography>
+      {versions.length > 1 && (
+        <Typography>
+          {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events */}
+          <span className={classes.seeOther} onClick={toggleVersions}>
+            {versionsShown ? 'hide ' : 'show '} all versions ({versions.length})
+          </span>
+        </Typography>
+      )}
       {versions.length > 1 && versionsShown && (
         <Section>
-          <SectionHeading gutterBottom>Versions ordered by relevance</SectionHeading>
+          <SectionHeading gutterBottom>
+            Versions ordered by relevance
+          </SectionHeading>
           {versions.map((v) => (
             <Typography
               key={`${v.updated.getTime()}:${v.id}`}
@@ -409,10 +409,9 @@ export default RT.composeComponent('Bucket.Search',
                       Ok: ({ total, hits }) => (
                         <React.Fragment>
                           <Typography variant="h5" className={classes.heading}>
-                            Search results for &quot;{query}&quot;:
                             {total
-                              ? ` ${total} hits in ${hits.length} objects`
-                              : ' nothing found'
+                              ? `Search results for "${query}" (${total} hits, ${hits.length} files)`
+                              : `Nothing found for "${query}"`
                             }
                           </Typography>
                           {total
