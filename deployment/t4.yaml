@@ -38,8 +38,9 @@ Mappings:
     # initializes config.js and config.json for static website
     navigator-config:
       hash: 46218d4
+    # lambdas/preview, actually
     nbconvert:
-      hash: af11456
+      hash: e5ba121
     # static website content
     navigator:
       hash: 45f840e
