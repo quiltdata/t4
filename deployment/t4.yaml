@@ -40,7 +40,7 @@ Mappings:
       hash: 46218d4
     # lambdas/preview, actually
     nbconvert:
-      hash: e5ba121
+      hash: 276d17e
     # static website content
     navigator:
       hash: 45f840e
