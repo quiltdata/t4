@@ -112,8 +112,10 @@ const processLink = memoize(({ urls, signer, handle }) => R.evolve({
       Path: (p) => {
         const hasSlash = p.endsWith('/');
         const resolved = resolve(dirname(handle.key), p).slice(1);
-        const withSlash = hasSlash ? `${resolved}/` : resolved;
-        return urls.bucketTree(handle.bucket, withSlash);
+        const normalized = hasSlash ? `${resolved}/` : resolved;
+        return hasSlash
+          ? urls.bucketDir(handle.bucket, normalized)
+          : urls.bucketFile(handle.bucket, normalized);
       },
       _: (ptr) =>
         signer.signResource({

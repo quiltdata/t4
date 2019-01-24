@@ -57,7 +57,7 @@ const SummaryItemFile = composeComponent('Bucket.Summary.ItemFile',
   ({ handle, name, urls }) => (
     <SummaryItem
       title={
-        <StyledLink to={urls.bucketTree(handle.bucket, handle.key)}>
+        <StyledLink to={urls.bucketFile(handle.bucket, handle.key)}>
           {name || basename(handle.key)}
         </StyledLink>
       }
@@ -108,7 +108,7 @@ const Thumbnails = composeComponent('Bucket.Summary.Thumbnails',
         {showing.map((i) => (
           <Link
             key={i.key}
-            to={urls.bucketTree(i.bucket, i.key)}
+            to={urls.bucketFile(i.bucket, i.key)}
             className={classes.link}
           >
             <img

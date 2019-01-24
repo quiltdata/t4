@@ -25,10 +25,14 @@ export default {
     path: '/b/:bucket/search',
     url: (bucket, q) => `/b/${bucket}/search${mkSearch({ q })}`,
   },
-  bucketTree: {
-    path: '/b/:bucket/tree/:path(.*)?',
-    url: (bucket, path = '', version) =>
+  bucketFile: {
+    path: '/b/:bucket/tree/:path+',
+    url: (bucket, path, version) =>
       `/b/${bucket}/tree/${path}${mkSearch({ version })}`,
+  },
+  bucketDir: {
+    path: '/b/:bucket/tree/:path(.+/)?',
+    url: (bucket, path = '') => `/b/${bucket}/tree/${path}`,
   },
   bucketPackageList: {
     path: '/b/:bucket/packages/',
