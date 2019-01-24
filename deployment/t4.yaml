@@ -35,7 +35,7 @@ Parameters:
 
 Mappings:
   VersionMap:
-    # initializes config.js and config.json for static website
+    # initializes config.json for static website
     navigator-config:
       hash: 46218d4
     # lambdas/preview, actually
@@ -44,8 +44,10 @@ Mappings:
     # static website content
     navigator:
       hash: 45f840e
+    # lambdas/es/indexer
     indexer:
       hash: c599094
+    # lambdas/es/put_mappings
     put-mappings:
       hash: c730ae8
 
