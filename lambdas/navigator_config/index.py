@@ -30,7 +30,7 @@ def config(dest_bucket, dest_dir, es_url, api_url, s3_bucket,
         'icon': bucket_icon,
         'description': bucket_description,
         'searchEndpoint': es_url,
-        'apiGatewayUrl': api_url,
+        'apiGatewayEndpoint': api_url,
         'region': region
     }
 
