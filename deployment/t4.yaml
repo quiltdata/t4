@@ -37,7 +37,7 @@ Mappings:
   VersionMap:
     # initializes config.json for static website
     navigator-config:
-      hash: 46218d4
+      hash: 4d75cd3
     # lambdas/preview
     preview:
       hash: 276d17e
