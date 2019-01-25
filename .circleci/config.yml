@@ -146,4 +146,6 @@ jobs:
             name: deploy cloud formation template
             command: |
               . venv/bin/activate
+              chmod +x .circleci/conditional_deploy.sh
+              chmod +x deploy.sh
               AWS_ACCESS_KEY_ID=$AWS_ACCESS AWS_SECRET_ACCESS_KEY=$AWS_SEC_KEY AWS_DEFAULT_REGION=$AWS_REGION .circleci/conditional_deploy.sh
