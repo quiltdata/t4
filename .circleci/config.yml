@@ -12,7 +12,7 @@ workflows:
           filters:
             tags:
               only: /.*/
-      - deploy:
+      - deploy_pypi:
           requires:
             - build
           filters:
@@ -20,6 +20,14 @@ workflows:
               only: /[0-9]+(\.[0-9]+)*/
             branches:
               ignore: /.*/
+      - deploy_aws:
+          requires:
+            - build
+          filters:
+            branches:
+              ignore: /.*/
+
+
 jobs:
   test-3.6: &test-template
     docker:
@@ -82,7 +90,7 @@ jobs:
       - store_artifacts:
           path: htmlcov/
 
-  deploy:
+  deploy_pypi:
     docker:
       - image: circleci/python:3.6-jessie
     steps:
@@ -124,3 +132,18 @@ jobs:
             cd api/python
             pip install twine
             twine upload dist/*
+
+deploy_aws:
+    docker:
+      - image: circleci/python:3.6-jessie
+    steps:
+      - checkout
+      - run:
+          name: install awscli
+          command: |
+            pip install awscli
+      - run:
+          name: deploy cloud formation template
+          command: |
+            . venv/bin/activate
+            AWS_ACCESS_KEY_ID=$ACCESS AWS_SECRET_ACCESS_KEY=$KEY AWS_DEFAULT_REGION=$REGION .circleci/conditional_deploy.sh
