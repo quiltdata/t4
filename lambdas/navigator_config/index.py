@@ -60,7 +60,7 @@ def config(dest_bucket, dest_dir, es_url, api_url, s3_bucket,
         'alwaysRequiresAuth': True,
         'defaultBucket': s3_bucket,
         'guestCredentials': {
-            'accessKeyID': '',
+            'accessKeyId': '',
             'secretAccessKey': ''
         },
         'signInRedirect': '/',
