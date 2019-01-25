@@ -39,7 +39,7 @@ Mappings:
     navigator-config:
       hash: 46218d4
     # lambdas/preview, actually
-    nbconvert:
+    preview:
       hash: 276d17e
     # static website content
     navigator:
@@ -296,8 +296,8 @@ Resources:
       Code:
         S3Bucket: !Sub "quilt-lambda-${AWS::Region}"
         S3Key: !Sub
-          - "nbconvert/${Hash}.zip"
-          - Hash: !FindInMap [VersionMap, "nbconvert", "hash"]
+          - "preview/${Hash}.zip"
+          - Hash: !FindInMap [VersionMap, "preview", "hash"]
 
   PreviewResource:
     Type: AWS::ApiGateway::Resource
