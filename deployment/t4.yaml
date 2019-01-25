@@ -35,16 +35,19 @@ Parameters:
 
 Mappings:
   VersionMap:
-    # initializes config.js and config.json for static website
+    # initializes config.json for static website
     navigator-config:
-      hash: d966e74
-    nbconvert:
-      hash: af11456
+      hash: 46218d4
+    # lambdas/preview
+    preview:
+      hash: 276d17e
     # static website content
     navigator:
-      hash: 45f840e
+      hash: a43421e
+    # lambdas/es/indexer
     indexer:
-      hash: 5d2334a
+      hash: c599094
+    # lambdas/es/put_mappings
     put-mappings:
       hash: c730ae8
 
@@ -293,8 +296,8 @@ Resources:
       Code:
         S3Bucket: !Sub "quilt-lambda-${AWS::Region}"
         S3Key: !Sub
-          - "nbconvert/${Hash}.zip"
-          - Hash: !FindInMap [VersionMap, "nbconvert", "hash"]
+          - "preview/${Hash}.zip"
+          - Hash: !FindInMap [VersionMap, "preview", "hash"]
 
   PreviewResource:
     Type: AWS::ApiGateway::Resource

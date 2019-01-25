@@ -1,3 +1,8 @@
+"""
+initializes the ES index
+only needs update when changing what/how data gets stored in ES
+"""
+
 import os
 
 from aws_requests_auth.aws_auth import AWSRequestsAuth
