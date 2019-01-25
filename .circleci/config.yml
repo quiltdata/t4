@@ -23,6 +23,9 @@ workflows:
       - deploy_aws:
           requires:
             - build
+          filters:
+            branches:
+              ignore: /.*/
 
 
 jobs:
