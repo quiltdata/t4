@@ -43,7 +43,7 @@ Mappings:
       hash: 276d17e
     # static website content
     navigator:
-      hash: 45f840e
+      hash: a43421e
     # lambdas/es/indexer
     indexer:
       hash: c599094
