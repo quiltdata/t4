@@ -138,6 +138,9 @@ jobs:
         - run:
             name: install awscli
             command: |
+              virtualenv venv
+              . venv/bin/activate
+              pip install --upgrade pip
               pip install awscli
         - run:
             name: deploy cloud formation template
