@@ -14,13 +14,17 @@ export const WithBucketConfigs = RT.composeComponent(
   'BucketConfig.WithBucketConfigs',
   RC.setPropTypes({
     children: PT.func.isRequired,
+    suggestedOnly: PT.bool,
   }),
-  ({ children }) => (
+  ({ children, suggestedOnly = false }) => (
     <Config.Inject>
       {AsyncResult.case({
-        Ok: ({ suggestedBuckets, federations }) =>
-          children(AsyncResult.Ok(federations.filter(({ name }) =>
-            suggestedBuckets.includes(name)))),
+        Ok: ({ suggestedBuckets, federations }) => {
+          const filtered = suggestedOnly
+            ? federations.filter(({ name }) => suggestedBuckets.includes(name))
+            : federations;
+          return children(AsyncResult.Ok(filtered));
+        },
         _: children,
       })}
     </Config.Inject>

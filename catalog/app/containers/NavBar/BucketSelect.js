@@ -173,7 +173,7 @@ export default RT.composeComponent('NavBar.BucketSelect',
   }),
   ({ autoFocus = false, cancel }) => (
     <Wait.Placeholder fallback={() => <Placeholder />}>
-      <BucketConfig.WithBucketConfigs>
+      <BucketConfig.WithBucketConfigs suggestedOnly>
         {Wait.wait((buckets) => (
           <State buckets={buckets} cancel={cancel}>
             {(state) => (
