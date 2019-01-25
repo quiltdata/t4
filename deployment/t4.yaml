@@ -37,7 +37,7 @@ Mappings:
   VersionMap:
     # initializes config.js and config.json for static website
     navigator-config:
-      hash: 46218d4
+      hash: d966e74
     nbconvert:
       hash: af11456
     # static website content
