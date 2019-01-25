@@ -23,9 +23,6 @@ workflows:
       - deploy_aws:
           requires:
             - build
-          filters:
-            branches:
-              ignore: /.*/
 
 
 jobs:
@@ -146,4 +143,4 @@ deploy_aws:
           name: deploy cloud formation template
           command: |
             . venv/bin/activate
-            AWS_ACCESS_KEY_ID=$ACCESS AWS_SECRET_ACCESS_KEY=$KEY AWS_DEFAULT_REGION=$REGION .circleci/conditional_deploy.sh
+            AWS_ACCESS_KEY_ID=$AWS_ACCESS AWS_SECRET_ACCESS_KEY=$AWS_SEC_KEY AWS_DEFAULT_REGION=$AWS_REGION .circleci/conditional_deploy.sh
