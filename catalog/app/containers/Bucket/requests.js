@@ -78,6 +78,18 @@ export const bucketListing = ({ s3, urls, bucket, path }) =>
     ))
     .catch(catchErrors());
 
+export const objectVersions = ({ s3, bucket, path }) =>
+  s3.listObjectVersions({ Bucket: bucket, Prefix: path })
+    .promise()
+    .then(R.pipe(
+      R.prop('Versions'),
+      R.map((v) => ({
+        isLatest: v.IsLatest || false,
+        lastModified: v.LastModified,
+        size: v.Size,
+        id: v.VersionId,
+      })),
+    ));
 
 const mkHandle = (bucket) => (i) => ({
   bucket,
