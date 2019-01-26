@@ -1,3 +1,4 @@
+import cx from 'classnames';
 import PT from 'prop-types';
 import * as React from 'react';
 import * as RC from 'recompose';
@@ -38,10 +39,9 @@ export default RT.composeComponent('Bucket.BreadCrumbs',
       fontWeight: typography.fontWeightRegular,
     },
   })),
-  ({ classes, items }) => (
-    <Typography variant="h6" className={classes.root}>
+  ({ className, variant = 'h6', classes, items }) => (
+    <Typography variant={variant} className={cx(className, classes.root)}>
       {items.map(Crumb.case({
-        // eslint-disable-next-line react/prop-types
         Segment: (s, i) => <Segment key={`${i}:${s.label}`} {...s} />,
         Sep: (s, i) => <span key={`__sep${i}`}>{s}</span>,
       }))}
