@@ -34,13 +34,10 @@ T4 is alpha software. It is not yet recommended for production use.
 * Read/write Python objects to and from S3
 * Immutable versions for objects, immutable packages for collections of objects
 
-## Components
-
-* `/catalog` (JavaScript) - Search, browse, and preview your data in S3
-* `/api/python` - Read, write, and annotate Python objects in S3
-
-## Documentation
-* [Docs](https://quiltdocs.gitbook.io/t4/)
-
 ## Roadmap
 * [Roadmap](https://github.com/quiltdata/t4/blob/master/Roadmap.md)
+
+
+## Components
+* `/catalog` (JavaScript) - Search, browse, and preview your data in S3
+* `/api/python` - Read, write, and annotate Python objects in S3
