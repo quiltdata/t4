@@ -69,43 +69,58 @@ const Item = composeComponent('Bucket.Listing.Item',
     </ListItem>
   ));
 
+const computeStats = R.reduce(ListingItem.reducer({
+  File: (file) => R.evolve({
+    files: R.inc,
+    size: R.add(file.size),
+    modified: R.max(file.modified),
+  }),
+  Dir: () => R.evolve({
+    dirs: R.inc,
+  }),
+}), {
+  dirs: 0,
+  files: 0,
+  size: 0,
+  modified: 0,
+});
+
 const Stats = composeComponent('Bucket.Listing.Stats',
   RC.setPropTypes({
     items: PT.array.isRequired,
   }),
-  RC.withProps(({ items }) =>
-    items.reduce(
-      ListingItem.reducer({
-        File: (file) => R.evolve({
-          files: R.inc,
-          size: R.add(file.size),
-          modified: R.max(file.modified),
-        }),
-        _: () => R.identity,
-      }),
-      {
-        files: 0,
-        size: 0,
-        modified: 0,
-      }
-    )),
   withStyles(({ palette, spacing: { unit } }) => ({
     root: {
       background: palette.grey[100],
       display: 'flex',
       flexWrap: 'wrap',
-      justifyContent: 'space-between',
       padding: unit,
     },
+    divider: {
+      color: palette.text.hint,
+      marginLeft: unit,
+      marginRight: unit,
+    },
+    spacer: {
+      flexGrow: 1,
+    },
   })),
-  ({ classes, files, size, modified }) => (
-    <div className={classes.root}>
-      <span>{files} files / {readableBytes(size)}</span>
-      {!!modified && (
-        <span>Last modified {modified.toLocaleString()}</span>
-      )}
-    </div>
-  ));
+  ({ classes, items }) => {
+    const stats = computeStats(items);
+    return (
+      <div className={classes.root}>
+        <span>{stats.dirs} folders</span>
+        <span className={classes.divider}> | </span>
+        <span>{stats.files} files</span>
+        <span className={classes.divider}> | </span>
+        <span>{readableBytes(stats.size)}</span>
+        <span className={classes.spacer} />
+        {!!stats.modified && (
+          <span>Last modified {stats.modified.toLocaleString()}</span>
+        )}
+      </div>
+    );
+  });
 
 export default composeComponent('Bucket.Listing',
   RC.setPropTypes({
