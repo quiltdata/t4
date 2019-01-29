@@ -74,6 +74,7 @@ export const summarize = async ({ s3, handle }) => {
     const file = await s3.getObject({
       Bucket: handle.bucket,
       Key: handle.key,
+      VersionId: handle.version,
       // TODO: figure out caching issues
       IfMatch: handle.etag,
     }).promise();
@@ -90,6 +91,7 @@ export const summarize = async ({ s3, handle }) => {
       key: resolveKey(handle.key, path),
     });
 
+    // TODO: figure out versions of package-local referenced objects
     return manifest
       .map(R.pipe(
         Resource.parse,
@@ -164,7 +166,7 @@ const loadManifest = ({ s3, bucket }) => async (hash) =>
 const getRevisionIdFromKey = (key) => key.substring(key.lastIndexOf('/') + 1);
 const getRevisionKeyFromId = (name, id) => `${PACKAGES_PREFIX}${name}/${id}`;
 
-const loadRevision = ({ s3, bucket }) => async (key) => {
+const loadRevision = async ({ s3, bucket }, key) => {
   const hash = await loadRevisionHash({ s3, bucket })(key);
   const { info, keys, modified } = await loadManifest({ s3, bucket })(hash);
   return {
@@ -183,16 +185,14 @@ export const getPackageRevisions = ({ s3, bucket, name }) =>
       Prefix: `${PACKAGES_PREFIX}${name}/`,
     })
     .promise()
-    .then(R.pipe(
-      R.prop('Contents'),
-      R.map(R.pipe(R.prop('Key'), loadRevision({ s3, bucket }))),
-      (ps) => Promise.all(ps),
-    ))
+    .then((res) =>
+      Promise.all(res.Contents.map((i) =>
+        loadRevision({ s3, bucket }, i.Key))))
     .then(R.sortBy((r) => -r.modified))
     .catch(catchErrors());
 
 export const fetchPackageTree = ({ s3, bucket, name, revision }) =>
-  loadRevision({ s3, bucket })(getRevisionKeyFromId(name, revision))
+  loadRevision({ s3, bucket }, getRevisionKeyFromId(name, revision))
     .catch(catchErrors());
 
 

@@ -32,13 +32,14 @@ const SUMMARIZE_RE = /^quilt_summarize\.json$/i;
 const IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.gif'];
 const MAX_THUMBNAILS = 100;
 
-const findFile = (re) => R.find(({ key }) => re.test(getBasename(key)));
+const findFile = (re) =>
+  R.find((f) => re.test(getBasename(f.logicalKey || f.key)));
 
 const extractSummary = R.applySpec({
   readme: findFile(README_RE),
   summarize: findFile(SUMMARIZE_RE),
-  images: R.filter(({ key }) =>
-    IMAGE_EXTS.some((ext) => key.endsWith(ext))),
+  images: R.filter((f) =>
+    IMAGE_EXTS.some((ext) => (f.logicalKey || f.key).endsWith(ext))),
 });
 
 const SummaryItem = composeComponent('Bucket.Summary.Item',
@@ -65,17 +66,21 @@ const SummaryItemFile = composeComponent('Bucket.Summary.ItemFile',
     handle: PT.object.isRequired,
     name: PT.string,
   }),
-  NamedRoutes.inject(),
-  ({ handle, name, urls }) => (
-    <SummaryItem
-      title={
-        <StyledLink to={urls.bucketFile(handle.bucket, handle.key)}>
-          {name || basename(handle.key)}
-        </StyledLink>
-      }
-    >
-      <ContentWindow handle={handle} />
-    </SummaryItem>
+  ({ handle, name }) => (
+    <NamedRoutes.Inject>
+      {({ urls }) => (
+        <SummaryItem
+          title={
+            // TODO: move link generation to the upper level to support package links
+            <StyledLink to={urls.bucketFile(handle.bucket, handle.key)}>
+              {name || basename(handle.logicalKey || handle.key)}
+            </StyledLink>
+          }
+        >
+          <ContentWindow handle={handle} />
+        </SummaryItem>
+      )}
+    </NamedRoutes.Inject>
   ));
 
 const Thumbnails = composeComponent('Bucket.Summary.Thumbnails',
@@ -122,13 +127,14 @@ const Thumbnails = composeComponent('Bucket.Summary.Thumbnails',
                 {showing.map((i) => (
                   <Link
                     key={i.key}
-                    to={urls.bucketFile(i.bucket, i.key)}
+                    // TODO: move link generation to the upper level to support package links
+                    to={urls.bucketFile(i.bucket, i.key, i.version)}
                     className={classes.link}
                   >
                     <img
                       className={classes.img}
-                      alt={basename(i.key)}
-                      title={basename(i.key)}
+                      alt={basename(i.logicalKey || i.key)}
+                      title={basename(i.logicalKey || i.key)}
                       src={signer.getSignedS3URL(i)}
                     />
                   </Link>
@@ -163,7 +169,7 @@ export default composeComponent('Bucket.Summary',
         {!readme && !summarize && !images.length && whenEmpty()}
         {readme && (
           <SummaryItemFile
-            title={basename(readme.key)}
+            title={basename(readme.logicalKey || readme.key)}
             handle={readme}
           />
         )}
