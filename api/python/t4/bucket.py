@@ -53,12 +53,19 @@ class Bucket(object):
             # old format
             self._search_endpoint = bucket_config['search_endpoint']
 
-    def search(self, query, size=None):
+    def search(self, query, limit=10):
         """
         Execute a search against the configured search endpoint.
 
         Args:
             query (str): query string to search
+            limit (number): maximum number of results to return. Defaults to 10
+
+        Query Syntax:
+            By default, a normal plaintext search will be executed over the query string.
+            You can use field-match syntax to filter on exact matches for fields in
+                your metadata.
+            The syntax for field match is `user_meta.$field_name:"exact_match"`.
 
         Returns:
             either the request object (in case of an error) or
@@ -78,7 +85,7 @@ class Bucket(object):
         """
         if not self._search_endpoint:
             self.config()
-        return search(query, self._search_endpoint, size=size)
+        return search(query, self._search_endpoint, size=limit)
 
     def deserialize(self, key):
         """
