@@ -1,8 +1,8 @@
+import { basename } from 'path';
+
 import dedent from 'dedent';
-import PT from 'prop-types';
 import * as R from 'ramda';
 import * as React from 'react';
-import * as RC from 'recompose';
 import { withStyles } from '@material-ui/core/styles';
 
 import AsyncResult from 'utils/AsyncResult';
@@ -11,16 +11,31 @@ import Data from 'utils/Data';
 import * as NamedRoutes from 'utils/NamedRoutes';
 import Link from 'utils/StyledLink';
 import { composeComponent } from 'utils/reactTools';
-import { getBreadCrumbs } from 'utils/s3paths';
+import {
+  getBreadCrumbs,
+  ensureNoSlash,
+  withoutPrefix,
+  up,
+} from 'utils/s3paths';
 
 import BreadCrumbs, { Crumb } from './BreadCrumbs';
 import CodeButton from './CodeButton';
-import Listing from './Listing';
+import Listing, { ListingItem } from './Listing';
 import Message from './Message';
 import Summary from './Summary';
 import { displayError } from './errors';
 import * as requests from './requests';
 
+
+const HELP_LINK =
+  'https://github.com/quiltdata/t4/blob/master/UserDocs.md#working-with-buckets';
+
+const code = ({ bucket, path }) => dedent`
+  import t4
+  b = Bucket("s3://${bucket}")
+  # replace ./ to change destination directory
+  b.fetch("${path}", "./")
+`;
 
 const getCrumbs = R.compose(R.intersperse(Crumb.Sep(' / ')),
   ({ bucket, path, urls }) =>
@@ -31,35 +46,52 @@ const getCrumbs = R.compose(R.intersperse(Crumb.Sep(' / ')),
           to: segPath === path ? undefined : urls.bucketDir(bucket, segPath),
         })));
 
-const dirCode = ({ bucket, path }) => dedent`
-  import t4
-  b = Bucket("s3://${bucket}")
-  # replace ./ to change destination directory
-  b.fetch("${path}", "./")
-`;
+const formatListing = ({ urls }) => (r) => {
+  const dirs = r.dirs.map((name) =>
+    ListingItem.Dir({
+      name: ensureNoSlash(withoutPrefix(r.path, name)),
+      to: urls.bucketDir(r.bucket, name),
+    }));
+  const files = r.files.map(({ key, size, modified }) =>
+    ListingItem.File({
+      name: basename(key),
+      to: urls.bucketFile(r.bucket, key),
+      size,
+      modified,
+    }));
+  const items = [
+    ...(
+      r.path !== ''
+        ? [ListingItem.Dir({
+          name: '..',
+          to: urls.bucketDir(r.bucket, up(r.path)),
+        })]
+        : []
+    ),
+    ...dirs,
+    ...files,
+  ];
+  // filter-out files with same name as one of dirs
+  return R.uniqBy(
+    ListingItem.case({ Dir: R.prop('name'), File: R.prop('name') }),
+    items,
+  );
+};
 
-const ListingData = composeComponent('Bucket.Dir.ListingData',
-  RC.setPropTypes({
-    bucket: PT.string.isRequired,
-    path: PT.string.isRequired,
-    children: PT.func.isRequired,
-  }),
-  ({ bucket, path, children }) => (
-    <NamedRoutes.Inject>
-      {({ urls }) => (
-        <AWS.S3.Inject>
-          {(s3) => (
-            <Data
-              fetch={requests.bucketListing}
-              params={{ s3, urls, bucket, path }}
-            >
-              {children}
-            </Data>
-          )}
-        </AWS.S3.Inject>
-      )}
-    </NamedRoutes.Inject>
-  ));
+const processListing = (params, result) => {
+  const fmt = R.pipe(formatListing(params), AsyncResult.Ok);
+  return AsyncResult.case({
+    Ok: fmt,
+    Pending: R.pipe(
+      AsyncResult.case({
+        Ok: fmt,
+        _: R.identity,
+      }),
+      AsyncResult.Pending,
+    ),
+    _: R.identity,
+  }, result);
+};
 
 export default composeComponent('Bucket.Dir',
   withStyles(({ spacing: { unit } }) => ({
@@ -87,30 +119,43 @@ export default composeComponent('Bucket.Dir',
           )}
         </NamedRoutes.Inject>
         <div className={classes.spacer} />
-        <CodeButton>{dirCode({ bucket, path })}</CodeButton>
+        <CodeButton>{code({ bucket, path })}</CodeButton>
       </div>
 
-      <ListingData bucket={bucket} path={path}>
-        {AsyncResult.case({
-          Err: displayError(),
-          _: (result) => (
-            <React.Fragment>
-              <Listing
-                result={result}
-                whenEmpty={() => (
-                  <Message headline="No files">
-                    <Link
-                      href="https://github.com/quiltdata/t4/blob/master/UserDocs.md#working-with-buckets"
-                    >
-                      Learn how to upload files
-                    </Link>.
-                  </Message>
-                )}
-              />
-              <Summary bucket={bucket} path={path} />
-            </React.Fragment>
-          ),
-        })}
-      </ListingData>
+      <AWS.S3.Inject>
+        {(s3) => (
+          <Data
+            fetch={requests.bucketListing}
+            params={{ s3, bucket, path }}
+          >
+            {AsyncResult.case({
+              Err: displayError(),
+              _: (result) => (
+                <NamedRoutes.Inject>
+                  {({ urls }) => (
+                    <React.Fragment>
+                      <Listing
+                        result={processListing({ urls }, result)}
+                        whenEmpty={() => (
+                          <Message headline="No files">
+                            <Link href={HELP_LINK}>
+                              Learn how to upload files
+                            </Link>.
+                          </Message>
+                        )}
+                      />
+                      {AsyncResult.case({
+                        // eslint-disable-next-line react/prop-types
+                        Ok: ({ files }) => <Summary files={files} />,
+                        _: () => null,
+                      }, result)}
+                    </React.Fragment>
+                  )}
+                </NamedRoutes.Inject>
+              ),
+            })}
+          </Data>
+        )}
+      </AWS.S3.Inject>
     </React.Fragment>
   ));
