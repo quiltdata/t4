@@ -23,7 +23,9 @@ workflows:
       - deploy_aws:
           requires:
             - build
-
+          filters:
+            branches:
+              ignore: /.*/
 
 jobs:
   test-3.6: &test-template
