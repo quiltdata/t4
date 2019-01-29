@@ -40,6 +40,12 @@ def search(query, search_endpoint, limit, aws_region='us-east-1'):
     Searches your bucket. Query may contain plaintext and clauses of the 
         form $key:"$value" that search for exact matches on specific keys.
 
+    Arguments:
+        query(string): query string
+        search_endpoint(string): where to go to make the search
+        limit(number): maximum number of results to return
+        aws_region(string): aws region (used to sign requests)
+
     Returns either the request object (in case of an error)
             or a list of objects with the following keys:
         key: key of the object
