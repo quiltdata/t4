@@ -85,7 +85,7 @@ class Bucket(object):
         """
         if not self._search_endpoint:
             self.config()
-        return search(query, self._search_endpoint, size=limit)
+        return search(query, self._search_endpoint, limit=limit)
 
     def deserialize(self, key):
         """
