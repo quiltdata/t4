@@ -35,10 +35,16 @@ def _create_es(search_endpoint, aws_region):
 
     return es_client
 
-def search(query, search_endpoint, size, aws_region='us-east-1'):
+def search(query, search_endpoint, limit, aws_region='us-east-1'):
     """
     Searches your bucket. Query may contain plaintext and clauses of the 
         form $key:"$value" that search for exact matches on specific keys.
+
+    Arguments:
+        query(string): query string
+        search_endpoint(string): where to go to make the search
+        limit(number): maximum number of results to return
+        aws_region(string): aws region (used to sign requests)
 
     Returns either the request object (in case of an error)
             or a list of objects with the following keys:
@@ -59,8 +65,8 @@ def search(query, search_endpoint, size, aws_region='us-east-1'):
         'quote_analyzer': 'keyword',
         }}}
 
-    if size:
-        payload['size'] = size
+    if limit:
+        payload['size'] = limit
 
     raw_response = es_client.search(index=ES_INDEX, body=payload)
 
