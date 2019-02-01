@@ -45,7 +45,7 @@ export const bucketListing = ({ s3, urls, bucket, path }) =>
           R.map((name) =>
             ListingItem.Dir({
               name: ensureNoSlash(withoutPrefix(path, name)),
-              to: urls.bucketTree(bucket, name),
+              to: urls.bucketDir(bucket, name),
             })),
         ),
         files: R.pipe(
@@ -55,7 +55,7 @@ export const bucketListing = ({ s3, urls, bucket, path }) =>
           R.map(({ Key, Size, LastModified }) =>
             ListingItem.File({
               name: basename(Key),
-              to: urls.bucketTree(bucket, Key),
+              to: urls.bucketFile(bucket, Key),
               size: Size,
               modified: LastModified,
             })),
@@ -66,7 +66,7 @@ export const bucketListing = ({ s3, urls, bucket, path }) =>
           path !== ''
             ? [ListingItem.Dir({
               name: '..',
-              to: urls.bucketTree(bucket, up(path)),
+              to: urls.bucketDir(bucket, up(path)),
             })]
             : []
         ),
@@ -78,6 +78,18 @@ export const bucketListing = ({ s3, urls, bucket, path }) =>
     ))
     .catch(catchErrors());
 
+export const objectVersions = ({ s3, bucket, path }) =>
+  s3.listObjectVersions({ Bucket: bucket, Prefix: path })
+    .promise()
+    .then(R.pipe(
+      R.prop('Versions'),
+      R.map((v) => ({
+        isLatest: v.IsLatest || false,
+        lastModified: v.LastModified,
+        size: v.Size,
+        id: v.VersionId,
+      })),
+    ));
 
 const mkHandle = (bucket) => (i) => ({
   bucket,

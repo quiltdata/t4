@@ -61,8 +61,8 @@ const Crumbs = RT.composeComponent('Bucket.Search.Crumbs',
               label,
               // eslint-disable-next-line no-nested-ternary
               to: segPath === path
-                ? (version ? urls.bucketTree(bucket, segPath, version) : undefined)
-                : urls.bucketTree(bucket, segPath),
+                ? (version ? urls.bucketFile(bucket, segPath, version) : undefined)
+                : urls.bucketDir(bucket, segPath),
             })));
         return <BreadCrumbs items={items} />;
       }}
@@ -183,7 +183,7 @@ const VersionInfo = RT.composeComponent('Bucket.Search.VersionInfo',
             <span>
               {'Version '}
               <StyledLink
-                to={urls.bucketTree(bucket, path, version.id)}
+                to={urls.bucketFile(bucket, path, version.id)}
                 className={classes.version}
               >
                 {version.id}
@@ -226,7 +226,7 @@ const VersionInfo = RT.composeComponent('Bucket.Search.VersionInfo',
                 ? (
                   <span>
                     <StyledLink
-                      to={urls.bucketTree(bucket, path, v.id)}
+                      to={urls.bucketFile(bucket, path, v.id)}
                       className={classes.version}
                     >
                       {v.id}
