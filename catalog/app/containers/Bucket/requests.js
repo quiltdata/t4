@@ -83,6 +83,7 @@ export const objectVersions = ({ s3, bucket, path }) =>
     .promise()
     .then(R.pipe(
       R.prop('Versions'),
+      R.filter((v) => v.Key === path),
       R.map((v) => ({
         isLatest: v.IsLatest || false,
         lastModified: v.LastModified,
