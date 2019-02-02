@@ -78,7 +78,7 @@ export default composeComponent('Bucket.Dir',
       textDecoration: 'none !important',
     },
   })),
-  ({ match: { params: { bucket, path } }, classes }) => (
+  ({ match: { params: { bucket, path = '' } }, classes }) => (
     <React.Fragment>
       <div className={classes.topBar}>
         <NamedRoutes.Inject>
