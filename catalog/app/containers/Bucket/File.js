@@ -4,6 +4,7 @@ import dedent from 'dedent';
 import PT from 'prop-types';
 import * as R from 'ramda';
 import * as React from 'react';
+import { FormattedRelative } from 'react-intl';
 import { Link } from 'react-router-dom';
 import * as RC from 'recompose';
 import Button from '@material-ui/core/Button';
@@ -96,7 +97,7 @@ const VersionInfo = RT.composeComponent('Bucket.File.VersionInfo',
       <span className={classes.version} onClick={open} ref={setAnchor}>
         {version
           ? <span className={classes.mono}>{version.substring(0, 12)}</span>
-          : 'latest version'
+          : 'latest'
         }
         {' '}<Icon>expand_more</Icon>
       </span>
@@ -122,16 +123,23 @@ const VersionInfo = RT.composeComponent('Bucket.File.VersionInfo',
                             to={urls.bucketFile(bucket, path, v.id)}
                           >
                             <ListItemText
-                              primary={v.id}
-                              secondary={
+                              primary={
                                 <span>
-                                  {v.lastModified.toLocaleString()}
+                                  <FormattedRelative value={v.lastModified.toLocaleString()} />
                                   {' | '}
                                   {readableBytes(v.size)}
                                   {v.isLatest && ' | latest'}
                                 </span>
                               }
-                              classes={{ primary: classes.mono }}
+                              secondary={
+                                <span>
+                                  {v.lastModified.toLocaleString()}
+                                  <br />
+                                  <span className={classes.mono}>
+                                    {v.id}
+                                  </span>
+                                </span>
+                              }
                             />
                             <ListItemSecondaryAction>
                               <AWS.Signer.Inject>
