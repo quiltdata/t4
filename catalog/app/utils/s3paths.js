@@ -1,4 +1,5 @@
 import { dirname, basename, resolve } from 'path';
+import { parse as parseUrl } from 'url';
 
 
 /**
@@ -9,6 +10,7 @@ import { dirname, basename, resolve } from 'path';
  * @property {string} region
  * @property {string} bucket
  * @property {string} key
+ * @property {string} version
  * @property {Date} modified
  * @property {number} size
  * @property {string} etag
@@ -127,9 +129,12 @@ export const isS3Url = (url) => url.startsWith('s3://');
  * @returns {S3Handle}
  */
 export const parseS3Url = (url) => {
-  const m = url.match(/^s3:\/\/([a-z0-9-]+)\/(.+)$/);
-  if (!m) throw new Error(`could not parse s3 url '${url}'`);
-  return { bucket: m[1], key: m[2] };
+  const u = parseUrl(url, true);
+  return {
+    bucket: u.hostname,
+    key: (u.pathname || '/').substring(1),
+    version: u.query.versionId,
+  };
 };
 
 /**

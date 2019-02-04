@@ -1,17 +1,8 @@
-import { basename } from 'path';
-
 import * as R from 'ramda';
 
-import {
-  ensureNoSlash,
-  getBasename,
-  resolveKey,
-  withoutPrefix,
-  up,
-} from 'utils/s3paths';
+import { resolveKey } from 'utils/s3paths';
 import * as Resource from 'utils/Resource';
 
-import { ListingItem } from './Listing';
 import * as errors from './errors';
 
 
@@ -27,7 +18,7 @@ const catchErrors = (pairs = []) => R.cond([
 ]);
 
 
-export const bucketListing = ({ s3, urls, bucket, path }) =>
+export const bucketListing = ({ s3, bucket, path = '' }) =>
   s3
     .listObjectsV2({
       Bucket: bucket,
@@ -35,47 +26,29 @@ export const bucketListing = ({ s3, urls, bucket, path }) =>
       Prefix: path,
     })
     .promise()
-    .then(R.pipe(
-      R.applySpec({
-        directories: R.pipe(
-          R.prop('CommonPrefixes'),
-          R.pluck('Prefix'),
-          R.filter((d) => d !== '/' && d !== '../'),
-          R.uniq,
-          R.map((name) =>
-            ListingItem.Dir({
-              name: ensureNoSlash(withoutPrefix(path, name)),
-              to: urls.bucketDir(bucket, name),
-            })),
-        ),
-        files: R.pipe(
-          R.prop('Contents'),
-          // filter-out "directory-files" (files that match prefixes)
-          R.filter(({ Key }) => Key !== path && !Key.endsWith('/')),
-          R.map(({ Key, Size, LastModified }) =>
-            ListingItem.File({
-              name: basename(Key),
-              to: urls.bucketFile(bucket, Key),
-              size: Size,
-              modified: LastModified,
-            })),
-        ),
-      }),
-      ({ files, directories }) => [
-        ...(
-          path !== ''
-            ? [ListingItem.Dir({
-              name: '..',
-              to: urls.bucketDir(bucket, up(path)),
-            })]
-            : []
-        ),
-        ...directories,
-        ...files,
-      ],
-      // filter-out files with same name as one of dirs
-      R.uniqBy(ListingItem.case({ Dir: R.prop('name'), File: R.prop('name') })),
-    ))
+    .then(R.applySpec({
+      dirs: R.pipe(
+        R.prop('CommonPrefixes'),
+        R.pluck('Prefix'),
+        R.filter((d) => d !== '/' && d !== '../'),
+        R.uniq,
+      ),
+      files: R.pipe(
+        R.prop('Contents'),
+        // filter-out "directory-files" (files that match prefixes)
+        R.filter(({ Key }) => Key !== path && !Key.endsWith('/')),
+        R.map((i) => ({
+          // TODO: expose VersionId?
+          bucket,
+          key: i.Key,
+          modified: i.LastModified,
+          size: i.Size,
+          etag: i.ETag,
+        })),
+      ),
+      bucket: () => bucket,
+      path: () => path,
+    }))
     .catch(catchErrors());
 
 export const objectVersions = ({ s3, bucket, path }) =>
@@ -92,42 +65,6 @@ export const objectVersions = ({ s3, bucket, path }) =>
       })),
     ));
 
-const mkHandle = (bucket) => (i) => ({
-  bucket,
-  key: i.Key,
-  modified: i.LastModified,
-  size: i.Size,
-  etag: i.ETag,
-});
-
-const findFile = (re) => R.find(({ key }) => re.test(getBasename(key)));
-
-const README_RE = /^readme\.md$/i;
-const SUMMARIZE_RE = /^quilt_summarize\.json$/i;
-const IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.gif'];
-
-export const fetchSummary = ({ s3, bucket, path }) =>
-  s3
-    .listObjectsV2({
-      Bucket: bucket,
-      Delimiter: '/',
-      Prefix: path,
-    })
-    .promise()
-    .then(R.pipe(
-      R.prop('Contents'),
-      R.map(mkHandle(bucket)),
-      // filter-out "directory-files" (files that match prefixes)
-      R.filter((f) => f.key !== path && !f.key.endsWith('/')),
-      R.applySpec({
-        readme: findFile(README_RE),
-        summarize: findFile(SUMMARIZE_RE),
-        images: R.filter(({ key }) =>
-          IMAGE_EXTS.some((ext) => key.endsWith(ext))),
-      }),
-    ))
-    .catch(catchErrors());
-
 const isValidManifest = R.both(Array.isArray, R.all(R.is(String)));
 
 export const summarize = async ({ s3, handle }) => {
@@ -137,6 +74,7 @@ export const summarize = async ({ s3, handle }) => {
     const file = await s3.getObject({
       Bucket: handle.bucket,
       Key: handle.key,
+      VersionId: handle.version,
       // TODO: figure out caching issues
       IfMatch: handle.etag,
     }).promise();
@@ -153,6 +91,7 @@ export const summarize = async ({ s3, handle }) => {
       key: resolveKey(handle.key, path),
     });
 
+    // TODO: figure out versions of package-local referenced objects
     return manifest
       .map(R.pipe(
         Resource.parse,
@@ -227,7 +166,7 @@ const loadManifest = ({ s3, bucket }) => async (hash) =>
 const getRevisionIdFromKey = (key) => key.substring(key.lastIndexOf('/') + 1);
 const getRevisionKeyFromId = (name, id) => `${PACKAGES_PREFIX}${name}/${id}`;
 
-const loadRevision = ({ s3, bucket }) => async (key) => {
+const loadRevision = async ({ s3, bucket }, key) => {
   const hash = await loadRevisionHash({ s3, bucket })(key);
   const { info, keys, modified } = await loadManifest({ s3, bucket })(hash);
   return {
@@ -246,16 +185,14 @@ export const getPackageRevisions = ({ s3, bucket, name }) =>
       Prefix: `${PACKAGES_PREFIX}${name}/`,
     })
     .promise()
-    .then(R.pipe(
-      R.prop('Contents'),
-      R.map(R.pipe(R.prop('Key'), loadRevision({ s3, bucket }))),
-      (ps) => Promise.all(ps),
-    ))
+    .then((res) =>
+      Promise.all(res.Contents.map((i) =>
+        loadRevision({ s3, bucket }, i.Key))))
     .then(R.sortBy((r) => -r.modified))
     .catch(catchErrors());
 
 export const fetchPackageTree = ({ s3, bucket, name, revision }) =>
-  loadRevision({ s3, bucket })(getRevisionKeyFromId(name, revision))
+  loadRevision({ s3, bucket }, getRevisionKeyFromId(name, revision))
     .catch(catchErrors());
 
 

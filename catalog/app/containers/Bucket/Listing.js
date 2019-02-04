@@ -11,12 +11,9 @@ import ListItem from '@material-ui/core/ListItem';
 import Typography from '@material-ui/core/Typography';
 import { withStyles } from '@material-ui/core/styles';
 
-import AsyncResult from 'utils/AsyncResult';
 import { composeComponent } from 'utils/reactTools';
 import { readableBytes } from 'utils/string';
 import tagged from 'utils/tagged';
-
-import { displayError } from './errors';
 
 
 export const ListingItem = tagged([
@@ -75,9 +72,8 @@ const computeStats = R.reduce(ListingItem.reducer({
     size: R.add(file.size),
     modified: R.max(file.modified),
   }),
-  Dir: () => R.evolve({
-    dirs: R.inc,
-  }),
+  Dir: ({ name }) =>
+    name === '..' ? R.identity : R.evolve({ dirs: R.inc }),
 }), {
   dirs: 0,
   files: 0,
@@ -124,9 +120,9 @@ const Stats = composeComponent('Bucket.Listing.Stats',
 
 export default composeComponent('Bucket.Listing',
   RC.setPropTypes({
-    // AsyncResult of ListingItems
-    result: PT.object.isRequired,
-    whenEmpty: PT.func,
+    // Array of ListingItems
+    items: PT.array.isRequired,
+    locked: PT.bool,
   }),
   withStyles(({ spacing: { unit }, palette }) => ({
     root: {
@@ -161,72 +157,51 @@ export default composeComponent('Bucket.Listing',
       width: '12em',
     },
   })),
-  RC.withHandlers({
-    // eslint-disable-next-line react/prop-types
-    renderOk: ({ classes }) => R.ifElse(R.isEmpty,
-      () => (
-        <Typography className={classes.empty} variant="h5">
-          No files
-        </Typography>
-      ),
-      (items) => (
-        <React.Fragment>
-          <Stats items={items} />
-          {items.map(ListingItem.case({
-            // eslint-disable-next-line react/prop-types
-            Dir: ({ name, to }) => (
-              <Item
-                icon="folder_open"
-                key={name}
-                name={name}
-                to={to}
-              />
-            ),
-            // eslint-disable-next-line react/prop-types
-            File: ({ name, to, size, modified }) => (
-              <Item
-                icon="insert_drive_file"
-                key={name}
-                name={name}
-                to={to}
-              >
-                <div className={classes.size}>{readableBytes(size)}</div>
-                {!!modified && (
-                  <div className={classes.modified}>{modified.toLocaleString()}</div>
-                )}
-              </Item>
-            ),
-          }))}
-        </React.Fragment>
-      )),
-    renderLock: ({ classes }) => () => (
-      <div className={classes.lock}>
-        <CircularProgress />
-      </div>
-    ),
-  }),
-  RC.branch(
-    ({ whenEmpty, result }) =>
-      whenEmpty && AsyncResult.Ok.is(result, R.isEmpty),
-    RC.renderComponent(({ whenEmpty }) => whenEmpty()),
-  ),
-  ({ result, classes, renderOk, renderLock }) => (
+  ({ classes, items, locked = false }) => (
     <Card>
       <CardContent className={classes.root}>
-        {AsyncResult.case({
-          Pending: renderLock,
-          Init: renderLock,
-          _: () => null,
-        }, result)}
-        {AsyncResult.case({
-          Ok: renderOk,
-          Err: displayError(),
-          Pending: AsyncResult.case({
-            Ok: renderOk,
-            _: () => null,
-          }),
-          _: () => null,
-        }, result)}
+        {locked && (
+          <div className={classes.lock}>
+            <CircularProgress />
+          </div>
+        )}
+        {!items.length
+          ? (
+            <Typography className={classes.empty} variant="h5">
+              No files
+            </Typography>
+          )
+          : (
+            <React.Fragment>
+              <Stats items={items} />
+              {items.map(ListingItem.case({
+                // eslint-disable-next-line react/prop-types
+                Dir: ({ name, to }) => (
+                  <Item
+                    icon="folder_open"
+                    key={name}
+                    name={name}
+                    to={to}
+                  />
+                ),
+                // eslint-disable-next-line react/prop-types
+                File: ({ name, to, size, modified }) => (
+                  <Item
+                    icon="insert_drive_file"
+                    key={name}
+                    name={name}
+                    to={to}
+                  >
+                    <div className={classes.size}>{readableBytes(size)}</div>
+                    {!!modified && (
+                      <div className={classes.modified}>{modified.toLocaleString()}</div>
+                    )}
+                  </Item>
+                ),
+              }))}
+            </React.Fragment>
+          )
+        }
       </CardContent>
     </Card>
   ));

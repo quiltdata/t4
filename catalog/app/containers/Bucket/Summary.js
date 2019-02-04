@@ -12,22 +12,35 @@ import Typography from '@material-ui/core/Typography';
 import { withStyles } from '@material-ui/core/styles';
 
 import ContentWindow from 'components/ContentWindow';
-import { S3, Signer } from 'utils/AWS';
+import * as AWS from 'utils/AWS';
 import AsyncResult from 'utils/AsyncResult';
-import { withData } from 'utils/Data';
+import Data from 'utils/Data';
 import * as NamedRoutes from 'utils/NamedRoutes';
 import StyledLink from 'utils/StyledLink';
 import { composeComponent } from 'utils/reactTools';
 import {
+  getBasename,
   getPrefix,
   withoutPrefix,
 } from 'utils/s3paths';
 
-import { displayError } from './errors';
 import * as requests from './requests';
 
 
+const README_RE = /^readme\.md$/i;
+const SUMMARIZE_RE = /^quilt_summarize\.json$/i;
+const IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.gif'];
 const MAX_THUMBNAILS = 100;
+
+const findFile = (re) =>
+  R.find((f) => re.test(getBasename(f.logicalKey || f.key)));
+
+const extractSummary = R.applySpec({
+  readme: findFile(README_RE),
+  summarize: findFile(SUMMARIZE_RE),
+  images: R.filter((f) =>
+    IMAGE_EXTS.some((ext) => (f.logicalKey || f.key).endsWith(ext))),
+});
 
 const SummaryItem = composeComponent('Bucket.Summary.Item',
   RC.setPropTypes({
@@ -53,28 +66,30 @@ const SummaryItemFile = composeComponent('Bucket.Summary.ItemFile',
     handle: PT.object.isRequired,
     name: PT.string,
   }),
-  NamedRoutes.inject(),
-  ({ handle, name, urls }) => (
-    <SummaryItem
-      title={
-        <StyledLink to={urls.bucketFile(handle.bucket, handle.key)}>
-          {name || basename(handle.key)}
-        </StyledLink>
-      }
-    >
-      <ContentWindow handle={handle} />
-    </SummaryItem>
+  ({ handle, name }) => (
+    <NamedRoutes.Inject>
+      {({ urls }) => (
+        <SummaryItem
+          title={
+            // TODO: move link generation to the upper level to support package links
+            <StyledLink to={urls.bucketFile(handle.bucket, handle.key)}>
+              {name || basename(handle.logicalKey || handle.key)}
+            </StyledLink>
+          }
+        >
+          <ContentWindow handle={handle} />
+        </SummaryItem>
+      )}
+    </NamedRoutes.Inject>
   ));
 
 const Thumbnails = composeComponent('Bucket.Summary.Thumbnails',
   RC.setPropTypes({
     images: PT.array.isRequired,
   }),
-  Signer.inject(),
   RC.withProps(({ images }) => ({
     showing: images.slice(0, MAX_THUMBNAILS),
   })),
-  NamedRoutes.inject(),
   withStyles(({ spacing: { unit } }) => ({
     container: {
       display: 'flex',
@@ -100,98 +115,85 @@ const Thumbnails = composeComponent('Bucket.Summary.Thumbnails',
       },
     },
   })),
-  ({ classes, images, showing, signer, urls }) => (
+  ({ classes, images, showing }) => (
     <SummaryItem
       title={`Images (showing ${showing.length} out of ${images.length})`}
     >
-      <div className={classes.container}>
-        {showing.map((i) => (
-          <Link
-            key={i.key}
-            to={urls.bucketFile(i.bucket, i.key)}
-            className={classes.link}
-          >
-            <img
-              className={classes.img}
-              alt={basename(i.key)}
-              title={basename(i.key)}
-              src={signer.getSignedS3URL(i)}
-            />
-          </Link>
-        ))}
-        {R.times(
-          (i) => <div className={classes.filler} key={`__filler${i}`} />,
-          (5 - (showing.length % 5)) % 5
+      <NamedRoutes.Inject>
+        {({ urls }) => (
+          <AWS.Signer.Inject>
+            {(signer) => (
+              <div className={classes.container}>
+                {showing.map((i) => (
+                  <Link
+                    key={i.key}
+                    // TODO: move link generation to the upper level to support package links
+                    to={urls.bucketFile(i.bucket, i.key, i.version)}
+                    className={classes.link}
+                  >
+                    <img
+                      className={classes.img}
+                      alt={basename(i.logicalKey || i.key)}
+                      title={basename(i.logicalKey || i.key)}
+                      src={signer.getSignedS3URL(i)}
+                    />
+                  </Link>
+                ))}
+                {R.times(
+                  (i) => <div className={classes.filler} key={`__filler${i}`} />,
+                  (5 - (showing.length % 5)) % 5
+                )}
+              </div>
+            )}
+          </AWS.Signer.Inject>
         )}
-      </div>
+      </NamedRoutes.Inject>
     </SummaryItem>
   ));
 
-const Summarize = composeComponent('Bucket.Summary.Summarize',
-  RC.setPropTypes({
-    /**
-     * summarize file handle
-     *
-     * @type {S3Handle}
-     */
-    handle: PT.object.isRequired,
-  }),
-  S3.inject(),
-  withData({
-    params: R.pick(['s3', 'handle']),
-    fetch: requests.summarize,
-  }),
-  ({ data: { result }, children }) => children(result));
-
 export default composeComponent('Bucket.Summary',
   RC.setPropTypes({
-    bucket: PT.string.isRequired,
-    path: PT.string.isRequired,
-    progress: PT.bool,
+    // Array of handles
+    files: PT.array.isRequired,
     whenEmpty: PT.func,
-    showError: PT.bool,
   }),
-  S3.inject(),
-  withData({
-    params: R.pick(['s3', 'bucket', 'path']),
-    fetch: requests.fetchSummary,
-  }),
-  ({
-    data: { result },
-    progress = false,
-    whenEmpty = () => null,
-    showError = true,
-  }) =>
-    AsyncResult.case({
-      _: () => (progress && <CircularProgress />),
-      Err: showError ? displayError() : () => null,
-      // eslint-disable-next-line react/prop-types
-      Ok: ({ readme, images, summarize }) => (
-        <React.Fragment>
-          {!readme && !summarize && !images.length && whenEmpty()}
-          {readme && (
-            <SummaryItemFile
-              title={basename(readme.key)}
-              handle={readme}
-            />
-          )}
-          {!!images.length && <Thumbnails images={images} />}
-          {summarize && (
-            <Summarize handle={summarize}>
-              {AsyncResult.case({
-                Err: () => null,
-                _: () => (progress && <CircularProgress />),
-                Ok: R.map((i) => (
-                  <SummaryItemFile
-                    key={i.key}
-                    // TODO: make a reusable function to compute relative s3 paths or smth
-                    title={withoutPrefix(getPrefix(summarize.key), i.key)}
-                    handle={i}
-                  />
-                )),
-              })}
-            </Summarize>
-          )}
-        </React.Fragment>
-      ),
-    }, result));
+  withStyles(({ spacing: { unit } }) => ({
+    progress: {
+      marginTop: 2 * unit,
+    },
+  })),
+  ({ classes, files, whenEmpty = () => null }) => {
+    const { readme, images, summarize } = extractSummary(files);
+    return (
+      <React.Fragment>
+        {!readme && !summarize && !images.length && whenEmpty()}
+        {readme && (
+          <SummaryItemFile
+            title={basename(readme.logicalKey || readme.key)}
+            handle={readme}
+          />
+        )}
+        {!!images.length && <Thumbnails images={images} />}
+        {summarize && (
+          <AWS.S3.Inject>
+            {(s3) => (
+              <Data fetch={requests.summarize} params={{ s3, handle: summarize }}>
+                {AsyncResult.case({
+                  Err: () => null,
+                  _: () => <CircularProgress className={classes.progress} />,
+                  Ok: R.map((i) => (
+                    <SummaryItemFile
+                      key={i.key}
+                      // TODO: make a reusable function to compute relative s3 paths or smth
+                      title={withoutPrefix(getPrefix(summarize.key), i.key)}
+                      handle={i}
+                    />
+                  )),
+                })}
+              </Data>
+            )}
+          </AWS.S3.Inject>
+        )}
+      </React.Fragment>
+    );
+  });
