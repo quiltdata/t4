@@ -983,10 +983,12 @@ class Package(object):
         if include_directories:
             for lk, _ in self._walk_dir_meta():
                 if not f(lk, self[lk.rstrip("/")]):
-                    excluded_dirs = excluded_dirs.union({lk})
+                    excluded_dirs.add(lk)
 
         for lk, entity in self.walk():
-            if f(lk, entity) and not any(p in excluded_dirs for p in pathlib.Path(lk).parents):
+            if (not any(p in excluded_dirs 
+                        for p in pathlib.PurePosixPath(lk).parents)
+                    and f(lk, entity)):
                 p.set(lk, entity)
 
         return p
