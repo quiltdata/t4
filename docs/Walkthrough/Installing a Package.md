@@ -1,19 +1,19 @@
+You can install a package either in whole or in part.
+
 ## Finding
-Before you can install a package you need to know that it exists, and how to get it.
-
-As explained in ["Building a Package"](Building%20a%20Package.md), packages are managed using **registries**. There is a one local registry on your machine, and potentially many remote registries elsewhere "in the world".
-
-Use `list_packages` to see the packages available on a registry:
+As explained in ["Building a Package"](Building%20a%20Package.md), packages are managed using **registries**. There is a one local registry on your machine, and potentially many remote registries elsewhere "in the world". Use `list_packages` to see the packages available on a registry:
 
 ```
 $ python
 >>> import t4
 
 >>> t4.list_packages()  # list local packages
-<<< ["username/packagename", "otherusername/otherpackagename"]
+
+["namespace/packagename", "othernamespace/otherpackagename"]
 
 >>> t4.list_packages("s3://my-bucket")  # list remote packages
-<<< ["user1/seattle-weather", "user2/new-york-ballgames", ...]
+
+["user1/seattle-weather", "user2/new-york-ballgames", ...]
 ```
 
 
@@ -30,7 +30,7 @@ p = t4.Package.install(
 )
 ```
 
-Installing a package downloads all of the data in the package (to `dest`) and populates the package in your local registry.
+Installing a package downloads all of the data in the package to `dest`. It also imports the package into your local registry.
 
 <!-- TODO: reintroduce this once default file dl config is done
 T4 can be configured with a default remote registry (and, in the future, a default file download location), allowing you to omit registry:
@@ -57,10 +57,10 @@ p  = t4.Package.browse("username/packagename")
 p = t4.Package.browse("username/packagename", registry="s3://name-of-your-bucket")
 ```
 
-`browse` is advantageous over `install` when you don't want to download a large package all at once; you just want to see what's inside.
+`browse` is advantageous when you don't want to download everything in a package at once. Maybe you just want just part of the package, or maybe you just want to look at the metadata.
 
 ## Versions
-Packages are versioned using a _tophash_. To load a specific version of a package by tophash:
+To load a specific version of a package ask for the corresponding **tophash**:
 
 ```python
 import t4

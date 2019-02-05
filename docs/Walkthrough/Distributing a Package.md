@@ -1,4 +1,4 @@
-Once you're ready to distribute a package with it's time to save and distribute it.
+Once your package is ready it's time to save and distribute it.
 
 ## Building
 To save a local package to disk use `build`.
@@ -14,21 +14,11 @@ Building a package requires providing it with a name. Packages names must follow
 
 To rebuild or update a package, just run `build` again.
 
-## Tophashes
-Successfully built packages return a **tophash**.
+Built packages are only available to the local user.
 
-```
-$ python
->>> t4.Package().build("username/packagename")
-<<< '2a5a67156ca9238c14d12042db51c5b52260fdd5511b61ea89b58929d6e1769b'
-```
-
-A tophash is to a data package what a git hash is to a code package, or a Docker hash to an environment: a persistent, immutable reference to a specific version of a package.
-
-If you `build` a package multiple times, with different data each time, you will get multiple different tophashes. In the future, to refer to a specific version of a package, refer to the corresponding tophash.
 
 ## Pushing
-To save a package on your local machine `build` it. To make it available on a remote registry, `push` it:
+To share a package with others via a remote registry, `push` it:
 
 ```python
 import t4
@@ -41,9 +31,7 @@ tophash = p.push(
 )
 ```
 
-`push` targets a registry. A **registry** is a storage system&mdash;currently either an S3 bucket (e.g. `s3://my-bucket`) or a file system (e.g. `/path/to/somewhere/`)&mdash;which has been configured to support T4 packages.
-
-While `build` saves your package locally, `push` saves it on a remote registry, making the package available to anyone with access to the target S3 bucket.
+`push` targets a registry. A **registry** is a storage backend&mdash;currently either an S3 bucket (e.g. `s3://my-bucket`) or a local directory path (e.g. `/path/to/somewhere/`).
 
 <!-- TODO: move this to another section once config is done
 T4 can be configured with a default remote registry. You may omit the registry argument if you provide one:
@@ -71,4 +59,17 @@ t4.delete_package("username/packagename")
 t4.delete_package("username/packagename", "s3://your-bucket")
 ```
 
-Only do this with test packages or if you really, really need to, as this will break immutability!
+Only do this if you really need to as this will break the package for anyone relying on it.
+
+## Versioning
+
+A successful package `build` or `push` returns a **tophash**.
+
+```
+$ python
+>>> t4.Package().build("username/packagename")
+
+'2a5a67156ca9238c14d12042db51c5b52260fdd5511b61ea89b58929d6e1769b'
+```
+
+A tophash is a persistent, immutable reference to a specific version of a package.

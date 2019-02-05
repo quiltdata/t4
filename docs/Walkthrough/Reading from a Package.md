@@ -1,4 +1,6 @@
-Once you have a package it's easy to introspect it. Suppose we have the following example package:
+Once you have a package definition you can work with it using the package API.
+
+The examples in this section use the following mock package:
 
 ```python
 import t4
@@ -10,8 +12,8 @@ p = (t4.Package()
 ```
 
 
-## Selection
-To dig into a package tree:
+## Slicing
+Use `dict` key selection to slice into a package tree:
 
 ```
 $ python
@@ -33,7 +35,7 @@ To download a subset of files from a package directory to a `dest`, use `fetch`:
 # download a subfolder
 p["commodities"].fetch("./")
 
-# download a file
+# download a single file
 p["commodities"]["gold.csv"].fetch("gold.csv")
 
 # download everything
@@ -45,7 +47,8 @@ Alternatively, to download data directly into memory:
 ```
 $ python
 >>> p["commodities"]["gold.csv"]()
-<<< <pandas.DataFrame object at ...>
+
+<pandas.DataFrame object at ...>
 ```
 
 ## Reading metadata

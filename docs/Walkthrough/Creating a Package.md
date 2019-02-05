@@ -48,9 +48,10 @@ Packages support **metadata**. Metadata can be set on any entry or directory in 
 You can use the `meta` parameter, available on all of `set`, `set_dir`, and `update`, to set entry metadata at package creation time.
 
 ```python
-(p
-    .set("foo.csv", "foo.csv", meta={"filetype": "csv"})
-    .set_dir("stuff/", "stuff/", meta={"origin": "unknown"})
+(
+    t4.Package()
+        .set("foo.csv", "foo.csv", meta={"filetype": "csv"})
+        .set_dir("stuff/", "stuff/", meta={"origin": "unknown"})
 )
 ```
 
