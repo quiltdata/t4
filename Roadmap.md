@@ -2,7 +2,7 @@
 
 High-level overview of key features.
 
-* [ ] Phase 1 - Jupyter Notebooks, versionsing
+* [ ] Phase 1 - Jupyter Notebooks, versioning
 	* [ ] AWS SageMaker integration (abiilty to launch notebooks from T4)
 	* [ ] Hosted buckets
 	* [ ] T4 for AWS marketplace
