@@ -978,14 +978,21 @@ class Package(object):
         Returns: list
             A list of truthy (logical key, entry) tuples.
         """
+        p = Package()
+
+        excluded_dirs = set()
         if include_directories:
             for lk, _ in self._walk_dir_meta():
-                if f(lk, self[lk.rstrip("/")]):
-                    yield (lk, self[lk.rstrip("/")])
+                if not f(lk, self[lk.rstrip("/")]):
+                    excluded_dirs.add(lk)
 
         for lk, entity in self.walk():
-            if f(lk, entity):
-                yield (lk, entity)
+            if (not any(p in excluded_dirs 
+                        for p in pathlib.PurePosixPath(lk).parents)
+                    and f(lk, entity)):
+                p.set(lk, entity)
+
+        return p
 
     def reduce(self, f, default=None, include_directories=False):
         """

@@ -863,19 +863,25 @@ def test_map():
 
 def test_filter():
     pkg = Package()
-    pkg.set('as/df', LOCAL_MANIFEST)
-    pkg.set('as/qw', LOCAL_MANIFEST)
-    assert list(pkg.filter(lambda lk, entry: lk == 'as/df')) == [
-        ('as/df', pkg['as/df'])
-    ]
+    pkg.set('a/df', LOCAL_MANIFEST)
+    pkg.set('a/qw', LOCAL_MANIFEST)
 
-    pkg['as'].set_meta({'foo': 'bar'})
-    assert list(pkg.filter(lambda lk, entry: lk == 'as/df')) == [
-        ('as/df', pkg['as/df'])
-    ]
-    assert list(pkg.filter(lambda lk, entry: lk == 'as/', include_directories=True)) == [
-        ('as/', pkg['as'])
-    ]
+    p_copy = pkg.filter(lambda lk, entry: lk == 'a/df')
+    assert list(p_copy) == ['a'] and list(p_copy['a']) == ['df']
+
+    pkg = Package()
+    pkg.set('a/df', LOCAL_MANIFEST)
+    pkg.set('a/qw', LOCAL_MANIFEST)
+    pkg.set('b/df', LOCAL_MANIFEST)
+    pkg['a'].set_meta({'foo': 'bar'})
+    pkg['b'].set_meta({'foo': 'bar'})
+
+    p_copy = pkg.filter(lambda lk, entry: lk == 'a/', include_directories=True)
+    assert list(p_copy) == []
+
+    p_copy = pkg.filter(lambda lk, entry: lk == 'a/' or lk == 'a/df',
+                        include_directories=True)
+    assert list(p_copy) == ['a'] and list(p_copy['a']) == ['df']
 
 
 def test_reduce():
