@@ -840,7 +840,7 @@ class Package(object):
 
         return top_hash.hexdigest()
 
-    def push(self, name, dest, registry=None, message=None):
+    def push(self, name, dest=None, registry=None, message=None):
         """
         Copies objects to path, then creates a new package that points to those objects.
         Copies each object in this package to path according to logical key structure,
@@ -859,12 +859,22 @@ class Package(object):
         validate_package_name(name)
         self._set_commit_message(message)
 
-        if registry is None:
+        # if only a package name is set, set registry and dest to the default registry
+        if dest is None and registry is None:
             registry = get_remote_registry()
             if not registry:
                 raise QuiltException("No registry specified and no default remote "
                                      "registry configured. Please specify a registry "
                                      "or configure a default remote registry with t4.config")
+
+            dest = registry
+
+        # if dest is specified and registry is not use dest as the registry
+        if dest is not None and registry is None:
+            parsed = urlparse(bucket_uri)
+            registry, _, _ = parse_s3_url(parsed)
+
+        # if both dest and registry are specified no further work is needed
 
         self._fix_sha256()
 
