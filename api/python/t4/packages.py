@@ -614,6 +614,7 @@ class Package(object):
         Sets user metadata on this Package.
         """
         self._meta['user_meta'] = meta
+        return self
 
     def _fix_sha256(self):
         entries = [entry for key, entry in self.walk() if entry.hash is None]
