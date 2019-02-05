@@ -975,8 +975,8 @@ class Package(object):
             include_directories: bool
                 Whether or not to include directory entries in the map.
 
-        Returns: list
-            A list of truthy (logical key, entry) tuples.
+        Returns:
+            A new package with entries that evaluated to False removed
         """
         p = Package()
 
