@@ -311,7 +311,7 @@ class Package(object):
         return _create_str(results_dict)
 
     @classmethod
-    def install(cls, name, registry, pkg_hash=None, dest=None, dest_registry=None):
+    def install(cls, name, registry=None, pkg_hash=None, dest=None, dest_registry=None):
         """
         Installs a named package to the local registry and downloads its files.
 
@@ -325,6 +325,13 @@ class Package(object):
         Returns:
             A new Package that points to files on your local machine.
         """
+        if registry is None:
+            registry = get_remote_registry()
+            if not registry:
+                raise QuiltException("No registry specified and no default remote "
+                                     "registry configured. Please specify a registry "
+                                     "or configure a default remote registry with t4.config")
+        
         if dest_registry is None:
             dest_registry = get_local_registry()
 
@@ -339,7 +346,6 @@ class Package(object):
         """
         Load a package into memory from a registry without making a local copy of
         the manifest.
-
         Args:
             name(string): name of package to load
             registry(string): location of registry to load package from
