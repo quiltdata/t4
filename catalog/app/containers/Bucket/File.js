@@ -125,7 +125,7 @@ const VersionInfo = RT.composeComponent('Bucket.File.VersionInfo',
                             <ListItemText
                               primary={
                                 <span>
-                                  <FormattedRelative value={v.lastModified.toLocaleString()} />
+                                  <FormattedRelative value={v.lastModified} />
                                   {' | '}
                                   {readableBytes(v.size)}
                                   {v.isLatest && ' | latest'}
