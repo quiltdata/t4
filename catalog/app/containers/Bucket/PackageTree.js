@@ -6,12 +6,9 @@ import * as R from 'ramda';
 import * as React from 'react';
 import * as RC from 'recompose';
 import Button from '@material-ui/core/Button';
-import Card from '@material-ui/core/Card';
-import CardContent from '@material-ui/core/CardContent';
 import CircularProgress from '@material-ui/core/CircularProgress';
 import { withStyles } from '@material-ui/core/styles';
 
-import ContentWindow from 'components/ContentWindow';
 import { ThrowNotFound } from 'containers/NotFoundPage';
 import AsyncResult from 'utils/AsyncResult';
 import * as AWS from 'utils/AWS';
@@ -29,6 +26,7 @@ import tagged from 'utils/tagged';
 
 import BreadCrumbs, { Crumb } from './BreadCrumbs';
 import CodeButton from './CodeButton';
+import FilePreview from './FilePreview';
 import Listing, { ListingItem } from './Listing';
 import Summary from './Summary';
 import { displayError } from './errors';
@@ -213,13 +211,7 @@ export default RT.composeComponent('Bucket.PackageTree',
               </div>
               {AsyncResult.case({
                 Ok: TreeDisplay.case({
-                  File: (handle) => (
-                    <Card>
-                      <CardContent>
-                        <ContentWindow handle={handle} />
-                      </CardContent>
-                    </Card>
-                  ),
+                  File: (handle) => <FilePreview handle={handle} />,
                   Dir: (dir) => (
                     <React.Fragment>
                       <NamedRoutes.Inject>
