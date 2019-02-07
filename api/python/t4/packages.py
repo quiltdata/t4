@@ -840,7 +840,7 @@ class Package(object):
 
         return top_hash.hexdigest()
 
-    def push(self, name, dest, registry=None, message=None):
+    def push(self, name, dest=None, registry=None, message=None):
         """
         Copies objects to path, then creates a new package that points to those objects.
         Copies each object in this package to path according to logical key structure,
@@ -860,11 +860,35 @@ class Package(object):
         self._set_commit_message(message)
 
         if registry is None:
-            registry = get_remote_registry()
-            if not registry:
-                raise QuiltException("No registry specified and no default remote "
-                                     "registry configured. Please specify a registry "
-                                     "or configure a default remote registry with t4.config")
+            if dest is None:
+                # Only a package name is set, so set registry and dest to the default 
+                # registry.
+                registry = get_remote_registry()
+                if not registry:
+                    raise QuiltException("No registry specified and no default remote "
+                                        "registry configured. Please specify a "
+                                        "registry or configure a default remote "
+                                        "registry with t4.config")
+
+                dest = registry
+            else:
+                # The dest is specified and registry is not. Get registry from dest.
+                parsed = urlparse(fix_url(dest))
+                if parsed.scheme == 's3':
+                    bucket, _, _ = parse_s3_url(parsed)
+                    registry = 's3://' + bucket
+                elif parsed.scheme == 'file':
+                    registry = parsed.path
+                else:
+                    raise NotImplementedError
+
+        else:
+            if dest is None:
+                # Specifying registry but not a dest doesn't make sense. Throw.
+                raise ValueError("Registry specified but dest is undefined.")
+            else:
+                # If both dest and registry are specified, no further work needed.
+                pass
 
         self._fix_sha256()
 

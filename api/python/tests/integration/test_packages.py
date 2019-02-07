@@ -113,10 +113,10 @@ def test_default_registry(tmpdir):
 
     with patch('t4.packages.get_remote_registry') as mock_config:
         mock_config.return_value = new_base_path
-        new_pkg.push("Quilt/Test", Path(tmpdir, 'test_dest').resolve().as_uri())
+        new_pkg.push("Quilt/Test")
         with open(out_path) as fd:
             pkg = Package.load(fd)
-            assert pkg['bar'].physical_keys[0].endswith('test_dest/Quilt/Test/bar')
+            assert pkg['bar'].physical_keys[0].endswith('.quilttest/Quilt/Test/bar')
 
 def test_read_manifest(tmpdir):
     """ Verify reading serialized manifest from disk. """
