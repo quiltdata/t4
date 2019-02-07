@@ -1,7 +1,7 @@
 Once your package is ready it's time to save and distribute it.
 
 ## Building
-To save a local package to disk use `build`.
+To save a package to local disk use `build`.
 
 ```python
 import t4
@@ -12,38 +12,28 @@ tophash = p.build("username/packagename")
 
 Building a package requires providing it with a name. Packages names must follow the `<authorname>/<packagename>` format.
 
-To rebuild or update a package, just run `build` again.
-
-Built packages are only available to the local user.
-
-
 ## Pushing
 To share a package with others via a remote registry, `push` it:
 
 ```python
 import t4
 p = t4.Package()
-tophash = p.push(
+p.push(
     "username/packagename", 
-    "s3://your-bucket",
-    # you can add an optional commit message
+    dest="s3://your-bucket",
     message="Updated version my package"
 )
 ```
 
-`push` targets a registry. A **registry** is a storage backend&mdash;currently either an S3 bucket (e.g. `s3://my-bucket`) or a local directory path (e.g. `/path/to/somewhere/`).
-
-<!-- TODO: move this to another section once config is done
-T4 can be configured with a default remote registry. You may omit the registry argument if you provide one:
+`push` targets a registry. A **registry** is a storage backend&mdash;currently either an S3 bucket (e.g. `s3://my-bucket`) or a local directory path (e.g. `/path/to/somewhere/`). By default the registry is infered from `dest`. You can omit `dest` entirely if you configure a default remote registry first:
 
 ```python
-# set a default remote target
-t4.config(default_remote_registry="s3://your-bucket")
-
-# install from there implicitly
-t4.Package().push("username/packagename")
+import t4
+t4.config(default_remote_registry='s3://your-bucket')
+t4.Package().push("username/packagename")  # this now 'just works'
 ```
--->
+
+The default remote registry, if set, persists between sessions.
 
 ## Deletion
 
