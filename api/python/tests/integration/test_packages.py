@@ -261,7 +261,6 @@ def test_load_into_t4(tmpdir):
 
         # Manifest copied
         top_hash = new_pkg.top_hash()
-        # FIXME: understand what is happening with these byte calls
         bytes_mock.assert_any_call(top_hash.encode(), 's3://my_test_bucket/.quilt/named_packages/Quilt/package/latest')
         bytes_mock.assert_any_call(ANY, 's3://my_test_bucket/.quilt/packages/' + top_hash)
 
