@@ -6,6 +6,7 @@ The examples in this section use the following mock package:
 import t4
 p = (t4.Package()
         .set("trades.parquet", "trades.parquet")
+        .set("symbols.yaml", "symbols.yaml")
         .set("commodities/gold.csv", "gold.csv")
         .set("commodities/silver.csv", "silver.csv")
     )
@@ -28,7 +29,7 @@ $ python
 Slicing into a `Package` directory returns another `Package` rooted at that subdirectory. Slicing into a package entry returns an individual `PackageEntry`.
 
 
-## Downloading data
+## Downloading data to disk
 To download a subset of files from a package directory to a `dest`, use `fetch`:
 
 ```python
@@ -42,13 +43,21 @@ p["commodities"]["gold.csv"].fetch("gold.csv")
 p.fetch("trade-info/")
 ```
 
-Alternatively, to download data directly into memory:
+## Downloading data into memory
+Alternatively, you can download data directly into memory:
 
 ```
 $ python
 >>> p["commodities"]["gold.csv"]()
+<<< <pandas.DataFrame object at ...>
+```
 
-<pandas.DataFrame object at ...>
+To apply a custom deserializer to your data, pass the function as a parameter to the function. For example, to load a `yaml` file using `yaml.safe_load`:
+
+```
+$ python
+>>> p["symbols.yaml"](yaml.safe_load)
+<<< {'gold': 'au', 'silver': 'ag'}
 ```
 
 ## Reading metadata
