@@ -859,34 +859,36 @@ class Package(object):
         validate_package_name(name)
         self._set_commit_message(message)
 
-        # if only a package name is set, set registry and dest to the default registry
-        if dest is None and registry is None:
-            registry = get_remote_registry()
-            if not registry:
-                raise QuiltException("No registry specified and no default remote "
-                                     "registry configured. Please specify a registry "
-                                     "or configure a default remote registry with t4.config")
+        if registry is None:
+            if dest is None:
+                # Only a package name is set, so set registry and dest to the default 
+                # registry.
+                registry = get_remote_registry()
+                if not registry:
+                    raise QuiltException("No registry specified and no default remote "
+                                        "registry configured. Please specify a "
+                                        "registry or configure a default remote "
+                                        "registry with t4.config")
 
-            dest = registry
-
-        # if dest is specified and registry is not use dest as the registry
-        elif dest is not None and registry is None:
-            parsed = urlparse(fix_url(dest))
-
-            # TODO: this should be a helper method?
-            if parsed.scheme == 's3':
-                bucket, _, _ = parse_s3_url(parsed)
-                registry = 's3://' + bucket
-            elif parsed.scheme == 'file':
-                registry = parsed.path
+                dest = registry
             else:
-                raise NotImplementedError
+                # The dest is specified and registry is not. Get registry from dest.
+                parsed = urlparse(fix_url(dest))
+                if parsed.scheme == 's3':
+                    bucket, _, _ = parse_s3_url(parsed)
+                    registry = 's3://' + bucket
+                elif parsed.scheme == 'file':
+                    registry = parsed.path
+                else:
+                    raise NotImplementedError
 
-        # specifying registry but not dest doesn't make sense
-        elif dest is None and registry is not None:
-            raise NotImplementedError
-
-        # if both dest and registry are specified no further work is needed
+        else:
+            if dest is None:
+                # Specifying registry but not a dest doesn't make sense. Throw.
+                raise ValueError("Registry specified but dest is undefined.")
+            else:
+                # If both dest and registry are specified, no further work needed.
+                pass
 
         self._fix_sha256()
 
