@@ -870,9 +870,21 @@ class Package(object):
             dest = registry
 
         # if dest is specified and registry is not use dest as the registry
-        if dest is not None and registry is None:
-            parsed = urlparse(bucket_uri)
-            registry, _, _ = parse_s3_url(parsed)
+        elif dest is not None and registry is None:
+            parsed = urlparse(fix_url(dest))
+
+            # TODO: this should be a helper method?
+            if parsed.scheme == 's3':
+                bucket, _, _ = parse_s3_url(parsed)
+                registry = 's3://' + bucket
+            elif parsed.scheme == 'file':
+                registry = parsed.path
+            else:
+                raise NotImplementedError
+
+        # specifying registry but not dest doesn't make sense
+        elif dest is None and registry is not None:
+            raise NotImplementedError
 
         # if both dest and registry are specified no further work is needed
 
