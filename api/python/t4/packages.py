@@ -560,8 +560,7 @@ class Package(object):
             files = src_path.rglob('*')
             ignore = src_path / '.quiltignore'
             if ignore.exists():
-                ignore_rules = ignore.read_text('utf-8').split("\n")
-                files = quiltignore_filter(files, ignore_rules, 'file')
+                files = quiltignore_filter(files, ignore, 'file')
 
             for f in files:
                 if not f.is_file():
