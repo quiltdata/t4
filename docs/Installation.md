@@ -66,15 +66,20 @@ required to run a T4 bucket and catalog in your own VPC.
       ```xml
       <?xml version="1.0" encoding="UTF-8"?>
       <CORSConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
-          <CORSRule>
-              <AllowedOrigin>HTTPS://YOUR_CNAME_DOMAIN.COM</AllowedOrigin>
-              <AllowedMethod>GET</AllowedMethod>
-              <AllowedMethod>PUT</AllowedMethod>
-              <AllowedHeader>*</AllowedHeader>
-          </CORSRule>
+      <CORSRule>
+          <AllowedOrigin>https://yourcompanydomain.com</AllowedOrigin>
+          <AllowedMethod>GET</AllowedMethod>
+          <AllowedMethod>HEAD</AllowedMethod>
+          <AllowedMethod>PUT</AllowedMethod>
+          <AllowedMethod>POST</AllowedMethod>
+          <AllowedHeader>*</AllowedHeader>
+          <MaxAgeSeconds>3000</MaxAgeSeconds>
+      </CORSRule>
       </CORSConfiguration>
       ```
       The above policy makes it possible for your users to browse buckets on the web.
+      > Note: bucket CORS does not grant permissions of any kind.
+      > `AllowedMethod`s are only callable by IAM users or roles with sufficient permissions.
 1. *ARN for server certificate* - We require HTTPS for access to the Quilt web catalog. You may use the CloudFront domain output by CloudFormation. Alternatively, if you wish to use a custom domain, create or upload an [SSL/TLS server certificate](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_server-certs.html).
 1. *ARNs for search users* - Only select users that you specifcy can search S3. Search users can view contents for any bucket object, so only add users that you trust to this list.
 
