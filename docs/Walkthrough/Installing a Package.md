@@ -25,13 +25,22 @@ To make a remote package and all of its data available locally, `install` it.
 import t4
 p = t4.Package.install(
     "username/packagename", 
-    dest="path/to/somewhere/",
+    dest="./",
     registry="s3://your-bucket"
 )
 ```
 
 Installing a package downloads all of the data in the package to `dest`. It also imports the package into your local registry.
 
+You can omit `registry` if you configure a default remote registry:
+
+```python
+import t4
+t4.config(default_remote_registry='s3://your-bucket')
+t4.Package().install("username/packagename", "./")  # this now 'just works'
+```
+
+The default remote registry, if set, persists between sessions.
 
 ## Browsing
 To download a package manifest without downloading its data, use `browse`:
