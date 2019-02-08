@@ -317,7 +317,8 @@ class Package(object):
 
         Args:
             name(str): Name of package to install.
-            registry(str): Registry where package is located.
+            registry(str): Registry where package is located. 
+                Defaults to the default remote registry.
             pkg_hash(str): Hash of package to install. Defaults to latest.
             dest(str): Local path to download files to.
             dest_registry(str): Registry to install package to. Defaults to local registry.
