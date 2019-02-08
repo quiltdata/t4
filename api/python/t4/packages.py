@@ -331,6 +331,8 @@ class Package(object):
                 raise QuiltException("No registry specified and no default remote "
                                      "registry configured. Please specify a registry "
                                      "or configure a default remote registry with t4.config")
+        elif registry == 'local':
+            registry = get_local_registry()
         
         if dest_registry is None:
             dest_registry = get_local_registry()

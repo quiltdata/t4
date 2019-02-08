@@ -200,6 +200,31 @@ def test_browse_package_from_registry():
         assert '{}/.quilt/packages/{}'.format(remote_registry, pkghash) \
                 in [x[0][0] for x in pkgmock.call_args_list]
 
+def test_local_install(tmpdir):
+    """Verify that installing from a local package works as expected."""
+    with patch('t4.packages.get_local_registry') as get_local_registry_mock, \
+        patch('t4.Package.push') as push_mock:
+        local_registry = tmpdir
+        get_local_registry_mock.return_value = local_registry
+        pkg = Package()
+        pkg.build('Quilt/nice-name')
+
+        t4.Package.install('Quilt/nice-name', registry='local', dest='./')
+        push_mock.assert_called_once_with(dest='./', name='Quilt/nice-name', registry=local_registry)
+
+def test_remote_install(tmpdir):
+    """Verify that installing from a local package works as expected."""
+    with patch('t4.packages.get_remote_registry') as get_remote_registry_mock, \
+        patch('t4.packages.get_local_registry') as get_local_registry_mock, \
+        patch('t4.Package.push') as push_mock:
+        remote_registry = tmpdir
+        get_local_registry_mock.return_value = get_remote_registry_mock.return_value = remote_registry
+        pkg = Package()
+        pkg.build('Quilt/nice-name')
+
+        t4.Package.install('Quilt/nice-name', dest='./')
+        push_mock.assert_called_once_with(dest='./', name='Quilt/nice-name', registry=remote_registry)
+
 def test_package_fetch(tmpdir):
     """ Package.fetch() on nested, relative keys """
     input_dir = os.path.dirname(__file__)
