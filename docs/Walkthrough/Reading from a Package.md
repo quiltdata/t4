@@ -1,17 +1,20 @@
-Once you have a package it's easy to introspect it. Suppose we have the following example package:
+Once you have a package definition you can work with it using the package API.
+
+The examples in this section use the following mock package:
 
 ```python
 import t4
 p = (t4.Package()
         .set("trades.parquet", "trades.parquet")
+        .set("symbols.yaml", "symbols.yaml")
         .set("commodities/gold.csv", "gold.csv")
         .set("commodities/silver.csv", "silver.csv")
     )
 ```
 
 
-## Selection
-To dig into a package tree:
+## Slicing
+Use `dict` key selection to slice into a package tree:
 
 ```
 $ python
@@ -26,26 +29,35 @@ $ python
 Slicing into a `Package` directory returns another `Package` rooted at that subdirectory. Slicing into a package entry returns an individual `PackageEntry`.
 
 
-## Downloading data
+## Downloading data to disk
 To download a subset of files from a package directory to a `dest`, use `fetch`:
 
 ```python
 # download a subfolder
 p["commodities"].fetch("./")
 
-# download a file
+# download a single file
 p["commodities"]["gold.csv"].fetch("gold.csv")
 
 # download everything
 p.fetch("trade-info/")
 ```
 
-Alternatively, to download data directly into memory:
+## Downloading data into memory
+Alternatively, you can download data directly into memory:
 
 ```
 $ python
 >>> p["commodities"]["gold.csv"]()
 <<< <pandas.DataFrame object at ...>
+```
+
+To apply a custom deserializer to your data, pass the function as a parameter to the function. For example, to load a `yaml` file using `yaml.safe_load`:
+
+```
+$ python
+>>> p["symbols.yaml"](yaml.safe_load)
+<<< {'gold': 'au', 'silver': 'ag'}
 ```
 
 ## Reading metadata

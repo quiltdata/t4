@@ -1,8 +1,8 @@
 # Installation
 
-T4 has two different components:
-* A Python package, `t4`
-* A web interface, the T4 Catalog
+T4 has two components:
+* The T4 Python client package
+* The T4 web catalog
 
 If you have an already-provisioned catalog, only the Python package is needed.
 
@@ -31,7 +31,7 @@ Install the current T4 client from `master`:
 $ pip install git+https://github.com/quiltdata/t4.git#subdirectory=api/python
 ```
 
-## Catalog
+## Catalog (Local)
 
 The Javascript catalog is a single-page, static application.
 You can build it as follows:
@@ -46,7 +46,7 @@ The static assets, including webpack chunks, are written to `/static`.
 For more advanced deployment scripts, see [`deploy_navigator.sh`](../deployment/deploy_navigator.sh).
 
 
-## AWS T4 Instance (via CloudFormation)
+## Catalog (on AWS)
 The following section uses AWS CloudFormation to deploy and manage the resources
 required to run a T4 bucket and catalog in your own VPC.
 
@@ -158,3 +158,38 @@ by you in the following step.
 
 1. If desired, set a `CNAME` record with your DNS service that points to your CloudFrontDomain. The `CNAME` must also be present in your [CORS policy](#pre-requisites). Now users can access the T4 catalog at your custom
 `CNAME`.
+
+### Further Configuration
+You can tweak how the catalog instance works further using _federations_ and _bucket config_.
+
+When you create your T4 stack, you specify a *ConfigBucketName* in your stack parameters. This bucket will be created and populated with two files -- `config.json` and `federation.json`. `config.json` is the main navigator config file, and contains things that are specific to your navigator, like `defaultBucket` and `signInRedirect`. It also includes one or more references to federations, including your `federation.json`. `federation.json` is your default federation. It includes an inline bucket config for your T4 bucket.
+
+A **federation** is just a list of bucket configurations. Your catalog will specify one or more federations from which it sources its bucket configs. Federations are a convenient way to manage collections of buckets that are useful in groups, like all the T4 buckets owned by a specific group or all public T4 buckets pertaining to a certain field. Each bucket configuration in a federation can be either a hyperlink (possibly relative) to a JSON file containing the bucket config, or an object containing the bucket config itself. 
+
+An example:
+
+```
+{
+  'buckets': [
+    {
+      ... inline bucket config ...
+    },
+    'link/to/bucket/config.json',
+    ...
+  ]
+}
+```
+
+A **bucket config**, meanwhile, is a JSON object that describes metadata associated with a T4 bucket. It is of the following form:
+
+```
+{
+  'name': name of s3 bucket,
+  'title': friendly title to be displayed in the catalog drop-down,
+  'icon': square icon to be displayed in the catalog drop-down,
+  'description': short description of the bucket to be displayed in the catalog drop-down,
+  'searchEndpoint': url of the search endpoint for your T4 bucket
+}
+```
+
+A bucket config can be included inline in a federation, or it can be a standalone JSON file that is linked from a federation.
