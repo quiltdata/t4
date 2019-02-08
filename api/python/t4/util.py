@@ -308,7 +308,6 @@ def quiltignore_filter(paths, ignore, url_scheme):
     """
     ignore_rules = ignore.read_text('utf-8').split("\n")
     ignore_rules = ['*/' + rule for rule in ignore_rules if rule]
-    print(ignore_rules)
 
     if url_scheme == 'file':
         from fnmatch import fnmatch
