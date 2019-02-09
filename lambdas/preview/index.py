@@ -10,10 +10,8 @@ from jsonschema import Draft4Validator, ValidationError
 from nbconvert import HTMLExporter
 import nbformat
 import pandas as pd
-import pyarrow as pa
+import pyarrow.parquet as pq
 import requests
-
-WEB_ORIGIN = os.environ['WEB_ORIGIN']
 
 
 SCHEMA = {
@@ -33,15 +31,14 @@ SCHEMA = {
 Draft4Validator.check_schema(SCHEMA)
 VALIDATOR = Draft4Validator(SCHEMA)
 
-
 def lambda_handler(event, _):
     """
     dynamically handle preview requests for bytes in S3
 
     caller must specify input_type (since there may be no file extension)
     """
-    params = event['queryStringParameters'] or {}
-    headers = event['headers'] or {}
+    params = event.get('queryStringParameters', {})
+    headers = event.get('headers', {})
 
     try:
         VALIDATOR.validate(params)
@@ -61,6 +58,12 @@ def lambda_handler(event, _):
                 fd.write(chunk)
             fd.seek(0)
 
+            columns = None
+            desc = None
+            html = None
+            meta = None
+            shape = None
+
             if input_type == 'ipynb':
                 html_exporter = HTMLExporter()
                 html_exporter.template_file = 'basic'
@@ -68,12 +71,14 @@ def lambda_handler(event, _):
                 notebook = nbformat.read(fd, 4)
                 html, _ = html_exporter.from_notebook_node(notebook)
             elif input_type == 'parquet':
-                meta = pa.parquet.read_metadata(fd)
+                meta = pq.read_metadata(fd)
                 columns = {k.decode():json.loads(meta.metadata[k]) for k in meta.metadata}
+                # convert to str since FileMetaData is not JSON.dumps'able (below)
+                meta = str(meta)
 
                 fd.seek(0)
                 data = pd.read_parquet(fd.name)
-                desc = data.describe().to_dict()
+                desc = data.describe().to_json()
                 html = data._repr_html_() # pylint: disable=protected-access
                 shape = data.shape
             else:
@@ -94,7 +99,7 @@ def lambda_handler(event, _):
     response_headers = {
         "Content-Type": 'application/json'
     }
-    if headers.get('origin') == WEB_ORIGIN:
+    if headers.get('origin') == os.environ.get('WEB_ORIGIN'):
         response_headers.update({
             'access-control-allow-origin': '*',
             'access-control-allow-methods': 'GET',

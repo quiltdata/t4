@@ -15,7 +15,7 @@ class TestAPI():
             'navigator_url': 'https://foo.bar',
             'elastic_search_url': 'https://es.foo',
             'accept_invalid_config_keys': 'yup',
-            }
+        }
         responses.add(responses.GET, 'https://foo.bar/config.json', json=content, status=200)
 
         he.config('foo.bar')
