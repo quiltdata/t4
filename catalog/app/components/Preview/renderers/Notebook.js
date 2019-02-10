@@ -1,7 +1,12 @@
+import cx from 'classnames';
 import * as React from 'react';
 
 
-// TODO
-export default ({ preview }, props) =>
-  // eslint-disable-next-line react/no-danger
-  <div dangerouslySetInnerHTML={{ __html: preview }} {...props} />;
+export default ({ preview }, { className, ...props } = {}) => (
+  <div
+    className={cx(className, 'ipynb-preview')}
+    // eslint-disable-next-line react/no-danger
+    dangerouslySetInnerHTML={{ __html: preview }}
+    {...props}
+  />
+);
