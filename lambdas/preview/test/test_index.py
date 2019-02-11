@@ -39,6 +39,7 @@ class TestIndex():
         parent = os.path.dirname(__file__)
         basedir = os.path.join(parent, 'data')
         notebook = os.path.join(basedir, 'nb_1200727.ipynb')
+        output = os.path.join(basedir, 'output.txt')
         with open(notebook, 'rb') as file_:
             responses.add(
                 responses.GET,
@@ -49,14 +50,11 @@ class TestIndex():
             self.S3_EVENT['queryStringParameters']['input'] = 'ipynb'
             resp = lambda_handler(self.S3_EVENT, None)
             body = json.loads(resp['body'])
-            for k in ('columns', 'description', 'metadata', 'shape'):
-                assert not body[k], 'Unexpected key: {k}'
-            with open("output.txt", "w") as f:
-                f.write(body['html'])
+            assert body['info'] == '{}', 'Expected empty info object'
             html_ = os.path.join(basedir, 'html.txt')
             BODY_HTML = open(html_, 'r').read()
             assert body['html'].startswith(BODY_HTML), \
-                f"Unexpected HTML: {body['html']}"
+                f"Unexpected HTML:\n{body['html']}"
 
     @patch.dict(os.environ, {'WEB_ORIGIN': MOCK_ORIGIN})
     @responses.activate
@@ -76,5 +74,5 @@ class TestIndex():
             resp = lambda_handler(self.S3_EVENT, None)
             assert resp['statusCode'] == 200, f"Expected 200, got {resp['statusCode']}"
             body = json.loads(resp['body'])
-            for k in ('columns', 'description', 'html', 'metadata', 'shape'):
+            for k in ['html', 'info']:
                 assert  body[k], "Expected key '{k}' to be defined"
