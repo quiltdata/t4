@@ -39,7 +39,6 @@ class TestIndex():
         parent = os.path.dirname(__file__)
         basedir = os.path.join(parent, 'data')
         notebook = os.path.join(basedir, 'nb_1200727.ipynb')
-        output = os.path.join(basedir, 'output.txt')
         with open(notebook, 'rb') as file_:
             responses.add(
                 responses.GET,
