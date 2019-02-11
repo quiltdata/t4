@@ -14,6 +14,12 @@ import pyarrow.parquet as pq
 import requests
 
 
+ALLOWED_ORIGINS = [
+    'http://localhost:3000',
+    'http://localhost:3000/',
+    os.environ.get('WEB_ORIGIN')
+]
+
 SCHEMA = {
     'type': 'object',
     'properties': {
@@ -44,7 +50,7 @@ def lambda_handler(event, _):
         VALIDATOR.validate(params)
     except ValidationError as ex:
         return {
-            "body": ex.message,
+            "body": str(ex),
             "statusCode": 400
         }
 
@@ -99,7 +105,7 @@ def lambda_handler(event, _):
     response_headers = {
         "Content-Type": 'application/json'
     }
-    if headers.get('origin') == os.environ.get('WEB_ORIGIN'):
+    if headers.get('origin') in ALLOWED_ORIGINS:
         response_headers.update({
             'access-control-allow-origin': '*',
             'access-control-allow-methods': 'GET',
