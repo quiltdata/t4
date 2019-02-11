@@ -43,8 +43,10 @@ def lambda_handler(event, _):
 
     caller must specify input_type (since there may be no file extension)
     """
-    params = event.get('queryStringParameters', {})
-    headers = event.get('headers', {})
+    # this weird-looking code is correct since event['queryStringParameters']
+    # will return a None if no query params
+    params = event['queryStringParameters'] or {}
+    headers = event['headers'] or {}
 
     try:
         VALIDATOR.validate(params)
