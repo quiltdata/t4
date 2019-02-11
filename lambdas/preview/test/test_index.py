@@ -49,7 +49,6 @@ class TestIndex():
             self.S3_EVENT['queryStringParameters']['input'] = 'ipynb'
             resp = lambda_handler(self.S3_EVENT, None)
             body = json.loads(resp['body'])
-            assert body['info'] == '{}', 'Expected empty info object'
             html_ = os.path.join(basedir, 'html.txt')
             BODY_HTML = open(html_, 'r').read()
             assert body['html'].startswith(BODY_HTML), \
@@ -73,5 +72,5 @@ class TestIndex():
             resp = lambda_handler(self.S3_EVENT, None)
             assert resp['statusCode'] == 200, f"Expected 200, got {resp['statusCode']}"
             body = json.loads(resp['body'])
-            for k in ['html', 'info']:
-                assert  body[k], "Expected key '{k}' to be defined"
+            for k in ['html']:
+                assert body[k], "Expected key '{k}' to be defined"
