@@ -49,7 +49,7 @@ class TestIndex():
             self.S3_EVENT['queryStringParameters']['input'] = 'ipynb'
             resp = lambda_handler(self.S3_EVENT, None)
             body = json.loads(resp['body'])
-            html_ = os.path.join(basedir, 'html.txt')
+            html_ = os.path.join(basedir, 'ipynb_html_response.txt')
             BODY_HTML = open(html_, 'r').read()
             assert body['html'].startswith(BODY_HTML), \
                 f"Unexpected HTML:\n{body['html']}"
@@ -61,6 +61,7 @@ class TestIndex():
         parent = os.path.dirname(__file__)
         basedir = os.path.join(parent, 'data')
         parquet = os.path.join(basedir, 'atlantic_storms.parquet')
+        info_response = os.path.join(basedir, 'parquet_info_response.json')
         with open(parquet, 'rb') as file_:
             responses.add(
                 responses.GET,
@@ -72,5 +73,7 @@ class TestIndex():
             resp = lambda_handler(self.S3_EVENT, None)
             assert resp['statusCode'] == 200, f"Expected 200, got {resp['statusCode']}"
             body = json.loads(resp['body'])
-            for k in ['html']:
-                assert body[k], "Expected key '{k}' to be defined"
+            with open(info_response, 'r') as info_json:
+                expected = json.loads(info_json.read())
+                assert (body['info'] == expected), \
+                    "Unexpected body['info'] for Parquet file"
