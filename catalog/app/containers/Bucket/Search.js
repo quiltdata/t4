@@ -291,6 +291,7 @@ const PreviewBox = RT.composeComponent('Bucket.Search.PreviewBox',
       padding: unit,
       position: 'absolute',
       width: '100%',
+      zIndex: 1,
     },
   })),
   ({ classes, data, expanded, expand }) => (
