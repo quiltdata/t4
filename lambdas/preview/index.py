@@ -64,7 +64,6 @@ def lambda_handler(event, _):
             for chunk in resp.iter_content(chunk_size=1024):
                 fd.write(chunk)
             fd.seek(0)
-
             # init variables used across cases so ret_val never barfs on missing data
             html = ''
             info = {}
