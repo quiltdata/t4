@@ -88,7 +88,6 @@ export const objectGetter = (process) => {
 const previewUrl = (endpoint, url, type) =>
   `${endpoint}/preview?url=${encodeURIComponent(url)}&input=${type}`;
 
-// TODO: check this up once preview endpoint is working and CORS configured
 const fetchPreview = async ({ endpoint, type, handle, signer }) => {
   const signed = signer.getSignedS3URL(handle);
   const r = await fetch(previewUrl(endpoint, signed, type));
