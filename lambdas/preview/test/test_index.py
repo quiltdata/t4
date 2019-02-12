@@ -76,4 +76,4 @@ class TestIndex():
             with open(info_response, 'r') as info_json:
                 expected = json.loads(info_json.read())
                 assert (body['info'] == expected), \
-                    "Unexpected body['info'] for Parquet file"
+                    f"Unexpected body['info'] for {parquet}"
