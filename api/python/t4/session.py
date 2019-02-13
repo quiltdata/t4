@@ -10,6 +10,7 @@ import subprocess
 import sys
 import time
 
+from botocore.credentials import RefreshableCredentials
 import pkg_resources
 import requests
 
@@ -18,7 +19,6 @@ from .util import BASE_PATH, load_config, QuiltException
 
 AUTH_PATH = BASE_PATH / 'auth.json'
 VERSION = pkg_resources.require('t4')[0].version
-
 
 def _load_auth():
     if AUTH_PATH.exists():
@@ -201,3 +201,25 @@ def logout():
         print("Already logged out.")
 
     clear_session()
+
+CREDENTIALS = None
+
+def set_refreshable_credentials(get_credentials):
+    global CREDENTIALS
+    CREDENTIALS = RefreshableCredentials.create_from_metadata(
+            metadata=get_credentials(),
+            refresh_using=get_credentials,
+            method='quilt-registry'
+            )
+
+def get_registry_credentials():
+    session = get_session()
+    creds = session.get(
+        "{url}/api/auth/get_credentials".format(
+            url=get_registry_url()
+            )
+        )
+    return creds
+
+def set_credentials_from_registry():
+    set_refreshable_credentials(get_registry_credentials)
