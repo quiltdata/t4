@@ -74,6 +74,6 @@ class TestIndex():
             assert resp['statusCode'] == 200, f"Expected 200, got {resp['statusCode']}"
             body = json.loads(resp['body'])
             with open(info_response, 'r') as info_json:
-                expected = json.loads(info_json.read())
+                expected = json.load(info_json)
                 assert (body['info'] == expected), \
                     f"Unexpected body['info'] for {parquet}"
