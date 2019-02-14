@@ -13,7 +13,7 @@ MOCK_ORIGIN = 'https://mock.quiltdata.com'
 
 # pylint: disable=no-member
 class TestIndex():
-    """Class kto test various inputs to the main indexing function"""
+    """Class to test various inputs to the main indexing function"""
 
     FILE_URL = f'{MOCK_ORIGIN}/file.ext'
 
@@ -45,13 +45,13 @@ class TestIndex():
                 self.FILE_URL,
                 body=file_.read(),
                 status=200)
-            # make it an ipynb event
-            self.S3_EVENT['queryStringParameters']['input'] = 'ipynb'
-            resp = lambda_handler(self.S3_EVENT, None)
+            event = self.S3_EVENT.copy()
+            event['queryStringParameters'].update({'input': 'ipynb'})
+            resp = lambda_handler(event, None)
             body = json.loads(resp['body'])
             html_ = os.path.join(basedir, 'ipynb_html_response.txt')
-            BODY_HTML = open(html_, 'r').read()
-            assert body['html'].startswith(BODY_HTML), \
+            body_html = open(html_, 'r').read()
+            assert body['html'].startswith(body_html), \
                 f"Unexpected HTML:\n{body['html']}"
 
     @patch.dict(os.environ, {'WEB_ORIGIN': MOCK_ORIGIN})
@@ -68,9 +68,9 @@ class TestIndex():
                 self.FILE_URL,
                 body=file_.read(),
                 status=200)
-            # make it an ipynb event
-            self.S3_EVENT['queryStringParameters']['input'] = 'parquet'
-            resp = lambda_handler(self.S3_EVENT, None)
+            event = self.S3_EVENT.copy()
+            event['queryStringParameters'].update({'input': 'parquet'})
+            resp = lambda_handler(event, None)
             assert resp['statusCode'] == 200, f"Expected 200, got {resp['statusCode']}"
             body = json.loads(resp['body'])
             with open(info_response, 'r') as info_json:
