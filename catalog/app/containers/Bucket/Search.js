@@ -8,13 +8,14 @@ import Button from '@material-ui/core/Button';
 import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
 import Chip from '@material-ui/core/Chip';
+import CircularProgress from '@material-ui/core/CircularProgress';
 import Icon from '@material-ui/core/Icon';
 import IconButton from '@material-ui/core/IconButton';
 import Typography from '@material-ui/core/Typography';
 import * as colors from '@material-ui/core/colors';
 import { withStyles } from '@material-ui/core/styles';
 
-import ContentWindow from 'components/ContentWindow';
+import * as Preview from 'components/Preview';
 import Working from 'components/Working';
 import AsyncResult from 'utils/AsyncResult';
 import * as AWS from 'utils/AWS';
@@ -252,29 +253,31 @@ const VersionInfo = RT.composeComponent('Bucket.Search.VersionInfo',
     </React.Fragment>
   ));
 
-const Preview = RT.composeComponent('Bucket.Search.Preview',
+const PreviewBox = RT.composeComponent('Bucket.Search.PreviewBox',
   RC.setPropTypes({
-    handle: handleShape.isRequired,
+    data: PT.object.isRequired, // PreviewData
   }),
-  RC.withStateHandlers(({ handle: { key } }) => ({
-    loaded: ContentWindow.getType(key) !== 'ipynb',
+  RC.withStateHandlers({
     expanded: false,
-  }), {
-    load: () => () => ({ loaded: true, expanded: true }),
+  }, {
     expand: () => () => ({ expanded: true }),
   }),
   withStyles(({ spacing: { unit }, shape: { borderRadius }, palette }) => ({
-    preview: {
+    root: {
       border: `1px solid ${palette.grey[300]}`,
       borderRadius,
       maxHeight: unit * 30,
       marginTop: unit,
       minHeight: unit * 15,
       overflow: 'hidden',
-      padding: unit,
       position: 'relative',
+
+      '& img': {
+        marginLeft: 'auto',
+        marginRight: 'auto',
+      },
     },
-    previewExpanded: {
+    expanded: {
       maxHeight: 'none',
     },
     fade: {
@@ -288,37 +291,60 @@ const Preview = RT.composeComponent('Bucket.Search.Preview',
       padding: unit,
       position: 'absolute',
       width: '100%',
+      zIndex: 1,
     },
   })),
-  // eslint-disable-next-line object-curly-newline
-  ({ classes, handle, loaded, expanded, load, expand }) => {
-    if (!handle.version || !ContentWindow.supports(handle.key)) return null;
-    return loaded
-      ? (
-        <Section>
-          <SectionHeading>Preview</SectionHeading>
-          <div
-            className={cx(classes.preview, {
-              [classes.previewExpanded]: expanded,
-            })}
-          >
-            <ContentWindow handle={handle} />
-            {!expanded && (
-              <div className={classes.fade}>
-                <Button variant="outlined" onClick={expand}>Expand</Button>
-              </div>
-            )}
-          </div>
-        </Section>
-      )
-      : (
-        <Section>
-          <Button variant="outlined" onClick={load}>
-            Load preview
-          </Button>
-        </Section>
-      );
-  });
+  ({ classes, data, expanded, expand }) => (
+    <div className={cx(classes.root, { [classes.expanded]: expanded })}>
+      {Preview.render(data)}
+      {!expanded && (
+        <div className={classes.fade}>
+          <Button variant="outlined" onClick={expand}>Expand</Button>
+        </div>
+      )}
+    </div>
+  ));
+
+const PreviewDisplay = RT.composeComponent('Bucket.Search.PreviewDisplay',
+  RC.setPropTypes({
+    handle: handleShape.isRequired,
+  }),
+  ({ handle }) =>
+    !handle.version ? null : (
+      <Section>
+        <SectionHeading>Preview</SectionHeading>
+        {Preview.load(handle, AsyncResult.case({
+          Ok: AsyncResult.case({
+            Init: (_, { fetch }) => (
+              <Typography variant="body1">
+                Large files are not previewed by default
+                {' '}
+                <Button variant="outlined" size="small" onClick={fetch}>
+                  Load preview
+                </Button>
+              </Typography>
+            ),
+            Pending: () => <CircularProgress />,
+            Err: (_, { fetch }) => (
+              <Typography variant="body1">
+                Error loading preview
+                {' '}
+                <Button variant="outlined" size="small" onClick={fetch}>
+                  Retry
+                </Button>
+              </Typography>
+            ),
+            Ok: (data) => <PreviewBox data={data} />,
+          }),
+          Err: () => (
+            <Typography variant="body1">
+              Preview not available
+            </Typography>
+          ),
+          _: () => <CircularProgress />,
+        }))}
+      </Section>
+    ));
 
 const Meta = RT.composeComponent('Bucket.Search.Meta',
   withStyles(({ spacing: { unit } }) => ({
@@ -363,7 +389,7 @@ const Hit = RT.composeComponent('Bucket.Search.Hit',
         <Header handle={{ bucket, key: path, version: v.id }} />
         <VersionInfo bucket={bucket} path={path} version={v} versions={versions} />
         <Meta meta={v.meta} />
-        <Preview handle={{ bucket, key: path, version: v.id }} />
+        <PreviewDisplay handle={{ bucket, key: path, version: v.id }} />
       </CardContent>
     </Card>
   ));

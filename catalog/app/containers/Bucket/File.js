@@ -8,8 +8,6 @@ import { FormattedRelative } from 'react-intl';
 import { Link } from 'react-router-dom';
 import * as RC from 'recompose';
 import Button from '@material-ui/core/Button';
-import Card from '@material-ui/core/Card';
-import CardContent from '@material-ui/core/CardContent';
 import CircularProgress from '@material-ui/core/CircularProgress';
 import Icon from '@material-ui/core/Icon';
 import IconButton from '@material-ui/core/IconButton';
@@ -23,7 +21,6 @@ import Typography from '@material-ui/core/Typography';
 import { withStyles } from '@material-ui/core/styles';
 
 import ButtonIcon from 'components/ButtonIcon';
-import ContentWindow from 'components/ContentWindow';
 import AsyncResult from 'utils/AsyncResult';
 import * as AWS from 'utils/AWS';
 import Data from 'utils/Data';
@@ -36,7 +33,9 @@ import withParsedQuery from 'utils/withParsedQuery';
 
 import BreadCrumbs, { Crumb } from './BreadCrumbs';
 import CodeButton from './CodeButton';
+import FilePreview from './FilePreview';
 import * as requests from './requests';
+import { withSignedUrl } from './utils';
 
 
 const getCrumbs = ({ bucket, path, urls }) => R.chain(
@@ -53,6 +52,7 @@ const code = ({ bucket, path }) => dedent`
   # replace ./${basename(path)} to change destination file
   b.fetch("${path}", "./${basename(path)}")
 `;
+
 
 const VersionInfo = RT.composeComponent('Bucket.File.VersionInfo',
   RC.setPropTypes({
@@ -142,15 +142,14 @@ const VersionInfo = RT.composeComponent('Bucket.File.VersionInfo',
                               }
                             />
                             <ListItemSecondaryAction>
-                              <AWS.Signer.Inject>
-                                {(signer) => (
-                                  <IconButton
-                                    href={signer.getSignedS3URL({ bucket, key: path, version: v.id })}
-                                  >
+                              {withSignedUrl(
+                                { bucket, key: path, version: v.id },
+                                (url) => (
+                                  <IconButton href={url}>
                                     <Icon>arrow_downward</Icon>
                                   </IconButton>
-                                )}
-                              </AWS.Signer.Inject>
+                                ),
+                              )}
                             </ListItemSecondaryAction>
                           </ListItem>
                         ))}
@@ -251,26 +250,12 @@ export default RT.composeComponent('Bucket.File',
         </Typography>
         <div className={classes.spacer} />
         <CodeButton>{code({ bucket, path })}</CodeButton>
-        <AWS.Signer.Inject>
-          {(signer) => (
-            <Button
-              variant="outlined"
-              href={signer.getSignedS3URL({ bucket, key: path, version })}
-              className={classes.button}
-            >
-              <ButtonIcon position="left">arrow_downward</ButtonIcon> Download
-            </Button>
-          )}
-        </AWS.Signer.Inject>
+        {withSignedUrl({ bucket, key: path, version }, (url) => (
+          <Button variant="outlined" href={url} className={classes.button}>
+            <ButtonIcon position="left">arrow_downward</ButtonIcon> Download
+          </Button>
+        ))}
       </div>
-
-      <Card>
-        <CardContent>
-          <ContentWindow
-            key={`${bucket}/${path}@${version}`}
-            handle={{ bucket, key: path, version }}
-          />
-        </CardContent>
-      </Card>
+      <FilePreview handle={{ bucket, key: path, version }} />
     </React.Fragment>
   ));
