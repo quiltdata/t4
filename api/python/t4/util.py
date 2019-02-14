@@ -1,5 +1,6 @@
 import re
-from collections import Mapping, Sequence, Set, OrderedDict
+from collections import OrderedDict
+from collections.abc import Mapping, Sequence, Set
 import datetime
 import json
 import os
