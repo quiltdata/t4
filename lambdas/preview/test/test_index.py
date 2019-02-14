@@ -2,7 +2,6 @@
 Test functions for preview endpoint
 """
 import json
-import os
 import pathlib
 
 import responses
@@ -19,18 +18,17 @@ class TestIndex():
 
     FILE_URL = f'{MOCK_ORIGIN}/file.ext'
 
-    S3_EVENT = {
-        'headers': {
-            'origin': MOCK_ORIGIN
-        },
-        'queryStringParameters': {
-            'url': FILE_URL
+    @classmethod
+    def _make_event(cls, query, headers=None):
+        return {
+            'queryStringParameters': query or None,
+            'headers': headers or None
         }
-    }
 
     def test_bad(self):
         """send a known bad event (no input query parameter)"""
-        resp = lambda_handler(self.S3_EVENT, None)
+        event = self._make_event({'url': self.FILE_URL})
+        resp = lambda_handler(event, None)
         assert resp['statusCode'] == 400, "Expected 400 on event without 'input' query param"
         assert resp['body'], 'Expected explanation for 400'
 
@@ -43,8 +41,7 @@ class TestIndex():
             self.FILE_URL,
             body=notebook.read_bytes(),
             status=200)
-        event = self.S3_EVENT.copy()
-        event['queryStringParameters'].update({'input': 'ipynb'})
+        event = self._make_event({'url': self.FILE_URL, 'input': 'ipynb'})
         resp = lambda_handler(event, None)
         body = json.loads(resp['body'])
         html_ = BASE_DIR / 'ipynb_html_response.txt'
@@ -62,8 +59,7 @@ class TestIndex():
             self.FILE_URL,
             body=parquet.read_bytes(),
             status=200)
-        event = self.S3_EVENT.copy()
-        event['queryStringParameters'].update({'input': 'parquet'})
+        event = self._make_event({'url': self.FILE_URL, 'input': 'parquet'})
         resp = lambda_handler(event, None)
         assert resp['statusCode'] == 200, f"Expected 200, got {resp['statusCode']}"
         body = json.loads(resp['body'])
