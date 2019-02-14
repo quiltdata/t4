@@ -118,6 +118,18 @@ def test_default_registry(tmpdir):
             pkg = Package.load(fd)
             assert pkg['bar'].physical_keys[0].endswith('.quilttest/Quilt/Test/bar')
 
+@patch('appdirs.user_data_dir', lambda x,y: os.path.join('test_appdir', x))
+@patch('t4.Package.browse', lambda name, registry, pkg_hash: Package())
+def test_default_install_location(tmpdir):
+    """Verify that pushes to the default local install location work as expected"""
+    with patch('t4.Package.push') as push_mock:
+        Package.install('Quilt/nice-name', registry='s3://my-test-bucket')
+        push_mock.assert_called_once_with(
+            dest=t4.util.get_install_location(), 
+            name='Quilt/nice-name',
+            registry=ANY
+        )
+
 def test_read_manifest(tmpdir):
     """ Verify reading serialized manifest from disk. """
     with open(LOCAL_MANIFEST) as fd:

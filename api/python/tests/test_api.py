@@ -15,7 +15,7 @@ class TestAPI():
             'navigator_url': 'https://foo.bar',
             'elastic_search_url': 'https://es.foo',
             'accept_invalid_config_keys': 'yup',
-            }
+        }
         responses.add(responses.GET, 'https://foo.bar/config.json', json=content, status=200)
 
         he.config('foo.bar')
@@ -28,6 +28,7 @@ class TestAPI():
 
         content['default_local_registry'] = util.BASE_PATH.as_uri()
         content['default_remote_registry'] = None
+        content['default_install_location'] = None
         content['registry_url'] = 'https://pkg.quiltdata.com'
 
         assert config == content
