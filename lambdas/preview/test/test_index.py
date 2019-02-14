@@ -3,13 +3,15 @@ Test functions for preview endpoint
 """
 import json
 import os
+import pathlib
 
-from unittest.mock import patch
 import responses
 
 from ..index import lambda_handler
 
-MOCK_ORIGIN = 'https://mock.quiltdata.com'
+MOCK_ORIGIN = 'http://localhost:3000'
+
+BASE_DIR = pathlib.Path(__file__).parent / 'data'
 
 # pylint: disable=no-member
 class TestIndex():
@@ -32,48 +34,40 @@ class TestIndex():
         assert resp['statusCode'] == 400, "Expected 400 on event without 'input' query param"
         assert resp['body'], 'Expected explanation for 400'
 
-    @patch.dict(os.environ, {'WEB_ORIGIN': MOCK_ORIGIN})
     @responses.activate
     def test_ipynb(self):
         """test sending ipynb bytes"""
-        parent = os.path.dirname(__file__)
-        basedir = os.path.join(parent, 'data')
-        notebook = os.path.join(basedir, 'nb_1200727.ipynb')
-        with open(notebook, 'rb') as file_:
-            responses.add(
-                responses.GET,
-                self.FILE_URL,
-                body=file_.read(),
-                status=200)
-            event = self.S3_EVENT.copy()
-            event['queryStringParameters'].update({'input': 'ipynb'})
-            resp = lambda_handler(event, None)
-            body = json.loads(resp['body'])
-            html_ = os.path.join(basedir, 'ipynb_html_response.txt')
-            body_html = open(html_, 'r').read()
-            assert body['html'].startswith(body_html), \
-                f"Unexpected HTML:\n{body['html']}"
+        notebook = BASE_DIR / 'nb_1200727.ipynb'
+        responses.add(
+            responses.GET,
+            self.FILE_URL,
+            body=notebook.read_bytes(),
+            status=200)
+        event = self.S3_EVENT.copy()
+        event['queryStringParameters'].update({'input': 'ipynb'})
+        resp = lambda_handler(event, None)
+        body = json.loads(resp['body'])
+        html_ = BASE_DIR / 'ipynb_html_response.txt'
+        body_html = html_.read_text()
+        assert body['html'].startswith(body_html), \
+            f"Unexpected HTML:\n{body['html']}"
 
-    @patch.dict(os.environ, {'WEB_ORIGIN': MOCK_ORIGIN})
     @responses.activate
     def test_parquet(self):
         """test sending parquet bytes"""
-        parent = os.path.dirname(__file__)
-        basedir = os.path.join(parent, 'data')
-        parquet = os.path.join(basedir, 'atlantic_storms.parquet')
-        info_response = os.path.join(basedir, 'parquet_info_response.json')
-        with open(parquet, 'rb') as file_:
-            responses.add(
-                responses.GET,
-                self.FILE_URL,
-                body=file_.read(),
-                status=200)
-            event = self.S3_EVENT.copy()
-            event['queryStringParameters'].update({'input': 'parquet'})
-            resp = lambda_handler(event, None)
-            assert resp['statusCode'] == 200, f"Expected 200, got {resp['statusCode']}"
-            body = json.loads(resp['body'])
-            with open(info_response, 'r') as info_json:
-                expected = json.load(info_json)
-                assert (body['info'] == expected), \
-                    f"Unexpected body['info'] for {parquet}"
+        parquet = BASE_DIR / 'atlantic_storms.parquet'
+        info_response = BASE_DIR / 'parquet_info_response.json'
+        responses.add(
+            responses.GET,
+            self.FILE_URL,
+            body=parquet.read_bytes(),
+            status=200)
+        event = self.S3_EVENT.copy()
+        event['queryStringParameters'].update({'input': 'parquet'})
+        resp = lambda_handler(event, None)
+        assert resp['statusCode'] == 200, f"Expected 200, got {resp['statusCode']}"
+        body = json.loads(resp['body'])
+        with open(info_response, 'r') as info_json:
+            expected = json.load(info_json)
+        assert (body['info'] == expected), \
+            f"Unexpected body['info'] for {parquet}"
