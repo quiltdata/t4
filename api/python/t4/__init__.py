@@ -12,7 +12,8 @@ from .api import (
     list_packages,
     search,
     config,
-    delete_package
+    delete_package,
+    login_user_pass
 )
 
 from .packages import Package

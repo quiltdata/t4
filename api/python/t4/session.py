@@ -176,9 +176,9 @@ def login():
 
     login_with_token(refresh_token)
 
-def login_user_pass(username, password):
+def _login_user_pass(username, password):
     """
-    Get a token with username and password.
+    Sign in to Quilt with username and password.
     """
     data = {
         'username': username,
@@ -235,9 +235,15 @@ def get_registry_credentials():
     creds = session.get(
         "{url}/api/auth/get_credentials".format(
             url=get_registry_url()
-            )
         )
-    return creds
+    ).json()
+    result = {
+        'access_key': creds['AccessKeyId'],
+        'secret_key': creds['SecretAccessKey'],
+        'token': creds['SessionToken'],
+        'expiry_time': creds['Expiration']
+    }
+    return result
 
 def set_credentials_from_registry():
     set_refreshable_credentials(get_registry_credentials)
