@@ -542,3 +542,21 @@ def list_roles():
             url=get_registry_url()
         ))
     return response
+
+def set_role(username, role_name=''):
+    """
+    Set which role is associated with a user.
+    Admins only.
+    """
+    session = get_session()
+    data = {
+        'username': username,
+        'role': role_name
+    }
+    response = session.post(
+        "{url}/api/users/set_role".format(
+            url=get_registry_url()
+        ),
+        data=json.dumps(data)
+    )
+    return response
