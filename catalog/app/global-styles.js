@@ -114,6 +114,7 @@ injectGlobal`
     }
 
     table, th, td {
+      width: auto;
       border: 1px solid #ddd;
     }
 
