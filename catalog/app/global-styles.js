@@ -120,7 +120,6 @@ injectGlobal`
     table.dataframe, .dataframe th, .dataframe td  {
       border: none;
       font-size: small;
-
       tr:nth-child(even) {
         background-color: #f5f5f5;
       }
