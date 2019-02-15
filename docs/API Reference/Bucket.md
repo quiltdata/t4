@@ -19,13 +19,20 @@ A new Bucket
 Updates this bucket's search endpoint based on a federation config.
 
 
-## Bucket.search(self, query)  {#Bucket.search}
+## Bucket.search(self, query, limit=10)  {#Bucket.search}
 
 Execute a search against the configured search endpoint.
 
 __Arguments__
 
 * __query (str)__:  query string to search
+* __limit (number)__:  maximum number of results to return. Defaults to 10
+
+Query Syntax:
+    By default, a normal plaintext search will be executed over the query string.
+    You can use field-match syntax to filter on exact matches for fields in
+        your metadata.
+    The syntax for field match is `user_meta.$field_name:"exact_match"`.
 
 __Returns__
 

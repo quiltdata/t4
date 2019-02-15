@@ -25,5 +25,6 @@
 
 ### References
 
+* [Technical Reference](Technical%20Reference.md)
 * [Contributing](CONTRIBUTING.md)
-* [Further Reading](Further Reading.md)
+* [Further Reading](Further%20Reading.md)
