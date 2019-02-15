@@ -165,7 +165,7 @@ def test_get_size_and_meta_no_version():
 
 def test_list_local_url():
     path = pathlib.Path(__file__).parent / 'data'
-    contents = list(data_transfer.list_url(path.as_uri()))
+    contents = list(sorted(data_transfer.list_url(path.as_uri())))
     assert contents == [
         ('buggy_parquet.parquet', 423215),
         ('csv.csv', 24),
