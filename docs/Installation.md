@@ -38,7 +38,7 @@ You can build it as follows:
 
 ```
 $ cd catalog
-$ npm run build
+$ npm start
 ```
 
 The static assets, including webpack chunks, are written to `/static`.
@@ -47,4 +47,4 @@ For more advanced deployment scripts, see [`deploy_navigator.sh`](../deployment/
 
 
 ## Catalog (on AWS)
-For instructions on installing the T4 Catalog in AWS see the first section in the [Technical Reference](./Technical%20Reference).
+For instructions on installing the T4 Catalog in AWS see the first section in the [Technical Reference](./Technical%20Reference.md).
