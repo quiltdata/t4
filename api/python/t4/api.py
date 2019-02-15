@@ -567,3 +567,4 @@ def login_user_pass(username, password):
     """
     _login_user_pass(username, password)
     set_credentials_from_registry()
+    _update_credentials()

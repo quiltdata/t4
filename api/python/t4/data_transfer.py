@@ -25,7 +25,7 @@ with warnings.catch_warnings():
 
 import jsonlines
 
-from .session import CREDENTIALS
+from .session import get_credentials
 from .util import QuiltException, make_s3_url, parse_file_url, parse_s3_url
 from . import xattr
 
@@ -55,15 +55,15 @@ s3_threads = 4
 
 def _update_credentials():
     # TODO: use new credentials object for clients
-    assert CREDENTIALS, "This method should not be called unless CREDENTIALS is populated"
+    assert get_credentials(), "This method should not be called unless CREDENTIALS is populated"
 
     session = get_session()
-    session._credentials = CREDENTIALS
+    session._credentials = get_credentials()
     # TODO: figure out if this is necessary
     # session.set_config_variable("region", aws_region)
     updated_session = boto3.Session(botocore_session=session)
     global s3_client
-    s3_client = updated_session
+    s3_client = updated_session.client('s3')
     
 def _parse_metadata(resp):
     return json.loads(resp['Metadata'].get(HELIUM_METADATA, '{}'))

@@ -222,6 +222,13 @@ def logout():
 
 CREDENTIALS = None
 
+def get_credentials():
+    return CREDENTIALS
+
+def set_credentials(creds):
+    global CREDENTIALS
+    CREDENTIALS = creds
+
 def set_refreshable_credentials(get_credentials):
     global CREDENTIALS
     CREDENTIALS = RefreshableCredentials.create_from_metadata(
