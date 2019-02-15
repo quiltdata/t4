@@ -374,8 +374,9 @@ def list_url(src):
 
         for f in src_file.rglob('*'):
             try:
-                size = f.stat().st_size
-                yield f.relative_to(src_file).as_posix(), size
+                if f.is_file():
+                    size = f.stat().st_size
+                    yield f.relative_to(src_file).as_posix(), size
             except FileNotFoundError:
                 # If a file does not exist, is it really a file?
                 pass
