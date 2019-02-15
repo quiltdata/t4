@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from unittest.mock import Mock, patch
 
 import numpy as np
@@ -87,3 +88,42 @@ class TestAPI():
 
         assert np.array_equal(data, data2)
         assert meta == meta2
+
+    @patch('t4.session.get_session')
+    @responses.activate
+    def test_login(self, get_session):
+        mock_session = Mock()
+        get_session.return_value = mock_session
+
+        mock_response = Mock()
+        mock_response.ok = True
+        mock_session.post.return_value = mock_response
+
+        mock_creds_response = Mock()
+        creds_data = {
+            'AccessKeyId': 'asdf',
+            'SecretAccessKey': 'asdf',
+            'SessionToken': 'asdf',
+            'Expiration': datetime.utcnow().isoformat() + '-02:00' # so it's not expired yet
+        }
+        mock_creds_response.json.return_value = creds_data
+        mock_session.get.return_value = mock_creds_response
+
+        login_response = {
+            'token': 'asdf'
+        }
+        token_response = {
+            'refresh_token': 'asdf',
+            'access_token': 'asdf',
+            'expires_at': 'asdf'
+        }
+        responses.add(responses.POST, 'https://pkg.quiltdata.com/api/login',
+                json=login_response, status=200)
+        responses.add(responses.POST, 'https://pkg.quiltdata.com/api/token',
+                json=token_response, status=200)
+        he.login_user_pass('asdf', 'jkl;')
+
+        credentials = he.session.get_credentials()
+        frozen_creds = credentials.get_frozen_credentials()
+        assert frozen_creds.access_key == 'asdf'
+        assert frozen_creds.secret_key == 'asdf'
