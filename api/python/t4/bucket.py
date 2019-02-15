@@ -163,14 +163,14 @@ class Bucket(object):
             * if writing to bucket fails
         """
         # Ensure key ends in '/'.
-        if key[-1] != '/':
-            key = key + '/'
+        if key and key[-1] != '/':
+            key += '/'
 
         src_path = pathlib.Path(directory)
         if not src_path.is_dir():
             raise QuiltException("Provided directory does not exist")
 
-        source_dir = src_path.resolve().as_uri()
+        source_dir = src_path.resolve().as_uri() + '/'
         s3_uri_prefix = self._uri + key
         copy_file(source_dir, s3_uri_prefix)
 
