@@ -1,14 +1,16 @@
 from setuptools import setup
 
 setup(
-    name='t4_lambda_preview',
+    name='t4-lambda-shared',
     version='0.0.1',
-    py_modules=['index'],
+    packages=['t4_lambda_shared'],
+    install_requires=[
+        'jsonschema>=2.6.0',
+    ],
     extras_require={
         'tests': [
             'codecov',
             'pytest',
-            'responses',
             'pytest-cov',
         ],
     },
