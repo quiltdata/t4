@@ -36,20 +36,16 @@ if platform.system() == 'Linux':
     # Linux only allows users to modify user.* xattrs.
     HELIUM_XATTR = 'user.%s' % HELIUM_XATTR
 
-s3_client = boto3.client('s3')
-try:
-    # Ensure that user has AWS credentials that function.
-    # quilt-example is readable by anonymous users, if the head fails
-    #   then the s3 client needs to be in UNSIGNED mode
-    #   because the user's credentials aren't working
-    s3_client.head_bucket(Bucket='quilt-example')
-except (ClientError, NoCredentialsError):
-    # Use unsigned boto if credentials can't head the default bucket
+# Check whether credentials are present
+if boto3.session.Session().get_credentials() is None:
+    # Use unsigned boto if credentials aren't present
     s3_client = boto3.client('s3', config=Config(signature_version=UNSIGNED))
+else:
+    # Use normal boto
+    s3_client = boto3.client('s3')
 
 s3_transfer_config = TransferConfig()
 s3_threads = 4
-
 
 
 def _parse_metadata(resp):
