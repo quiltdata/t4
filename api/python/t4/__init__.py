@@ -19,3 +19,5 @@ from .api import (
 from .packages import Package
 
 from .bucket import Bucket
+
+from . import admin
