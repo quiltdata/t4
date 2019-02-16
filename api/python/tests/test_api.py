@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock, patch
 
 import numpy as np
@@ -100,11 +100,12 @@ class TestAPI():
         mock_session.post.return_value = mock_response
 
         mock_creds_response = Mock()
+        exp = datetime.now(timezone.utc) + timedelta(hours=2)
         creds_data = {
             'AccessKeyId': 'asdf',
             'SecretAccessKey': 'asdf',
             'SessionToken': 'asdf',
-            'Expiration': datetime.utcnow().isoformat() + '-02:00' # so it's not expired yet
+            'Expiration': exp.isoformat()
         }
         mock_creds_response.json.return_value = creds_data
         mock_session.get.return_value = mock_creds_response
