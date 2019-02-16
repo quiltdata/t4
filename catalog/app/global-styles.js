@@ -114,7 +114,6 @@ injectGlobal`
     }
 
     table, th, td {
-      width: auto;
       border: 1px solid #ddd;
     }
 
@@ -124,6 +123,8 @@ injectGlobal`
       tr:nth-child(even) {
         background-color: #f5f5f5;
       }
+
+      width: auto;
     }
 
     .dataframe td {
