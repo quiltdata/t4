@@ -485,11 +485,10 @@ def edit_role(role_id, new_name=None, new_arn=None):
         new_arn(string): new ARN for IAM role attached to Quilt role
     """
     session = get_session()
+    old_data = get_role(role_id)
     data = {}
-    if new_name:
-        data['name'] = new_name
-    if new_arn:
-        data['arn'] = new_arn
+    data['name'] = new_name or old_data['name']
+    data['arn'] = new_arn or old_data['arn']
 
     response = session.put(
         "{url}/api/roles/{role_id}".format(
@@ -498,7 +497,7 @@ def edit_role(role_id, new_name=None, new_arn=None):
             ),
             data=data
         )
-    return response
+    assert response.ok
 
 def delete_role(role_id):
     """
@@ -541,7 +540,7 @@ def list_roles():
         "{url}/api/roles".format(
             url=get_registry_url()
         ))
-    return response
+    return response.json()['results']
 
 def set_role(username, role_name=''):
     """
