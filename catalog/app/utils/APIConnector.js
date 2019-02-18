@@ -7,14 +7,15 @@ import PT from 'prop-types';
 import { setPropTypes } from 'recompose';
 import { takeEvery, call, put } from 'redux-saga/effects';
 
+import * as Config from 'utils/Config';
+import * as SagaInjector from 'utils/SagaInjector';
 import defer from 'utils/defer';
 import { BaseError } from 'utils/error';
-import { composeComponent, RenderChildren } from 'utils/reactTools';
+import { composeComponent } from 'utils/reactTools';
 import { actionCreator, createActions } from 'utils/reduxTools';
-import { injectSaga } from 'utils/SagaInjector';
 
 
-const REDUX_KEY = 'app/util/APIConnector';
+const REDUX_KEY = 'app/utils/APIConnector';
 
 const actions = createActions(REDUX_KEY,
   'API_REQUEST',
@@ -302,11 +303,13 @@ export function* apiRequest(opts) {
   return yield dfd.promise;
 }
 
-export const Provider = composeComponent('APIConnectorProvider',
+export const Provider = composeComponent('APIConnector.Provider',
   setPropTypes({
     fetch: PT.func.isRequired,
-    base: PT.string,
     middleware: PT.arrayOf(PT.func.isRequired),
   }),
-  injectSaga(REDUX_KEY, apiSaga),
-  RenderChildren);
+  ({ fetch, middleware, children }) => {
+    const base = `${Config.useConfig().registryUrl}/api`;
+    SagaInjector.useSaga(apiSaga, { fetch, base, middleware });
+    return children;
+  });

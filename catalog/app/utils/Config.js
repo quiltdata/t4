@@ -4,7 +4,7 @@ import * as React from 'react';
 import * as RC from 'recompose';
 
 import AsyncResult from 'utils/AsyncResult';
-import Data from 'utils/Data';
+import * as Cache from 'utils/RequestCache';
 import { BaseError } from 'utils/error';
 import * as RT from 'utils/reactTools';
 import { conforms, isNullable, isArrayOf } from 'utils/validate';
@@ -20,6 +20,7 @@ const parseJSON = (msg = 'invalid JSON') =>
   });
 
 const validateConfig = conforms({
+  registryUrl: R.is(String),
   alwaysRequiresAuth: R.is(Boolean),
   sentryDSN: isNullable(String),
   apiGatewayEndpoint: R.is(String),
@@ -49,6 +50,9 @@ const validateFederation = conforms({
 
 const fetchConfig = async (path) => {
   try {
+    await new Promise((resolve) => {
+      setTimeout(() => { resolve(); }, 3000);
+    });
     const res = await fetch(path);
     const text = await res.text();
     if (!res.ok) {
@@ -153,27 +157,20 @@ export const Provider = RT.composeComponent('Config.Provider',
   RC.setPropTypes({
     path: PT.string.isRequired,
   }),
-  ({ path, children }) => {
-    const provide = (value) =>
-      <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+  ({ path, children }) => (
+    <Ctx.Provider value={path}>{children}</Ctx.Provider>
+  ));
 
-    return (
-      <Data fetch={fetchConfig} params={path}>
-        {AsyncResult.case({
-          // eslint-disable-next-line react/prop-types
-          Ok: ({ federations, ...config }) => (
-            <Data fetch={fetchFederations} params={federations}>
-              {AsyncResult.case({
-                Ok: (feds) =>
-                  provide(AsyncResult.Ok({ ...config, federations: feds })),
-                _: provide,
-              })}
-            </Data>
-          ),
-          _: provide,
-        })}
-      </Data>
-    );
-  });
+export const useConfig = () =>
+  Cache.use().get(fetchConfig, React.useContext(Ctx));
 
-export const Inject = Ctx.Consumer;
+export const useFederations = () =>
+  Cache.use().get(fetchFederations, useConfig().federations);
+
+export const use = () => {
+  const config = useConfig();
+  const federations = useFederations();
+  return { ...config, federations };
+};
+
+export const Inject = ({ children }) => children(AsyncResult.Ok(use()));

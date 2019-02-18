@@ -1,47 +1,34 @@
 import 'aws-sdk/lib/config';
 import AWS from 'aws-sdk/lib/core';
-import omit from 'lodash/fp/omit';
-import isEqual from 'lodash/isEqual';
-import PT from 'prop-types';
+import * as R from 'ramda';
 import * as React from 'react';
-import { connect } from 'react-redux';
-import {
-  setPropTypes,
-  withPropsOnChange,
-} from 'recompose';
-import { createStructuredSelector } from 'reselect';
 
-import {
-  composeComponent,
-  composeHOC,
-  provide,
-  consume,
-} from 'utils/reactTools';
+import * as RT from 'utils/reactTools';
+
+import * as Credentials from './Credentials';
 
 
 const Ctx = React.createContext();
 
-const extractConfig = omit([
-  'credentialsSelector',
-  'dispatch',
-  'children',
-]);
+const useConfig = (props) => {
+  const credentials = Credentials.use();
+  const ref = React.useRef(null);
+  const input = { credentials, ...props };
+  if (R.equals(ref.current && ref.current.input, input)) {
+    return ref.current.config;
+  }
+  const config = new AWS.Config(input);
+  ref.current = { config, input };
+  return config;
+};
 
-const shouldReinstantiate = (props, next) =>
-  !isEqual(extractConfig(props), extractConfig(next));
-
-export const Provider = composeComponent('AWS.Config.Provider',
-  setPropTypes({
-    credentialsSelector: PT.func,
-  }),
-  connect(createStructuredSelector({
-    credentials: (state, { credentialsSelector, credentials }) =>
-      credentialsSelector ? credentialsSelector(state) : credentials,
-  }), undefined, undefined, { pure: false }),
-  withPropsOnChange(shouldReinstantiate, (props) => ({
-    config: new AWS.Config(extractConfig(props)),
-  })),
-  provide(Ctx, 'config'));
+export const Provider = RT.composeComponent('AWS.Config.Provider',
+  ({ children, ...props }) => {
+    const config = useConfig(props);
+    return <Ctx.Provider value={config}>{children}</Ctx.Provider>;
+  });
 
 export const inject = (prop = 'awsConfig') =>
-  composeHOC('AWS.Config.inject', consume(Ctx, prop));
+  RT.composeHOC('AWS.Config.inject', RT.consume(Ctx, prop));
+
+export const use = () => React.useContext(Ctx);
