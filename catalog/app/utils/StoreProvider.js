@@ -5,8 +5,6 @@ import { setPropTypes } from 'recompose';
 import { StoreContext } from 'redux-react-hook';
 
 import { composeComponent } from 'utils/reactTools';
-import { ReducerInjector } from 'utils/ReducerInjector';
-import { SagaInjector } from 'utils/SagaInjector';
 
 
 export default composeComponent('StoreProvider',
@@ -15,12 +13,8 @@ export default composeComponent('StoreProvider',
   }),
   ({ store, children }) => (
     <ReduxProvider store={store}>
-      <ReducerInjector inject={store.injectReducer}>
-        <SagaInjector run={store.runSaga}>
-          <StoreContext.Provider value={store}>
-            {children}
-          </StoreContext.Provider>
-        </SagaInjector>
-      </ReducerInjector>
+      <StoreContext.Provider value={store}>
+        {children}
+      </StoreContext.Provider>
     </ReduxProvider>
   ));
