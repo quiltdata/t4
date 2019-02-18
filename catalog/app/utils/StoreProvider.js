@@ -24,5 +24,3 @@ export default composeComponent('StoreProvider',
       </ReducerInjector>
     </ReduxProvider>
   ));
-
-export const useStore = () => React.useContext(StoreContext);
