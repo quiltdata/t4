@@ -32,7 +32,7 @@ import * as Data from 'utils/Data';
 import { createBoundary } from 'utils/ErrorBoundary';
 import * as NamedRoutes from 'utils/NamedRoutes';
 import FormProvider from 'utils/ReduxFormProvider';
-import * as Cache from 'utils/RequestCache';
+import * as Cache from 'utils/ResourceCache';
 import StoreProvider from 'utils/StoreProvider';
 import fontLoader from 'utils/fontLoader';
 import { nest } from 'utils/reactTools';
@@ -107,6 +107,7 @@ const render = (messages) => {
       AWS.S3.Provider,
       AWS.Signer.Provider,
       Notifications.WithNotifications,
+      ErrorBoundary,
       App,
     ),
     MOUNT_NODE
