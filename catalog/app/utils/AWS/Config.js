@@ -10,25 +10,29 @@ import * as Credentials from './Credentials';
 
 const Ctx = React.createContext();
 
+const useMemoEq = (input, cons, eq = R.equals) => {
+  const ref = React.useRef(null);
+  if (eq(ref.current && ref.current.input, input)) {
+    return ref.current.value;
+  }
+  const value = cons(input);
+  ref.current = { input, value };
+  return value;
+};
+
 const useConfig = (props) => {
   const credentials = Credentials.use();
-  const ref = React.useRef(null);
-  const input = { credentials, ...props };
-  if (R.equals(ref.current && ref.current.input, input)) {
-    return ref.current.config;
-  }
-  const config = new AWS.Config(input);
-  ref.current = { config, input };
-  return config;
+  return useMemoEq({ credentials, ...props }, (input) => new AWS.Config(input));
 };
 
 export const Provider = RT.composeComponent('AWS.Config.Provider',
-  ({ children, ...props }) => {
-    const config = useConfig(props);
-    return <Ctx.Provider value={config}>{children}</Ctx.Provider>;
-  });
+  ({ children, ...props }) =>
+    <Ctx.Provider value={props}>{children}</Ctx.Provider>);
+
+export const use = () => useConfig(React.useContext(Ctx));
 
 export const inject = (prop = 'awsConfig') =>
-  RT.composeHOC('AWS.Config.inject', RT.consume(Ctx, prop));
-
-export const use = () => React.useContext(Ctx);
+  RT.composeHOC('AWS.Config.inject', (Component) => (props) => {
+    const config = use();
+    return <Component {...{ [prop]: config, ...props }} />;
+  });
