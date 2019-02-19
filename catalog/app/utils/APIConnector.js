@@ -4,7 +4,9 @@ import isNil from 'lodash/isNil';
 import isString from 'lodash/isString';
 import isTypedArray from 'lodash/isTypedArray';
 import PT from 'prop-types';
+import * as React from 'react';
 import { setPropTypes } from 'recompose';
+import * as reduxHook from 'redux-react-hook';
 import { takeEvery, call, put } from 'redux-saga/effects';
 
 import * as Config from 'utils/Config';
@@ -303,6 +305,10 @@ export function* apiRequest(opts) {
   return yield dfd.promise;
 }
 
+const Ctx = React.createContext();
+
+export const use = () => React.useContext(Ctx);
+
 export const Provider = composeComponent('APIConnector.Provider',
   setPropTypes({
     fetch: PT.func.isRequired,
@@ -311,5 +317,13 @@ export const Provider = composeComponent('APIConnector.Provider',
   ({ fetch, middleware, children }) => {
     const base = `${Config.useConfig().registryUrl}/api`;
     SagaInjector.useSaga(apiSaga, { fetch, base, middleware });
-    return children;
+
+    const dispatch = reduxHook.useDispatch();
+    const req = React.useCallback((opts) => {
+      const dfd = defer();
+      dispatch(request(opts, dfd.resolver));
+      return dfd.promise;
+    }, [dispatch]);
+
+    return <Ctx.Provider value={req}>{children}</Ctx.Provider>;
   });
