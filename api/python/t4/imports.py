@@ -15,7 +15,7 @@ class DataPackageLoader:
     """
 
     @classmethod
-    def create_module(cls, spec):
+    def create_module(cls, spec):  # pylint: disable=unused-argument
         """
         Module creator. Returning None causes Python to use the default module creator.
         """
@@ -54,6 +54,7 @@ class DataPackageLoader:
             raise NotImplementedError
 
 
+# pylint: disable=too-few-public-methods
 class DataPackageFinder:
     """
     Data package module loader finder. This class sits on `sys.meta_path` and returns the
@@ -61,7 +62,7 @@ class DataPackageFinder:
     """
 
     @classmethod
-    def find_spec(cls, fullname, path=None, target=None):
+    def find_spec(cls, fullname, path=None, target=None):  # pylint: disable=unused-argument
         """
         This functions is what gets executed by the loader.
         """
