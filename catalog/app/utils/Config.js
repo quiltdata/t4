@@ -4,7 +4,7 @@ import * as React from 'react';
 import * as RC from 'recompose';
 
 import AsyncResult from 'utils/AsyncResult';
-import * as Cache from 'utils/RequestCache';
+import * as Cache from 'utils/ResourceCache';
 import { BaseError } from 'utils/error';
 import * as RT from 'utils/reactTools';
 import { conforms, isNullable, isArrayOf } from 'utils/validate';
@@ -151,6 +151,16 @@ const fetchFederations = R.pipe(
   R.then(mergeFederations),
 );
 
+const ConfigResource = Cache.createResource({
+  name: 'Config.config',
+  fetch: fetchConfig,
+});
+
+const FederationsResource = Cache.createResource({
+  name: 'Config.federations',
+  fetch: fetchFederations,
+});
+
 const Ctx = React.createContext();
 
 export const Provider = RT.composeComponent('Config.Provider',
@@ -162,15 +172,14 @@ export const Provider = RT.composeComponent('Config.Provider',
   ));
 
 export const useConfig = () =>
-  Cache.use().get(fetchConfig, React.useContext(Ctx));
+  Cache.use()(ConfigResource, React.useContext(Ctx));
 
 export const useFederations = () =>
-  Cache.use().get(fetchFederations, useConfig().federations);
+  Cache.use()(FederationsResource, useConfig().federations);
 
-export const use = () => {
-  const config = useConfig();
-  const federations = useFederations();
-  return { ...config, federations };
-};
+export const use = () => ({
+  ...useConfig(),
+  federations: useFederations(),
+});
 
 export const Inject = ({ children }) => children(AsyncResult.Ok(use()));
