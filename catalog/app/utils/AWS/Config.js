@@ -1,27 +1,18 @@
 import 'aws-sdk/lib/config';
 import AWS from 'aws-sdk/lib/core';
-import * as R from 'ramda';
 import * as React from 'react';
 
 import * as RT from 'utils/reactTools';
+import useMemoEq from 'utils/useMemoEq';
 
 import * as Credentials from './Credentials';
 
 
 const Ctx = React.createContext();
 
-const useMemoEq = (input, cons, eq = R.equals) => {
-  const ref = React.useRef(null);
-  if (eq(ref.current && ref.current.input, input)) {
-    return ref.current.value;
-  }
-  const value = cons(input);
-  ref.current = { input, value };
-  return value;
-};
-
 const useConfig = (props) => {
   const credentials = Credentials.use();
+  // TODO: use cache?
   return useMemoEq({ credentials, ...props }, (input) => new AWS.Config(input));
 };
 

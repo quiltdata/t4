@@ -103,6 +103,7 @@ const render = (messages) => {
       [React.Suspense, { fallback: <Placeholder /> }],
       [APIConnector.Provider, { fetch, middleware: [Auth.apiMiddleware] }],
       [Auth.Provider, { checkOn: LOCATION_CHANGE, storage }],
+      AWS.Credentials.Provider,
       AWS.Config.Provider,
       AWS.S3.Provider,
       AWS.Signer.Provider,

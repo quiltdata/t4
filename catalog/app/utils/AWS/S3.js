@@ -1,27 +1,29 @@
 import S3 from 'aws-sdk/clients/s3';
 import * as React from 'react';
-import { withPropsOnChange } from 'recompose';
 
-import {
-  composeComponent,
-  composeHOC,
-  provide,
-  consume,
-} from 'utils/reactTools';
+import * as RT from 'utils/reactTools';
+import useMemoEq from 'utils/useMemoEq';
 
 import * as Config from './Config';
 
 
 const Ctx = React.createContext();
 
-export const Provider = composeComponent('AWS.S3.Provider',
-  Config.inject(),
-  withPropsOnChange(['awsConfig'], ({ awsConfig }) => ({
-    client: new S3(awsConfig),
-  })),
-  provide(Ctx, 'client'));
+export const Provider = RT.composeComponent('AWS.S3.Provider',
+  ({ children, ...props }) =>
+    <Ctx.Provider value={props}>{children}</Ctx.Provider>);
+
+export const use = () => {
+  const config = Config.use();
+  const props = React.useContext(Ctx);
+  // TODO: use cache?
+  return useMemoEq({ ...config, ...props }, (cfg) => new S3(cfg));
+};
 
 export const inject = (prop = 's3') =>
-  composeHOC('AWS.S3.inject', consume(Ctx, prop));
+  RT.composeHOC('AWS.S3.inject', (Component) => (props) => {
+    const s3 = use();
+    return <Component {...{ [prop]: s3, ...props }} />;
+  });
 
-export const Inject = Ctx.Consumer;
+export const Inject = ({ children }) => children(use());
