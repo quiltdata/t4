@@ -1,6 +1,8 @@
 """Implementation of the Python Quilt T4 data package loader."""
 
 from importlib.machinery import ModuleSpec
+import sys
+
 from t4.util import BASE_PATH
 from t4 import list_packages, Package
 
@@ -66,4 +68,16 @@ class DataPackageFinder:
         """
         This functions is what gets executed by the loader.
         """
-        return ModuleSpec(fullname, DataPackageLoader()) if 't4' in fullname else None
+        if 't4' not in fullname:
+            return None
+        else:
+            return ModuleSpec(fullname, DataPackageLoader())
+        return ModuleSpec(fullname, DataPackageFinder()) if 't4' in fullname else None
+
+
+def start_data_package_loader():
+    """
+    Adds the data package loader to the module loaders.
+    """
+    pass
+    sys.meta_path.append(DataPackageFinder())
