@@ -1,4 +1,3 @@
-
 """T4 API"""
 
 # Suppress numpy warnings
