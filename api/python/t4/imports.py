@@ -10,7 +10,7 @@ from t4 import list_packages, Package
 MODULE_PATH = [BASE_PATH / '.quilt']
 
 
-class DataPackageLoader:
+class DataPackageImporter:
     """
     Data package module loader. Executes package import code and adds the package to the
     module cache.
@@ -44,7 +44,7 @@ class DataPackageLoader:
             for pkg in list_packages():
                 pkg_user, pkg_name = pkg.split('/')
                 if pkg_user == namespace:
-                    module.__dict__.update({pkg_name: Package.browse(pkg)})
+                    module.__dict__[pkg_name] = Package.browse(pkg)
 
             module.__path__ = MODULE_PATH
             return module
@@ -68,10 +68,10 @@ class DataPackageFinder:
         """
         This functions is what gets executed by the loader.
         """
-        if 't4' not in fullname:
+        if not fullname.startswith('t4.data'):
             return None
         else:
-            return ModuleSpec(fullname, DataPackageLoader())
+            return ModuleSpec(fullname, DataPackageImporter())
 
 
 def start_data_package_loader():
