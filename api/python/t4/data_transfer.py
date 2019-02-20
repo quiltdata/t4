@@ -64,7 +64,7 @@ def _update_credentials():
     updated_session = boto3.Session(botocore_session=session)
     global s3_client
     s3_client = updated_session.client('s3')
-    
+
 def _parse_metadata(resp):
     return json.loads(resp['Metadata'].get(HELIUM_METADATA, '{}'))
 
