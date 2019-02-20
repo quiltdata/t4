@@ -49,12 +49,6 @@ class DataPackageImporter:
             module.__path__ = MODULE_PATH
             return module
 
-        else:
-            # an implementation for subpackage imports exists, but this has significant
-            # consistency issues. For now let's avoid, but you can see the full code at
-            # https://github.com/ResidentMario/package-autorelaod/blob/master/loader.py
-            raise NotImplementedError
-
 
 # pylint: disable=too-few-public-methods
 class DataPackageFinder:
@@ -68,7 +62,10 @@ class DataPackageFinder:
         """
         This functions is what gets executed by the loader.
         """
-        if not fullname.startswith('t4.data'):
+        # an implementation for subpackage imports exists, but this has significant
+        # consistency issues. For now let's avoid, but you can see the full code at
+        # https://github.com/ResidentMario/package-autorelaod/blob/master/loader.py
+        if not fullname.startswith('t4.data') or len(fullname.split('.')) > 3:
             return None
         else:
             return ModuleSpec(fullname, DataPackageImporter())
