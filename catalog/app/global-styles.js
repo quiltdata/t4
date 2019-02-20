@@ -116,20 +116,6 @@ injectGlobal`
     table, th, td {
       border: 1px solid #ddd;
     }
-
-    table.dataframe, .dataframe th, .dataframe td  {
-      border: none;
-      font-size: small;
-      tr:nth-child(even) {
-        background-color: #f5f5f5;
-      }
-
-      width: auto;
-    }
-
-    .dataframe td {
-      white-space: nowrap;
-    }
   }
 
   /* per app.js fontObservers, fontLoaded is fired once Roboto is ready */

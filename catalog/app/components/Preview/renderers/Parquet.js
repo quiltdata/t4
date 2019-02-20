@@ -12,11 +12,29 @@ const Parquet = RT.composeComponent('Preview.renderers.Parquet',
     children: PT.string,
     className: PT.string,
   }),
-  withStyles(({ spacing: { unit } }) => ({
+  withStyles(({ palette, spacing: { unit } }) => ({
     root: {
       overflow: 'auto',
       padding: unit,
       width: '100%',
+
+      '& table.dataframe': {
+        border: 'none',
+        width: 'auto',
+
+        '& tr:nth-child(even)': {
+          backgroundColor: palette.grey[100],
+        },
+
+        '& th, & td': {
+          border: 'none',
+          fontSize: 'small',
+        },
+
+        '& td': {
+          whiteSpace: 'nowrap',
+        },
+      },
     },
   })),
   ({ classes, children, className, ...props } = {}) => (
