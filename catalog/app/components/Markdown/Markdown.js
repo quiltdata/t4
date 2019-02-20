@@ -16,6 +16,7 @@ import * as RT from 'utils/reactTools';
 const SANITIZE_OPTS = {
   'ALLOWED_TAGS': [
     'a',
+    'abbr',
     'b',
     'blockquote',
     'code',
@@ -33,12 +34,15 @@ const SANITIZE_OPTS = {
     'h6',
     'hr',
     'i',
+    'img',
     'ins',
     'li',
     'mark',
     'ol',
     'p',
     'pre',
+    'section',
+    'span',
     'strong',
     'sub',
     'sup',
