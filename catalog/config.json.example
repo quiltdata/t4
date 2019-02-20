@@ -1,4 +1,5 @@
 {
+  "registryUrl": "<registry url here>",
   "alwaysRequiresAuth": false,
   "signInRedirect": "/b/quilt-example",
   "signOutRedirect": "/",
