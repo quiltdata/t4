@@ -10,6 +10,7 @@ import * as RT from 'utils/reactTools';
 export const linkStyle = {
   '&, &:visited': {
     color: colors.blue[900],
+    cursor: 'pointer',
   },
   '&:hover, &:focus': {
     color: colors.blue[500],

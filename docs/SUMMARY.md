@@ -13,7 +13,7 @@
 * [Working with a Bucket](Walkthrough/Working with a Bucket.md)
 
 ### Advanced Usage
-* [Parsing a Package](Advanced%20Features/Parsing%20a%20Package.md)
+* [Filtering a Package](Advanced Features/Filtering a Package.md)
 * [Materialization](Advanced Features/Materialization.md)
 * [Working with Manifests](Advanced Features/Working with Manifests.md)
 * [S3 Select](Advanced%20Features/S3%20Select.md)
@@ -25,5 +25,6 @@
 
 ### References
 
+* [Technical Reference](Technical%20Reference.md)
 * [Contributing](CONTRIBUTING.md)
-* [Further Reading](Further Reading.md)
+* [Further Reading](Further%20Reading.md)

@@ -311,13 +311,14 @@ class Package(object):
         return _create_str(results_dict)
 
     @classmethod
-    def install(cls, name, registry, pkg_hash=None, dest=None, dest_registry=None):
+    def install(cls, name, registry=None, pkg_hash=None, dest=None, dest_registry=None):
         """
         Installs a named package to the local registry and downloads its files.
 
         Args:
             name(str): Name of package to install.
-            registry(str): Registry where package is located.
+            registry(str): Registry where package is located. 
+                Defaults to the default remote registry.
             pkg_hash(str): Hash of package to install. Defaults to latest.
             dest(str): Local path to download files to.
             dest_registry(str): Registry to install package to. Defaults to local registry.
@@ -325,6 +326,15 @@ class Package(object):
         Returns:
             A new Package that points to files on your local machine.
         """
+        if registry is None:
+            registry = get_remote_registry()
+            if not registry:
+                raise QuiltException("No registry specified and no default remote "
+                                     "registry configured. Please specify a registry "
+                                     "or configure a default remote registry with t4.config")
+        elif registry == 'local':
+            registry = get_local_registry()
+        
         if dest_registry is None:
             dest_registry = get_local_registry()
 
@@ -339,7 +349,6 @@ class Package(object):
         """
         Load a package into memory from a registry without making a local copy of
         the manifest.
-
         Args:
             name(string): name of package to load
             registry(string): location of registry to load package from
@@ -551,8 +560,7 @@ class Package(object):
             files = src_path.rglob('*')
             ignore = src_path / '.quiltignore'
             if ignore.exists():
-                ignore_rules = ignore.read_text('utf-8').split("\n")
-                files = quiltignore_filter(files, ignore_rules, 'file')
+                files = quiltignore_filter(files, ignore, 'file')
 
             for f in files:
                 if not f.is_file():
@@ -614,6 +622,7 @@ class Package(object):
         Sets user metadata on this Package.
         """
         self._meta['user_meta'] = meta
+        return self
 
     def _fix_sha256(self):
         entries = [entry for key, entry in self.walk() if entry.hash is None]
@@ -839,7 +848,7 @@ class Package(object):
 
         return top_hash.hexdigest()
 
-    def push(self, name, dest, registry=None, message=None):
+    def push(self, name, dest=None, registry=None, message=None):
         """
         Copies objects to path, then creates a new package that points to those objects.
         Copies each object in this package to path according to logical key structure,
@@ -859,11 +868,35 @@ class Package(object):
         self._set_commit_message(message)
 
         if registry is None:
-            registry = get_remote_registry()
-            if not registry:
-                raise QuiltException("No registry specified and no default remote "
-                                     "registry configured. Please specify a registry "
-                                     "or configure a default remote registry with t4.config")
+            if dest is None:
+                # Only a package name is set, so set registry and dest to the default 
+                # registry.
+                registry = get_remote_registry()
+                if not registry:
+                    raise QuiltException("No registry specified and no default remote "
+                                        "registry configured. Please specify a "
+                                        "registry or configure a default remote "
+                                        "registry with t4.config")
+
+                dest = registry
+            else:
+                # The dest is specified and registry is not. Get registry from dest.
+                parsed = urlparse(fix_url(dest))
+                if parsed.scheme == 's3':
+                    bucket, _, _ = parse_s3_url(parsed)
+                    registry = 's3://' + bucket
+                elif parsed.scheme == 'file':
+                    registry = parsed.path
+                else:
+                    raise NotImplementedError
+
+        else:
+            if dest is None:
+                # Specifying registry but not a dest doesn't make sense. Throw.
+                raise ValueError("Registry specified but dest is undefined.")
+            else:
+                # If both dest and registry are specified, no further work needed.
+                pass
 
         self._fix_sha256()
 
@@ -974,17 +1007,24 @@ class Package(object):
             include_directories: bool
                 Whether or not to include directory entries in the map.
 
-        Returns: list
-            A list of truthy (logical key, entry) tuples.
+        Returns:
+            A new package with entries that evaluated to False removed
         """
+        p = Package()
+
+        excluded_dirs = set()
         if include_directories:
             for lk, _ in self._walk_dir_meta():
-                if f(lk, self[lk.rstrip("/")]):
-                    yield (lk, self[lk.rstrip("/")])
+                if not f(lk, self[lk.rstrip("/")]):
+                    excluded_dirs.add(lk)
 
         for lk, entity in self.walk():
-            if f(lk, entity):
-                yield (lk, entity)
+            if (not any(p in excluded_dirs 
+                        for p in pathlib.PurePosixPath(lk).parents)
+                    and f(lk, entity)):
+                p.set(lk, entity)
+
+        return p
 
     def reduce(self, f, default=None, include_directories=False):
         """

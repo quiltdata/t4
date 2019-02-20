@@ -13,18 +13,22 @@ import { ThrowNotFound } from 'containers/NotFoundPage';
 import * as NamedRoutes from 'utils/NamedRoutes';
 import * as RT from 'utils/reactTools';
 
+import Dir from './Dir';
+import File from './File';
 import Overview from './Overview';
 import PackageDetail from './PackageDetail';
 import PackageList from './PackageList';
 import PackageTree from './PackageTree';
 import Search from './Search';
-import Tree from './Tree';
 
 
 const match = (cases) => (pathname) => {
   // eslint-disable-next-line no-restricted-syntax
-  for (const [section, opts] of Object.entries(cases)) {
-    if (matchPath(pathname, opts)) return section;
+  for (const [section, variants] of Object.entries(cases)) {
+    // eslint-disable-next-line no-restricted-syntax
+    for (const opts of variants) {
+      if (matchPath(pathname, opts)) return section;
+    }
   }
   return false;
 };
@@ -32,13 +36,16 @@ const match = (cases) => (pathname) => {
 const sections = {
   overview: { path: 'bucketRoot', exact: true },
   packages: { path: 'bucketPackageList' },
-  tree: { path: 'bucketTree' },
-  search: { path: 'bucketSearch' },
+  tree: [
+    { path: 'bucketFile', exact: true, strict: true },
+    { path: 'bucketDir', exact: true },
+  ],
+  search: { path: 'bucketSearch', exact: true },
 };
 
 const getBucketSection = (paths) =>
-  match(R.map(({ path, ...opts }) =>
-    ({ path: paths[path], ...opts }), sections));
+  match(R.map((variants) =>
+    [].concat(variants).map(R.evolve({ path: (p) => paths[p] })), sections));
 
 const NavTab = RT.composeComponent('Bucket.Layout.Tab',
   withStyles(({ spacing: { unit } }) => ({
@@ -83,7 +90,7 @@ const BucketLayout = RT.composeComponent('Bucket.Layout',
             <NavTab
               label="Files"
               value="tree"
-              to={urls.bucketTree(bucket)}
+              to={urls.bucketDir(bucket)}
             />
             {section === 'search' && (
               <NavTab
@@ -115,8 +122,14 @@ export default RT.composeComponent('Bucket',
               exact
             />
             <Route
-              path={paths.bucketTree}
-              component={Tree}
+              path={paths.bucketFile}
+              component={File}
+              exact
+              strict
+            />
+            <Route
+              path={paths.bucketDir}
+              component={Dir}
               exact
             />
             <Route

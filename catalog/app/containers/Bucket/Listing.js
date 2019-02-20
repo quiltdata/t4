@@ -11,12 +11,9 @@ import ListItem from '@material-ui/core/ListItem';
 import Typography from '@material-ui/core/Typography';
 import { withStyles } from '@material-ui/core/styles';
 
-import AsyncResult from 'utils/AsyncResult';
 import { composeComponent } from 'utils/reactTools';
 import { readableBytes } from 'utils/string';
 import tagged from 'utils/tagged';
-
-import { displayError } from './errors';
 
 
 export const ListingItem = tagged([
@@ -69,49 +66,63 @@ const Item = composeComponent('Bucket.Listing.Item',
     </ListItem>
   ));
 
+const computeStats = R.reduce(ListingItem.reducer({
+  File: (file) => R.evolve({
+    files: R.inc,
+    size: R.add(file.size),
+    modified: R.max(file.modified),
+  }),
+  Dir: ({ name }) =>
+    name === '..' ? R.identity : R.evolve({ dirs: R.inc }),
+}), {
+  dirs: 0,
+  files: 0,
+  size: 0,
+  modified: 0,
+});
+
 const Stats = composeComponent('Bucket.Listing.Stats',
   RC.setPropTypes({
     items: PT.array.isRequired,
   }),
-  RC.withProps(({ items }) =>
-    items.reduce(
-      ListingItem.reducer({
-        File: (file) => R.evolve({
-          files: R.inc,
-          size: R.add(file.size),
-          modified: R.max(file.modified),
-        }),
-        _: () => R.identity,
-      }),
-      {
-        files: 0,
-        size: 0,
-        modified: 0,
-      }
-    )),
   withStyles(({ palette, spacing: { unit } }) => ({
     root: {
       background: palette.grey[100],
       display: 'flex',
       flexWrap: 'wrap',
-      justifyContent: 'space-between',
       padding: unit,
     },
+    divider: {
+      color: palette.text.hint,
+      marginLeft: unit,
+      marginRight: unit,
+    },
+    spacer: {
+      flexGrow: 1,
+    },
   })),
-  ({ classes, files, size, modified }) => (
-    <div className={classes.root}>
-      <span>{files} files / {readableBytes(size)}</span>
-      {!!modified && (
-        <span>Last modified {modified.toLocaleString()}</span>
-      )}
-    </div>
-  ));
+  ({ classes, items }) => {
+    const stats = computeStats(items);
+    return (
+      <div className={classes.root}>
+        <span>{stats.dirs} folders</span>
+        <span className={classes.divider}> | </span>
+        <span>{stats.files} files</span>
+        <span className={classes.divider}> | </span>
+        <span>{readableBytes(stats.size)}</span>
+        <span className={classes.spacer} />
+        {!!stats.modified && (
+          <span>Last modified {stats.modified.toLocaleString()}</span>
+        )}
+      </div>
+    );
+  });
 
 export default composeComponent('Bucket.Listing',
   RC.setPropTypes({
-    // AsyncResult of ListingItems
-    result: PT.object.isRequired,
-    whenEmpty: PT.func,
+    // Array of ListingItems
+    items: PT.array.isRequired,
+    locked: PT.bool,
   }),
   withStyles(({ spacing: { unit }, palette }) => ({
     root: {
@@ -146,72 +157,51 @@ export default composeComponent('Bucket.Listing',
       width: '12em',
     },
   })),
-  RC.withHandlers({
-    // eslint-disable-next-line react/prop-types
-    renderOk: ({ classes }) => R.ifElse(R.isEmpty,
-      () => (
-        <Typography className={classes.empty} variant="h5">
-          No files
-        </Typography>
-      ),
-      (items) => (
-        <React.Fragment>
-          <Stats items={items} />
-          {items.map(ListingItem.case({
-            // eslint-disable-next-line react/prop-types
-            Dir: ({ name, to }) => (
-              <Item
-                icon="folder_open"
-                key={name}
-                name={name}
-                to={to}
-              />
-            ),
-            // eslint-disable-next-line react/prop-types
-            File: ({ name, to, size, modified }) => (
-              <Item
-                icon="insert_drive_file"
-                key={name}
-                name={name}
-                to={to}
-              >
-                <div className={classes.size}>{readableBytes(size)}</div>
-                {!!modified && (
-                  <div className={classes.modified}>{modified.toLocaleString()}</div>
-                )}
-              </Item>
-            ),
-          }))}
-        </React.Fragment>
-      )),
-    renderLock: ({ classes }) => () => (
-      <div className={classes.lock}>
-        <CircularProgress />
-      </div>
-    ),
-  }),
-  RC.branch(
-    ({ whenEmpty, result }) =>
-      whenEmpty && AsyncResult.Ok.is(result, R.isEmpty),
-    RC.renderComponent(({ whenEmpty }) => whenEmpty()),
-  ),
-  ({ result, classes, renderOk, renderLock }) => (
+  ({ classes, items, locked = false }) => (
     <Card>
       <CardContent className={classes.root}>
-        {AsyncResult.case({
-          Pending: renderLock,
-          Init: renderLock,
-          _: () => null,
-        }, result)}
-        {AsyncResult.case({
-          Ok: renderOk,
-          Err: displayError(),
-          Pending: AsyncResult.case({
-            Ok: renderOk,
-            _: () => null,
-          }),
-          _: () => null,
-        }, result)}
+        {locked && (
+          <div className={classes.lock}>
+            <CircularProgress />
+          </div>
+        )}
+        {!items.length
+          ? (
+            <Typography className={classes.empty} variant="h5">
+              No files
+            </Typography>
+          )
+          : (
+            <React.Fragment>
+              <Stats items={items} />
+              {items.map(ListingItem.case({
+                // eslint-disable-next-line react/prop-types
+                Dir: ({ name, to }) => (
+                  <Item
+                    icon="folder_open"
+                    key={name}
+                    name={name}
+                    to={to}
+                  />
+                ),
+                // eslint-disable-next-line react/prop-types
+                File: ({ name, to, size, modified }) => (
+                  <Item
+                    icon="insert_drive_file"
+                    key={name}
+                    name={name}
+                    to={to}
+                  >
+                    <div className={classes.size}>{readableBytes(size)}</div>
+                    {!!modified && (
+                      <div className={classes.modified}>{modified.toLocaleString()}</div>
+                    )}
+                  </Item>
+                ),
+              }))}
+            </React.Fragment>
+          )
+        }
       </CardContent>
     </Card>
   ));

@@ -12,7 +12,7 @@ Provides a generator of the dicts that make up the serialied package.
 String representation of the Package.
 
 
-## Package.install(name, registry, pkg\_hash=None, dest=None, dest\_registry=None)  {#Package.install}
+## Package.install(name, registry=None, pkg\_hash=None, dest=None, dest\_registry=None)  {#Package.install}
 
 Installs a named package to the local registry and downloads its files.
 
@@ -20,6 +20,7 @@ __Arguments__
 
 * __name(str)__:  Name of package to install.
 * __registry(str)__:  Registry where package is located.
+    Defaults to the default remote registry.
 * __pkg_hash(str)__:  Hash of package to install. Defaults to latest.
 * __dest(str)__:  Local path to download files to.
 * __dest_registry(str)__:  Registry to install package to. Defaults to local registry.
@@ -33,7 +34,6 @@ A new Package that points to files on your local machine.
 
 Load a package into memory from a registry without making a local copy of
 the manifest.
-
 __Arguments__
 
 * __name(string)__:  name of package to load
@@ -133,7 +133,7 @@ When `path` doesn't exist
 
 ## Package.get(self, logical\_key)  {#Package.get}
 
-Gets object from local_key and returns its physical path.
+Gets object from logical_key and returns its physical path.
 Equivalent to self[logical_key].get().
 
 __Arguments__
@@ -254,7 +254,7 @@ __Returns__
 A string that represents the top hash of the package
 
 
-## Package.push(self, name, dest, registry=None, message=None)  {#Package.push}
+## Package.push(self, name, dest=None, registry=None, message=None)  {#Package.push}
 
 Copies objects to path, then creates a new package that points to those objects.
 Copies each object in this package to path according to logical key structure,
@@ -319,8 +319,9 @@ __Arguments__
 * __include_directories__:  bool
     Whether or not to include directory entries in the map.
 
-Returns: list
-    A list of truthy (logical key, entry) tuples.
+__Returns__
+
+A new package with entries that evaluated to False removed
 
 
 ## Package.reduce(self, f, default=None, include\_directories=False)  {#Package.reduce}

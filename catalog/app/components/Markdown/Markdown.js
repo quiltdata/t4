@@ -118,7 +118,7 @@ const linkHandler = ({
  *
  * @returns {Object} Remarakable instance
  */
-const getRenderer = memoize(({
+export const getRenderer = memoize(({
   images,
   processImg,
   processLink,
@@ -139,13 +139,10 @@ const getRenderer = memoize(({
   return md;
 });
 
-export default RT.composeComponent('Markdown',
+export const Container = RT.composeComponent('Markdown.Container',
   RC.setPropTypes({
-    data: PT.string,
+    children: PT.string,
     className: PT.string,
-    images: PT.bool,
-    processImg: PT.func,
-    processLink: PT.func,
   }),
   withStyles(() => ({
     root: {
@@ -163,26 +160,23 @@ export default RT.composeComponent('Markdown',
       '& a': linkStyle,
     },
   })),
-  ({
-    classes,
-    data,
-    className,
-    images = true,
-    processImg,
-    processLink,
-  }) => (
+  ({ classes, className, children }) => (
     <div
       className={cx(className, classes.root)}
       // eslint-disable-next-line react/no-danger
-      dangerouslySetInnerHTML={{
-        // would prefer to render in a saga but md.render() fails when called
-        // in a generator
-        __html:
-          getRenderer({
-            images,
-            processImg,
-            processLink,
-          }).render(data),
-      }}
+      dangerouslySetInnerHTML={{ __html: children }}
     />
+  ));
+
+export default RT.composeComponent('Markdown',
+  RC.setPropTypes({
+    data: PT.string,
+    images: PT.bool,
+    processImg: PT.func,
+    processLink: PT.func,
+  }),
+  ({ data, images = true, processImg, processLink, ...props }) => (
+    <Container {...props}>
+      {getRenderer({ images, processImg, processLink }).render(data)}
+    </Container>
   ));

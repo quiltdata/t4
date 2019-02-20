@@ -86,6 +86,17 @@ To run the catalog unit tests:
 npm run test
 ```
 
+## Updating documentation
+Documentation is served via GitBook, and is based on the `docs/` folder in the `master` branch of the `t4` repository.
+
+To modify the API Reference, modify the docstring associated with a method of interest, then navigate to the `gendocs` directory. Follow the instructions there to generate an updated API Reference. The resulting files will land in `docs/` and will be ready to be checked in. 
+
+To modify any other page in the documentation, edit the corresponding page in the `docs` directory.
+
+Every other page in the documentation is a Markdown file in the `docs/` directory. To edit the page, edit the Markdown file. Then check that file in.
+
+Documentation changes go live at pull request merge time. There is currently no way to preview documentation updates except locally.
+
 ## License
 
 Quilt is open source under the [Apache License, Version 2.0](https://github.com/quiltdata/quilt/tree/7a4a6db12839e2b932847db5224b858da52db200/LICENSE/README.md).

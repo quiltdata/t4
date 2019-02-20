@@ -1,4 +1,4 @@
-This page is a five-minute introduction to T4.
+This page is a five-minute introduction to the T4 Python API. To try out the T4 catalog, [visit the demo catalog](https://alpha.quiltdata.com/b/quilt-example).
 
 ## Data packages
 The core concept in T4 is that of a **data package**. A data package is a logically self contained group of files which provide some unit of value.
@@ -55,13 +55,13 @@ To initialize an in-memory data package, use the `Package` constructor:
 p = t4.Package()
 ```
 
-Use `set` to add a file to a package, or `set_dir` to add an entire folder all at once:
+Use `set` to add a file to a package, or `set_dir` to add an entire folder:
 
 ```python
 # add a file
 p.set('storms/atlantic-storm.csv', "atlantic-storm.csv")
 # add a folder
-p.set_dir('resources/', './')
+p.set_dir('storms/', './')
 ```
 
 You can point a package key at any local file or S3 key.
@@ -70,11 +70,7 @@ Packages support metadata on data nodes (directories too):
 
 
 ```python
-# define metadata at set time
 p.set('storms/atlantic-storm.csv', 'atlantic-storm.csv', meta={'ocean':'atlantic'})
-
-# define it later, uses dictionary access, from the next section
-p['storms']['atlantic-storms.csv'].set_meta({'ocean': 'atlantic'})
 ```
 
 Packages mimic `dict` objects in their behavior. So to introspect a package, key into it using a path fragment:
@@ -111,7 +107,7 @@ p['storms/atlantic-storms.csv']()
 
 ## Pushing a package
 
-Suppose that you've create a package and want to share it with the rest of your team. T4 makes this easy by providing you with a **catalog**. A T4 catalog sits on top of an S3 bucket and allows anyone with access to that bucket to see, push, and download packages in that bucket.
+Suppose that you've create a package and want to share it with the rest of your team. T4 allows you to do so by pushing your package to a T4 **catalog**, which sits on top of an S3 bucket and allows anyone with access to that bucket to see, push, and download packages in that bucket.
 
 Note that this section, and the next, require a catalog you have access to.
 
@@ -139,19 +135,18 @@ t4.list_packages('s3://your-bucket')
 
 To download a package and all of its data from a remote catalog to a `dest` on your machine, `install` it.
 
-
 ```python
 p = t4.Package.install('example/package', 's3://your-bucket', dest='temp_folder/')
 ```
 
-You can also choose to download just the package **manifest** without downloading the data files it references. A package manifest is a simple JSON file that is independent of the actual package data, but stores pointers to and metadata about it. To get just the package manifest, use `browse`:
+You can also choose to download just the  **package manifest** without downloading the data files it references. A package manifest is a simple JSON metadata file that is independent of the actual package data:
 
 ```python
+# get just the manifest, not the data
 p = t4.Package.browse('example/package', 's3://your-bucket')
-p
 ```
 
-`browse` is particularly beneficial when you are working with large packages that you only need parts of at a time, and when working with packages containing many subpackages. In those cases you can `browse`, then `fetch`, to get data of interest:
+`browse` is useful when you only need part of a package, or only want to inspect a package's metadata. You can `browse`, then `fetch`, to get data of interest:
 
 ```python
 p = t4.Package.browse('example/package', 's3://your-bucket')

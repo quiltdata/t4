@@ -113,10 +113,10 @@ def test_default_registry(tmpdir):
 
     with patch('t4.packages.get_remote_registry') as mock_config:
         mock_config.return_value = new_base_path
-        new_pkg.push("Quilt/Test", Path(tmpdir, 'test_dest').resolve().as_uri())
+        new_pkg.push("Quilt/Test")
         with open(out_path) as fd:
             pkg = Package.load(fd)
-            assert pkg['bar'].physical_keys[0].endswith('test_dest/Quilt/Test/bar')
+            assert pkg['bar'].physical_keys[0].endswith('.quilttest/Quilt/Test/bar')
 
 def test_read_manifest(tmpdir):
     """ Verify reading serialized manifest from disk. """
@@ -199,6 +199,31 @@ def test_browse_package_from_registry():
             pkg = Package.browse('Quilt/nice-name', registry=remote_registry)
         assert '{}/.quilt/packages/{}'.format(remote_registry, pkghash) \
                 in [x[0][0] for x in pkgmock.call_args_list]
+
+def test_local_install(tmpdir):
+    """Verify that installing from a local package works as expected."""
+    with patch('t4.packages.get_local_registry') as get_local_registry_mock, \
+        patch('t4.Package.push') as push_mock:
+        local_registry = tmpdir
+        get_local_registry_mock.return_value = local_registry
+        pkg = Package()
+        pkg.build('Quilt/nice-name')
+
+        t4.Package.install('Quilt/nice-name', registry='local', dest='./')
+        push_mock.assert_called_once_with(dest='./', name='Quilt/nice-name', registry=local_registry)
+
+def test_remote_install(tmpdir):
+    """Verify that installing from a local package works as expected."""
+    with patch('t4.packages.get_remote_registry') as get_remote_registry_mock, \
+        patch('t4.packages.get_local_registry') as get_local_registry_mock, \
+        patch('t4.Package.push') as push_mock:
+        remote_registry = tmpdir
+        get_local_registry_mock.return_value = get_remote_registry_mock.return_value = remote_registry
+        pkg = Package()
+        pkg.build('Quilt/nice-name')
+
+        t4.Package.install('Quilt/nice-name', dest='./')
+        push_mock.assert_called_once_with(dest='./', name='Quilt/nice-name', registry=remote_registry)
 
 def test_package_fetch(tmpdir):
     """ Package.fetch() on nested, relative keys """
@@ -863,19 +888,25 @@ def test_map():
 
 def test_filter():
     pkg = Package()
-    pkg.set('as/df', LOCAL_MANIFEST)
-    pkg.set('as/qw', LOCAL_MANIFEST)
-    assert list(pkg.filter(lambda lk, entry: lk == 'as/df')) == [
-        ('as/df', pkg['as/df'])
-    ]
+    pkg.set('a/df', LOCAL_MANIFEST)
+    pkg.set('a/qw', LOCAL_MANIFEST)
 
-    pkg['as'].set_meta({'foo': 'bar'})
-    assert list(pkg.filter(lambda lk, entry: lk == 'as/df')) == [
-        ('as/df', pkg['as/df'])
-    ]
-    assert list(pkg.filter(lambda lk, entry: lk == 'as/', include_directories=True)) == [
-        ('as/', pkg['as'])
-    ]
+    p_copy = pkg.filter(lambda lk, entry: lk == 'a/df')
+    assert list(p_copy) == ['a'] and list(p_copy['a']) == ['df']
+
+    pkg = Package()
+    pkg.set('a/df', LOCAL_MANIFEST)
+    pkg.set('a/qw', LOCAL_MANIFEST)
+    pkg.set('b/df', LOCAL_MANIFEST)
+    pkg['a'].set_meta({'foo': 'bar'})
+    pkg['b'].set_meta({'foo': 'bar'})
+
+    p_copy = pkg.filter(lambda lk, entry: lk == 'a/', include_directories=True)
+    assert list(p_copy) == []
+
+    p_copy = pkg.filter(lambda lk, entry: lk == 'a/' or lk == 'a/df',
+                        include_directories=True)
+    assert list(p_copy) == ['a'] and list(p_copy['a']) == ['df']
 
 
 def test_reduce():
