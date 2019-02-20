@@ -14,7 +14,6 @@
   "license": "MIT",
   "scripts": {
     "analyze:clean": "rimraf stats.json",
-    "dompurify": "^1.0.10",
     "preanalyze": "npm run analyze:clean",
     "analyze": "node ./internals/scripts/analyze.js",
     "bundlesize": "bundlesize -f './build/*.js'",
