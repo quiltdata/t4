@@ -14,6 +14,7 @@
   "license": "MIT",
   "scripts": {
     "analyze:clean": "rimraf stats.json",
+    "dompurify": "^1.0.10",
     "preanalyze": "npm run analyze:clean",
     "analyze": "node ./internals/scripts/analyze.js",
     "bundlesize": "bundlesize -f './build/*.js'",
@@ -260,6 +261,7 @@
     "connected-react-router": "^5.0.0",
     "cross-env": "^5.2.0",
     "dedent": "^0.7.0",
+    "dompurify": "^1.0.10",
     "elasticsearch-browser": "^15.2.0",
     "express": "^4.16.4",
     "fontfaceobserver": "^2.0.13",

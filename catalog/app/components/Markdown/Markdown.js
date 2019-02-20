@@ -1,4 +1,5 @@
 import cx from 'classnames';
+import * as createDOMPurify from 'dompurify';
 import hljs from 'highlight.js';
 import memoize from 'lodash/memoize';
 import PT from 'prop-types';
@@ -12,10 +13,13 @@ import { withStyles } from '@material-ui/core/styles';
 import { linkStyle } from 'utils/StyledLink';
 import * as RT from 'utils/reactTools';
 
+const SANITIZE_OPTS = {
+  'FORBID_TAGS': ['style', 'script'],
+  'FORBID_ATTR': ['style'],
+};
 
 // TODO: switch to pluggable react-aware renderer
 // TODO: use react-router's Link component for local links
-
 const highlight = (str, lang) => {
   if (lang === 'none') {
     return '';
@@ -125,7 +129,7 @@ export const getRenderer = memoize(({
 }) => {
   const md = new Remarkable('full', {
     highlight,
-    html: false,
+    html: true,
     linkify: true,
     typographer: true,
   });
@@ -136,7 +140,11 @@ export const getRenderer = memoize(({
     disable: !images,
     process: processImg,
   }));
-  return md;
+  const purify = createDOMPurify(window);
+  // sanitize the HTML
+  this.render =  (data) => purify.sanitize(md.render(data), SANITIZE_OPTS)
+
+  return this;
 });
 
 export const Container = RT.composeComponent('Markdown.Container',
