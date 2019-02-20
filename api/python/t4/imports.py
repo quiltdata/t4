@@ -72,7 +72,6 @@ class DataPackageFinder:
             return None
         else:
             return ModuleSpec(fullname, DataPackageLoader())
-        return ModuleSpec(fullname, DataPackageFinder()) if 't4' in fullname else None
 
 
 def start_data_package_loader():
