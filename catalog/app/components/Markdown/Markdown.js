@@ -14,8 +14,8 @@ import { linkStyle } from 'utils/StyledLink';
 import * as RT from 'utils/reactTools';
 
 const SANITIZE_OPTS = {
-  'FORBID_TAGS': ['style', 'script'],
-  'FORBID_ATTR': ['style'],
+  FORBID_TAGS: ['style', 'script'],
+  FORBID_ATTR: ['style'],
 };
 
 // TODO: switch to pluggable react-aware renderer
@@ -141,10 +141,7 @@ export const getRenderer = memoize(({
     process: processImg,
   }));
   const purify = createDOMPurify(window);
-  // sanitize the HTML
-  this.render =  (data) => purify.sanitize(md.render(data), SANITIZE_OPTS)
-
-  return this;
+  return (data) => purify.sanitize(md.render(data), SANITIZE_OPTS);
 });
 
 export const Container = RT.composeComponent('Markdown.Container',
@@ -185,6 +182,6 @@ export default RT.composeComponent('Markdown',
   }),
   ({ data, images = true, processImg, processLink, ...props }) => (
     <Container {...props}>
-      {getRenderer({ images, processImg, processLink }).render(data)}
+      {getRenderer({ images, processImg, processLink })(data)}
     </Container>
   ));
