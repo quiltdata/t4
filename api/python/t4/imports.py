@@ -79,5 +79,4 @@ def start_data_package_loader():
     """
     Adds the data package loader to the module loaders.
     """
-    pass
     sys.meta_path.append(DataPackageFinder())
