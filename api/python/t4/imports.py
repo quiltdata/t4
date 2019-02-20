@@ -7,7 +7,7 @@ from t4.util import BASE_PATH
 from t4 import list_packages, Package
 
 
-MODULE_PATH = [BASE_PATH / '.quilt']
+MODULE_PATH = []
 
 
 class DataPackageImporter:
