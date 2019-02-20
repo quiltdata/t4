@@ -13,14 +13,14 @@ import pandas as pd
 import pytest
 
 from t4 import Bucket
-from t4.data_transfer import s3_client
+from t4 import data_transfer
 from t4.util import QuiltException
 
 def test_bucket_construct():
     bucket = Bucket('s3://test-bucket')
 
 def test_bucket_meta():
-    with Stubber(s3_client) as stubber:
+    with Stubber(data_transfer.s3_client) as stubber:
         test_meta = {
             'helium': json.dumps({'target': 'json'})
         }
@@ -71,7 +71,7 @@ def test_bucket_meta():
         bucket.set_meta('test', {})
 
 def test_bucket_fetch():
-    with Stubber(s3_client) as stubber:
+    with Stubber(data_transfer.s3_client) as stubber:
         response = {
             'IsTruncated': False
         }
@@ -146,12 +146,12 @@ def test_bucket_select():
         'Key': 'test'
     }
 
-    with Stubber(s3_client) as stubber:
+    with Stubber(data_transfer.s3_client) as stubber:
         stubber.add_response('head_object', response, params)
 
         boto_return_val = {'Payload': iter(records)}
         patched_s3 = patch.object(
-            s3_client,
+            data_transfer.s3_client,
             'select_object_content',
             return_value=boto_return_val,
             autospec=True,
