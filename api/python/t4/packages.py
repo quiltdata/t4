@@ -21,8 +21,9 @@ from .data_transfer import (
 from .exceptions import PackageException
 from .formats import FormatRegistry
 from .util import (
-    QuiltException, BASE_PATH, fix_url, get_local_registry, get_remote_registry,
-    parse_file_url, parse_s3_url, validate_package_name, quiltignore_filter
+    QuiltException, fix_url, get_local_registry, get_remote_registry,
+    get_install_location, get_package_registry, parse_file_url, parse_s3_url, 
+    validate_package_name, quiltignore_filter
 )
 
 
@@ -56,12 +57,6 @@ def _to_singleton(physical_keys):
         raise NotImplementedError("Multiple physical keys not supported")
 
     return physical_keys[0]
-
-def get_package_registry(path=None):
-    """ Returns the package registry root for a given path """
-    if path is None:
-        path = BASE_PATH.as_uri()
-    return path.rstrip('/') + '/.quilt'
 
 
 class PackageEntry(object):
@@ -328,7 +323,7 @@ class Package(object):
         """
         if registry is None:
             registry = get_remote_registry()
-            if not registry:
+            if registry is None:
                 raise QuiltException("No registry specified and no default remote "
                                      "registry configured. Please specify a registry "
                                      "or configure a default remote registry with t4.config")
@@ -339,10 +334,12 @@ class Package(object):
             dest_registry = get_local_registry()
 
         pkg = cls.browse(name=name, registry=registry, pkg_hash=pkg_hash)
-        if dest:
-            return pkg.push(name=name, dest=dest, registry=dest_registry)
-        else:
-            raise NotImplementedError
+
+        if dest is None:
+            dest = get_install_location()
+
+        return pkg.push(name=name, dest=dest, registry=dest_registry)
+
 
     @classmethod
     def browse(cls, name=None, registry=None, pkg_hash=None):
