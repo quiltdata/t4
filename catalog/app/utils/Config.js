@@ -50,9 +50,6 @@ const validateFederation = conforms({
 
 const fetchConfig = async (path) => {
   try {
-    await new Promise((resolve) => {
-      setTimeout(() => { resolve(); }, 3000);
-    });
     const res = await fetch(path);
     const text = await res.text();
     if (!res.ok) {
