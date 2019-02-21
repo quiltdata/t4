@@ -65,7 +65,8 @@ class DataPackageFinder:
         # an implementation for subpackage imports exists, but this has significant
         # consistency issues. For now let's avoid, but you can see the full code at
         # https://github.com/ResidentMario/package-autorelaod/blob/master/loader.py
-        if not fullname.startswith('t4.data') or len(fullname.split('.')) > 3:
+        name_parts = fullname.split('.')
+        if name_parts[:2] != ['t4', 'data'] or len(fullname.split('.')) > 3:
             return None
         else:
             return ModuleSpec(fullname, DataPackageImporter())
