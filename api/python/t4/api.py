@@ -366,16 +366,16 @@ def config(*autoconfig_url, **config_values):
 
     To retrieve the current config, call directly, without arguments:
 
-        >>> import t4 as he
-        >>> he.config()
+        >>> import t4
+        >>> t4.config()
 
     To trigger autoconfiguration, call with just the navigator URL:
 
-        >>> he.config('https://example.com')
+        >>> t4.config('https://example.com')
 
     To set config values, call with one or more key=value pairs:
 
-        >>> he.config(navigator_url='http://example.com',
+        >>> t4.config(navigator_url='http://example.com',
         ...           elastic_search_url='http://example.com/queries')
 
     When setting config values, unrecognized values are rejected.  Acceptable

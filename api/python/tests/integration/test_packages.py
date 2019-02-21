@@ -118,6 +118,18 @@ def test_default_registry(tmpdir):
             pkg = Package.load(fd)
             assert pkg['bar'].physical_keys[0].endswith('.quilttest/Quilt/Test/bar')
 
+@patch('appdirs.user_data_dir', lambda x,y: os.path.join('test_appdir', x))
+@patch('t4.Package.browse', lambda name, registry, pkg_hash: Package())
+def test_default_install_location(tmpdir):
+    """Verify that pushes to the default local install location work as expected"""
+    with patch('t4.Package.push') as push_mock:
+        Package.install('Quilt/nice-name', registry='s3://my-test-bucket')
+        push_mock.assert_called_once_with(
+            dest=t4.util.get_install_location(), 
+            name='Quilt/nice-name',
+            registry=ANY
+        )
+
 def test_read_manifest(tmpdir):
     """ Verify reading serialized manifest from disk. """
     with open(LOCAL_MANIFEST) as fd:
@@ -928,3 +940,17 @@ def test_reduce():
         ('as/df', pkg['as/df']),
         ('as/qw', pkg['as/qw'])
     ]
+
+
+def test_import():
+    with patch('t4.Package.browse') as browse_mock, \
+        patch('t4.imports.list_packages') as list_packages_mock:
+        browse_mock.return_value = t4.Package()
+        list_packages_mock.return_value = ['foo/bar', 'foo/baz']
+
+        from t4.data.foo import bar
+        assert isinstance(bar, Package)
+        browse_mock.assert_has_calls([call('foo/baz'), call('foo/bar')], any_order=True)
+
+        from t4.data import foo
+        assert hasattr(foo, 'bar') and hasattr(foo, 'baz')

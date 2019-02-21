@@ -4,6 +4,7 @@ import * as React from 'react';
 import { connect } from 'react-redux';
 import { Link, Route } from 'react-router-dom';
 import * as RC from 'recompose';
+import * as reduxHook from 'redux-react-hook';
 import { createStructuredSelector } from 'reselect';
 import AppBar from '@material-ui/core/AppBar';
 import Button from '@material-ui/core/Button';
@@ -14,7 +15,7 @@ import MenuItem from '@material-ui/core/MenuItem';
 import Toolbar from '@material-ui/core/Toolbar';
 import { withStyles } from '@material-ui/core/styles';
 
-import * as authSelectors from 'containers/AWSAuth/selectors';
+import * as authSelectors from 'containers/Auth/selectors';
 import * as NamedRoutes from 'utils/NamedRoutes';
 import { composeComponent } from 'utils/reactTools';
 
@@ -45,31 +46,39 @@ const Item = composeComponent('NavBar.MenuItem',
   MenuItem);
 
 const NavMenu = composeComponent('NavBar.Menu',
-  NamedRoutes.inject(),
-  RC.withStateHandlers({
-    anchor: null,
-  }, {
-    open: () => (evt) => ({ anchor: evt.target }),
-    close: () => () => ({ anchor: null }),
-  }),
-  ({ anchor, open, close, urls }) => (
-    <div>
-      <Button
-        variant="text"
-        color="inherit"
-        onClick={open}
-      >
-        AWS IAM <Icon>expand_more</Icon>
-      </Button>
-      <Menu
-        anchorEl={anchor}
-        open={!!anchor}
-        onClose={close}
-      >
-        <Item to={urls.signOut()} onClick={close}>Sign Out</Item>
-      </Menu>
-    </div>
-  ));
+  () => {
+    const name = reduxHook.useMappedState(authSelectors.username);
+
+    const { urls } = NamedRoutes.use();
+    const [anchor, setAnchor] = React.useState(null);
+
+    const open = React.useCallback((evt) => {
+      setAnchor(evt.target);
+    }, [setAnchor]);
+
+    const close = React.useCallback(() => {
+      setAnchor(null);
+    }, [setAnchor]);
+
+    return (
+      <div>
+        <Button
+          variant="text"
+          color="inherit"
+          onClick={open}
+        >
+          {name} <Icon>expand_more</Icon>
+        </Button>
+        <Menu
+          anchorEl={anchor}
+          open={!!anchor}
+          onClose={close}
+        >
+          <Item to={urls.signOut()} onClick={close}>Sign Out</Item>
+        </Menu>
+      </div>
+    );
+  });
 
 const SignIn = composeComponent('NavBar.SignIn',
   RC.setPropTypes({

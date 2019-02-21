@@ -1,9 +1,8 @@
-You can install a package either in whole or in part.
+## Searching for packages
 
-## Finding
 As explained in ["Building a Package"](Building%20a%20Package.md), packages are managed using **registries**. There is a one local registry on your machine, and potentially many remote registries elsewhere "in the world". Use `list_packages` to see the packages available on a registry:
 
-```
+```bash
 $ python
 >>> import t4
 
@@ -16,56 +15,63 @@ $ python
 ["user1/seattle-weather", "user2/new-york-ballgames", ...]
 ```
 
-
-## Installing
+## Installing a package
 
 To make a remote package and all of its data available locally, `install` it.
 
 ```python
 import t4
 p = t4.Package.install(
-    "username/packagename", 
-    dest="./",
-    registry="s3://your-bucket"
+    "username/packagename",
+    registry="s3://your-bucket",
 )
 ```
 
-Installing a package downloads all of the data in the package to `dest`. It also imports the package into your local registry.
+Installing a package downloads all of the data and populates an entry for the package in your local registry.
 
-You can omit `registry` if you configure a default remote registry:
+You can omit `registry` if you configure a default remote registry (this will persists between sessions):
 
 ```python
-import t4
 t4.config(default_remote_registry='s3://your-bucket')
-t4.Package().install("username/packagename", "./")  # this now 'just works'
+
+# this now 'just works'
+t4.Package.install("username/packagename")
 ```
 
-The default remote registry, if set, persists between sessions.
+Data files that you download are written to a folder in your local registry by default. You can specify an alternative destination using `dest`:
 
-## Browsing
-To download a package manifest without downloading its data, use `browse`:
+```python
+t4.Package.install("username/packagename", dest="./")
+```
+
+Finally, you can install a specific version of a package by specifying the corresponding tophash:
+
+```python
+t4.Package.install("username/packagename", pkg_hash="abcd1234")
+```
+
+## Browsing a package manifest
+
+An alternative to `install` is `browse`. `browse` downloads a package manifest without also downloading the data in the package.
 
 ```python
 import t4
 
-# load a package from the local registry
+# load a package manifest from the local registry
 p  = t4.Package.browse("username/packagename")
 
-# load a package from a remote registry
+# load a package manifest from a remote registry
 p = t4.Package.browse("username/packagename", registry="s3://your-bucket")
 ```
 
-`browse` is advantageous when you don't want to download everything in a package at once. Maybe you just want just part of the package, or maybe you just want to look at the metadata.
+`browse` is advantageous when you don't want to download everything in a package at once. For example if you just want to look at a package's metadata.
 
-## Versions
-To load a specific version of a package ask for the corresponding **tophash**:
+## Importing a package
+
+You can import a local package from within Python:
 
 ```python
-import t4
-t4.Package.install(
-    "username/packagename", 
-    "s3://your-bucket",
-    dest="./",
-    pkg_hash="abcd1234"
-)
+from t4.data.username import packagename
 ```
+
+This allows you to manage your data and code dependencies all in one place in your Python scripts or Jupyter notebooks.

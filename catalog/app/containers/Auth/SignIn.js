@@ -8,7 +8,8 @@ import { reduxForm, Field, SubmissionError } from 'redux-form/immutable';
 import { createStructuredSelector } from 'reselect';
 
 import * as Config from 'utils/Config';
-import * as Wait from 'utils/Wait';
+import * as NamedRoutes from 'utils/NamedRoutes';
+import Link from 'utils/StyledLink';
 import defer from 'utils/defer';
 import { captureError } from 'utils/errorReporting';
 import { composeComponent } from 'utils/reactTools';
@@ -24,12 +25,12 @@ import * as Layout from './Layout';
 
 const Container = Layout.mkLayout(<FM {...msg.signInHeading} />);
 
-export default composeComponent('AWSAuth.SignIn',
+export default composeComponent('Auth.SignIn',
   connect(createStructuredSelector({
     authenticated: selectors.authenticated,
   })),
   reduxForm({
-    form: 'AWSAuth.SignIn',
+    form: 'Auth.SignIn',
     onSubmit: async (values, dispatch) => {
       const result = defer();
       dispatch(signIn(values.toJS(), result.resolver));
@@ -46,35 +47,32 @@ export default composeComponent('AWSAuth.SignIn',
   }),
   withParsedQuery,
   branch(get('authenticated'),
-    renderComponent(({ location: { query } }) => (
-      <Config.Inject>
-        {Wait.wait(({ signInRedirect }) => (
-          <Redirect to={query.next || signInRedirect} />
-        ))}
-      </Config.Inject>
-    ))),
+    renderComponent(({ location: { query } }) => {
+      const cfg = Config.useConfig();
+      return <Redirect to={query.next || cfg.signInRedirect} />;
+    })),
   ({ handleSubmit, submitting, submitFailed, invalid, error }) => (
     <Container>
       <form onSubmit={handleSubmit}>
         <Field
           component={Layout.Field}
-          name="accessKeyId"
+          name="username"
           validate={[validators.required]}
           disabled={submitting}
-          floatingLabelText={<FM {...msg.signInAccessKeyID} />}
+          floatingLabelText={<FM {...msg.signInUsernameLabel} />}
           errors={{
-            required: <FM {...msg.signInAccessKeyIDRequired} />,
+            required: <FM {...msg.signInUsernameRequired} />,
           }}
         />
         <Field
           component={Layout.Field}
-          name="secretAccessKey"
+          name="password"
           type="password"
           validate={[validators.required]}
           disabled={submitting}
-          floatingLabelText={<FM {...msg.signInSecretAccessKey} />}
+          floatingLabelText={<FM {...msg.signInPassLabel} />}
           errors={{
-            required: <FM {...msg.signInSecretAccessKeyRequired} />,
+            required: <FM {...msg.signInPassRequired} />,
           }}
         />
         <Layout.Error
@@ -91,6 +89,38 @@ export default composeComponent('AWSAuth.SignIn',
             busy={submitting}
           />
         </Layout.Actions>
+        <NamedRoutes.Inject>
+          {({ urls }) => (
+            <Layout.Hint>
+              <FM
+                {...msg.signInHintSignUp}
+                values={{
+                  link: (
+                    <Link to={urls.signUp()}>
+                      <FM {...msg.signInHintSignUpLink} />
+                    </Link>
+                  ),
+                }}
+              />
+            </Layout.Hint>
+          )}
+        </NamedRoutes.Inject>
+        <NamedRoutes.Inject>
+          {({ urls }) => (
+            <Layout.Hint>
+              <FM
+                {...msg.signInHintReset}
+                values={{
+                  link: (
+                    <Link to={urls.passReset()}>
+                      <FM {...msg.signInHintResetLink} />
+                    </Link>
+                  ),
+                }}
+              />
+            </Layout.Hint>
+          )}
+        </NamedRoutes.Inject>
       </form>
     </Container>
   ));
