@@ -190,9 +190,8 @@ def login_with_token(refresh_token):
 
     clear_session()
 
-    # use registry-provided credentials if available
-    if try_registry_credentials():
-        set_credentials_from_registry()
+    # use registry-provided credentials
+    set_credentials_from_registry()
 
 def logout():
     """
@@ -218,18 +217,6 @@ def set_refreshable_credentials(get_credentials):
             refresh_using=get_credentials,
             method='quilt-registry'
             )
-
-def try_registry_credentials():
-    session = get_session()
-    try:
-        response = session.get(
-            "{url}/api/auth/get_credentials".format(
-                url=get_registry_url()
-            )
-        )
-        return True
-    except QuiltException:
-        return False
 
 def get_registry_credentials():
     session = get_session()
