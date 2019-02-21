@@ -8,8 +8,8 @@ import t4
 p = t4.Package()
 ```
 
+## Setting data in a package
 
-## Setting data
 Use the `set` and `set_dir` commands to add individual files and whole directories, respectively, to the `Package`:
 
 ```python
@@ -30,18 +30,18 @@ You can also add multiple files at once using `update`:
 ```python
 # add many entries at once using `update`
 p = p.update({
-    "baz.csv": "/path/to/baz", 
+    "baz.csv": "/path/to/baz",
     "bam.png": "/path/to/bam"
 })
 ```
 
 Of course you can also delete entries:
+
 ```python
 p.delete("bam.png")
 ```
 
-
-## Setting metadata
+## Setting metadata in a package
 
 Packages support **metadata**. Metadata can be set on any entry or directory in the package, as well as on the package itself.
 

@@ -1,6 +1,7 @@
 # Installation
 
 T4 has two components:
+
 * The T4 Python client package
 * The T4 web catalog
 
@@ -45,6 +46,6 @@ The static assets, including webpack chunks, are written to `/static`.
 
 For more advanced deployment scripts, see [`deploy_navigator.sh`](../deployment/deploy_navigator.sh).
 
-
 ## Catalog (on AWS)
-For instructions on installing the T4 Catalog in AWS see the first section in the [Technical Reference](./Technical%20Reference.md).
+
+For instructions on installing the T4 Catalog in AWS see the first section in the [Technical Reference](./Technical Reference.md).

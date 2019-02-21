@@ -12,11 +12,11 @@ p = (t4.Package()
     )
 ```
 
+## Slicing through a package
 
-## Slicing
 Use `dict` key selection to slice into a package tree:
 
-```
+```bash
 $ python
 >>> p["trades.parquet"]
 <<< PackageEntry("trades.parquet")
@@ -28,8 +28,8 @@ $ python
 
 Slicing into a `Package` directory returns another `Package` rooted at that subdirectory. Slicing into a package entry returns an individual `PackageEntry`.
 
+## Downloading package data to disk
 
-## Downloading data to disk
 To download a subset of files from a package directory to a `dest`, use `fetch`:
 
 ```python
@@ -43,10 +43,11 @@ p["commodities"]["gold.csv"].fetch("gold.csv")
 p.fetch("trade-info/")
 ```
 
-## Downloading data into memory
+## Downloading package data into memory
+
 Alternatively, you can download data directly into memory:
 
-```
+```bash
 $ python
 >>> p["commodities"]["gold.csv"]()
 <<< <pandas.DataFrame object at ...>
@@ -54,13 +55,14 @@ $ python
 
 To apply a custom deserializer to your data, pass the function as a parameter to the function. For example, to load a `yaml` file using `yaml.safe_load`:
 
-```
+```bash
 $ python
 >>> p["symbols.yaml"](yaml.safe_load)
 <<< {'gold': 'au', 'silver': 'ag'}
 ```
 
-## Reading metadata
+## Reading package metadata
+
 Use `get_meta` to load metadata:
 
 ```python

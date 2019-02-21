@@ -1,6 +1,7 @@
 Once your package is ready it's time to save and distribute it.
 
-## Building
+## Building a package locally
+
 To save a package to local disk use `build`.
 
 ```python
@@ -10,16 +11,17 @@ p = t4.Package()
 tophash = p.build("username/packagename")
 ```
 
-Building a package requires providing it with a name. Packages names must follow the `<authorname>/<packagename>` format.
+Building a package requires providing it with a name. Packages names must follow the `${namespace}/${packagename}` format. For small teams, we recommend using the package author's name as the namespace.
 
-## Pushing
+## Pushing a package to a remote registry
+
 To share a package with others via a remote registry, `push` it:
 
 ```python
 import t4
 p = t4.Package()
 p.push(
-    "username/packagename", 
+    "username/packagename",
     dest="s3://your-bucket",
     message="Updated version my package"
 )
@@ -35,7 +37,20 @@ t4.Package().push("username/packagename")  # this now 'just works'
 
 The default remote registry, if set, persists between sessions.
 
-## Deletion
+## Distributing a package version
+
+A successful package `build` or `push` returns a **tophash**.
+
+```bash
+$ python
+>>> t4.Package().build("username/packagename")
+
+'2a5a67156ca9238c14d12042db51c5b52260fdd5511b61ea89b58929d6e1769b'
+```
+
+A tophash is a persistent, immutable reference to a specific version of a package. To download this specific version of the package in the future you will need to provide this tophash.
+
+## Delete a package from a registry
 
 To delete a package from a registry:
 
@@ -50,16 +65,3 @@ t4.delete_package("username/packagename", "s3://your-bucket")
 ```
 
 Only do this if you really need to as this will break the package for anyone relying on it.
-
-## Versioning
-
-A successful package `build` or `push` returns a **tophash**.
-
-```
-$ python
->>> t4.Package().build("username/packagename")
-
-'2a5a67156ca9238c14d12042db51c5b52260fdd5511b61ea89b58929d6e1769b'
-```
-
-A tophash is a persistent, immutable reference to a specific version of a package.
