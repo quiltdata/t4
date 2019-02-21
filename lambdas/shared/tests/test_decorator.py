@@ -44,7 +44,31 @@ class TestDecorator(TestCase):
         assert resp['headers'] == {
             'Content-Type': 'text/plain',
             'access-control-allow-origin': '*',
-            'access-control-allow-methods': 'GET,POST',
+            'access-control-allow-methods': 'HEAD,GET,POST',
+            'access-control-allow-headers': '*',
+            'access-control-max-age': 86400
+        }
+
+    def test_api_exception(self):
+        @api(cors_origins=['https://example.com'])
+        def handler(query, header):
+            raise TypeError("Fail!")
+
+        resp = handler({
+            'queryStringParameters': {
+                'foo': 'bar'
+            },
+            'headers': {
+                'origin': 'https://example.com'
+            }
+        }, None)
+
+        assert resp['statusCode'] == 500
+        assert resp['body'] == 'Internal Server Error'
+        assert resp['headers'] == {
+            'Content-Type': 'text/plain',
+            'access-control-allow-origin': '*',
+            'access-control-allow-methods': 'HEAD,GET,POST',
             'access-control-allow-headers': '*',
             'access-control-max-age': 86400
         }

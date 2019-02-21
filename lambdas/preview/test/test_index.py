@@ -49,23 +49,6 @@ class TestIndex():
         assert 'access-control-allow-origin' not in resp['headers']
 
     @responses.activate
-    def test_exception(self):
-        """cause an exception and make sure a proper error is returned"""
-        notebook = BASE_DIR / 'nb_1200727.ipynb'
-        responses.add(
-            responses.GET,
-            self.FILE_URL,
-            body=notebook.read_bytes(),
-            status=200)
-        event = self._make_event({'url': self.FILE_URL, 'input': 'ipynb'}, {'origin': MOCK_ORIGIN})
-        with patch('nbconvert.HTMLExporter.from_notebook_node') as func:
-            # Simulate a typical nbconvert failure.
-            func.side_effect = TypeError("I didn't test my code, so it crashed.")
-            resp = lambda_handler(event, None)
-        assert resp['statusCode'] == 500
-        assert resp['headers']['access-control-allow-origin'] == '*'
-
-    @responses.activate
     def test_ipynb(self):
         """test sending ipynb bytes"""
         notebook = BASE_DIR / 'nb_1200727.ipynb'

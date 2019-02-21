@@ -27,7 +27,7 @@ def api(cors_origins=[]):
             if origin is not None and origin in cors_origins:
                 response_headers.update({
                     'access-control-allow-origin': '*',
-                    'access-control-allow-methods': 'GET,POST',
+                    'access-control-allow-methods': 'HEAD,GET,POST',
                     'access-control-allow-headers': '*',
                     'access-control-max-age': 86400
                 })
