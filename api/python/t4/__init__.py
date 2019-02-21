@@ -1,4 +1,3 @@
-
 """T4 API"""
 
 # Suppress numpy warnings
@@ -18,3 +17,6 @@ from .api import (
 from .packages import Package
 
 from .bucket import Bucket
+
+from .imports import start_data_package_loader
+start_data_package_loader()

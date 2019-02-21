@@ -940,3 +940,17 @@ def test_reduce():
         ('as/df', pkg['as/df']),
         ('as/qw', pkg['as/qw'])
     ]
+
+
+def test_import():
+    with patch('t4.Package.browse') as browse_mock, \
+        patch('t4.imports.list_packages') as list_packages_mock:
+        browse_mock.return_value = t4.Package()
+        list_packages_mock.return_value = ['foo/bar', 'foo/baz']
+
+        from t4.data.foo import bar
+        assert isinstance(bar, Package)
+        browse_mock.assert_has_calls([call('foo/baz'), call('foo/bar')], any_order=True)
+
+        from t4.data import foo
+        assert hasattr(foo, 'bar') and hasattr(foo, 'baz')
