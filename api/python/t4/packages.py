@@ -267,12 +267,15 @@ class Package(object):
         if not self.keys():
             return '(empty Package)'
 
-        # candidates is a deque of 
-        #     ((logical_key, Package | PackageEntry), [list of parent key])
+        # traverse the tree of package directories and entries to get the list of
+        # display objects. candidates is a deque of shape
+        # ((logical_key, Package | PackageEntry), [list of parent key])
         candidates = deque(([x, []] for x in self._children.items()))
         results_dict = {}
         results_total = 0
-        while candidates and results_total < max_lines:
+        more_objects_than_lines = False
+
+        while candidates:
             [[logical_key, entry], parent_keys] = candidates.popleft()
             if isinstance(entry, Package):
                 logical_key = logical_key + '/'
@@ -287,14 +290,15 @@ class Package(object):
             current_result_level[logical_key] = {}
             results_total += 1
 
+            if results_total >= max_lines:
+                more_objects_than_lines = True
+                break
+
         repr_str = _create_str(results_dict)
 
         # append '...' if the package is larger than max_size
-        # TODO: traverse directories as well, as they're included in the display
-        for i, _ in enumerate(self.walk()):
-            if i > max_lines:
-                repr_str += ' ' + '...\n'
-                break
+        if more_objects_than_lines:
+            repr_str += ' ' + '...\n'
 
         return repr_str
 
