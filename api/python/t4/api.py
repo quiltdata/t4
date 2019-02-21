@@ -464,10 +464,10 @@ def create_role(name, arn):
         "{url}/api/roles".format(
             url=get_registry_url()
             ),
-            data=json.dumps({
+            json={
                 'name': name,
                 'arn': arn
-            })
+            }
         )
 
     return response.json()
@@ -507,7 +507,7 @@ def delete_role(role_id):
         role_id(string): ID of role you want to delete.
     """
     session = get_session()
-    response = session.delete(
+    session.delete(
         "{url}/api/roles/{role_id}".format(
             url=get_registry_url(),
             role_id=role_id
@@ -553,9 +553,9 @@ def set_role(username, role_name=''):
         'username': username,
         'role': role_name
     }
-    response = session.post(
+    session.post(
         "{url}/api/users/set_role".format(
             url=get_registry_url()
         ),
-        data=json.dumps(data)
+        json=data
     )
