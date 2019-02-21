@@ -11,7 +11,7 @@ from .data_transfer import (copy_file, get_bytes, put_bytes, delete_object, list
                             list_object_versions, _update_credentials)
 from .formats import FormatRegistry
 from .packages import get_package_registry
-from .session import get_registry_url, get_session, _login_user_pass, set_credentials_from_registry
+from .session import get_registry_url, get_session, set_credentials_from_registry
 from .util import (HeliumConfig, QuiltException, CONFIG_PATH,
                    CONFIG_TEMPLATE, fix_url, parse_file_url, parse_s3_url, read_yaml, validate_url,
                    write_yaml, yaml_has_comments, validate_package_name)

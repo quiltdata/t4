@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 from aws_requests_auth.boto_utils import BotoAWSRequestsAuth
 from elasticsearch import Elasticsearch, RequestsHttpConnection
 
-from .session import CREDENTIALS
+from .session import get_credentials
 from .util import QuiltException
 
 ES_INDEX = 'drive'
@@ -21,9 +21,10 @@ def _create_es(search_endpoint, aws_region):
     """
     es_url = urlparse(search_endpoint)
 
-    if CREDENTIALS:
+    credentials = get_credentials()
+    if credentials:
         # use registry-provided credentials
-        creds = CREDENTIALS.get_frozen_credentials()
+        creds = credentials.get_frozen_credentials()
         auth = AWSRequestsAuth(aws_access_key=creds.access_key,
                                aws_secret_key=creds.secret_key,
                                aws_host=es_url.hostname,

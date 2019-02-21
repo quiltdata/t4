@@ -51,9 +51,6 @@ s3_threads = 4
 
 
 def _update_credentials():
-    # TODO: use new credentials object for clients
-    assert get_credentials(), "This method should not be called unless CREDENTIALS is populated"
-
     session = get_session()
     session._credentials = get_credentials()
     # TODO: figure out if this is necessary

@@ -176,24 +176,6 @@ def login():
 
     login_with_token(refresh_token)
 
-def _login_user_pass(username, password):
-    """
-    Sign in to Quilt with username and password.
-    """
-    data = {
-        'username': username,
-        'password': password
-    }
-    response = requests.post(
-        "{url}/api/login".format(
-            url=get_registry_url()
-        ),
-        json=data
-    )
-    assert response.ok
-    token = response.json()['token']
-    login_with_token(token)
-
 def login_with_token(refresh_token):
     """
     Authenticate using an existing token.
@@ -228,10 +210,6 @@ CREDENTIALS = None
 
 def get_credentials():
     return CREDENTIALS
-
-def set_credentials(creds):
-    global CREDENTIALS
-    CREDENTIALS = creds
 
 def set_refreshable_credentials(get_credentials):
     global CREDENTIALS
