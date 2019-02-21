@@ -9,6 +9,7 @@ import styled from 'styled-components';
 
 import Layout from 'components/Layout';
 import Spinner from 'components/Spinner';
+import handleAutofilledInput from 'utils/handleAutofilledInput';
 import { composeComponent, withStyle } from 'utils/reactTools';
 
 
@@ -24,43 +25,7 @@ export const Heading = styled.h1`
   text-align: center;
 `;
 
-const MAX_TRIES = 30;
-
-/* istanbul ignore next */
-const isAutofilled = (el) => {
-  try {
-    return el.matches(':autofill');
-  } catch (e) {
-    try {
-      return el.matches(':-webkit-autofill');
-    } catch (ee) {
-      return false;
-    }
-  }
-};
-
-/* istanbul ignore next */
-const handleAutofilledInput = (el) => {
-  if (!el) return;
-  const input = el.getInputNode();
-  if (!input) return;
-  let tries = 0;
-  // workaround for chrome autofill issue
-  // see https://github.com/mui-org/material-ui/issues/718
-  // and https://stackoverflow.com/questions/35049555/chrome-autofill-autocomplete-no-value-for-password
-  const interval = setInterval(() => {
-    const filled = isAutofilled(input);
-    if (filled) {
-      if (!el.state.hasValue) el.setState({ hasValue: true });
-      clearInterval(interval);
-    }
-    tries += 1;
-    if (tries > MAX_TRIES) clearInterval(interval);
-  }, 100);
-};
-
-
-export const Field = composeComponent('AWSAuth.Field',
+export const Field = composeComponent('Auth.Field',
   setPropTypes({
     input: PT.object.isRequired,
     meta: PT.object.isRequired,
@@ -82,7 +47,7 @@ export const FieldErrorLink = styled(Link)`
   text-decoration: underline;
 `;
 
-export const Error = composeComponent('AWSAuth.Error',
+export const Error = composeComponent('Auth.Error',
   withStyle`
     color: ${red500};
     margin-top: 24px;
@@ -135,7 +100,7 @@ export const mkLayout = (heading) => ({ children }) => (
   </Layout>
 );
 
-export const Submit = composeComponent('AWSAuth.Submit',
+export const Submit = composeComponent('Auth.Submit',
   setPropTypes({
     busy: PT.bool,
   }),

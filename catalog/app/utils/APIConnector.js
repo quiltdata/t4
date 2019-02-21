@@ -4,17 +4,20 @@ import isNil from 'lodash/isNil';
 import isString from 'lodash/isString';
 import isTypedArray from 'lodash/isTypedArray';
 import PT from 'prop-types';
+import * as React from 'react';
 import { setPropTypes } from 'recompose';
+import * as reduxHook from 'redux-react-hook';
 import { takeEvery, call, put } from 'redux-saga/effects';
 
+import * as Config from 'utils/Config';
+import * as SagaInjector from 'utils/SagaInjector';
 import defer from 'utils/defer';
 import { BaseError } from 'utils/error';
-import { composeComponent, RenderChildren } from 'utils/reactTools';
+import { composeComponent } from 'utils/reactTools';
 import { actionCreator, createActions } from 'utils/reduxTools';
-import { injectSaga } from 'utils/SagaInjector';
 
 
-const REDUX_KEY = 'app/util/APIConnector';
+const REDUX_KEY = 'app/utils/APIConnector';
 
 const actions = createActions(REDUX_KEY,
   'API_REQUEST',
@@ -302,11 +305,25 @@ export function* apiRequest(opts) {
   return yield dfd.promise;
 }
 
-export const Provider = composeComponent('APIConnectorProvider',
+const Ctx = React.createContext();
+
+export const use = () => React.useContext(Ctx);
+
+export const Provider = composeComponent('APIConnector.Provider',
   setPropTypes({
     fetch: PT.func.isRequired,
-    base: PT.string,
     middleware: PT.arrayOf(PT.func.isRequired),
   }),
-  injectSaga(REDUX_KEY, apiSaga),
-  RenderChildren);
+  ({ fetch, middleware, children }) => {
+    const base = `${Config.useConfig().registryUrl}/api`;
+    SagaInjector.useSaga(apiSaga, { fetch, base, middleware });
+
+    const dispatch = reduxHook.useDispatch();
+    const req = React.useCallback((opts) => {
+      const dfd = defer();
+      dispatch(request(opts, dfd.resolver));
+      return dfd.promise;
+    }, [dispatch]);
+
+    return <Ctx.Provider value={req}>{children}</Ctx.Provider>;
+  });

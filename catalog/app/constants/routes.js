@@ -9,6 +9,8 @@ export default {
     path: '/',
     url: () => '/',
   },
+
+  // auth
   signIn: {
     path: '/signin',
     url: (next) => `/signin${mkSearch({ next })}`,
@@ -17,6 +19,28 @@ export default {
     path: '/signout',
     url: () => '/signout',
   },
+  signUp: {
+    path: '/signup',
+    url: () => '/signup',
+  },
+  passReset: {
+    path: '/reset_password',
+    url: () => '/reset_password',
+  },
+  passChange: {
+    path: '/reset_password/:link',
+    url: (link) => `/reset_password/${link}`,
+  },
+  code: {
+    path: '/code',
+    url: () => '/code',
+  },
+  activationError: {
+    path: '/activation_error',
+    url: () => '/activation_error',
+  },
+
+  // bucket
   bucketRoot: {
     path: '/b/:bucket',
     url: (bucket) => `/b/${bucket}`,
