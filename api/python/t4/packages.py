@@ -238,23 +238,6 @@ class Package(object):
         """
         String representation of the Package.
         """
-        if not self.keys():
-            return '(empty Package)'
-
-        if len(self.keys()) > max_lines:
-            # If there aren't enough lines to display all top-level children,
-            #   display as many as possible with a '...' at the end
-            self_repr = ''
-            i = 0
-            for key in sorted(self.keys()):
-                if i >= max_lines - 1:
-                    self_repr += '...\n'
-                    return self_repr
-                if isinstance(self[key], Package):
-                    key = key + '/'
-                self_repr += key + '\n'
-                i += 1
-
         def _create_str(results_dict, level=0, parent=True):
             """
             Creates a string from the results dict
@@ -277,16 +260,19 @@ class Package(object):
 
             for key in keys:
                 result += ' ' + ('  ' * level) + '└─' + key + '\n'
-                result += _create_str(results_dict[key], level + 1, indent, parent=False)
+                result += _create_str(results_dict[key], level + 1, parent=False)
 
             return result
+
+        if not self.keys():
+            return '(empty Package)'
 
         # candidates is a deque of 
         #     ((logical_key, Package | PackageEntry), [list of parent key])
         candidates = deque(([x, []] for x in self._children.items()))
         results_dict = {}
         results_total = 0
-        while len(candidates) and results_total < max_lines:
+        while candidates and results_total < max_lines:
             [[logical_key, entry], parent_keys] = candidates.popleft()
             if isinstance(entry, Package):
                 logical_key = logical_key + '/'
@@ -301,7 +287,16 @@ class Package(object):
             current_result_level[logical_key] = {}
             results_total += 1
 
-        return _create_str(results_dict)
+        repr_str = _create_str(results_dict)
+
+        # append '...' if the package is larger than max_size
+        # TODO: traverse directories as well, as they're included in the display
+        for i, _ in enumerate(self.walk()):
+            if i > max_lines:
+                repr_str += ' ' + '...\n'
+                break
+
+        return repr_str
 
     @classmethod
     def install(cls, name, registry=None, pkg_hash=None, dest=None, dest_registry=None):
