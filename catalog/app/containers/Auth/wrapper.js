@@ -42,12 +42,13 @@ const ErrorScreen = () => {
 };
 
 export default memoize(RT.composeHOC('Auth.Wrapper', (Component) => (props) => {
-  const state = reduxHook.useMappedState(createStructuredSelector({
+  const select = React.useMemo(() => createStructuredSelector({
     authenticated: selectors.authenticated,
     error: selectors.error,
     waiting: selectors.waiting,
     location: selectLocation,
-  }));
+  }), []);
+  const state = reduxHook.useMappedState(select);
   const { urls } = NamedRoutes.use();
 
   if (state.error && !(state.error instanceof InvalidToken)) {
