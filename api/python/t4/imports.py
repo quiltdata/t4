@@ -49,6 +49,9 @@ class DataPackageImporter:
             module.__path__ = MODULE_PATH
             return module
 
+        else:
+            assert False
+
 
 # pylint: disable=too-few-public-methods
 class DataPackageFinder:
@@ -66,7 +69,7 @@ class DataPackageFinder:
         # consistency issues. For now let's avoid, but you can see the full code at
         # https://github.com/ResidentMario/package-autorelaod/blob/master/loader.py
         name_parts = fullname.split('.')
-        if name_parts[:2] != ['t4', 'data'] or len(fullname.split('.')) > 3:
+        if name_parts[:2] != ['t4', 'data'] or len(name_parts) > 3:
             return None
         else:
             return ModuleSpec(fullname, DataPackageImporter())
