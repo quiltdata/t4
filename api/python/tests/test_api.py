@@ -182,3 +182,25 @@ class TestAPI():
         responses.add(responses.DELETE, 'https://pkg.quiltdata.com/api/roles/1234-1234',
                 status=200)
         he.admin.delete_role('1234-1234')
+
+    @responses.activate
+    def test_no_registry_credentials(self):
+        responses.add(responses.GET, 'https://pkg.quiltdata.com/api/auth/get_credentials',
+                status=403)
+        assert he.session.try_registry_credentials() == False
+
+    @responses.activate
+    def test_set_role(self):
+        responses.add(responses.POST, 'https://pkg.quiltdata.com/api/users/set_role',
+                json={}, status=200)
+
+        not_found_result = {
+            'message': "No user exists by the provided name."
+        }
+        responses.add(responses.POST, 'https://pkg.quiltdata.com/api/users/set_role',
+                json=not_found_result, status=400)
+
+        he.admin.set_role('test_user', 'test_role')
+
+        with pytest.raises(util.QuiltException):
+            he.admin.set_role('not_found', 'test_role')

@@ -220,12 +220,16 @@ def set_refreshable_credentials(get_credentials):
             )
 
 def try_registry_credentials():
-    response = session.get(
-        "{url}/api/auth/get_credentials".format(
-            url=get_registry_url()
+    session = get_session()
+    try:
+        response = session.get(
+            "{url}/api/auth/get_credentials".format(
+                url=get_registry_url()
+            )
         )
-    )
-    return response.ok
+        return True
+    except QuiltException:
+        return False
 
 def get_registry_credentials():
     session = get_session()

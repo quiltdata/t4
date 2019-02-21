@@ -549,8 +549,6 @@ def list_roles():
         "{url}/api/roles".format(
             url=get_registry_url()
         ))
-    if not response.ok:
-        raise QuiltException("Problem listing roles")
 
     return response.json()['results']
 
@@ -570,4 +568,3 @@ def set_role(username, role_name=''):
         ),
         data=json.dumps(data)
     )
-    return response
