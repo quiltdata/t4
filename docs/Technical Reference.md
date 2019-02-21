@@ -1,6 +1,7 @@
 This page provides a technical reference on certain advanced configuration options in T4.
 
 ## Deploying the T4 Catalog on AWS
+
 The following section uses AWS CloudFormation to deploy and manage the resources required to run a T4 bucket and catalog in your own VPC.
 
 ### Known limitations
@@ -16,6 +17,7 @@ The following section uses AWS CloudFormation to deploy and manage the resources
 1. *A properly configured S3 bucket* where you will search, store, and browse data with Quilt. It is **highly recommended** that you back up said S3 bucket before proceeding.
    * [Enable object versioning](https://docs.aws.amazon.com/AmazonS3/latest/user-guide/enable-versioning.html) on the bucket
    * Set a [CORS policy](https://docs.aws.amazon.com/AmazonS3/latest/dev/cors.html#how-do-i-enable-cors), similar to the following, on the bucket:
+
       ```xml
       <?xml version="1.0" encoding="UTF-8"?>
       <CORSConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
@@ -30,6 +32,7 @@ The following section uses AWS CloudFormation to deploy and manage the resources
       </CORSRule>
       </CORSConfiguration>
       ```
+
       The above policy makes it possible for your users to browse buckets on the web.
       > Note: bucket CORS does not grant permissions of any kind.
       > `AllowedMethod`s are only callable by IAM users or roles with sufficient permissions.
@@ -37,6 +40,7 @@ The following section uses AWS CloudFormation to deploy and manage the resources
 1. *ARNs for search users* - Only select users that you specifcy can search S3. Search users can view contents for any bucket object, so only add users that you trust to this list.
 
 ### Permissions
+
 Your users use their IAM credentials to access T4 on the web and in Python.
 
 Your designated Search users will be able *to search and preview file contents
@@ -51,51 +55,42 @@ your AWS account.
 1. Log in to your AWS console
 
 1. Go to Services > CloudFormation > Create stack
-    <br/>
-    <br/>
 
-    ![](./imgs/start.png)
+![](./imgs/start.png)
   
 1. Click "Upload a template to Amazon S3" and select `t4.yaml`, provided to
 you by Quilt
 1. Click Next
 1. Fill in Stack name and Parameters.
-    <br/>
-    <br/>
 
-    ![](./imgs/params.jpg)
+![](./imgs/params.jpg)
 
-  - **BucketDescription** - This is a short explanation of your bucket that will be displayed alongside its icon and title in the dropdown menu at the top-left of the navigator.
+* **BucketDescription** - This is a short explanation of your bucket that will be displayed alongside its icon and title in the dropdown menu at the top-left of the navigator.
 
-  - **BucketIcon** - This is a URL that points to a square icon that will display as part of your bucket's entry in the dropdown manu.
+* **BucketIcon** - This is a URL that points to a square icon that will display as part of your bucket's entry in the dropdown manu.
 
-  - **BucketTitle** - Human-friendly title for your bucket to be displayed in the dropdown menu.
+* **BucketTitle** - Human-friendly title for your bucket to be displayed in the dropdown menu.
 
-  - **CertificateArn** - This is the arn for your AWS-managed SSL certificate for your QuiltWebHost domain. Use AWS Certificate Manager to set this up.
+* **CertificateArn** - This is the arn for your AWS-managed SSL certificate for your QuiltWebHost domain. Use AWS Certificate Manager to set this up.
 
-  - **ConfigBucketName** - An unused bucket name for the template to create and populate with your navigator's configuration.
+* **ConfigBucketName** - An unused bucket name for the template to create and populate with your navigator's configuration.
 
-  - **QuiltBucketName** - The name of an existing S3 bucket you want to use with T4. It will store your T4 data.
+* **QuiltBucketName** - The name of an existing S3 bucket you want to use with T4. It will store your T4 data.
 
-  - **QuiltWebHost** - The URL you want to use to access your navigator on the Internet. You must have a valid SSL certificate for this domain in `CertificateArn` if you want to use https.
+* **QuiltWebHost** - The URL you want to use to access your navigator on the Internet. You must have a valid SSL certificate for this domain in `CertificateArn` if you want to use https.
 
-  - **Users** - A non-empty comma-separated list of IAM User ARNs that will grant permission to those users to search. A good first entry in this list is your own ARN, which you can find in IAM.
+* **Users** - A non-empty comma-separated list of IAM User ARNs that will grant permission to those users to search. A good first entry in this list is your own ARN, which you can find in IAM.
 
-  - Notes - Updating BucketIcon, BucketDescription, or BucketTitle will not update your navigator configuration -- these parameters are only checked when a stack is being created at this time. You'll need to update your federation.json in your config bucket to update these values.
-
+* Notes - Updating BucketIcon, BucketDescription, or BucketTitle will not update your navigator configuration -- these parameters are only checked when a stack is being created at this time. You'll need to update your federation.json in your config bucket to update these values.
 
 1. Click Next
 1. You can safely skip the Options screen (below) by clicking Next
-    <br/>
-    <br/>
 
-    ![](./imgs/skip.png)
+![](./imgs/skip.png)
 
 1. Acknowledge that CloudFormation may create IAM roles
-    <br/>
-    <br/>
 
-    ![](./imgs/finish.png)
+![](./imgs/finish.png)
 
 1. Click Create (typically takes 30 minutes to complete)
 
@@ -104,15 +99,14 @@ Select the stack and open the Outputs tab. The Value of `CloudFrontDomain`
 is your CloudFront origin. Depending on your S3 bucket's [CORS policy](#pre-requisites)
 your web catalog is available at the CloudFront and/or the `CNAME` set
 by you in the following step.
-    <br/>
-    <br/>
 
-    ![](./imgs/outputs.png)
+![](./imgs/outputs.png)
 
 1. If desired, set a `CNAME` record with your DNS service that points to your CloudFrontDomain. The `CNAME` must also be present in your [CORS policy](#pre-requisites). Now users can access the T4 catalog at your custom
 `CNAME`.
 
 ## Federations and Bucket Config
+
 In this section we will discuss how you can configure your catalog instance using _federations_ and _bucket config_.
 
 When you create your T4 stack, you specify a *ConfigBucketName* in your stack parameters. This bucket will be created and populated with two files -- `config.json` and `federation.json`. `config.json` is the main navigator config file, and contains things that are specific to your navigator, like `defaultBucket` and `signInRedirect`. It also includes one or more references to federations, including your `federation.json`. `federation.json` is your default federation. It includes an inline bucket config for your T4 bucket.
@@ -121,7 +115,7 @@ A **federation** is just a list of bucket configurations. Your catalog will spec
 
 An example:
 
-```
+```json
 {
   'buckets': [
     {
@@ -135,7 +129,7 @@ An example:
 
 A **bucket config**, meanwhile, is a JSON object that describes metadata associated with a T4 bucket. It is of the following form:
 
-```
+```json
 {
   'name': name of s3 bucket,
   'title': friendly title to be displayed in the catalog drop-down,
@@ -148,6 +142,7 @@ A **bucket config**, meanwhile, is a JSON object that describes metadata associa
 A bucket config can be included inline in a federation, or it can be a standalone JSON file that is linked from a federation.
 
 ## Adding users to a catalog using AWS Console
+
 These instructions document how to add users to your catalog instance using the AWS Console.
 
 Go to your stack in CloudFormation. Go to `Resources`, then find `RegistryUser` and click on the linked user.
@@ -157,7 +152,7 @@ If the role you want to use doesn't exist yet, create it now.
 
 Go to the IAM console and navigate to `Roles`. Select the role you want to use. Go to the "Trust Relationships" tab for the role, and select "Edit Trust Relationship". The statement should look something like this:
 
-```
+```json
 {
     "Version": "2012-10-17",
     "Statement": [
@@ -174,7 +169,7 @@ Go to the IAM console and navigate to `Roles`. Select the role you want to use. 
 
 Add an object to the beginning of the Statement array with the following contents:
 
-```
+```json
 {
     "Effect": "Allow",
     "Principal": {
@@ -186,7 +181,7 @@ Add an object to the beginning of the Statement array with the following content
 
 Note the comma after the object. Your trust relationship should now look something like this:
 
- ```
+```json
 {
     "Version": "2012-10-17",
     "Statement": [
@@ -211,6 +206,7 @@ Note the comma after the object. Your trust relationship should now look somethi
 You can now configure a Quilt Role for this role (using e.g. `t4.create_role`).
 
 ## Configuring search file types
+
 This section describes how to configure what types of files are indexed and searchable in the catalog.
 
 To modify which file types are searchable, populate a `.quilt/config.json` file in your S3 bucket. Note that this file does not exist by default. The contents of the file shoud be something like this:
@@ -224,3 +220,9 @@ To modify which file types are searchable, populate a `.quilt/config.json` file 
 ```
 
 To change which file types are searchable, push a new JSON fragment like this one to the `.quilt/config.json` path in the bucket.
+
+> There are currently some important limitations with search:
+>
+> * Queries containing the tilde (~), forward slash (/), back slash, and angle bracket ({, }, (, ), [, ]) must be quoted. For example search for `'~foo'`, not `~foo`.
+> * The search index will only pick up objects written to S3 _after_ T4 was enabled on that bucket.
+> * Files over 10 MB in size may cause search to fail.

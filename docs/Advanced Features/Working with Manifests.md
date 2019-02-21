@@ -1,5 +1,3 @@
-## About manifests
-
 Every data package is backed by a **manifest**. A manifest is a self-contained reference sheet for a package, containing all of the files data and metadata necessary to work with a package.
 
 Every time you save a data package to a registry you also save its manifest. You can inspect the manifest yourself using the `manifest` property:
@@ -23,6 +21,7 @@ $ python
 Manifests saved to disk are in the [jsonl](http://jsonlines.org/)/[ndjson](http://ndjson.org/) format, e.g. JSON strings separated by newlines (`\n`). They are represented as a `list` of `dict` fragments in-memory.
 
 ## Manifest specification
+
 The first item in the manifest contains the manifest version number (`version`), the package metadata (`user_meta`), and a package commit message (`message`).
 
 `version` is used to ensure backwards compatibility should the serialization format change. There is currently only one valid `version`: `v0`.
@@ -45,6 +44,7 @@ The manifest fields are as follows:
 * `meta` - Package entry metadata. Package entries lacking metadata will have a `meta` of `{}` (empty `dict`).
 
 ## Saving and loading manifests
+
 In almost all cases you should be using registries, `build`, and `push` to handle sending manifests to and fro. However, there may be advanced use cases where you want to save or load a manifest directly. For that, you can use the low-level manifest API:
 
 ```python
