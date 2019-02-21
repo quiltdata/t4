@@ -11,7 +11,7 @@ from .data_transfer import (copy_file, get_bytes, put_bytes, delete_object, list
                             list_object_versions, _update_credentials)
 from .formats import FormatRegistry
 from .packages import get_package_registry
-from .session import get_registry_url, get_session, set_credentials_from_registry
+from .session import get_registry_url, get_session
 from .util import (HeliumConfig, QuiltException, CONFIG_PATH,
                    CONFIG_TEMPLATE, fix_url, parse_file_url, parse_s3_url, read_yaml, validate_url,
                    write_yaml, yaml_has_comments, validate_package_name)
@@ -77,7 +77,7 @@ def get(src):
 
     return FormatRegistry.deserialize(data, meta, ext=ext), meta.get('user_meta')
 
-        
+
 def _tophashes_with_packages(registry=None):
     """Return a dictionary of tophashes and their corresponding packages
 
@@ -206,7 +206,7 @@ def list_packages(registry=None):
         registry(string): location of registry to load package from.
 
     Returns:
-        A list of strings containing the names of the packages        
+        A list of strings containing the names of the packages
     """
     registry = get_package_registry(fix_url(registry) if registry else None) + '/named_packages'
 
@@ -464,11 +464,11 @@ def create_role(name, arn):
         "{url}/api/roles".format(
             url=get_registry_url()
             ),
-            json={
-                'name': name,
-                'arn': arn
-            }
-        )
+        json={
+            'name': name,
+            'arn': arn
+        }
+    )
 
     return response.json()
 
@@ -494,8 +494,8 @@ def edit_role(role_id, new_name=None, new_arn=None):
             url=get_registry_url(),
             role_id=role_id
             ),
-            json=data
-        )
+        json=data
+    )
 
     return response.json()
 
