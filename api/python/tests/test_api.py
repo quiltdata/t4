@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock, patch
+import time
 
 import numpy as np
 import pytest
@@ -91,7 +92,7 @@ class TestAPI():
 
     @patch('t4.session.get_session')
     @responses.activate
-    def test_login(self, get_session):
+    def test_credentials_from_registry(self, get_session):
         mock_session = Mock()
         get_session.return_value = mock_session
 
@@ -110,21 +111,74 @@ class TestAPI():
         mock_creds_response.json.return_value = creds_data
         mock_session.get.return_value = mock_creds_response
 
-        login_response = {
-            'token': 'asdf'
-        }
-        token_response = {
-            'refresh_token': 'asdf',
-            'access_token': 'asdf',
-            'expires_at': 'asdf'
-        }
-        responses.add(responses.POST, 'https://pkg.quiltdata.com/api/login',
-                json=login_response, status=200)
-        responses.add(responses.POST, 'https://pkg.quiltdata.com/api/token',
-                json=token_response, status=200)
-        he.login_user_pass('asdf', 'jkl;')
+        he.session.set_credentials_from_registry()
 
         credentials = he.session.get_credentials()
         frozen_creds = credentials.get_frozen_credentials()
         assert frozen_creds.access_key == 'asdf'
         assert frozen_creds.secret_key == 'asdf'
+
+    @responses.activate
+    def test_empty_list_role(self):
+        empty_list_response = { 'results': [] }
+        responses.add(responses.GET, 'https://pkg.quiltdata.com/api/roles',
+                json=empty_list_response, status=200)
+        assert he.admin.list_roles() == []
+
+    @responses.activate
+    def test_list_role(self):
+        result = {
+            'name': 'test',
+            'arn': 'asdf123',
+            'id': '1234-1234'
+        }
+        list_response = { 'results': [result] }
+        responses.add(responses.GET, 'https://pkg.quiltdata.com/api/roles',
+                json=list_response, status=200)
+        assert he.admin.list_roles() == [result]
+
+    @responses.activate
+    def test_get_role(self):
+        result = {
+            'name': 'test',
+            'arn': 'asdf123',
+            'id': '1234-1234'
+        }
+        responses.add(responses.GET, 'https://pkg.quiltdata.com/api/roles/1234-1234',
+                json=result, status=200)
+        assert he.admin.get_role('1234-1234') == result
+
+    @responses.activate
+    def test_create_role(self):
+        result = {
+            'name': 'test',
+            'arn': 'asdf123',
+            'id': '1234-1234'
+        }
+        responses.add(responses.POST, 'https://pkg.quiltdata.com/api/roles',
+                json=result, status=200)
+        assert he.admin.create_role('test', 'asdf123') == result
+
+    @responses.activate
+    def test_edit_role(self):
+        get_result = {
+            'name': 'test',
+            'arn': 'asdf123',
+            'id': '1234-1234'
+        }
+        result = {
+            'name': 'test_new_name',
+            'arn': 'qwer456',
+            'id': '1234-1234'
+        }
+        responses.add(responses.GET, 'https://pkg.quiltdata.com/api/roles/1234-1234',
+                json=get_result, status=200)
+        responses.add(responses.PUT, 'https://pkg.quiltdata.com/api/roles/1234-1234',
+                json=result, status=200)
+        assert he.admin.edit_role('1234-1234', 'test_new_name', 'qwer456') == result
+
+    @responses.activate
+    def test_delete_role(self):
+        responses.add(responses.DELETE, 'https://pkg.quiltdata.com/api/roles/1234-1234',
+                status=200)
+        he.admin.delete_role('1234-1234')

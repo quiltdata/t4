@@ -451,14 +451,12 @@ def config(*autoconfig_url, **config_values):
 
     return HeliumConfig(CONFIG_PATH, local_config)
 
-def create_role(name, arn=None):
+def create_role(name, arn):
     """
     Create a new role in your registry. Admins only.
 
     Required Parameters:
         name(string): name of role to create
-
-    Optional Parameters:
         arn(string): ARN of IAM role to associate with the Quilt role you are creating
     """
     session = get_session()
@@ -471,7 +469,11 @@ def create_role(name, arn=None):
                 'arn': arn
             })
         )
-    return response
+    if not response.ok:
+        message = response.json()['message']
+        raise QuiltException("Error creating role: " + message)
+
+    return response.json()
 
 def edit_role(role_id, new_name=None, new_arn=None):
     """
@@ -497,7 +499,10 @@ def edit_role(role_id, new_name=None, new_arn=None):
             ),
             data=data
         )
-    assert response.ok
+    if not response.ok:
+        raise QuiltException("Failed to edit role")
+
+    return response.json()
 
 def delete_role(role_id):
     """
@@ -513,7 +518,8 @@ def delete_role(role_id):
             role_id=role_id
             )
         )
-    return response
+    if not response.ok:
+        raise QuiltException("Failed to delete role")
 
 def get_role(role_id):
     """
@@ -529,7 +535,10 @@ def get_role(role_id):
             role_id=role_id
             )
         )
-    return response
+    if not response.ok:
+        raise QuiltException("Role not found")
+
+    return response.json()
 
 def list_roles():
     """
@@ -540,6 +549,9 @@ def list_roles():
         "{url}/api/roles".format(
             url=get_registry_url()
         ))
+    if not response.ok:
+        raise QuiltException("Problem listing roles")
+
     return response.json()['results']
 
 def set_role(username, role_name=''):
@@ -559,11 +571,3 @@ def set_role(username, role_name=''):
         data=json.dumps(data)
     )
     return response
-
-def login_user_pass(username, password):
-    """
-    Login with a username and password. Temporary POC of role credentials.
-    """
-    _login_user_pass(username, password)
-    set_credentials_from_registry()
-    _update_credentials()
