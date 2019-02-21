@@ -184,12 +184,6 @@ class TestAPI():
         he.admin.delete_role('1234-1234')
 
     @responses.activate
-    def test_no_registry_credentials(self):
-        responses.add(responses.GET, 'https://pkg.quiltdata.com/api/auth/get_credentials',
-                status=403)
-        assert he.session.try_registry_credentials() == False
-
-    @responses.activate
     def test_set_role(self):
         responses.add(responses.POST, 'https://pkg.quiltdata.com/api/users/set_role',
                 json={}, status=200)

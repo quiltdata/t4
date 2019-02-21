@@ -469,9 +469,6 @@ def create_role(name, arn):
                 'arn': arn
             })
         )
-    if not response.ok:
-        message = response.json()['message']
-        raise QuiltException("Error creating role: " + message)
 
     return response.json()
 
@@ -497,10 +494,8 @@ def edit_role(role_id, new_name=None, new_arn=None):
             url=get_registry_url(),
             role_id=role_id
             ),
-            data=data
+            json=data
         )
-    if not response.ok:
-        raise QuiltException("Failed to edit role")
 
     return response.json()
 
@@ -518,8 +513,6 @@ def delete_role(role_id):
             role_id=role_id
             )
         )
-    if not response.ok:
-        raise QuiltException("Failed to delete role")
 
 def get_role(role_id):
     """
@@ -535,8 +528,6 @@ def get_role(role_id):
             role_id=role_id
             )
         )
-    if not response.ok:
-        raise QuiltException("Role not found")
 
     return response.json()
 
