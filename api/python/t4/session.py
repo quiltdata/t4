@@ -158,7 +158,7 @@ def _open_url(url):
     except Exception as ex:     # pylint:disable=W0703
         print("Failed to launch the browser: %s" % ex)
 
-def login():
+def _login():
     """
     Authenticate.
 
