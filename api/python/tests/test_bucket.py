@@ -1,13 +1,8 @@
 import json
 from mock import patch
+import pathlib
 from urllib.parse import urlparse
 
-try:
-    import unittest.mock as mock
-except ImportError:
-    import mock
-
-import botocore.session
 from botocore.stub import Stubber
 import pandas as pd
 import pytest
@@ -168,7 +163,7 @@ def test_bucket_select():
     # Further testing specific to select() is in test_data_transfer
 
 
-def test_bucket_put():
+def test_bucket_put_file():
     with patch("t4.bucket.copy_file") as copy_mock:
         bucket = Bucket('s3://test-bucket')
         bucket.put_file(key='README.md', path='./README') # put local file to bucket
@@ -177,6 +172,21 @@ def test_bucket_put():
         copy_dest = copy_mock.call_args_list[0][0][1]
         assert urlparse(copy_dest).scheme == 's3'
 
+def test_bucket_put_dir():
+    path = pathlib.Path(__file__).parent / 'data'
+    bucket = Bucket('s3://test-bucket')
+
+    with patch("t4.bucket.copy_file") as copy_mock:
+        bucket.put_dir('test', path)
+        copy_mock.assert_called_once_with(path.as_uri() + '/', 's3://test-bucket/test/')
+
+    with patch("t4.bucket.copy_file") as copy_mock:
+        bucket.put_dir('test/', path)
+        copy_mock.assert_called_once_with(path.as_uri() + '/', 's3://test-bucket/test/')
+
+    with patch("t4.bucket.copy_file") as copy_mock:
+        bucket.put_dir('', path)
+        copy_mock.assert_called_once_with(path.as_uri() + '/', 's3://test-bucket/')
 
 @patch('t4.data_transfer.s3_client')
 def test_remote_delete(s3_client):

@@ -1,5 +1,6 @@
 import re
-from collections import Mapping, Sequence, Set, OrderedDict
+from collections import OrderedDict
+from collections.abc import Mapping, Sequence, Set
 import datetime
 import json
 import os
@@ -53,6 +54,10 @@ default_local_registry: "{}"
 # default_remote_registry: <url string, default: null>
 # default target for operations like push and browse
 default_remote_registry:
+
+# default_install_location: <url string, default: null>
+# default filesystem target for the install operation
+default_install_location:
 
 # Quilt2 registry URL
 registry_url: https://pkg.quiltdata.com
@@ -281,6 +286,12 @@ def validate_package_name(name):
     if not re.match(PACKAGE_NAME_FORMAT, name):
         raise QuiltException("Invalid package name, must contain exactly one /.")
 
+def get_package_registry(path=None):
+    """ Returns the package registry root for a given path """
+    if path is None:
+        path = BASE_PATH.as_uri()
+    return path.rstrip('/') + '/.quilt'
+
 def load_config():
     if CONFIG_PATH.exists():
         local_config = read_yaml(CONFIG_PATH)
@@ -294,6 +305,12 @@ def get_local_registry():
 
 def get_remote_registry():
     return load_config().get('default_remote_registry', None)
+
+def get_install_location():
+    loc = load_config().get('default_install_location')
+    if loc is None:
+        loc = get_package_registry() + '/' + 'data/'
+    return loc
 
 def quiltignore_filter(paths, ignore, url_scheme):
     """Given a list of paths, filter out the paths which are captured by the 

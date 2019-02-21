@@ -1,4 +1,4 @@
-This page is a five-minute introduction to T4.
+This page is a five-minute introduction to the T4 Python API. To try out the T4 catalog, [visit the demo catalog](https://alpha.quiltdata.com/b/quilt-example).
 
 ## Data packages
 The core concept in T4 is that of a **data package**. A data package is a logically self contained group of files which provide some unit of value.
