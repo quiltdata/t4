@@ -255,7 +255,7 @@ class Package(object):
                 self_repr += key + '\n'
                 i += 1
 
-        def _create_str(results_dict, level=0, indent='─', parent=True):
+        def _create_str(results_dict, level=0, parent=True):
             """
             Creates a string from the results dict
             """
