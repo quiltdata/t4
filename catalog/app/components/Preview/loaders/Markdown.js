@@ -45,7 +45,7 @@ const fetch = utils.gatedS3Request(utils.objectGetter(
       images: true,
       processImg: signImg({ signer, handle }),
       processLink: processLink({ urls, signer, handle }),
-    }).render(contents);
+    })(contents);
     return PreviewData.Markdown({ rendered });
   }
 ));

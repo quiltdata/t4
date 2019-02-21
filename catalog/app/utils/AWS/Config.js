@@ -1,47 +1,29 @@
 import 'aws-sdk/lib/config';
 import AWS from 'aws-sdk/lib/core';
-import omit from 'lodash/fp/omit';
-import isEqual from 'lodash/isEqual';
-import PT from 'prop-types';
 import * as React from 'react';
-import { connect } from 'react-redux';
-import {
-  setPropTypes,
-  withPropsOnChange,
-} from 'recompose';
-import { createStructuredSelector } from 'reselect';
 
-import {
-  composeComponent,
-  composeHOC,
-  provide,
-  consume,
-} from 'utils/reactTools';
+import * as RT from 'utils/reactTools';
+import useMemoEq from 'utils/useMemoEq';
+
+import * as Credentials from './Credentials';
 
 
 const Ctx = React.createContext();
 
-const extractConfig = omit([
-  'credentialsSelector',
-  'dispatch',
-  'children',
-]);
+const useConfig = (props) => {
+  const credentials = Credentials.use();
+  // TODO: use cache?
+  return useMemoEq({ credentials, ...props }, (input) => new AWS.Config(input));
+};
 
-const shouldReinstantiate = (props, next) =>
-  !isEqual(extractConfig(props), extractConfig(next));
+export const Provider = RT.composeComponent('AWS.Config.Provider',
+  ({ children, ...props }) =>
+    <Ctx.Provider value={props}>{children}</Ctx.Provider>);
 
-export const Provider = composeComponent('AWS.Config.Provider',
-  setPropTypes({
-    credentialsSelector: PT.func,
-  }),
-  connect(createStructuredSelector({
-    credentials: (state, { credentialsSelector, credentials }) =>
-      credentialsSelector ? credentialsSelector(state) : credentials,
-  }), undefined, undefined, { pure: false }),
-  withPropsOnChange(shouldReinstantiate, (props) => ({
-    config: new AWS.Config(extractConfig(props)),
-  })),
-  provide(Ctx, 'config'));
+export const use = () => useConfig(React.useContext(Ctx));
 
 export const inject = (prop = 'awsConfig') =>
-  composeHOC('AWS.Config.inject', consume(Ctx, prop));
+  RT.composeHOC('AWS.Config.inject', (Component) => (props) => {
+    const config = use();
+    return <Component {...{ [prop]: config, ...props }} />;
+  });

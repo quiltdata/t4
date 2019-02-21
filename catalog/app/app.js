@@ -21,22 +21,22 @@ import Layout from 'components/Layout';
 import App from 'containers/App';
 import Placeholder from 'containers/App/Placeholder';
 import LanguageProvider from 'containers/LanguageProvider';
-import * as AWSAuth from 'containers/AWSAuth';
+import * as Auth from 'containers/Auth';
 import * as Notifications from 'containers/Notifications';
 import routes from 'constants/routes';
 import * as style from 'constants/style';
-import AsyncResult from 'utils/AsyncResult';
 import * as AWS from 'utils/AWS';
+import * as APIConnector from 'utils/APIConnector';
 import * as Config from 'utils/Config';
 import * as Data from 'utils/Data';
 import { createBoundary } from 'utils/ErrorBoundary';
 import * as NamedRoutes from 'utils/NamedRoutes';
 import FormProvider from 'utils/ReduxFormProvider';
+import * as Cache from 'utils/ResourceCache';
 import StoreProvider from 'utils/StoreProvider';
-import * as Wait from 'utils/Wait';
 import fontLoader from 'utils/fontLoader';
 import { nest } from 'utils/reactTools';
-import RouterProvider from 'utils/router';
+import RouterProvider, { LOCATION_CHANGE } from 'utils/router';
 import mkStorage from 'utils/storage';
 // import tracking from 'utils/tracking';
 // Load the favicon, the manifest.json file and the .htaccess file
@@ -82,12 +82,7 @@ const store = configureStore(initialState, history);
 const MOUNT_NODE = document.getElementById('app');
 
 // TODO: make storage injectable
-const storage = mkStorage({ credentials: 'CREDENTIALS' });
-
-const fallback = AsyncResult.case({
-  Err: (e) => { throw e; },
-  _: () => <Placeholder />,
-});
+const storage = mkStorage({ user: 'USER', tokens: 'TOKENS' });
 
 const render = (messages) => {
   ReactDOM.render(
@@ -100,18 +95,20 @@ const render = (messages) => {
       [NamedRoutes.Provider, { routes }],
       [RouterProvider, { history }],
       ErrorBoundary,
-      [Wait.Placeholder, { fallback }],
       Data.Provider,
+      Cache.Provider,
       [Config.Provider, { path: '/config.json' }],
       FormProvider,
       Notifications.Provider,
-      [AWSAuth.Provider, { storage }],
-      [AWS.Config.Provider, {
-        credentialsSelector: AWSAuth.selectors.credentials,
-      }],
+      [React.Suspense, { fallback: <Placeholder /> }],
+      [APIConnector.Provider, { fetch, middleware: [Auth.apiMiddleware] }],
+      [Auth.Provider, { checkOn: LOCATION_CHANGE, storage }],
+      AWS.Credentials.Provider,
+      AWS.Config.Provider,
       AWS.S3.Provider,
       AWS.Signer.Provider,
       Notifications.WithNotifications,
+      ErrorBoundary,
       App,
     ),
     MOUNT_NODE

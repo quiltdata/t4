@@ -84,9 +84,9 @@ you by Quilt
 * Notes - Updating BucketIcon, BucketDescription, or BucketTitle will not update your navigator configuration -- these parameters are only checked when a stack is being created at this time. You'll need to update your federation.json in your config bucket to update these values.
 
 1. Click Next
-1. You can safely skip the Options screen (below) by clicking Next
+1. On the Options screen, Under the Advanced section, next to Termination Protection, select the Enable check box. This protects the stack deployment pipeline from deletion. Then continue by clicking Next
 
-![](./imgs/skip.png)
+![](./imgs/term_protect.png)
 
 1. Acknowledge that CloudFormation may create IAM roles
 

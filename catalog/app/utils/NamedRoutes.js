@@ -40,3 +40,5 @@ export const inject = ({ paths, urls } = {}) =>
   })));
 
 export const Inject = Ctx.Consumer;
+
+export const use = () => React.useContext(Ctx);

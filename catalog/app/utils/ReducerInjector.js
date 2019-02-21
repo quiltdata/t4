@@ -6,8 +6,8 @@ import PT from 'prop-types';
 import * as R from 'ramda';
 import * as React from 'react';
 import * as RC from 'recompose';
+import { StoreContext } from 'redux-react-hook';
 
-import Lifecycle from 'components/Lifecycle';
 import * as RT from 'utils/reactTools';
 import { withInitialState } from 'utils/reduxTools';
 
@@ -17,24 +17,24 @@ const scope = 'app/utils/ReducerInjector';
 const isValidKey = (key) => isString(key) && !isEmpty(key);
 
 /**
- * Create a reducer injector function.
+ * Create a reducer injector.
  *
  * @param {function} onSet
  *   Callback that gets called with the injected reducer map when it gets updated
  *   (a new reducer injected).
  *
- * @returns {function}
- *   A reducer injector function.
- *   Takes a key (mountpoint) and a reducer.
+ * @returns {{ inject: function, eject: function, injected: function }}
+ *   An object containing reducer injection and ejection functions, which
+ *   take a key (mountpoint) and a reducer (in case of injector).
  */
-export const createReducerInjector = (onSet) => {
+const createReducerInjector = (onSet) => {
   const innerScope = `${scope}/createReducerInjector`;
   invariant(isFunction(onSet),
     `${innerScope}: Expected 'onSet' to be a function`);
 
   let reducers = {};
 
-  return (key, reducer) => {
+  const inject = (key, reducer) => {
     const innerScope2 = `${scope}/injectReducer`;
     invariant(isValidKey(key),
       `${innerScope2}: Expected 'key' to be a non-empty string`);
@@ -44,24 +44,51 @@ export const createReducerInjector = (onSet) => {
     // when a key is the same but a reducer is different
     if (key in reducers && reducers[key] === reducer) return;
 
-    onSet(reducers = { ...reducers, [key]: reducer });
+    reducers = R.assoc(key, reducer, reducers);
+    onSet(reducers);
   };
+
+  const injected = (key, reducer) => {
+    const current = reducers[key];
+    const check = reducer ? R.equals(reducer) : Boolean;
+    return check(current);
+  };
+
+  const eject = (key) => {
+    reducers = R.dissoc(key, reducers);
+    onSet(reducers);
+  };
+
+  return { inject, eject, injected };
 };
 
-const Ctx = React.createContext();
 
 /**
- * Provider component for reducer injection system.
+ * React hook for reducer injection.
+ *
+ * @param {string} mountpoint
+ *
+ * @param {function} reducer
+ *
+ * @param {object} options
+ *
+ * @param {bool} options.remount
+ *   Whether to remount reducer when a new one given.
+ *   This option exists for compatibility with HoCs to opt-out from remounting
+ *   and should be removed once the migration to hooks is complete.
  */
-export const ReducerInjector = RT.composeComponent('ReducerInjector',
-  RC.setPropTypes({
-    /**
-     * A reducer injector function.
-     */
-    inject: PT.func.isRequired,
-  }),
-  RT.provide(Ctx, R.pick(['inject'])));
+export const useReducer = (mountpoint, reducer, { remount = true } = {}) => {
+  const { injector } = React.useContext(StoreContext);
+  const shouldInject = remount
+    ? !injector.injected(mountpoint, reducer)
+    : !injector.injected(mountpoint);
 
+  if (shouldInject) injector.inject(mountpoint, reducer);
+
+  React.useEffect(() => () => {
+    injector.eject(mountpoint);
+  }, [mountpoint]);
+};
 /**
  * Component that injects a given reducer into the store on mount.
  */
@@ -75,19 +102,15 @@ export const Inject = RT.composeComponent('ReducerInjector.Inject',
      * A reducer that gets injected.
      */
     reducer: PT.func.isRequired,
+    /**
+     * Whether to remount reducer when given a new one.
+     */
+    remount: PT.bool,
   }),
-  ({ children, mount, reducer }) => (
-    <Ctx.Consumer>
-      {({ inject }) => (
-        <Lifecycle
-          key={mount}
-          willMount={() => inject(mount, reducer)}
-        >
-          {children}
-        </Lifecycle>
-      )}
-    </Ctx.Consumer>
-  ));
+  ({ children, mount, reducer, remount }) => {
+    useReducer(mount, reducer, { remount });
+    return children;
+  });
 
 
 /**
@@ -104,14 +127,10 @@ export const Inject = RT.composeComponent('ReducerInjector.Inject',
  * @returns {reactTools.HOC}
  */
 export const injectReducerFactory = (mount, reducerFactory) =>
-  RT.composeHOC(`injectReducer(${mount})`, (Component) => (props) => (
-    <Inject
-      mount={mount}
-      reducer={reducerFactory(props)}
-    >
-      <Component {...props} />
-    </Inject>
-  ));
+  RT.composeHOC(`injectReducer(${mount})`, (Component) => (props) => {
+    useReducer(mount, reducerFactory(props), { remount: false });
+    return <Component {...props} />;
+  });
 
 /**
  * Create a HOC that injects a given reducer into the store on mount.
@@ -144,11 +163,8 @@ export const injectReducer = (mount, reducer, initial) =>
  */
 export const withInjectableReducers = (createReducer) => (createStore) => (...args) => {
   const store = createStore(...args);
-  const inject = createReducerInjector((injected) => {
+  const injector = createReducerInjector((injected) => {
     store.replaceReducer(createReducer(injected));
   });
-  return {
-    ...store,
-    injectReducer: inject,
-  };
+  return { ...store, injector };
 };

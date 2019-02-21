@@ -1,76 +1,36 @@
-import PT from 'prop-types';
-import * as R from 'ramda';
-import * as React from 'react';
-import { Route } from 'react-router-dom';
-import * as RC from 'recompose';
-
 import AsyncResult from 'utils/AsyncResult';
 import * as Config from 'utils/Config';
 import * as NamedRoutes from 'utils/NamedRoutes';
-import * as RT from 'utils/reactTools';
+import { useRoute } from 'utils/router';
 
 
-export const WithBucketConfigs = RT.composeComponent(
-  'BucketConfig.WithBucketConfigs',
-  RC.setPropTypes({
-    children: PT.func.isRequired,
-    suggestedOnly: PT.bool,
-  }),
-  ({ children, suggestedOnly = false }) => (
-    <Config.Inject>
-      {AsyncResult.case({
-        Ok: ({ suggestedBuckets, federations }) => {
-          const filtered = suggestedOnly
-            ? federations.filter(({ name }) => suggestedBuckets.includes(name))
-            : federations;
-          return children(AsyncResult.Ok(filtered));
-        },
-        _: children,
-      })}
-    </Config.Inject>
-  ),
-);
+export const useBucketConfigs = ({ suggestedOnly = false } = {}) => {
+  const { suggestedBuckets, federations } = Config.use();
+  return suggestedOnly
+    ? federations.filter(({ name }) => suggestedBuckets.includes(name))
+    : federations;
+};
 
-export const WithCurrentBucket = RT.composeComponent(
-  'BucketConfig.WithCurrentBucket',
-  RC.setPropTypes({
-    children: PT.func.isRequired,
-  }),
-  ({ children }) => (
-    <NamedRoutes.Inject>
-      {({ paths }) => (
-        <Route path={paths.bucketRoot}>
-          {({ match }) => children(match && match.params.bucket)}
-        </Route>
-      )}
-    </NamedRoutes.Inject>
-  ),
-);
+export const useCurrentBucket = () => {
+  const { paths } = NamedRoutes.use();
+  const { match } = useRoute(paths.bucketRoot);
+  return match && match.params.bucket;
+};
 
-export const WithCurrentBucketConfig = RT.composeComponent(
-  'BucketConfig.WithCurrentBucketConfig',
-  RC.setPropTypes({
-    children: PT.func.isRequired,
-  }),
-  ({ children }) => (
-    <WithCurrentBucket>
-      {R.ifElse(
-        Boolean,
-        (bucket) => (
-          <WithBucketConfigs>
-            {AsyncResult.case({
-              Ok: R.pipe(
-                R.find(({ name }) => name === bucket),
-                R.defaultTo({ name: bucket }),
-                AsyncResult.Ok,
-                children,
-              ),
-              _: children,
-            })}
-          </WithBucketConfigs>
-        ),
-        R.pipe(AsyncResult.Ok, children),
-      )}
-    </WithCurrentBucket>
-  ),
-);
+export const useCurrentBucketConfig = () => {
+  const bucket = useCurrentBucket();
+  const buckets = useBucketConfigs();
+
+  return bucket
+    && (buckets.find(({ name }) => name === bucket) || { name: bucket });
+};
+
+// compatibility
+export const WithBucketConfigs = ({ children, suggestedOnly }) =>
+  children(AsyncResult.Ok(useBucketConfigs({ suggestedOnly })));
+
+export const WithCurrentBucket = ({ children }) =>
+  children(useCurrentBucket());
+
+export const WithCurrentBucketConfig = ({ children }) =>
+  children(AsyncResult.Ok(useCurrentBucketConfig()));
