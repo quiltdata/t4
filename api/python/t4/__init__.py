@@ -11,11 +11,10 @@ from .api import (
     list_packages,
     search,
     config,
-    delete_package,
-    login
+    delete_package
 )
 
-from .session import logout
+from .session import login, logout
 
 from .packages import Package
 
