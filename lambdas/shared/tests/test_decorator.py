@@ -6,6 +6,7 @@ from unittest import TestCase
 
 from t4_lambda_shared.decorator import api, validate
 
+# pylint: disable=invalid-sequence-index
 class TestDecorator(TestCase):
     def test_api_basic(self):
         @api(cors_origins=['https://example.com'])
@@ -23,13 +24,32 @@ class TestDecorator(TestCase):
         assert resp['body'] == 'foo'
         assert resp['headers'] == {'Content-Type': 'text/plain'}
 
-    def test_api_cors(self):
+    def test_api_query_headers(self):
         @api(cors_origins=['https://example.com'])
         def handler(query, headers):
-            assert headers == {'origin': 'https://example.com'}
+            assert headers == {'content-length': '123'}
             assert query == {'foo': 'bar'}
             return 200, 'foo', {'Content-Type': 'text/plain'}
 
+        resp = handler({
+            'queryStringParameters': {
+                'foo': 'bar'
+            },
+            'headers': {
+                'content-length': '123'
+            }
+        }, None)
+
+        assert resp['statusCode'] == 200
+        assert resp['body'] == 'foo'
+        assert resp['headers'] == {'Content-Type': 'text/plain'}
+
+    def test_api_cors(self):
+        @api(cors_origins=['https://example.com'])
+        def handler(query, headers):
+            return 200, 'foo', {'Content-Type': 'text/plain'}
+
+        # Request with a correct origin.
         resp = handler({
             'queryStringParameters': {
                 'foo': 'bar'
@@ -47,6 +67,36 @@ class TestDecorator(TestCase):
             'access-control-allow-methods': 'HEAD,GET,POST',
             'access-control-allow-headers': '*',
             'access-control-max-age': 86400
+        }
+
+        # Request with a bad origin.
+        resp = handler({
+            'queryStringParameters': {
+                'foo': 'bar'
+            },
+            'headers': {
+                'origin': 'https://quiltdata.com'
+            }
+        }, None)
+
+        assert resp['statusCode'] == 200
+        assert resp['body'] == 'foo'
+        assert resp['headers'] == {
+            'Content-Type': 'text/plain',
+        }
+
+        # Request with no origin.
+        resp = handler({
+            'queryStringParameters': {
+                'foo': 'bar'
+            },
+            'headers': None
+        }, None)
+
+        assert resp['statusCode'] == 200
+        assert resp['body'] == 'foo'
+        assert resp['headers'] == {
+            'Content-Type': 'text/plain',
         }
 
     def test_api_exception(self):

@@ -3,7 +3,6 @@ Test functions for preview endpoint
 """
 import json
 import pathlib
-from unittest.mock import patch
 
 import responses
 
@@ -13,7 +12,7 @@ MOCK_ORIGIN = 'http://localhost:3000'
 
 BASE_DIR = pathlib.Path(__file__).parent / 'data'
 
-# pylint: disable=no-member
+# pylint: disable=no-member,invalid-sequence-index
 class TestIndex():
     """Class to test various inputs to the main indexing function"""
 
@@ -33,20 +32,6 @@ class TestIndex():
         assert resp['statusCode'] == 400, "Expected 400 on event without 'input' query param"
         assert resp['body'], 'Expected explanation for 400'
         assert resp['headers']['access-control-allow-origin'] == '*'
-
-    def test_origin(self):
-        """check that CORS headers get set if the origin is correct"""
-        event = self._make_event({}, {'origin': MOCK_ORIGIN})
-        resp = lambda_handler(event, None)
-        assert resp['headers']['access-control-allow-origin'] == '*'
-
-        event = self._make_event({}, {'origin': 'https://example.com'})
-        resp = lambda_handler(event, None)
-        assert 'access-control-allow-origin' not in resp['headers']
-
-        event = self._make_event({}, {})
-        resp = lambda_handler(event, None)
-        assert 'access-control-allow-origin' not in resp['headers']
 
     @responses.activate
     def test_ipynb(self):
