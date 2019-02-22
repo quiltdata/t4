@@ -12,6 +12,7 @@ from urllib.parse import urlparse
 from botocore import UNSIGNED
 from botocore.client import Config
 from botocore.exceptions import ClientError, NoCredentialsError
+from botocore.session import get_session
 import boto3
 from boto3.s3.transfer import TransferConfig
 from six import BytesIO, binary_type, text_type
@@ -47,6 +48,15 @@ else:
 s3_transfer_config = TransferConfig()
 s3_threads = 4
 
+
+def _update_credentials(credentials):
+    session = get_session()
+    session._credentials = credentials
+    # TODO: figure out if this is necessary
+    # session.set_config_variable("region", aws_region)
+    updated_session = boto3.Session(botocore_session=session)
+    global s3_client
+    s3_client = updated_session.client('s3')
 
 def _parse_metadata(resp):
     return json.loads(resp['Metadata'].get(HELIUM_METADATA, '{}'))

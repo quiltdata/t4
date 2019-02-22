@@ -10,15 +10,16 @@ import subprocess
 import sys
 import time
 
+from botocore.credentials import RefreshableCredentials
 import pkg_resources
 import requests
 
+from .data_transfer import _update_credentials
 from .util import BASE_PATH, load_config, QuiltException
 
 
 AUTH_PATH = BASE_PATH / 'auth.json'
 VERSION = pkg_resources.require('t4')[0].version
-
 
 def _load_auth():
     if AUTH_PATH.exists():
@@ -190,6 +191,10 @@ def login_with_token(refresh_token):
 
     clear_session()
 
+    # use registry-provided credentials
+    set_credentials_from_registry()
+    _update_credentials(CREDENTIALS)
+
 def logout():
     """
     Become anonymous. Useful for testing.
@@ -201,3 +206,34 @@ def logout():
         print("Already logged out.")
 
     clear_session()
+
+CREDENTIALS = None
+
+def get_credentials():
+    return CREDENTIALS
+
+def set_refreshable_credentials(get_credentials):
+    global CREDENTIALS
+    CREDENTIALS = RefreshableCredentials.create_from_metadata(
+            metadata=get_credentials(),
+            refresh_using=get_credentials,
+            method='quilt-registry'
+            )
+
+def get_registry_credentials():
+    session = get_session()
+    creds = session.get(
+        "{url}/api/auth/get_credentials".format(
+            url=get_registry_url()
+        )
+    ).json()
+    result = {
+        'access_key': creds['AccessKeyId'],
+        'secret_key': creds['SecretAccessKey'],
+        'token': creds['SessionToken'],
+        'expiry_time': creds['Expiration']
+    }
+    return result
+
+def set_credentials_from_registry():
+    set_refreshable_credentials(get_registry_credentials)
