@@ -15,6 +15,7 @@ import Typography from '@material-ui/core/Typography';
 import * as colors from '@material-ui/core/colors';
 import { withStyles } from '@material-ui/core/styles';
 
+import * as Pagination from 'components/Pagination';
 import * as Preview from 'components/Preview';
 import Working from 'components/Working';
 import AsyncResult from 'utils/AsyncResult';
@@ -419,6 +420,10 @@ const Results = RT.composeComponent('Bucket.Search.Results',
   ({ classes, bucket, query, searchEndpoint }) => {
     const es = AWS.ES.use({ host: searchEndpoint });
     const cache = Cache.use();
+    const scrollRef = React.useRef(null);
+    const scroll = React.useCallback((prev) => {
+      if (prev && scrollRef.current) scrollRef.current.scrollIntoView();
+    });
 
     try {
       const { total, hits } = cache(SearchResource, { es, query });
@@ -430,14 +435,24 @@ const Results = RT.composeComponent('Bucket.Search.Results',
               : `Nothing found for "${query}"`
             }
           </Typography>
+          <div ref={scrollRef} />
           {total
-            ? hits.slice(0, 10).map((hit) => (
-              <Hit
-                key={hit.path}
-                bucket={bucket}
-                hit={hit}
-              />
-            ))
+            ? (
+              <Pagination.Paginate items={hits} onChange={scroll}>
+                {({ paginated, ...props }) => (
+                  <React.Fragment>
+                    {paginated.map((hit) => (
+                      <Hit
+                        key={hit.path}
+                        bucket={bucket}
+                        hit={hit}
+                      />
+                    ))}
+                    <Pagination.Controls {...props} />
+                  </React.Fragment>
+                )}
+              </Pagination.Paginate>
+            )
             : (
               <React.Fragment>
                 <Typography variant="body1">
