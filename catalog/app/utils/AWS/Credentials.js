@@ -16,17 +16,28 @@ class RegistryCredentials extends AWS.Credentials {
   }
 
   refresh(callback) {
-    this.req({ endpoint: '/auth/get_credentials' })
-      .then((data) => {
-        this.expireTime = new Date(data.Expiration);
-        this.accessKeyId = data.AccessKeyId;
-        this.secretAccessKey = data.SecretAccessKey;
-        this.sessionToken = data.SessionToken;
-        callback();
-      })
-      .catch((e) => {
-        callback(e);
-      });
+    if (!this.refreshing) {
+      this.refreshing = this.req({ endpoint: '/auth/get_credentials' })
+        .then((data) => {
+          this.expireTime = new Date(data.Expiration);
+          this.accessKeyId = data.AccessKeyId;
+          this.secretAccessKey = data.SecretAccessKey;
+          this.sessionToken = data.SessionToken;
+          delete this.refreshing;
+          if (callback) callback();
+        })
+        .catch((e) => {
+          delete this.refreshing;
+          if (callback) callback(e);
+          throw e;
+        });
+    }
+    return this.refreshing;
+  }
+
+  suspend() {
+    if (this.needsRefresh()) throw this.refresh();
+    return this;
   }
 }
 
