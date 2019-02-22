@@ -24,6 +24,13 @@ def config(dest_bucket, dest_dir, es_url, api_url, s3_bucket,
            bucket_title, bucket_icon, bucket_description):
     region = boto3.session.Session().region_name
 
+    # test whether bucket is empty
+    objects = s3_client.list_objects_v2(Bucket=dest_bucket, MaxKeys=1)
+    if objects['KeyCount']:
+        # exit early if bucket already has objects -- 
+        #   don't want to overwrite existing configs
+        return
+
     bucket_config = {
         'name': s3_bucket,
         'title': bucket_title,
