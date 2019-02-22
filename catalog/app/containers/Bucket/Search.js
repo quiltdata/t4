@@ -448,7 +448,7 @@ const Results = RT.composeComponent('Bucket.Search.Results',
                         hit={hit}
                       />
                     ))}
-                    <Pagination.Controls {...props} />
+                    {props.pages > 1 && <Pagination.Controls {...props} />}
                   </React.Fragment>
                 )}
               </Pagination.Paginate>
