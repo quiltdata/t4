@@ -61,6 +61,8 @@ $ python
 <<< {'gold': 'au', 'silver': 'ag'}
 ```
 
+The deserializer should accept a byte stream.
+
 ## Reading package metadata
 
 Use `get_meta` to load metadata:
