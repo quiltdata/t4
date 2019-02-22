@@ -25,7 +25,6 @@ with warnings.catch_warnings():
 
 import jsonlines
 
-from .session import get_credentials
 from .util import QuiltException, make_s3_url, parse_file_url, parse_s3_url
 from . import xattr
 
@@ -50,9 +49,9 @@ s3_transfer_config = TransferConfig()
 s3_threads = 4
 
 
-def _update_credentials():
+def _update_credentials(credentials):
     session = get_session()
-    session._credentials = get_credentials()
+    session._credentials = credentials
     # TODO: figure out if this is necessary
     # session.set_config_variable("region", aws_region)
     updated_session = boto3.Session(botocore_session=session)

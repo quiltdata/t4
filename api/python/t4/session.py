@@ -14,6 +14,7 @@ from botocore.credentials import RefreshableCredentials
 import pkg_resources
 import requests
 
+from .data_transfer import _update_credentials
 from .util import BASE_PATH, load_config, QuiltException
 
 
@@ -158,7 +159,7 @@ def _open_url(url):
     except Exception as ex:     # pylint:disable=W0703
         print("Failed to launch the browser: %s" % ex)
 
-def _login():
+def login():
     """
     Authenticate.
 
@@ -192,6 +193,7 @@ def login_with_token(refresh_token):
 
     # use registry-provided credentials
     set_credentials_from_registry()
+    _update_credentials(CREDENTIALS)
 
 def logout():
     """

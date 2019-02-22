@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock, patch
-import time
 
 import numpy as np
 import pytest
