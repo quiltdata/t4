@@ -2,47 +2,14 @@ import { stringify } from 'querystring';
 
 import AWS from 'aws-sdk/lib/core';
 import es from 'elasticsearch-browser';
-import omit from 'lodash/fp/omit';
-import isEqual from 'lodash/isEqual';
+import invariant from 'invariant';
 import * as R from 'ramda';
-import * as React from 'react';
-import { withPropsOnChange } from 'recompose';
 
-import {
-  composeComponent,
-  composeHOC,
-  provide,
-  consume,
-} from 'utils/reactTools';
+import useMemoEq from 'utils/useMemoEq';
 
 import * as Config from './Config';
 import * as Signer from './Signer';
 
-
-const Ctx = React.createContext();
-
-const extractConfig = omit([
-  'children',
-]);
-
-const shouldReinstantiate = (props, next) =>
-  !isEqual(extractConfig(props), extractConfig(next));
-
-export const Provider = composeComponent('AWS.ES.Provider',
-  Config.inject(),
-  Signer.inject(),
-  withPropsOnChange(shouldReinstantiate, (props) => ({
-    es: new es.Client({
-      ...extractConfig(props),
-      connectionClass: SignedConnector,
-    }),
-  })),
-  provide(Ctx, 'es'));
-
-export const inject = (prop = 'es') =>
-  composeHOC('AWS.ES.inject', consume(Ctx, prop));
-
-export const Inject = Ctx.Consumer;
 
 const getRegion = R.pipe(
   R.prop('hostname'),
@@ -55,7 +22,11 @@ const getRegion = R.pipe(
 class SignedConnector extends es.ConnectionPool.connectionClasses.xhr {
   constructor(host, config) {
     super(host, config);
-    this.sign = (req) => config.signer.signRequest(req, 'es');
+    invariant(config.signRequest,
+      'SignedConnector: config must include signRequest method');
+    invariant(config.awsConfig,
+      'SignedConnector: config must include awsConfig object');
+    this.sign = (req) => config.signRequest(req, 'es');
     this.awsConfig = config.awsConfig;
     this.endpoint = new AWS.Endpoint(host.host);
     if (host.protocol) this.endpoint.protocol = host.protocol.replace(/:?$/, ':');
@@ -95,3 +66,13 @@ class SignedConnector extends es.ConnectionPool.connectionClasses.xhr {
     return super.request(patchedParams, cb);
   }
 }
+
+export const use = (props) => {
+  const awsConfig = Config.use();
+  const signRequest = Signer.useRequestSigner();
+  return useMemoEq({ awsConfig, signRequest, ...props }, (cfg) =>
+    new es.Client({
+      ...cfg,
+      connectionClass: SignedConnector,
+    }));
+};
