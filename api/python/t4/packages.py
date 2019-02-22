@@ -234,61 +234,48 @@ class Package(object):
         self._children = {}
         self._meta = {'version': 'v0'}
 
-    def _unlimited_repr(self, level=0, indent='  '):
-        """
-        String representation without line limit.
-        """
-        self_repr = ''
-        for child_key in sorted(self.keys()):
-            if isinstance(self[child_key], Package):
-                child_entry = indent*level + child_key + '/\n'
-                self_repr += child_entry
-                self_repr += self[child_key].__repr__(level+1, indent)
-            else: # leaf node
-                self_repr += indent*level + child_key + '\n'
-        return self_repr
-
     def __repr__(self, max_lines=20):
         """
         String representation of the Package.
         """
-        if not self.keys():
-            return "(empty Package)"
-
-        if max_lines is None:
-            return self._unlimited_repr()
-
-        if len(self.keys()) > max_lines:
-            # If there aren't enough lines to display all top-level children,
-            #   display as many as possible with a '...' at the end
-            self_repr = ''
-            i = 0
-            for key in sorted(self.keys()):
-                if i >= max_lines - 1:
-                    self_repr += '...\n'
-                    return self_repr
-                if isinstance(self[key], Package):
-                    key = key + '/'
-                self_repr += key + '\n'
-                i += 1
-            assert False, "This should never happen"
-
-        def _create_str(results_dict, level=0, indent='  '):
+        def _create_str(results_dict, level=0, parent=True):
             """
             Creates a string from the results dict
             """
             result = ''
-            for key in sorted(results_dict.keys()):
-                result += indent*level + key + '\n'
-                result += _create_str(results_dict[key], level+1, indent)
+            keys = sorted(results_dict.keys())
+            if not keys:
+                return result
+
+            if parent:
+                has_remote_entries = any(
+                    self.map(
+                        lambda lk, entry: urlparse(
+                            fix_url(_to_singleton(entry.physical_keys))
+                        ).scheme != 'file'
+                    )
+                )
+                pkg_type = 'remote' if has_remote_entries else 'local'
+                result = f'({pkg_type} Package)\n'
+
+            for key in keys:
+                result += ' ' + ('  ' * level) + '└─' + key + '\n'
+                result += _create_str(results_dict[key], level + 1, parent=False)
+
             return result
 
-        # candidates is a deque of 
-        #     ((logical_key, Package | PackageEntry), [list of parent key])
+        if not self.keys():
+            return '(empty Package)'
+
+        # traverse the tree of package directories and entries to get the list of
+        # display objects. candidates is a deque of shape
+        # ((logical_key, Package | PackageEntry), [list of parent key])
         candidates = deque(([x, []] for x in self._children.items()))
         results_dict = {}
         results_total = 0
-        while len(candidates) and results_total < max_lines:
+        more_objects_than_lines = False
+
+        while candidates:
             [[logical_key, entry], parent_keys] = candidates.popleft()
             if isinstance(entry, Package):
                 logical_key = logical_key + '/'
@@ -303,7 +290,17 @@ class Package(object):
             current_result_level[logical_key] = {}
             results_total += 1
 
-        return _create_str(results_dict)
+            if results_total >= max_lines:
+                more_objects_than_lines = True
+                break
+
+        repr_str = _create_str(results_dict)
+
+        # append '...' if the package is larger than max_size
+        if more_objects_than_lines:
+            repr_str += ' ' + '...\n'
+
+        return repr_str
 
     @classmethod
     def install(cls, name, registry=None, pkg_hash=None, dest=None, dest_registry=None):
