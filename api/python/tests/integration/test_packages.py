@@ -954,3 +954,15 @@ def test_import():
 
         from t4.data import foo
         assert hasattr(foo, 'bar') and hasattr(foo, 'baz')
+
+
+def test_invalid_key():
+    pkg = Package()
+    with pytest.raises(QuiltException):
+        pkg.set('', LOCAL_MANIFEST)
+    with pytest.raises(QuiltException):
+        pkg.set('foo/', LOCAL_MANIFEST)
+    with pytest.raises(QuiltException):
+        pkg.set('foo', './')
+    with pytest.raises(QuiltException):
+        pkg.set('foo', os.path.dirname(__file__))
