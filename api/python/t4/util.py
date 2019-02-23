@@ -300,11 +300,8 @@ def load_config():
         local_config = config_template
     return local_config
 
-def get_local_registry():
-    return load_config().get('default_local_registry', None)
-
-def get_remote_registry():
-    return load_config().get('default_remote_registry', None)
+def get_from_config(key):
+    return load_config().get(key)
 
 def get_install_location():
     loc = load_config().get('default_install_location')
