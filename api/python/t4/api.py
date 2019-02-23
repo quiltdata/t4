@@ -240,7 +240,7 @@ def list_packages(registry=None):
 
             pkg_hashes = []
             pkg_sizes = []
-            pkg_mtimes = []
+            pkg_ctimes = []
             for pkg_hash_path in named_path.rglob('*/'):
                 # TODO: logic for 'latest'            
                 if pkg_hash_path.name == 'latest':
@@ -250,14 +250,14 @@ def list_packages(registry=None):
                     pkg_hash = fp.read()
                     pkg_hashes.append(pkg_hash)
 
-                pkg_mtimes.append(pkg_hash_path.stat().st_ctime)
+                pkg_ctimes.append(pkg_hash_path.stat().st_ctime)
 
                 from t4 import Package
                 pkg = Package.browse(name, pkg_hash=pkg_hash)
                 pkg_sizes.append(pkg.reduce(lambda tot, tup: tot + tup[1].size, default=0))
 
-            pkg_info += [[name, hash, mtime, size] for (hash, mtime, size) in
-                         zip(pkg_hashes, pkg_mtimes, pkg_sizes)]
+            pkg_info += [[name, hash, ctime, size] for (hash, ctime, size) in
+                         zip(pkg_hashes, pkg_ctimes, pkg_sizes)]
 
         return PackageList(pkg_info)
 
