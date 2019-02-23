@@ -21,8 +21,8 @@ from .data_transfer import (
 from .exceptions import PackageException
 from .formats import FormatRegistry
 from .util import (
-    QuiltException, fix_url, get_local_registry, get_remote_registry,
-    get_install_location, get_package_registry, make_s3_url, parse_file_url, parse_s3_url, 
+    QuiltException, fix_url, get_from_config, get_install_location,
+    get_package_registry, make_s3_url, parse_file_url, parse_s3_url,
     validate_package_name, quiltignore_filter
 )
 
@@ -319,16 +319,16 @@ class Package(object):
             A new Package that points to files on your local machine.
         """
         if registry is None:
-            registry = get_remote_registry()
+            registry = get_from_config('default_remote_registry')
             if registry is None:
                 raise QuiltException("No registry specified and no default remote "
                                      "registry configured. Please specify a registry "
                                      "or configure a default remote registry with t4.config")
         elif registry == 'local':
-            registry = get_local_registry()
+            registry = get_from_config('default_local_registry')
         
         if dest_registry is None:
-            dest_registry = get_local_registry()
+            dest_registry = get_from_config('default_local_registry')
 
         pkg = cls.browse(name=name, registry=registry, pkg_hash=pkg_hash)
 
@@ -350,7 +350,7 @@ class Package(object):
         """
         if registry is None:
             # use default remote registry if present
-            registry = get_local_registry()
+            registry = get_from_config('default_local_registry')
 
         registry_prefix = get_package_registry(fix_url(registry) if registry else None)
 
@@ -662,7 +662,7 @@ class Package(object):
         self._set_commit_message(message)
 
         if registry is None:
-            registry = get_local_registry()
+            registry = get_from_config('default_local_registry')
 
         registry_prefix = get_package_registry(fix_url(registry) if registry else None)
 
@@ -866,7 +866,7 @@ class Package(object):
             if dest is None:
                 # Only a package name is set, so set registry and dest to the default 
                 # registry.
-                registry = get_remote_registry()
+                registry = get_from_config('default_remote_registry')
                 if not registry:
                     raise QuiltException("No registry specified and no default remote "
                                         "registry configured. Please specify a "

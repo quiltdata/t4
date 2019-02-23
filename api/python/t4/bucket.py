@@ -15,10 +15,7 @@ from .data_transfer import (copy_file, copy_object, delete_object, get_bytes,
                             list_objects, put_bytes, select)
 from .formats import FormatRegistry
 from .search_util import search
-from .util import QuiltException, find_bucket_config, fix_url, parse_s3_url
-
-
-CONFIG_URL = "https://t4.quiltdata.com/config.json"
+from .util import QuiltException, find_bucket_config, fix_url, get_from_config, parse_s3_url
 
 
 class Bucket(object):
@@ -43,10 +40,18 @@ class Bucket(object):
         self._bucket = bucket
         self._search_endpoint = None
 
-    def config(self, config_url=CONFIG_URL):
+    def config(self, config_url=None):
         """
         Updates this bucket's search endpoint based on a federation config.
         """
+        if not config_url:
+            navigator_url = get_from_config('navigator_url')
+            if not navigator_url:
+                raise QuiltException("Must t4.config(navigator_url=...) or specify config_url")
+
+            navigator_url.rstrip('/') # remove trailing / if present
+            config_url = navigator_url + '/config.json'
+
         bucket_config = find_bucket_config(self._bucket, config_url)
         if 'searchEndpoint' in bucket_config:
             self._search_endpoint = bucket_config['searchEndpoint']
