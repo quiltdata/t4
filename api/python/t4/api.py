@@ -208,12 +208,58 @@ def list_packages(registry=None):
     Returns:
         A list of strings containing the names of the packages
     """
-    registry = get_package_registry(fix_url(registry) if registry else None) + '/named_packages'
+    def _create_str(pkg_info):
+        out = "PACKAGE\t\t\tTOPHASH\t\tCREATED\t\t\tSIZE\n"
+        for name, hash, mtime, size in pkg_info:
+            out += f"{name}\t\t{hash[:6]}...\t{mtime}\t{size}\n"  # TODO: correct spacing
+        return out
+
+    # TODO: deal with this mess
+    class PackageList:
+        """Wrapper object for displaying a fancy str that you can also list()"""
+        def __init__(self, pkg_info):
+            self.pkg_info = pkg_info
+
+        def __repr__(self):
+            return _create_str(self.pkg_info)
+
+        def __iter__(self):
+            return iter([info[0] for info in self.pkg_info])
+
+    _registry = get_package_registry(fix_url(registry) if registry else None)
+    registry = _registry + '/named_packages'  # TODO: rename
+    packages = _registry + '/packages'
 
     registry_url = urlparse(registry)
     if registry_url.scheme == 'file':
         registry_dir = pathlib.Path(parse_file_url(registry_url))
-        return [x.relative_to(registry_dir).as_posix() for x in registry_dir.glob('*/*')]
+
+        pkg_info = []
+        for named_path in registry_dir.glob('*/*'):
+            name = named_path.relative_to(registry_dir).as_posix()
+
+            pkg_hashes = []
+            pkg_sizes = []
+            pkg_mtimes = []
+            for pkg_hash_path in named_path.rglob('*/'):
+                # TODO: logic for 'latest'            
+                if pkg_hash_path.name == 'latest':
+                    continue
+
+                with open(pkg_hash_path, 'r') as fp:
+                    pkg_hash = fp.read()
+                    pkg_hashes.append(pkg_hash)
+
+                pkg_mtimes.append(pkg_hash_path.stat().st_ctime)
+
+                from t4 import Package
+                pkg = Package.browse(name, pkg_hash=pkg_hash)
+                pkg_sizes.append(pkg.reduce(lambda tot, tup: tot + tup[1].size, default=0))
+
+            pkg_info += [[name, hash, mtime, size] for (hash, mtime, size) in
+                         zip(pkg_hashes, pkg_mtimes, pkg_sizes)]
+
+        return PackageList(pkg_info)
 
     elif registry_url.scheme == 's3':
         src_bucket, src_path, _ = parse_s3_url(registry_url)
