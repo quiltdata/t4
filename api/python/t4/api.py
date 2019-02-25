@@ -283,16 +283,19 @@ def list_packages(registry=None):
             pkg_sizes = []
             pkg_ctimes = []
             pkg_name = name
-            latest_hash = None
+
+            with open(named_path / 'latest', 'r') as latest_hash_file:
+                latest_hash = latest_hash_file.read()
+
             for pkg_hash_path in named_path.rglob('*/'):
+                if pkg_hash_path.name == 'latest':
+                    continue
+
                 with open(pkg_hash_path, 'r') as pkg_hash_file:
                     pkg_hash = pkg_hash_file.read()
                     pkg_hashes.append(pkg_hash)
 
-                if pkg_hash_path.name == 'latest':
-                    latest_hash = pkg_hash
-                    continue
-                elif pkg_hash == latest_hash:
+                if pkg_hash == latest_hash:
                     pkg_name = f'{pkg_name}:latest'
 
                 pkg_ctimes.append(pkg_hash_path.stat().st_ctime)
@@ -301,7 +304,7 @@ def list_packages(registry=None):
                 pkg = Package.browse(name, pkg_hash=pkg_hash)
                 pkg_sizes.append(pkg.reduce(lambda tot, tup: tot + tup[1].size, default=0))
 
-            pkg_info += [[pkg_name, hash, ctime, size] for (hash, ctime, size) in
+            pkg_info += [(pkg_name, hash, ctime, size) for (hash, ctime, size) in
                          zip(pkg_hashes, pkg_ctimes, pkg_sizes)]
 
         def sorter(pkg_info_tup):
