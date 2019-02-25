@@ -212,12 +212,10 @@ def list_packages(registry=None):
         """Display wrapper for list_packages"""
 
         def __init__(self, pkg_info):
-            self.pkg_names = [info[0] for info in pkg_info]            
+            self.pkg_names = [info[0].replace(':latest', '') for info in pkg_info]
+            self._repr = self.create_str(pkg_info)
 
         def __repr__(self):
-            if not hasattr(self, '_repr'):
-                self._repr = self.create_str(self.pkg_info)
-
             return self._repr
 
         def __iter__(self):
@@ -251,7 +249,11 @@ def list_packages(registry=None):
 
         def create_str(self, pkg_info):
             """Generates a human-readable string representation of a registry."""
-            pkg_name_display_width = max(max([len(info[0]) for info in pkg_info]), 30)
+            if pkg_info:
+                pkg_name_display_width = max(max([len(info[0]) for info in pkg_info]), 30)
+            else:
+                pkg_name_display_width = 30
+
             out = (f"{self._fmt_str('PACKAGE', pkg_name_display_width)}"
                    f"TOPHASH        "
                    f"CREATED        "
@@ -261,7 +263,7 @@ def list_packages(registry=None):
                 out += (f"{self._fmt_str(name, pkg_name_display_width)}"
                         f"{tophash[:12]}   "
                         f"{self._fmt_str(arrow.get(ctime).humanize(), 15)}"
-                        f"{self._fmt_str(self._humanize_bytesize(size), 15)}\n")
+                        f"{self._fmt_str(self._humanize_bytesize(size), 15).rstrip(' ')}\n")
             return out
 
     base_registry = get_package_registry(fix_url(registry) if registry else None)

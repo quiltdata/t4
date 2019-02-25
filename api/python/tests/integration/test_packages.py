@@ -505,6 +505,15 @@ def test_list_local_packages(tmpdir):
         assert "Quilt/Foo" in pkgs
         assert "Quilt/Bar" in pkgs
 
+        # Verify package repr is as expected.
+        expected = (
+            'PACKAGE                       TOPHASH        CREATED        SIZE\n'
+            'Quilt/Test:latest             2a5a67156ca9   just now       0 B\n'
+            'Quilt/Foo:latest              2a5a67156ca9   just now       0 B\n'
+            'Quilt/Bar:latest              2a5a67156ca9   just now       0 B\n'
+        )
+        assert expected == str(t4.list_packages())
+
         # Test unnamed packages are not added.
         Package().build()
         pkgs = t4.list_packages()
