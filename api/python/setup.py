@@ -4,7 +4,7 @@ import sys
 from setuptools import setup, find_packages
 from setuptools.command.install import install
 
-VERSION = "0.0.8"
+VERSION = "0.0.9"
 
 def readme():
     readme_short = """
