@@ -261,7 +261,7 @@ def list_packages(registry=None):
                    f"\n")
             for name, tophash, ctime, size in pkg_info:
                 out += (f"{self._fmt_str(name, pkg_name_display_width)}"
-                        f"{tophash[:12]}   "
+                        f"{self._fmt_str(tophash[:12], 15)}"
                         f"{self._fmt_str(arrow.get(ctime).humanize(), 15)}"
                         f"{self._fmt_str(self._humanize_bytesize(size), 15).rstrip(' ')}\n")
             return out
@@ -304,6 +304,13 @@ def list_packages(registry=None):
             pkg_info += [[pkg_name, hash, ctime, size] for (hash, ctime, size) in
                          zip(pkg_hashes, pkg_ctimes, pkg_sizes)]
 
+        def sorter(pkg_info_tup):
+            pkg_name, pkg_cdate = pkg_info_tup[0], pkg_info_tup[2]
+            is_latest = ':latest' in pkg_name
+            pkg_realname = pkg_name.replace(':latest', '')
+            return (pkg_realname, not is_latest, -pkg_cdate)
+
+        pkg_info = sorted(pkg_info, key=sorter)
         return PackageList(pkg_info)
 
     elif registry_url.scheme == 's3':
@@ -354,7 +361,7 @@ def list_packages(registry=None):
                     )
                     pkg_sizes.append(pkg.reduce(lambda tot, tup: tot + tup[1].size, default=0))
 
-                pkg_info += [[pkg_name, hash, ctime, size] for (pkg_name, hash, ctime, size) in
+                pkg_info += [(pkg_name, hash, ctime, size) for (pkg_name, hash, ctime, size) in
                              zip(pkg_names, pkg_hashes, pkg_ctimes, pkg_sizes)]
 
         return PackageList(pkg_info)

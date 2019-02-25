@@ -506,13 +506,10 @@ def test_list_local_packages(tmpdir):
         assert "Quilt/Bar" in pkgs
 
         # Verify package repr is as expected.
-        expected = (
-            'PACKAGE                       TOPHASH        CREATED        SIZE\n'
-            'Quilt/Test:latest             2a5a67156ca9   just now       0 B\n'
-            'Quilt/Foo:latest              2a5a67156ca9   just now       0 B\n'
-            'Quilt/Bar:latest              2a5a67156ca9   just now       0 B\n'
-        )
-        assert expected == str(t4.list_packages())
+        pkgs_repr = str(pkgs)
+        assert 'Quilt/Test:latest' in pkgs_repr
+        assert 'Quilt/Foo:latest' in pkgs_repr
+        assert 'Quilt/Bar:latest' in pkgs_repr
 
         # Test unnamed packages are not added.
         Package().build()
@@ -639,6 +636,35 @@ def test_list_remote_packages():
         assert mock.call_args_list[0][0] == ('my_test_bucket', '.quilt/named_packages/')
 
     assert True
+
+
+def test_list_remote_packages_repr():
+    def pseudo_list_objects(bucket, prefix, recursive):
+        if prefix == '.quilt/named_packages/':
+            return ([{'Prefix': '.quilt/named_packages/foo/'}], [])
+        elif prefix == '.quilt/named_packages/foo/':
+            return ([{'Prefix': '.quilt/named_packages/foo/bar/'}], [])
+        elif prefix == '.quilt/named_packages/foo/bar/':
+            import datetime
+            return (
+                [], [
+                    {'Key': '.quilt/named_packages/foo/bar/1549931634',
+                     'LastModified': datetime.datetime.now()},
+                    {'Key': '.quilt/named_packages/foo/bar/latest',
+                     'LastModified': datetime.datetime.now()}]
+            )
+        else:
+            raise ValueError
+
+    with patch('t4.api.list_objects', side_effect=pseudo_list_objects), \
+        patch('t4.api.get_bytes', return_value=(b'100', None)), \
+        patch('t4.Package.browse', return_value=Package()):
+        pkgs = t4.list_packages('s3://my_test_bucket/')
+        expected = (
+            'PACKAGE                       TOPHASH        CREATED        SIZE\n'
+            'foo/bar:latest                100            just now       0 B\n'
+        )
+        assert str(pkgs) == expected
 
 
 def test_validate_package_name():
