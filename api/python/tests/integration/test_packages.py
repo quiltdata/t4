@@ -630,15 +630,8 @@ def test_brackets():
         pkg[0]
 
 def test_list_remote_packages():
-    with patch('t4.api.list_objects',
-               return_value=([{'Prefix': 'foo'},{'Prefix': 'bar'}],[])) as mock:
-        pkgs = t4.list_packages('s3://my_test_bucket/')
-        assert mock.call_args_list[0][0] == ('my_test_bucket', '.quilt/named_packages/')
-
-    assert True
-
-
-def test_list_remote_packages_repr():
+    # with patch('t4.api.list_objects',
+    #            return_value=([{'Prefix': 'foo'},{'Prefix': 'bar'}],[])) as mock:
     def pseudo_list_objects(bucket, prefix, recursive):
         if prefix == '.quilt/named_packages/':
             return ([{'Prefix': '.quilt/named_packages/foo/'}], [])
@@ -660,6 +653,10 @@ def test_list_remote_packages_repr():
         patch('t4.api.get_bytes', return_value=(b'100', None)), \
         patch('t4.Package.browse', return_value=Package()):
         pkgs = t4.list_packages('s3://my_test_bucket/')
+
+        assert len(pkgs) == 1
+        assert list(pkgs) == ['foo/bar']
+
         expected = (
             'PACKAGE                       TOPHASH        CREATED        SIZE\n'
             'foo/bar:latest                100            just now       0 B\n'

@@ -229,7 +229,7 @@ def list_packages(registry=None):
 
         @staticmethod
         def _fmt_str(string, strlen):
-            """Formats strings to a certain width."""
+            """Formats strings to a certain width"""
             if len(string) > strlen - 3:
                 return string[:strlen - 6] + '...' + '   '
             else:
@@ -237,7 +237,7 @@ def list_packages(registry=None):
 
         @staticmethod
         def _humanize_bytesize(nbytes):
-            """Turns raw byte count into a human readable bytesize."""
+            """Turns raw byte count into a human readable bytesize"""
             suffixes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']
             i = 0
             while nbytes >= 1024 and i < len(suffixes) - 1:
@@ -248,7 +248,7 @@ def list_packages(registry=None):
             return f'{filesize} {suffix}'
 
         def create_str(self, pkg_info):
-            """Generates a human-readable string representation of a registry."""
+            """Generates a human-readable string representation of a registry"""
             if pkg_info:
                 pkg_name_display_width = max(max([len(info[0]) for info in pkg_info]), 30)
             else:
@@ -317,50 +317,72 @@ def list_packages(registry=None):
         return PackageList(pkg_info)
 
     elif registry_url.scheme == 's3':
-        src_bucket, src_path, _ = parse_s3_url(registry_url)
-        prefixes, _ = list_objects(src_bucket, src_path + '/', recursive=False)
+        bucket_name, bucket_registry_path, _ = parse_s3_url(registry_url)
+        bucket_registry_path = bucket_registry_path + '/'
 
-        # Search each org directory for named packages.
-        for org in [x['Prefix'][len(src_path):].strip('/') for x in prefixes]:
-            packages, _ = list_objects(src_bucket, src_path + '/' + org + '/', recursive=False)
+        pkg_namespaces, _ = list_objects(bucket_name, bucket_registry_path, recursive=False)
+        pkg_namespaces = [result['Prefix'] for result in pkg_namespaces]
 
-            for pkg_path_info in packages:
+        # go through package namespaces to get packages
+        for pkg_namespace in pkg_namespaces:
+            pkg_names, _ = list_objects(
+                bucket_name,
+                pkg_namespace,
+                recursive=False
+            )
+            pkg_names = [pkg_name['Prefix'] for pkg_name in pkg_names]
 
-                pkg_path = pkg_path_info['Prefix']
-
+            # go through packages to get package hash files
+            for pkg_name in pkg_names:
                 pkg_hashes = []
                 pkg_sizes = []
                 pkg_ctimes = []
                 pkg_names = []
-                latest_hash = None
 
-                _, pkg_hash_path_infos = list_objects(src_bucket, pkg_path, recursive=False)
+                _, pkg_hashfiles = list_objects(
+                    bucket_name,
+                    pkg_name,
+                    recursive=False
+                )
 
+                latest_hashfile = next(hf for hf in pkg_hashfiles if '/latest' in hf['Key'])['Key']
+                latest_hashfile_fullpath = f's3://{bucket_name}/{latest_hashfile}'
+                latest_hash, _ = get_bytes(latest_hashfile_fullpath)
+                latest_hash = latest_hash.decode()
+
+                # go through package hashfiles to get manifest files
                 pkg_hash_paths = []
-                for pkg_hash_path_info in pkg_hash_path_infos:
-                    if pkg_hash_path_info['Key'].split('/')[-1] == 'latest':
-                        data, _ = get_bytes('s3://' + src_bucket + '/' + pkg_hash_path_info['Key'])
-                        latest_hash = data.decode()
+                for pkg_hashfile in pkg_hashfiles:
+                    pkg_hashfile_key = pkg_hashfile['Key']
+
+                    if pkg_hashfile_key.split('/')[-1] == 'latest':
                         continue
 
-                    pkg_hash_paths.append(pkg_hash_path_info['Key'])
-                    pkg_ctimes.append(pkg_hash_path_info['LastModified'].timestamp())
+                    pkg_hash, _ = get_bytes(f's3://{bucket_name}/{pkg_hashfile_key}')
+                    pkg_hash = pkg_hash.decode()
 
+                    pkg_last_modified = pkg_hashfile['LastModified'].timestamp()
+                    pkg_hash_paths.append(pkg_hashfile_key)
+                    pkg_ctimes.append(pkg_last_modified)
+
+                # go through manifest files to get package info
                 for pkg_hash_path in pkg_hash_paths:
-                    name = pkg_path[len(src_path):].strip('/')
+                    name = pkg_name[len(bucket_registry_path):].strip('/')
 
-                    data, _ = get_bytes('s3://' + src_bucket + '/' + pkg_hash_path)
-                    pkg_hash = data.decode()
+                    pkg_hash, _ = get_bytes('s3://' + bucket_name + '/' + pkg_hash_path)
+                    pkg_hash = pkg_hash.decode()
+
                     if pkg_hash == latest_hash:
                         pkg_name = name + ':latest'
                     else:
                         pkg_name = name
+
                     pkg_names.append(pkg_name)
                     pkg_hashes.append(pkg_hash)
 
                     from t4 import Package
                     pkg = Package.browse(
-                        pkg_name, pkg_hash=pkg_hash, registry='s3://' + src_bucket
+                        pkg_name, pkg_hash=pkg_hash, registry='s3://' + bucket_name
                     )
                     pkg_sizes.append(pkg.reduce(lambda tot, tup: tot + tup[1].size, default=0))
 
