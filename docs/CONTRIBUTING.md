@@ -95,6 +95,12 @@ To run the catalog unit tests:
 npm run test
 ```
 
+## Creating a Pypi release
+
+1. Once you are ready to cut a new release of your project, you update the version in `setup.py` and create a new git tag with `git tag $VERSION`.
+2. Once you push the tag to GitHub with `git push --tags` a new CircleCI build is triggered.
+3. Merge the new PR into master so the `setup.py` reflects the latest package.
+
 ## Updating documentation
 
 Documentation is served via GitBook, and is based on the `docs/` folder in the `master` branch of the `t4` repository.
