@@ -212,7 +212,7 @@ def list_packages(registry=None):
         """Display wrapper for list_packages"""
 
         def __init__(self, pkg_info):
-            self.pkg_info = pkg_info
+            self.pkg_names = [info[0] for info in pkg_info]            
 
         def __repr__(self):
             if not hasattr(self, '_repr'):
@@ -221,7 +221,13 @@ def list_packages(registry=None):
             return self._repr
 
         def __iter__(self):
-            return iter([info[0] for info in self.pkg_info])
+            return iter(self.pkg_names)
+
+        def __len__(self):
+            return len(self.pkg_names)
+
+        def __contains__(self, item):
+            return item in self.pkg_names
 
         @staticmethod
         def _fmt_str(string, strlen):
