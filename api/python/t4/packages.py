@@ -523,7 +523,7 @@ class Package(object):
 
         return pkg
 
-    def set_dir(self, lkey, path):
+    def set_dir(self, lkey, path, meta=None):
         """
         Adds all files from `path` to the package.
 
@@ -534,6 +534,7 @@ class Package(object):
             lkey(string): prefix to add to every logical key,
                 use '/' for the root of the package.
             path(string): path to scan for files to add to package.
+            meta(dict): user level metadata dict to attach to lkey directory entry.
 
         Returns:
             self
@@ -543,6 +544,8 @@ class Package(object):
         """
         lkey = lkey.strip("/")
         root = self._ensure_subpackage(self._split_key(lkey)) if lkey else self
+
+        root.set_meta(meta)
 
         # TODO: deserialization metadata
         url = urlparse(fix_url(path).strip('/'))
