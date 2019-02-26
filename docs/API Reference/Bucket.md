@@ -14,7 +14,7 @@ __Returns__
 
 A new Bucket
 
-## Bucket.config(self, config\_url='https://t4.quiltdata.com/config.json')  {#Bucket.config}
+## Bucket.config(self, config\_url=None)  {#Bucket.config}
 
 Updates this bucket's search endpoint based on a federation config.
 
