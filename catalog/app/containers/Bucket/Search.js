@@ -15,13 +15,14 @@ import Typography from '@material-ui/core/Typography';
 import * as colors from '@material-ui/core/colors';
 import { withStyles } from '@material-ui/core/styles';
 
+import * as Pagination from 'components/Pagination';
 import * as Preview from 'components/Preview';
 import Working from 'components/Working';
 import AsyncResult from 'utils/AsyncResult';
 import * as AWS from 'utils/AWS';
 import * as BucketConfig from 'utils/BucketConfig';
-import Data from 'utils/Data';
 import * as NamedRoutes from 'utils/NamedRoutes';
+import * as Cache from 'utils/ResourceCache';
 import StyledLink, { linkStyle } from 'utils/StyledLink';
 import * as RT from 'utils/reactTools';
 import { getBreadCrumbs } from 'utils/s3paths';
@@ -53,22 +54,19 @@ const Crumbs = RT.composeComponent('Bucket.Search.Crumbs',
     path: PT.string.isRequired,
     version: PT.string.isRequired,
   }),
-  ({ bucket, path, version }) => (
-    <NamedRoutes.Inject>
-      {({ urls }) => {
-        const items = R.intersperse(Crumb.Sep(' / '),
-          getBreadCrumbs(path).map(({ label, path: segPath }) =>
-            Crumb.Segment({
-              label,
-              // eslint-disable-next-line no-nested-ternary
-              to: segPath === path
-                ? (version ? urls.bucketFile(bucket, segPath, version) : undefined)
-                : urls.bucketDir(bucket, segPath),
-            })));
-        return <BreadCrumbs items={items} />;
-      }}
-    </NamedRoutes.Inject>
-  ));
+  ({ bucket, path, version }) => {
+    const { urls } = NamedRoutes.use();
+    const items = R.intersperse(Crumb.Sep(' / '),
+      getBreadCrumbs(path).map(({ label, path: segPath }) =>
+        Crumb.Segment({
+          label,
+          // eslint-disable-next-line no-nested-ternary
+          to: segPath === path
+            ? (version ? urls.bucketFile(bucket, segPath, version) : undefined)
+            : urls.bucketDir(bucket, segPath),
+        })));
+    return <BreadCrumbs items={items} />;
+  });
 
 const Header = RT.composeComponent('Bucket.Search.Header',
   RC.setPropTypes({
@@ -92,32 +90,29 @@ const Header = RT.composeComponent('Bucket.Search.Header',
     button: {
     },
   })),
-  ({ classes, handle: h }) => (
-    <div className={classes.root}>
-      <Crumbs bucket={h.bucket} path={h.key} version={h.version} />
-      <div className={classes.spacer} />
-      {h.version
-        ? (
-          <AWS.Signer.Inject>
-            {(signer) => (
-              <span className={classes.buttonContainer}>
-                <IconButton
-                  className={classes.button}
-                  href={signer.getSignedS3URL(h)}
-                  title="Download"
-                >
-                  <Icon>arrow_downward</Icon>
-                </IconButton>
-              </span>
-            )}
-          </AWS.Signer.Inject>
-        )
-        : (
-          <Chip label="DELETED" />
-        )
-      }
-    </div>
-  ));
+  ({ classes, handle: h }) => {
+    const getUrl = AWS.Signer.useS3Signer();
+    return (
+      <div className={classes.root}>
+        <Crumbs bucket={h.bucket} path={h.key} version={h.version} />
+        <div className={classes.spacer} />
+        {h.version
+          ? (
+            <span className={classes.buttonContainer}>
+              <IconButton
+                className={classes.button}
+                href={getUrl(h)}
+                title="Download"
+              >
+                <Icon>arrow_downward</Icon>
+              </IconButton>
+            </span>
+          )
+          : <Chip label="DELETED" />
+        }
+      </div>
+    );
+  });
 
 const Section = RT.composeComponent('Bucket.Search.Section',
   withStyles(({ spacing: { unit } }) => ({
@@ -141,13 +136,6 @@ const VersionInfo = RT.composeComponent('Bucket.Search.VersionInfo',
     version: versionShape.isRequired,
     versions: PT.arrayOf(versionShape.isRequired).isRequired,
   }),
-  RC.withStateHandlers({
-    versionsShown: false,
-  }, {
-    toggleVersions: ({ versionsShown }) => () =>
-      ({ versionsShown: !versionsShown }),
-  }),
-  NamedRoutes.inject(),
   withStyles(({ palette, typography }) => ({
     versionContainer: {
       color: palette.text.secondary,
@@ -167,100 +155,94 @@ const VersionInfo = RT.composeComponent('Bucket.Search.VersionInfo',
       ...linkStyle,
     },
   })),
-  ({
-    classes,
-    bucket,
-    path,
-    version,
-    versions,
-    toggleVersions,
-    versionsShown,
-    urls,
-  }) => (
-    <React.Fragment>
-      <Typography variant="subtitle1" className={classes.versionContainer}>
-        {version.id
-          ? (
-            <span>
-              {'Version '}
-              <StyledLink
-                to={urls.bucketFile(bucket, path, version.id)}
-                className={classes.version}
-              >
-                {version.id}
-              </StyledLink>
-              {' from '}
-              <span className={classes.bold}>{version.updated.toLocaleString()}</span>
-              {' | '}
-              <span className={classes.bold}>{readableBytes(version.size)}</span>
-            </span>
-          )
-          : (
-            <span>
-              <span className={classes.bold}>Deleted</span>
-              {' on '}
-              <span className={classes.bold}>{version.updated.toLocaleString()}</span>
-            </span>
-          )
-        }
-      </Typography>
-      {versions.length > 1 && (
-        <Typography>
-          {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events */}
-          <span className={classes.seeOther} onClick={toggleVersions}>
-            {versionsShown ? 'hide ' : 'show '} all versions ({versions.length})
-          </span>
+  ({ classes, bucket, path, version, versions }) => {
+    const { urls } = NamedRoutes.use();
+    const [versionsShown, setVersionsShown] = React.useState(false);
+    const toggleVersions = React.useCallback(() => {
+      setVersionsShown(!versionsShown);
+    }, [setVersionsShown, versionsShown]);
+
+    return (
+      <React.Fragment>
+        <Typography variant="subtitle1" className={classes.versionContainer}>
+          {version.id
+            ? (
+              <span>
+                {'Version '}
+                <StyledLink
+                  to={urls.bucketFile(bucket, path, version.id)}
+                  className={classes.version}
+                >
+                  {version.id}
+                </StyledLink>
+                {' from '}
+                <span className={classes.bold}>{version.updated.toLocaleString()}</span>
+                {' | '}
+                <span className={classes.bold}>{readableBytes(version.size)}</span>
+              </span>
+            )
+            : (
+              <span>
+                <span className={classes.bold}>Deleted</span>
+                {' on '}
+                <span className={classes.bold}>{version.updated.toLocaleString()}</span>
+              </span>
+            )
+          }
         </Typography>
-      )}
-      {versions.length > 1 && versionsShown && (
-        <Section>
-          <SectionHeading gutterBottom>
-            Versions ordered by relevance
-          </SectionHeading>
-          {versions.map((v) => (
-            <Typography
-              key={`${v.updated.getTime()}:${v.id}`}
-              variant="body2"
-              className={classes.versionContainer}
-            >
-              {v.id
-                ? (
-                  <span>
-                    <StyledLink
-                      to={urls.bucketFile(bucket, path, v.id)}
-                      className={classes.version}
-                    >
-                      {v.id}
-                    </StyledLink>
-                    {' from '}
-                    <span className={classes.bold}>{v.updated.toLocaleString()}</span>
-                    {' | '}
-                    <span className={classes.bold}>{readableBytes(v.size)}</span>
-                  </span>
-                )
-                : (
-                  <span>
-                    <span className={classes.bold}>Deleted</span>
-                    {' on '}
-                    <span className={classes.bold}>{v.updated.toLocaleString()}</span>
-                  </span>
-                )
-              }
-            </Typography>
-          ))}
-        </Section>
-      )}
-    </React.Fragment>
-  ));
+        {versions.length > 1 && (
+          <Typography>
+            {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events */}
+            <span className={classes.seeOther} onClick={toggleVersions}>
+              {versionsShown ? 'hide ' : 'show '} all versions ({versions.length})
+            </span>
+          </Typography>
+        )}
+        {versions.length > 1 && versionsShown && (
+          <Section>
+            <SectionHeading gutterBottom>
+              Versions ordered by relevance
+            </SectionHeading>
+            {versions.map((v) => (
+              <Typography
+                key={`${v.updated.getTime()}:${v.id}`}
+                variant="body2"
+                className={classes.versionContainer}
+              >
+                {v.id
+                  ? (
+                    <span>
+                      <StyledLink
+                        to={urls.bucketFile(bucket, path, v.id)}
+                        className={classes.version}
+                      >
+                        {v.id}
+                      </StyledLink>
+                      {' from '}
+                      <span className={classes.bold}>{v.updated.toLocaleString()}</span>
+                      {' | '}
+                      <span className={classes.bold}>{readableBytes(v.size)}</span>
+                    </span>
+                  )
+                  : (
+                    <span>
+                      <span className={classes.bold}>Deleted</span>
+                      {' on '}
+                      <span className={classes.bold}>{v.updated.toLocaleString()}</span>
+                    </span>
+                  )
+                }
+              </Typography>
+            ))}
+          </Section>
+        )}
+      </React.Fragment>
+    );
+  });
 
 const PreviewBox = RT.composeComponent('Bucket.Search.PreviewBox',
   RC.setPropTypes({
     data: PT.object.isRequired, // PreviewData
-  }),
-  RC.withStateHandlers({
-    expanded: false,
-  }, {
-    expand: () => () => ({ expanded: true }),
   }),
   withStyles(({ spacing: { unit }, shape: { borderRadius }, palette }) => ({
     root: {
@@ -294,16 +276,22 @@ const PreviewBox = RT.composeComponent('Bucket.Search.PreviewBox',
       zIndex: 1,
     },
   })),
-  ({ classes, data, expanded, expand }) => (
-    <div className={cx(classes.root, { [classes.expanded]: expanded })}>
-      {Preview.render(data)}
-      {!expanded && (
-        <div className={classes.fade}>
-          <Button variant="outlined" onClick={expand}>Expand</Button>
-        </div>
-      )}
-    </div>
-  ));
+  ({ classes, data }) => {
+    const [expanded, setExpanded] = React.useState(false);
+    const expand = React.useCallback(() => {
+      setExpanded(true);
+    }, [setExpanded]);
+    return (
+      <div className={cx(classes.root, { [classes.expanded]: expanded })}>
+        {Preview.render(data)}
+        {!expanded && (
+          <div className={classes.fade}>
+            <Button variant="outlined" onClick={expand}>Expand</Button>
+          </div>
+        )}
+      </div>
+    );
+  });
 
 const PreviewDisplay = RT.composeComponent('Bucket.Search.PreviewDisplay',
   RC.setPropTypes({
@@ -398,99 +386,119 @@ const Browse = RT.composeComponent('Bucket.Search.Browse',
   RC.setPropTypes({
     bucket: PT.string.isRequired,
   }),
-  ({ bucket }) => (
-    <NamedRoutes.Inject>
-      {({ urls }) => (
-        <Button
-          component={Link}
-          to={urls.bucketRoot(bucket)}
-          variant="outlined"
-        >
-          Browse the bucket
-        </Button>
-      )}
-    </NamedRoutes.Inject>
-  ));
+  ({ bucket }) => {
+    const { urls } = NamedRoutes.use();
+    return (
+      <Button
+        component={Link}
+        to={urls.bucketRoot(bucket)}
+        variant="outlined"
+      >
+        Browse the bucket
+      </Button>
+    );
+  });
 
-export default RT.composeComponent('Bucket.Search',
+const SearchResource = Cache.createResource({
+  name: 'Bucket.Search.results',
+  fetch: requests.search,
+  key: ({ query }) => query,
+});
+
+const Results = RT.composeComponent('Bucket.Search.Results',
+  RC.setPropTypes({
+    bucket: PT.string.isRequired,
+    query: PT.string.isRequired,
+    searchEndpoint: PT.string.isRequired,
+  }),
   withStyles(({ spacing: { unit } }) => ({
     heading: {
       marginBottom: 2 * unit,
       marginTop: 2 * unit,
     },
   })),
-  withParsedQuery,
-  ({ classes, location: { query: { q: query = '' } } }) => (
-    <BucketConfig.WithCurrentBucketConfig>
-      {AsyncResult.case({
-        // eslint-disable-next-line react/prop-types
-        Ok: ({ name, searchEndpoint }) => searchEndpoint
-          ? (
-            <AWS.ES.Provider host={searchEndpoint}>
-              <AWS.ES.Inject>
-                {(es) => (
-                  <Data fetch={requests.search} params={{ es, query }}>
-                    {AsyncResult.case({
-                      // eslint-disable-next-line react/prop-types
-                      Ok: ({ total, hits }) => (
-                        <React.Fragment>
-                          <Typography variant="h5" className={classes.heading}>
-                            {total
-                              ? `Search results for "${query}" (${total} hits, ${hits.length} files)`
-                              : `Nothing found for "${query}"`
-                            }
-                          </Typography>
-                          {total
-                            ? hits.map((hit) => (
-                              <Hit
-                                key={hit.path}
-                                bucket={name}
-                                hit={hit}
-                              />
-                            ))
-                            : (
-                              <React.Fragment>
-                                <Typography variant="body1">
-                                  We have not found anything matching your query
-                                </Typography>
-                                <br />
-                                <Browse bucket={name} />
-                              </React.Fragment>
-                            )
-                          }
-                        </React.Fragment>
-                      ),
-                      Err: (error, { fetch }) => (
-                        <Message headline="Server Error">
-                          Something went wrong.
-                          <br />
-                          <br />
-                          <Button
-                            onClick={fetch}
-                            color="primary"
-                            variant="contained"
-                          >
-                            Retry
-                          </Button>
-                        </Message>
-                      ),
-                      _: () => (
-                        // TODO: use consistent placeholder
-                        <Working>Searching</Working>
-                      ),
-                    })}
-                  </Data>
+  ({ classes, bucket, query, searchEndpoint }) => {
+    const es = AWS.ES.use({ host: searchEndpoint });
+    const cache = Cache.use();
+    const scrollRef = React.useRef(null);
+    const scroll = React.useCallback((prev) => {
+      if (prev && scrollRef.current) scrollRef.current.scrollIntoView();
+    });
+
+    try {
+      const { total, hits } = cache(SearchResource, { es, query });
+      return (
+        <React.Fragment>
+          <Typography variant="h5" className={classes.heading}>
+            {total
+              ? `Search results for "${query}" (${total} hits, ${hits.length} files)`
+              : `Nothing found for "${query}"`
+            }
+          </Typography>
+          <div ref={scrollRef} />
+          {total
+            ? (
+              <Pagination.Paginate items={hits} onChange={scroll}>
+                {({ paginated, ...props }) => (
+                  <React.Fragment>
+                    {paginated.map((hit) => (
+                      <Hit
+                        key={hit.path}
+                        bucket={bucket}
+                        hit={hit}
+                      />
+                    ))}
+                    {props.pages > 1 && <Pagination.Controls {...props} />}
+                  </React.Fragment>
                 )}
-              </AWS.ES.Inject>
-            </AWS.ES.Provider>
-          )
-          : (
-            <Message headline="Search Not Available">
-              This bucket has no configured search endpoint.
-            </Message>
-          ),
-        // TODO: use consistent placeholder
-        _: () => <Working />,
-      })}
-    </BucketConfig.WithCurrentBucketConfig>
-  ));
+              </Pagination.Paginate>
+            )
+            : (
+              <React.Fragment>
+                <Typography variant="body1">
+                  We have not found anything matching your query
+                </Typography>
+                <br />
+                <Browse bucket={bucket} />
+              </React.Fragment>
+            )
+          }
+        </React.Fragment>
+      );
+    } catch (e) {
+      if (e instanceof Promise) throw e;
+
+      return (
+        <Message headline="Server Error">
+          Something went wrong.
+          <br />
+          <br />
+          <Button
+            // TODO: fix retry
+            // onClick={fetch}
+            color="primary"
+            variant="contained"
+          >
+            Retry
+          </Button>
+        </Message>
+      );
+    }
+  });
+
+export default RT.composeComponent('Bucket.Search',
+  withParsedQuery,
+  ({ location: { query: { q: query = '' } } }) => {
+    const { name, searchEndpoint } = BucketConfig.useCurrentBucketConfig();
+    return searchEndpoint
+      ? (
+        <React.Suspense fallback={<Working>Searching</Working>}>
+          <Results {...{ bucket: name, searchEndpoint, query }} />
+        </React.Suspense>
+      )
+      : (
+        <Message headline="Search Not Available">
+          This bucket has no configured search endpoint.
+        </Message>
+      );
+  });

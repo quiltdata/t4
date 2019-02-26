@@ -1,27 +1,39 @@
 import SignerV4 from 'aws-sdk/lib/signers/v4';
-import invariant from 'invariant';
 import PT from 'prop-types';
 import * as React from 'react';
-import { defaultProps, withPropsOnChange, setPropTypes } from 'recompose';
+import { setPropTypes } from 'recompose';
 
 import * as Resource from 'utils/Resource';
-import {
-  composeComponent,
-  composeHOC,
-  provide,
-  consume,
-} from 'utils/reactTools';
+import { composeComponent, composeHOC } from 'utils/reactTools';
 import { resolveKey } from 'utils/s3paths';
 
-import * as Config from './Config';
+import * as Credentials from './Credentials';
 import * as S3 from './S3';
 
 
-const scope = 'app/utils/AWS/Signer';
-
 const DEFAULT_URL_EXPIRATION = 5 * 60; // in seconds
 
-const Ctx = React.createContext();
+export const useRequestSigner = () => {
+  const credentials = Credentials.use().suspend();
+  return React.useCallback((request, serviceName) => {
+    const signer = new SignerV4(request, serviceName);
+    signer.addAuthorization(credentials, new Date());
+  }, [credentials]);
+};
+
+export const useS3Signer = ({ urlExpiration = DEFAULT_URL_EXPIRATION } = {}) => {
+  const s3 = S3.use();
+  return React.useCallback(
+    ({ bucket, key, version }) =>
+      s3.getSignedUrl('getObject', {
+        Bucket: bucket,
+        Key: key,
+        VersionId: version,
+        Expires: urlExpiration,
+      }),
+    [s3, urlExpiration],
+  );
+};
 
 /*
 Resource.Pointer handling / signing:
@@ -46,67 +58,56 @@ Spec              | as is      | parsed, signed,   | considered an s3 url     |
                   |            | containing file   |                          |
 ------------------+------------+-------------------+--------------------------+
 */
+export const useResourceSigner = ({ urlExpiration = DEFAULT_URL_EXPIRATION } = {}) => {
+  const sign = useS3Signer({ urlExpiration });
+  return React.useCallback(
+    ({ ctx, ptr }) =>
+      Resource.Pointer.case({
+        Web: (url) => url,
+        S3: ({ bucket, key, version }) => sign({
+          bucket: bucket || ctx.handle.bucket,
+          key,
+          version,
+        }),
+        S3Rel: (path) => sign({
+          bucket: ctx.handle.bucket,
+          key: resolveKey(ctx.handle.key, path),
+        }),
+        Path: (path) =>
+          Resource.ContextType.case({
+            MDLink: () => path,
+            _: () => sign({
+              bucket: ctx.handle.bucket,
+              key: resolveKey(ctx.handle.key, path),
+            }),
+          }, ctx.type),
+      }, ptr),
+    [sign],
+  );
+};
+
+const Ctx = React.createContext();
 
 export const Provider = composeComponent('AWS.Signer.Provider',
   setPropTypes({
     urlExpiration: PT.number,
   }),
-  defaultProps({
-    urlExpiration: DEFAULT_URL_EXPIRATION,
-  }),
-  Config.inject(),
-  S3.inject(),
-  withPropsOnChange(['awsConfig', 's3'], ({
-    awsConfig: { credentials },
-    s3,
-    urlExpiration,
-  }) => ({
-    signer: {
-      signRequest: (request, serviceName) => {
-        invariant(credentials,
-          `${scope}.Provider.signer.signRequest: missing credentials`);
-        const signer = new SignerV4(request, serviceName);
-        signer.addAuthorization(credentials, new Date());
-      },
-      signResource: ({ ctx, ptr }) => {
-        const sign = ({ bucket, key, version }) =>
-          s3.getSignedUrl('getObject', {
-            Bucket: bucket,
-            Key: key,
-            VersionId: version,
-            Expires: urlExpiration,
-          });
+  ({ children, urlExpiration }) =>
+    <Ctx.Provider value={{ urlExpiration }}>{children}</Ctx.Provider>);
 
-        return Resource.Pointer.case({
-          Web: (url) => url,
-          S3: ({ bucket, key, version }) =>
-            sign({ bucket: bucket || ctx.handle.bucket, key, version }),
-          S3Rel: (path) => sign({
-            bucket: ctx.handle.bucket,
-            key: resolveKey(ctx.handle.key, path),
-          }),
-          Path: (path) =>
-            Resource.ContextType.case({
-              MDLink: () => path,
-              _: () => sign({
-                bucket: ctx.handle.bucket,
-                key: resolveKey(ctx.handle.key, path),
-              }),
-            }, ctx.type),
-        }, ptr);
-      },
-      getSignedS3URL: ({ bucket, key, version }) =>
-        s3.getSignedUrl('getObject', {
-          Bucket: bucket,
-          Key: key,
-          Expires: urlExpiration,
-          VersionId: version,
-        }),
-    },
-  })),
-  provide(Ctx, 'signer'));
+export const use = () => {
+  const { urlExpiration } = React.useContext(Ctx);
+  return {
+    signRequest: useRequestSigner(),
+    getSignedS3URL: useS3Signer({ urlExpiration }),
+    signResource: useResourceSigner({ urlExpiration }),
+  };
+};
 
 export const inject = (prop = 'signer') =>
-  composeHOC('AWS.Signer.inject', consume(Ctx, prop));
+  composeHOC('AWS.Signer.inject', (Component) => (props) => {
+    const signer = use();
+    return <Component {...{ ...props, [prop]: signer }} />;
+  });
 
-export const Inject = Ctx.Consumer;
+export const Inject = ({ children }) => children(use());

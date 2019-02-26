@@ -16,27 +16,50 @@ class RegistryCredentials extends AWS.Credentials {
   }
 
   refresh(callback) {
-    this.req({ endpoint: '/auth/get_credentials' })
-      .then((data) => {
-        this.expireTime = new Date(data.Expiration);
-        this.accessKeyId = data.AccessKeyId;
-        this.secretAccessKey = data.SecretAccessKey;
-        this.sessionToken = data.SessionToken;
-        callback();
-      })
-      .catch((e) => {
-        callback(e);
-      });
+    if (!this.refreshing) {
+      this.refreshing = this.req({ endpoint: '/auth/get_credentials' })
+        .then((data) => {
+          this.expireTime = new Date(data.Expiration);
+          this.accessKeyId = data.AccessKeyId;
+          this.secretAccessKey = data.SecretAccessKey;
+          this.sessionToken = data.SessionToken;
+          delete this.refreshing;
+          if (callback) callback();
+        })
+        .catch((e) => {
+          delete this.refreshing;
+          if (callback) callback(e);
+          throw e;
+        });
+    }
+    return this.refreshing;
+  }
+
+  suspend() {
+    if (this.needsRefresh()) throw this.refresh();
+    return this;
   }
 }
 
-const useCredentials = () =>
-  useMemoEq({
-    guest: Config.useConfig().guestCredentials,
-    req: APIConnector.use(),
+class GuestCredentials extends AWS.Credentials {
+  suspend() {
+    return this;
+  }
+}
+
+const useCredentials = () => {
+  const guest = useMemoEq(Config.useConfig().guestCredentials,
+    (creds) => new GuestCredentials(creds));
+
+  const reg = useMemoEq(APIConnector.use(),
+    (req) => new RegistryCredentials({ req }));
+
+  return useMemoEq({
     auth: reduxHook.useMappedState(Auth.selectors.authenticated),
-  }, (i) =>
-    i.auth ? new RegistryCredentials({ req: i.req }) : i.guest);
+    guest,
+    reg,
+  }, (i) => i.auth ? i.reg : i.guest);
+};
 
 const Ctx = React.createContext();
 
