@@ -410,6 +410,13 @@ def test_local_set_dir(tmpdir):
     assert pathlib.Path('bar').resolve().as_uri() == pkg['new_dir/bar'].physical_keys[0]
     assert pkg['new_dir'].get_meta() == "new_test_meta"
 
+    # verify set_dir logical key shortcut
+    pkg = Package()
+    pkg.set_dir("/")
+    assert pathlib.Path('foo').resolve().as_uri() == pkg['foo'].physical_keys[0]
+    assert pathlib.Path('bar').resolve().as_uri() == pkg['bar'].physical_keys[0]
+
+
 def test_s3_set_dir(tmpdir):
     """ Verify building a package from an S3 directory. """
     with patch('t4.packages.list_object_versions') as list_object_versions_mock:
@@ -540,6 +547,10 @@ def test_set_package_entry(tmpdir):
     pkg['bar'].set('bar.txt')
 
     assert test_file.resolve().as_uri() == pkg['bar'].physical_keys[0]
+
+    # Test shortcut codepath
+    pkg = Package().set('bar.txt')
+    assert test_file.resolve().as_uri() == pkg['bar.txt'].physical_keys[0]
 
 def test_tophash_changes(tmpdir):
     test_file = tmpdir / 'test.txt'
