@@ -95,7 +95,7 @@ To run the catalog unit tests:
 npm run test
 ```
 
-## Creating a Pypi release
+## Creating a release
 
 1. Once you are ready to cut a new release of your project, you update the version in `setup.py` and create a new git tag with `git tag $VERSION`.
 2. Once you push the tag to GitHub with `git push --tags` a new CircleCI build is triggered.
@@ -105,13 +105,27 @@ npm run test
 
 Documentation is served via GitBook, and is based on the `docs/` folder in the `master` branch of the `t4` repository.
 
-To modify the API Reference, modify the docstring associated with a method of interest, then navigate to the `gendocs` directory. Follow the instructions there to generate an updated API Reference. The resulting files will land in `docs/` and will be ready to be checked in. 
-
-To modify any other page in the documentation, edit the corresponding page in the `docs` directory.
-
-Every other page in the documentation is a Markdown file in the `docs/` directory. To edit the page, edit the Markdown file. Then check that file in.
-
 Documentation changes go live at pull request merge time. There is currently no way to preview documentation updates except locally.
+
+### Updating the API Reference
+
+The API Reference section of the documentation is served by processing the docstrings in the codebase using a script. We use [our own fork](https://github.com/quiltdata/pydoc-markdown/tree/quilt) of the `pydoc-markdown` package to do the necessary work.
+
+To modify the API Reference, modify the docstring associated with a method of interest.
+
+Then, run the following to install the latest version of our docstring parser:
+
+```bash
+pip install git+git://github.com/quiltdata/pydoc-markdown.git@quilt
+```
+
+Then navigate to the `gendocs` directory and execute `python build.py`.
+
+The resulting files will land in `docs/` and will be ready to be checked in.
+
+### Updating everything else
+
+All other pages in the documentation are served from corresponding Markdown pages in the `docs` directory. To edit the page, edit the Markdown file. Then check that file in.
 
 ## License
 

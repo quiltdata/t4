@@ -8,20 +8,20 @@ Set or read the T4 configuration.
 To retrieve the current config, call directly, without arguments:
 
 ```python
-    >>> import t4 as he
-    >>> he.config()
+    >>> import t4
+    >>> t4.config()
 ```
 
 To trigger autoconfiguration, call with just the navigator URL:
 
 ```python
-    >>> he.config('https://example.com')
+    >>> t4.config('https://example.com')
 ```
 
 To set config values, call with one or more key=value pairs:
 
 ```python
-    >>> he.config(navigator_url='http://example.com',
+    >>> t4.config(navigator_url='http://example.com',
     ...           elastic_search_url='http://example.com/queries')
 ```
 
