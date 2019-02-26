@@ -41,13 +41,25 @@ class RegistryCredentials extends AWS.Credentials {
   }
 }
 
-const useCredentials = () =>
-  useMemoEq({
-    guest: Config.useConfig().guestCredentials,
-    req: APIConnector.use(),
+class GuestCredentials extends AWS.Credentials {
+  suspend() {
+    return this;
+  }
+}
+
+const useCredentials = () => {
+  const guest = useMemoEq(Config.useConfig().guestCredentials,
+    (creds) => new GuestCredentials(creds));
+
+  const reg = useMemoEq(APIConnector.use(),
+    (req) => new RegistryCredentials({ req }));
+
+  return useMemoEq({
     auth: reduxHook.useMappedState(Auth.selectors.authenticated),
-  }, (i) =>
-    i.auth ? new RegistryCredentials({ req: i.req }) : i.guest);
+    guest,
+    reg,
+  }, (i) => i.auth ? i.reg : i.guest);
+};
 
 const Ctx = React.createContext();
 
