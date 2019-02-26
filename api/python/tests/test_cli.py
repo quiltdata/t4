@@ -13,7 +13,7 @@ class CommandLineTestCase(TestCase):
         parser = create_parser()
         cls.parser = parser
 
-class PingTestCase(CommandLineTestCase):
+class T4CLITestCase(CommandLineTestCase):
     def test_t4_config(self):
         args = self.parser.parse_args(['config', 'https://foo.bar'])
         assert args.catalog_url == 'https://foo.bar'
