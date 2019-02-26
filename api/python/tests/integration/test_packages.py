@@ -361,12 +361,13 @@ def test_local_set_dir(tmpdir):
     with open(foodir / 'bar', 'w') as fd:
         fd.write(fd.name)
 
-    pkg = pkg.set_dir("/", ".")
+    pkg = pkg.set_dir("/", ".", meta="test_meta")
 
     assert pathlib.Path('foo').resolve().as_uri() == pkg['foo'].physical_keys[0]
     assert pathlib.Path('bar').resolve().as_uri() == pkg['bar'].physical_keys[0]
     assert (bazdir / 'baz').resolve().as_uri() == pkg['foo_dir/baz_dir/baz'].physical_keys[0]
     assert (foodir / 'bar').resolve().as_uri() == pkg['foo_dir/bar'].physical_keys[0]
+    assert pkg.get_meta() == "test_meta"
 
     pkg = Package()
     pkg = pkg.set_dir('/','foo_dir/baz_dir/')
@@ -403,6 +404,11 @@ def test_local_set_dir(tmpdir):
     pkg = pkg.set_dir("/", ".")
     assert 'foo_dir/baz_dir' not in pkg.keys() and 'foo_dir' not in pkg.keys()
 
+    pkg = pkg.set_dir("new_dir", ".", meta="new_test_meta")
+
+    assert pathlib.Path('foo').resolve().as_uri() == pkg['new_dir/foo'].physical_keys[0]
+    assert pathlib.Path('bar').resolve().as_uri() == pkg['new_dir/bar'].physical_keys[0]
+    assert pkg['new_dir'].get_meta() == "new_test_meta"
 
 def test_s3_set_dir(tmpdir):
     """ Verify building a package from an S3 directory. """
@@ -415,10 +421,11 @@ def test_s3_set_dir(tmpdir):
             dict(Key='foo/z.txt', VersionId='123', IsLatest=False),
         ], [])
 
-        pkg.set_dir('', 's3://bucket/foo/')
+        pkg.set_dir('', 's3://bucket/foo/', meta='test_meta')
 
         assert pkg['a.txt'].physical_keys[0] == 's3://bucket/foo/a.txt?versionId=xyz'
         assert pkg['x']['y.txt'].physical_keys[0] == 's3://bucket/foo/x/y.txt'
+        assert pkg.get_meta() == "test_meta"
 
         list_object_versions_mock.assert_called_with('bucket', 'foo/')
 
