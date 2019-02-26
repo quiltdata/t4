@@ -121,8 +121,7 @@ const imageHandler = ({
     const src = escapeHtml(t.src);
     const alt = t.alt ? escape(unescapeMd(t.alt)) : '';
     const title = t.title ? ` title="${escape(t.title)}"` : '';
-    // TODO: rm inline width
-    return `<img src="${src}" alt="${alt}"${title} width="33%"/>`;
+    return `<img src="${src}" alt="${alt}"${title} />`;
   };
 };
 
