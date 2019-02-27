@@ -51,38 +51,33 @@ injectGlobal`
     }
 
     h1, h2, h3, h4, h5, h6 {
+      color: ${headerColor};
       font-weight: lighter;
     }
 
     h1 {
-      color: ${headerColor};
       font-size: 2em;
       overflow: hidden;
       text-overflow: ellipsis;
     }
 
     h2 {
-      color: ${headerColor};
       font-size: 1.5em;
     }
 
     h3 {
-      color: ${headerColor};
       font-size: 1.4em;
     }
 
     h4 {
-      color: ${headerColor};
       font-size: 1.3em;
     }
 
     h5 {
-      color: ${headerColor};
       font-size: 1.2em;
     }
 
     h6 {
-      color: ${headerColor};
       font-size: 1.1em;
     }
 
@@ -96,25 +91,6 @@ injectGlobal`
     p, label, li, dd {
       font-size: ${bodySize};
       line-height: 1.5em;
-    }
-
-    table {
-      max-width: 100%;
-      width: 100%;
-      tr {
-        th {
-          line-height: 1.5em;
-          padding: 8px;
-        }
-        td {
-          line-height: 1.5em;
-          padding: 8px;
-        }
-      }
-    }
-
-    table, th, td {
-      border: 1px solid #ddd;
     }
   }
 
@@ -133,7 +109,6 @@ injectGlobal`
     p, label, li, dd {
       //font-weight: lighter;
     }
-
   }
 
   #app {
