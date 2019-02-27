@@ -14,14 +14,16 @@ def handler(event, context):
         props = event['ResourceProperties']
         config(props['DestBucket'], props['DestDir'], props['ConfigEsUrl'],
                props['ConfigApiUrl'], props['ConfigS3Bucket'],
-               props['BucketTitle'], props['BucketIcon'], props['BucketDescription'])
+               props['BucketTitle'], props['BucketIcon'], props['BucketDescription'],
+               props['RegistryHost'])
         cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
     except Exception as e:
         cfnresponse.send(event, context, cfnresponse.FAILED, {})
         raise
 
 def config(dest_bucket, dest_dir, es_url, api_url, s3_bucket,
-           bucket_title, bucket_icon, bucket_description):
+           bucket_title, bucket_icon, bucket_description,
+           registry_host):
     region = boto3.session.Session().region_name
 
     bucket_config = {
@@ -63,6 +65,7 @@ def config(dest_bucket, dest_dir, es_url, api_url, s3_bucket,
             'accessKeyId': '',
             'secretAccessKey': ''
         },
+        'registryUrl': 'https://' + registry_host + '/',
         'signInRedirect': '/',
         'signOutRedirect': '/'
     }
