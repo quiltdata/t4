@@ -303,7 +303,7 @@ class Package(object):
         return repr_str
 
     @classmethod
-    def install(cls, name, registry=None, pkg_hash=None, dest=None, dest_registry=None):
+    def install(cls, name, registry=None, top_hash=None, dest=None, dest_registry=None):
         """
         Installs a named package to the local registry and downloads its files.
 
@@ -311,7 +311,7 @@ class Package(object):
             name(str): Name of package to install.
             registry(str): Registry where package is located. 
                 Defaults to the default remote registry.
-            pkg_hash(str): Hash of package to install. Defaults to latest.
+            top_hash(str): Hash of package to install. Defaults to latest.
             dest(str): Local path to download files to.
             dest_registry(str): Registry to install package to. Defaults to local registry.
 
@@ -326,11 +326,11 @@ class Package(object):
                                      "or configure a default remote registry with t4.config")
         elif registry == 'local':
             registry = get_from_config('default_local_registry')
-        
+
         if dest_registry is None:
             dest_registry = get_from_config('default_local_registry')
 
-        pkg = cls.browse(name=name, registry=registry, pkg_hash=pkg_hash)
+        pkg = cls.browse(name=name, registry=registry, top_hash=top_hash)
 
         if dest is None:
             dest = get_install_location()
@@ -339,14 +339,14 @@ class Package(object):
 
 
     @classmethod
-    def browse(cls, name=None, registry=None, pkg_hash=None):
+    def browse(cls, name=None, registry=None, top_hash=None):
         """
         Load a package into memory from a registry without making a local copy of
         the manifest.
         Args:
             name(string): name of package to load
             registry(string): location of registry to load package from
-            pkg_hash(string): top hash of package version to load
+            top_hash(string): top hash of package version to load
         """
         if registry is None:
             # use default remote registry if present
@@ -354,9 +354,9 @@ class Package(object):
 
         registry_prefix = get_package_registry(fix_url(registry) if registry else None)
 
-        if pkg_hash is not None:
+        if top_hash is not None:
             # If hash is specified, name doesn't matter.
-            pkg_path = '{}/packages/{}'.format(registry_prefix, pkg_hash)
+            pkg_path = '{}/packages/{}'.format(registry_prefix, top_hash)
             return cls._from_path(pkg_path)
         else:
             validate_package_name(name)

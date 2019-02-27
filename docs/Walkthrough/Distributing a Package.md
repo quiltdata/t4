@@ -8,7 +8,7 @@ To save a package to local disk use `build`.
 import t4
 p = t4.Package()
 
-tophash = p.build("username/packagename")
+top_hash = p.build("username/packagename")
 ```
 
 Building a package requires providing it with a name. Packages names must follow the `${namespace}/${packagename}` format. For small teams, we recommend using the package author's name as the namespace.
@@ -39,7 +39,7 @@ The default remote registry, if set, persists between sessions.
 
 ## Distributing a package version
 
-A successful package `build` or `push` returns a **tophash**.
+A successful package `build` or `push` returns a **top hash**.
 
 ```bash
 $ python
@@ -48,7 +48,7 @@ $ python
 '2a5a67156ca9238c14d12042db51c5b52260fdd5511b61ea89b58929d6e1769b'
 ```
 
-A tophash is a persistent, immutable reference to a specific version of a package. To download this specific version of the package in the future you will need to provide this tophash.
+A top hash is a persistent, immutable reference to a specific version of a package. To download this specific version of the package in the future you will need to provide this top hash.
 
 ## Delete a package from a registry
 
