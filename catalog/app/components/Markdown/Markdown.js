@@ -13,42 +13,69 @@ import { withStyles } from '@material-ui/core/styles';
 import { linkStyle } from 'utils/StyledLink';
 import * as RT from 'utils/reactTools';
 
+/* Most of what's in the commonmark spec for HTML blocks;
+ * minus troublesome/abusey/not-in-HTML5 tags: basefont, body, center, dialog,
+ * dir, fieldset, form, frame, frameset, head, html, iframe, link, main, menu,
+ * menuitem, meta, noframes,  optgroup, option, source (we don't support audio),
+ * track (we don't support video).
+ * 
+ * I opted not to include UI tags (opt, optgroup); ditto for base, body, head,
+ * meta, title
+ * which shouldn't be needed 
+ */
 const SANITIZE_OPTS = {
   'ALLOWED_TAGS': [
     'a',
     'abbr',
+    'address',
+    'article',
+    'aside',
     'b',
     'blockquote',
+    'caption',
     'code',
+    'col',
+    'colgroup',
     'dd',
+    'details',
     'del',
     'div',
     'dl',
     'dt',
     'em',
+    'figure',
+    'figcaption',
+    'footer',
     'h1',
     'h2',
     'h3',
     'h4',
     'h5',
     'h6',
+    'header',
     'hr',
     'i',
     'img',
     'ins',
+    'legend',
     'li',
     'mark',
+    'nav',
     'ol',
     'p',
+    'param',
     'pre',
     'section',
     'span',
     'strong',
     'sub',
+    'summary',
     'sup',
     'table',
     'tbody',
     'td',
+    'tfoot',
+    'th',
     'thead',
     'tr',
     'ul',
@@ -189,7 +216,7 @@ export const Container = RT.composeComponent('Markdown.Container',
   }),
   withStyles(() => ({
     root: {
-      overflow: 'auto',
+      '& a': linkStyle,
 
       '& h1 code': {
         backgroundColor: 'inherit',
@@ -200,7 +227,11 @@ export const Container = RT.composeComponent('Markdown.Container',
         maxWidth: '100%',
       },
 
-      '& a': linkStyle,
+      overflow: 'auto',
+
+      '& thead': {
+        'text-align': 'left',
+      },
     },
   })),
   ({ classes, className, children }) => (
