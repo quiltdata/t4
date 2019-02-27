@@ -119,7 +119,7 @@ def test_default_registry(tmpdir):
             assert pkg['bar'].physical_keys[0].endswith('.quilttest/Quilt/Test/bar')
 
 @patch('appdirs.user_data_dir', lambda x,y: os.path.join('test_appdir', x))
-@patch('t4.Package.browse', lambda name, registry, pkg_hash: Package())
+@patch('t4.Package.browse', lambda name, registry, top_hash: Package())
 def test_default_install_location(tmpdir):
     """Verify that pushes to the default local install location work as expected"""
     with patch('t4.Package.push') as push_mock:
@@ -170,46 +170,46 @@ def test_browse_package_from_registry():
         registry = BASE_PATH.as_uri()
         pkg = Package()
         pkgmock.return_value = pkg
-        pkghash = pkg.top_hash()
+        top_hash = pkg.top_hash()
 
         # default registry load
-        pkg = Package.browse(pkg_hash=pkghash)
-        assert '{}/.quilt/packages/{}'.format(registry, pkghash) \
+        pkg = Package.browse(top_hash=top_hash)
+        assert '{}/.quilt/packages/{}'.format(registry, top_hash) \
                 in [x[0][0] for x in pkgmock.call_args_list]
 
         pkgmock.reset_mock()
 
-        pkg = Package.browse('Quilt/nice-name', pkg_hash=pkghash)
-        assert '{}/.quilt/packages/{}'.format(registry, pkghash) \
+        pkg = Package.browse('Quilt/nice-name', top_hash=top_hash)
+        assert '{}/.quilt/packages/{}'.format(registry, top_hash) \
                 in [x[0][0] for x in pkgmock.call_args_list]
 
         pkgmock.reset_mock()
 
         with patch('t4.packages.get_bytes') as dl_mock:
-            dl_mock.return_value = (pkghash.encode('utf-8'), None)
+            dl_mock.return_value = (top_hash.encode('utf-8'), None)
             pkg = Package.browse('Quilt/nice-name')
             assert registry + '/.quilt/named_packages/Quilt/nice-name/latest' \
                     == dl_mock.call_args_list[0][0][0]
 
-        assert '{}/.quilt/packages/{}'.format(registry, pkghash) \
+        assert '{}/.quilt/packages/{}'.format(registry, top_hash) \
                 in [x[0][0] for x in pkgmock.call_args_list]
         pkgmock.reset_mock()
 
         remote_registry = 's3://asdf/foo'
         # remote load
-        pkg = Package.browse('Quilt/nice-name', registry=remote_registry, pkg_hash=pkghash)
-        assert '{}/.quilt/packages/{}'.format(remote_registry, pkghash) \
+        pkg = Package.browse('Quilt/nice-name', registry=remote_registry, top_hash=top_hash)
+        assert '{}/.quilt/packages/{}'.format(remote_registry, top_hash) \
                 in [x[0][0] for x in pkgmock.call_args_list]
         pkgmock.reset_mock()
-        pkg = Package.browse(pkg_hash=pkghash, registry=remote_registry)
-        assert '{}/.quilt/packages/{}'.format(remote_registry, pkghash) \
+        pkg = Package.browse(top_hash=top_hash, registry=remote_registry)
+        assert '{}/.quilt/packages/{}'.format(remote_registry, top_hash) \
                 in [x[0][0] for x in pkgmock.call_args_list]
 
         pkgmock.reset_mock()
         with patch('t4.packages.get_bytes') as dl_mock:
-            dl_mock.return_value = (pkghash.encode('utf-8'), None)
+            dl_mock.return_value = (top_hash.encode('utf-8'), None)
             pkg = Package.browse('Quilt/nice-name', registry=remote_registry)
-        assert '{}/.quilt/packages/{}'.format(remote_registry, pkghash) \
+        assert '{}/.quilt/packages/{}'.format(remote_registry, top_hash) \
                 in [x[0][0] for x in pkgmock.call_args_list]
 
 def test_local_install(tmpdir):
@@ -704,12 +704,12 @@ def test_top_hash_stable():
     """Ensure that top_hash() never changes for a given manifest"""
 
     registry = Path(__file__).parent / 'data'
-    pkg_hash = '20de5433549a4db332a11d8d64b934a82bdea8f144b4aecd901e7d4134f8e733'
+    top_hash = '20de5433549a4db332a11d8d64b934a82bdea8f144b4aecd901e7d4134f8e733'
 
-    pkg = Package.browse(registry=registry, pkg_hash=pkg_hash)
+    pkg = Package.browse(registry=registry, top_hash=top_hash)
 
-    assert pkg.top_hash() == pkg_hash, \
-           "Unexpected top_hash for {}/.quilt/packages/{}".format(registry, pkg_hash)
+    assert pkg.top_hash() == top_hash, \
+           "Unexpected top_hash for {}/.quilt/packages/{}".format(registry, top_hash)
 
 
 @patch('appdirs.user_data_dir', lambda x, y: os.path.join('test_appdir', x))
@@ -894,7 +894,7 @@ def test_manifest():
     top_hash = pkg.build()
     manifest = list(pkg.manifest)
 
-    pkg2 = Package.browse(pkg_hash=top_hash)
+    pkg2 = Package.browse(top_hash=top_hash)
     assert list(pkg.manifest) == list(pkg2.manifest)
 
 

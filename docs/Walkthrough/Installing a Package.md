@@ -44,10 +44,10 @@ Data files that you download are written to a folder in your local registry by d
 t4.Package.install("username/packagename", dest="./")
 ```
 
-Finally, you can install a specific version of a package by specifying the corresponding tophash:
+Finally, you can install a specific version of a package by specifying the corresponding top hash:
 
 ```python
-t4.Package.install("username/packagename", pkg_hash="abcd1234")
+t4.Package.install("username/packagename", top_hash="abcd1234")
 ```
 
 ## Browsing a package manifest
