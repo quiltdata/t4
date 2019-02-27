@@ -99,7 +99,7 @@ def config(dest_bucket, dest_dir, es_url, api_url, s3_bucket,
             response = s3_client.get_object(Bucket=dest_bucket, Key=key_name)
             return json.load(response['Body'])
         except ClientError as e:
-            if e.response['Error']['Code'] == "404":
+            if e.response['Error']['Code'] == "NoSuchKey":
                 return {}
             raise e
 
