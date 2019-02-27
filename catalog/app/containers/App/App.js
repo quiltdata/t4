@@ -2,6 +2,7 @@ import * as R from 'ramda';
 import * as React from 'react';
 import { Switch, Route, Redirect } from 'react-router-dom';
 
+import Admin from 'containers/Admin';
 import * as Auth from 'containers/Auth';
 import Bucket from 'containers/Bucket';
 import HomePage from 'containers/HomePage/Loadable';
@@ -41,6 +42,8 @@ export default () => {
         <Route path={paths.passChange} component={Auth.PassChange} exact />
         <Route path={paths.code} component={protect(Auth.Code)} exact />
         <Route path={paths.activationError} component={Auth.ActivationError} exact />
+
+        <Route path={paths.admin} component={Admin} exact />
 
         <Route path={paths.bucketRoot} component={protect(Bucket)} />
 
