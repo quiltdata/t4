@@ -12,7 +12,7 @@ Provides a generator of the dicts that make up the serialied package.
 String representation of the Package.
 
 
-## Package.install(name, registry=None, pkg\_hash=None, dest=None, dest\_registry=None)  {#Package.install}
+## Package.install(name, registry=None, top\_hash=None, dest=None, dest\_registry=None)  {#Package.install}
 
 Installs a named package to the local registry and downloads its files.
 
@@ -21,7 +21,7 @@ __Arguments__
 * __name(str)__:  Name of package to install.
 * __registry(str)__:  Registry where package is located.
     Defaults to the default remote registry.
-* __pkg_hash(str)__:  Hash of package to install. Defaults to latest.
+* __top_hash(str)__:  Hash of package to install. Defaults to latest.
 * __dest(str)__:  Local path to download files to.
 * __dest_registry(str)__:  Registry to install package to. Defaults to local registry.
 
@@ -30,7 +30,7 @@ __Returns__
 A new Package that points to files on your local machine.
 
 
-## Package.browse(name=None, registry=None, pkg\_hash=None)  {#Package.browse}
+## Package.browse(name=None, registry=None, top\_hash=None)  {#Package.browse}
 
 Load a package into memory from a registry without making a local copy of
 the manifest.
@@ -38,7 +38,7 @@ __Arguments__
 
 * __name(string)__:  name of package to load
 * __registry(string)__:  location of registry to load package from
-* __pkg_hash(string)__:  top hash of package version to load
+* __top_hash(string)__:  top hash of package version to load
 
 
 ## Package.\_\_contains\_\_(self, logical\_key)  {#Package.\_\_contains\_\_}
