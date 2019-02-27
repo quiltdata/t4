@@ -117,12 +117,12 @@ An example:
 
 ```json
 {
-  'buckets': [
+  "buckets": [
     {
-      ... inline bucket config ...
+      "... inline bucket config ..."
     },
-    'link/to/bucket/config.json',
-    ...
+    "link/to/bucket/config.json",
+    "..."
   ]
 }
 ```
@@ -131,11 +131,11 @@ A **bucket config**, meanwhile, is a JSON object that describes metadata associa
 
 ```json
 {
-  'name': name of s3 bucket,
-  'title': friendly title to be displayed in the catalog drop-down,
-  'icon': square icon to be displayed in the catalog drop-down,
-  'description': short description of the bucket to be displayed in the catalog drop-down,
-  'searchEndpoint': url of the search endpoint for your T4 bucket
+  "name": "name of s3 bucket",
+  "title": "friendly title to be displayed in the catalog drop-down",
+  "icon": "square icon to be displayed in the catalog drop-down",
+  "description": "short description of the bucket to be displayed in the catalog drop-down",
+  "searchEndpoint": "url of the search endpoint for your T4 bucket"
 }
 ```
 
