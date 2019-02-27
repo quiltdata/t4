@@ -216,6 +216,9 @@ export const Container = RT.composeComponent('Markdown.Container',
   }),
   withStyles(() => ({
     root: {
+
+      overflow: 'auto',
+
       '& a': linkStyle,
 
       '& h1 code': {
@@ -227,9 +230,7 @@ export const Container = RT.composeComponent('Markdown.Container',
         maxWidth: '100%',
       },
 
-      overflow: 'auto',
-
-      '& thead': {
+      '& table th,td': {
         'text-align': 'left',
       },
     },
