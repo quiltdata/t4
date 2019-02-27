@@ -13,12 +13,15 @@
 * [Working with a Bucket](Walkthrough/Working with a Bucket.md)
 
 ### Advanced Usage
+
 * [Filtering a Package](Advanced Features/Filtering a Package.md)
+* [.quiltignore](Advanced Features/.quiltignore.md)
 * [Materialization](Advanced Features/Materialization.md)
 * [Working with Manifests](Advanced Features/Working with Manifests.md)
 * [S3 Select](Advanced%20Features/S3%20Select.md)
 
 ### API Reference
+
 * [t4](API%20Reference/api.md)
 * [t4.Package](API%20Reference/Package.md)
 * [t4.Bucket](API%20Reference/Bucket.md)

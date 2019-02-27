@@ -109,7 +109,7 @@ json decode error
 invalid package exception
 
 
-## Package.set\_dir(self, lkey, path)  {#Package.set\_dir}
+## Package.set\_dir(self, lkey, path, meta=None)  {#Package.set\_dir}
 
 Adds all files from `path` to the package.
 
@@ -121,6 +121,7 @@ __Arguments__
 * __lkey(string)__:  prefix to add to every logical key,
     use '/' for the root of the package.
 * __path(string)__:  path to scan for files to add to package.
+* __meta(dict)__:  user level metadata dict to attach to lkey directory entry.
 
 __Returns__
 

@@ -212,3 +212,34 @@ To change which file types are searchable, push a new JSON fragment like this on
 > * Queries containing the tilde (~), forward slash (/), back slash, and angle bracket ({, }, (, ), [, ]) must be quoted. For example search for `'~foo'`, not `~foo`.
 > * The search index will only pick up objects written to S3 _after_ T4 was enabled on that bucket.
 > * Files over 10 MB in size may cause search to fail.
+
+## Making your search endpoint publicly accessible
+
+This section describes how to make your search endpoint available to anyone with valid AWS credentials.
+
+Go to your AWS Console. Under the `Services` dropdown at the top of the screen, choose `Elasticsearch Service`. Select the domain corresponding to your T4 stack.
+
+Note the value of the `Domain ARN` for your search domain.
+
+In the row of buttons at the top of the pane, select `Modify Access Policy`. Add two statements to the Statement array:
+
+```json
+{
+  "Effect": "Allow",
+    "Principal": {
+      "AWS": "*"
+    },
+    "Action": "es:ESHttpGet",
+    "Resource": "$YOUR_SEARCH_DOMAIN_ARN/*"
+},
+{
+  "Effect": "Allow",
+  "Principal": {
+    "AWS": "*"
+  },
+  "Action": "es:ESHttpPost",
+  "Resource": "$YOUR_SEARCH_DOMAIN_ARN/drive/_doc/_search*"
+}
+```
+
+Select `Submit` and your search domain should now be open to the public.
