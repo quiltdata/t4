@@ -154,7 +154,7 @@ Go to the IAM console and navigate to `Roles`. Select the role you want to use. 
 {
   "Version": "2012-10-17",
   "Statement": [
-    "...": "one or more statements"
+    "... one or more statements"
   ]
 }
 ```
@@ -184,12 +184,12 @@ Note the comma after the object. Your trust relationship should now look somethi
       },
       "Action": "sts:AssumeRole"
     },
-    "...": "whatever was here before"
+    "... whatever was here before"
   ]
 }
 ```
 
-You can now configure a Quilt Role with this role (using the Navigator's admin panel, or `t4.admin.create_role`).
+You can now configure a Quilt Role with this role (using the Catalog's admin panel, or `t4.admin.create_role`).
 
 ## Configuring search file types
 
