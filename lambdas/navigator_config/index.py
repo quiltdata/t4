@@ -85,7 +85,7 @@ def autogenerate_configs(es_url, api_url, s3_bucket,
             'accessKeyId': '',
             'secretAccessKey': ''
         },
-        'registryUrl': 'https://' + registry_host + '/',
+        'registryUrl': 'https://' + registry_host, # no trailing /
         'signInRedirect': '/',
         'signOutRedirect': '/'
     }
