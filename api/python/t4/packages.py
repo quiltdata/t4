@@ -206,16 +206,22 @@ class PackageEntry(object):
 
         return FormatRegistry.deserialize(data, self.meta, pkey_ext, **format_opts)
 
-    def fetch(self, dest):
+    def fetch(self, dest=None):
         """
         Gets objects from entry and saves them to dest.
 
         Args:
             dest: where to put the files
+                Defaults to the entry name
 
         Returns:
             None
         """
+        if dest is None:
+            name = pathlib.Path(_to_singleton(self.physical_keys)).name
+            name = name.split('?versionId=')[0]
+            dest = name
+
         physical_key = _to_singleton(self.physical_keys)
         dest = fix_url(dest)
         copy_file(physical_key, dest, self.meta)
