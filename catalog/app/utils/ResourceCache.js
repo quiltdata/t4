@@ -106,7 +106,7 @@ function* saga() {
   yield sagaTools.takeEveryTagged(Action.Init, handleInit);
 }
 
-const suspend = ({ promise, result }) =>
+export const suspend = ({ promise, result }) =>
   AsyncResult.case({
     Init: () => { throw promise; },
     Pending: () => { throw promise; },
@@ -152,5 +152,23 @@ export const Provider = ({ children }) => {
   return <Ctx.Provider value={inst}>{children}</Ctx.Provider>;
 };
 
-// TODO: claim / release in useEffect
 export const use = () => React.useContext(Ctx);
+
+// TODO: claim / release in useEffect
+export const useData = (resource, input, opts = {}) => {
+  const cache = use();
+  const get = React.useCallback(
+    () => cache.access(resource, input),
+    [cache, resource, input],
+  );
+  const [entry, setEntry] = React.useState(get());
+  const store = React.useContext(reduxHook.StoreContext);
+  React.useEffect(() => store.subscribe(() => {
+    const newEntry = get();
+    if (!R.equals(newEntry, entry)) {
+      setEntry(newEntry);
+    }
+  }), [store, get]);
+
+  return opts.suspend ? suspend(entry) : entry;
+};
