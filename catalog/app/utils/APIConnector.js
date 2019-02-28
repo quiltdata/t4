@@ -84,6 +84,13 @@ const response = actionCreator(actions.API_RESPONSE, (payload, requestOpts) => (
 export class HTTPError extends BaseError {
   static displayName = 'HTTPError';
 
+  static is = (e, status, msg) => {
+    if (!(e instanceof HTTPError)) return false;
+    if (status && e.status !== status) return false;
+    if (msg && !(e.json && e.json.message === msg)) return false;
+    return true;
+  };
+
   constructor(resp, text) {
     let json;
     // eslint-disable-next-line no-empty
