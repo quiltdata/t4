@@ -131,7 +131,7 @@ const Users = () => {
           <Table.Head columns={columns} ordering={ordering} withInlineActions />
           <TableBody>
             {ordering.ordered.map((i) => (
-              <TableRow hover key={i.id}>
+              <TableRow hover key={i.username}>
                 {columns.map((col) => (
                   <TableCell key={col.id} {...col.props}>
                     {(col.getDisplay || R.identity)(col.getValue(i))}
