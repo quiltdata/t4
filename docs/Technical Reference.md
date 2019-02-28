@@ -117,12 +117,12 @@ An example:
 
 ```json
 {
-  'buckets': [
+  "buckets": [
     {
-      ... inline bucket config ...
+      "... inline bucket config ..."
     },
-    'link/to/bucket/config.json',
-    ...
+    "link/to/bucket/config.json",
+    "..."
   ]
 }
 ```
@@ -131,39 +131,31 @@ A **bucket config**, meanwhile, is a JSON object that describes metadata associa
 
 ```json
 {
-  'name': name of s3 bucket,
-  'title': friendly title to be displayed in the catalog drop-down,
-  'icon': square icon to be displayed in the catalog drop-down,
-  'description': short description of the bucket to be displayed in the catalog drop-down,
-  'searchEndpoint': url of the search endpoint for your T4 bucket
+  "name": "name of s3 bucket",
+  "title": "friendly title to be displayed in the catalog drop-down",
+  "icon": "square icon to be displayed in the catalog drop-down",
+  "description": "short description of the bucket to be displayed in the catalog drop-down",
+  "searchEndpoint": "url of the search endpoint for your T4 bucket"
 }
 ```
 
 A bucket config can be included inline in a federation, or it can be a standalone JSON file that is linked from a federation.
 
-## Adding users to a catalog using AWS Console
+## Preparing an AWS Role for use with T4
 
-These instructions document how to add users to your catalog instance using the AWS Console.
+These instructions document how to set up an existing role for use with T4. If the role you want to use doesn't exist yet, create it now.
 
-Go to your stack in CloudFormation. Go to `Resources`, then find `RegistryUser` and click on the linked user.
+Go to your T4 stack in CloudFormation. Go to `Resources`, then find `RegistryUser` and click on the linked user.
 Copy the `ARN` of that user. This will look something like this: `arn:aws:iam::730278974607:user/t4-staging-RegistryUser-1CQZVBO2OZO87`.
 
-If the role you want to use doesn't exist yet, create it now.
-
-Go to the IAM console and navigate to `Roles`. Select the role you want to use. Go to the "Trust Relationships" tab for the role, and select "Edit Trust Relationship". The statement should look something like this:
+Go to the IAM console and navigate to `Roles`. Select the role you want to use. Go to the `Trust Relationships` tab for the role, and select `Edit Trust Relationship`. The statement might look something like this:
 
 ```json
 {
-    "Version": "2012-10-17",
-    "Statement": [
-    {
-        "Effect": "Allow",
-        "Principal": {
-        "Service": "ec2.amazonaws.com"
-        },
-        "Action": "sts:AssumeRole"
-    }
-    ]
+  "Version": "2012-10-17",
+  "Statement": [
+    "... one or more statements"
+  ]
 }
 ```
 
@@ -171,11 +163,11 @@ Add an object to the beginning of the Statement array with the following content
 
 ```json
 {
-    "Effect": "Allow",
-    "Principal": {
+  "Effect": "Allow",
+  "Principal": {
     "AWS": "$YOUR_REGISTRY_USER_ARN"
-    },
-    "Action": "sts:AssumeRole"
+  },
+  "Action": "sts:AssumeRole"
 },
 ```
 
@@ -183,27 +175,21 @@ Note the comma after the object. Your trust relationship should now look somethi
 
 ```json
 {
-    "Version": "2012-10-17",
-    "Statement": [
+  "Version": "2012-10-17",
+  "Statement": [
     {
-        "Effect": "Allow",
-        "Principal": {
+      "Effect": "Allow",
+      "Principal": {
         "AWS": "$YOUR_REGISTRY_USER_ARN"
-        },
-        "Action": "sts:AssumeRole"
+      },
+      "Action": "sts:AssumeRole"
     },
-    {
-        "Effect": "Allow",
-        "Principal": {
-        "Service": "ec2.amazonaws.com"
-        },
-        "Action": "sts:AssumeRole"
-    }
-    ]
+    "... whatever was here before"
+  ]
 }
 ```
 
-You can now configure a Quilt Role for this role (using e.g. `t4.create_role`).
+You can now configure a Quilt Role with this role (using the Catalog's admin panel, or `t4.admin.create_role`).
 
 ## Configuring search file types
 
