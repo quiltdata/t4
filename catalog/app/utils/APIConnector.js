@@ -4,6 +4,7 @@ import isNil from 'lodash/isNil';
 import isString from 'lodash/isString';
 import isTypedArray from 'lodash/isTypedArray';
 import PT from 'prop-types';
+import * as R from 'ramda';
 import * as React from 'react';
 import { setPropTypes } from 'recompose';
 import * as reduxHook from 'redux-react-hook';
@@ -81,13 +82,15 @@ const response = actionCreator(actions.API_RESPONSE, (payload, requestOpts) => (
   meta: { ...requestOpts },
 }));
 
+const test = R.ifElse(R.is(RegExp), R.test, R.equals);
+
 export class HTTPError extends BaseError {
   static displayName = 'HTTPError';
 
   static is = (e, status, msg) => {
     if (!(e instanceof HTTPError)) return false;
     if (status && e.status !== status) return false;
-    if (msg && !(e.json && e.json.message === msg)) return false;
+    if (msg && !(e.json && test(msg)(e.json.message))) return false;
     return true;
   };
 
