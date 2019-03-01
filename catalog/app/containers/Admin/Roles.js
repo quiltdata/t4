@@ -46,6 +46,12 @@ const columns = [
     getValue: R.prop('arn'),
     getDisplay: (v) => <Mono>{v}</Mono>,
   },
+  {
+    id: 'id',
+    label: 'ID',
+    getValue: R.prop('id'),
+    getDisplay: (v) => <Mono>{v}</Mono>,
+  },
 ];
 
 const Create = RT.composeComponent('Admin.Roles.Create',
