@@ -8,7 +8,10 @@ from t4_lambda_shared.decorator import api, validate
 
 # pylint: disable=invalid-sequence-index
 class TestDecorator(TestCase):
+    """Tests for the @api and @validate decorators"""
+
     def test_api_basic(self):
+        """Test an empty query string and empty headers"""
         @api(cors_origins=['https://example.com'])
         def handler(query, headers):
             assert query == {}
@@ -25,6 +28,7 @@ class TestDecorator(TestCase):
         assert resp['headers'] == {'Content-Type': 'text/plain'}
 
     def test_api_query_headers(self):
+        """Test values in the query string and headers"""
         @api(cors_origins=['https://example.com'])
         def handler(query, headers):
             assert headers == {'content-length': '123'}
@@ -45,6 +49,7 @@ class TestDecorator(TestCase):
         assert resp['headers'] == {'Content-Type': 'text/plain'}
 
     def test_api_cors(self):
+        """Test the CORS headers for different origins"""
         @api(cors_origins=['https://example.com'])
         def handler(query, headers):
             return 200, 'foo', {'Content-Type': 'text/plain'}
@@ -100,6 +105,7 @@ class TestDecorator(TestCase):
         }
 
     def test_api_exception(self):
+        """Test that exceptions are converted into 500s"""
         @api(cors_origins=['https://example.com'])
         def handler(query, header):
             raise TypeError("Fail!")
@@ -124,6 +130,7 @@ class TestDecorator(TestCase):
         }
 
     def test_validator(self):
+        """Test errors from the schema validator"""
         schema = {
             'type': 'object',
             'properties': {
