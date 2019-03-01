@@ -27,6 +27,7 @@ import * as validators from 'utils/validators';
 
 import * as Form from './Form';
 import * as Table from './Table';
+import * as data from './data';
 
 
 /*
@@ -69,7 +70,7 @@ const Create = RT.composeComponent('Admin.Users.Create',
               lastLogin: new Date(),
               username: values.get('username'),
             };
-            cache.patchOk(UsersResource, null, R.append(user));
+            cache.patchOk(data.UsersResource, null, R.append(user));
             push(`User "${user.username}" <${user.email}> created`);
             close();
           })
@@ -194,7 +195,7 @@ const Delete = RT.composeComponent('Admin.Users.Delete',
         })
         .catch((e) => {
           // TODO: handle errors once the endpoint is working
-          cache.patchOk(UsersResource, null, R.append(user));
+          cache.patchOk(data.UsersResource, null, R.append(user));
           push(`Error deleting user "${user.username}"`);
           // eslint-disable-next-line no-console
           console.error('Error deleting user');
@@ -202,7 +203,7 @@ const Delete = RT.composeComponent('Admin.Users.Delete',
           console.dir(e);
         });
       // optimistically remove the user from cache
-      cache.patchOk(UsersResource, null,
+      cache.patchOk(data.UsersResource, null,
         R.reject(R.propEq('username', user.username)));
     }, [user, close, req, cache, push]);
 
@@ -231,24 +232,6 @@ const Delete = RT.composeComponent('Admin.Users.Delete',
     );
   });
 
-const UsersResource = Cache.createResource({
-  name: 'Admin.Users.uesrs',
-  fetch: ({ req }) =>
-    req({ endpoint: '/users/list' })
-      .then(R.pipe(
-        R.prop('results'),
-        R.map((u) => ({
-          dateJoined: new Date(u.date_joined),
-          email: u.email,
-          isActive: u.is_active,
-          isAdmin: u.is_superuser,
-          lastLogin: new Date(u.last_login),
-          username: u.username,
-        })),
-      )),
-  key: () => null,
-});
-
 const Username = RT.composeComponent('Admin.Users.Username',
   RC.setPropTypes({
     admin: PT.bool,
@@ -275,124 +258,124 @@ const Username = RT.composeComponent('Admin.Users.Username',
     />
   ));
 
-const Users = () => {
-  const columns = React.useMemo(() => [
-    {
-      id: 'username',
-      label: 'Username',
-      getValue: R.prop('username'),
-      getDisplay: (v, u) => <Username admin={u.isAdmin}>{v}</Username>,
-      props: { component: 'th', scope: 'row' },
-    },
-    {
-      id: 'email',
-      label: 'Email',
-      getValue: R.prop('email'),
-    },
-    {
-      id: 'role',
-      label: 'Role',
-      getValue: () => '<TBD>',
-      // TODO: dropdown
-    },
-    {
-      id: 'isActive',
-      label: 'Active',
-      getValue: R.prop('isActive'),
-      getDisplay: (v) => <Switch checked={v} />,
-    },
-    {
-      id: 'isAdmin',
-      label: 'Admin',
-      getValue: R.prop('isAdmin'),
-      getDisplay: (v) => <Switch checked={v} />,
-    },
-    // {
-    //   id: 'searchEnabled',
-    //   label: 'Search enabled',
-    //   getValue: () => true,
-    //   getDisplay: (v) => <Switch checked={v} />,
-    // },
-    {
-      id: 'dateJoined',
-      label: 'Date joined',
-      getValue: R.prop('dateJoined'),
-      getDisplay: (v) => <FormattedRelative value={v} />,
-    },
-    {
-      id: 'lastLogin',
-      label: 'Last login',
-      getValue: R.prop('lastLogin'),
-      getDisplay: (v) => <FormattedRelative value={v} />,
-    },
-  ], []);
-
-  const req = APIConnector.use();
-  const rows = Cache.useData(UsersResource, { req }, { suspend: true });
-
-  const ordering = Table.useOrdering({ rows, column: columns[0] });
-  const dialogs = Dialogs.use();
-
-  const toolbarActions = [
-    {
-      title: 'Create',
-      icon: <Icons.Add />,
-      fn: React.useCallback(() => {
-        dialogs.open(({ close }) => <Create {...{ close }} />);
-      }, [dialogs.open]),
-    },
-  ];
-
-  const inlineActions = (user) => [
-    {
-      title: 'Delete',
-      icon: <Icons.Delete />,
-      fn: () => {
-        dialogs.open(({ close }) => <Delete {...{ user, close }} />);
-      },
-    },
-    // {
-    //  title: 'Edit',
-    //  icon: <Icons.Edit />,
-    //  fn: () => {
-    //  },
-    // },
-  ];
-
-  return (
+export default RT.composeComponent('Admin.Users',
+  RC.setPropTypes({
+    users: PT.object.isRequired,
+    roles: PT.object.isRequired,
+  }),
+  RT.withSuspense(() => (
     <Paper>
-      {dialogs.render()}
-      <Table.Toolbar heading="Users" actions={toolbarActions} />
-      <Table.Wrapper>
-        <MuiTable padding="dense">
-          <Table.Head columns={columns} ordering={ordering} withInlineActions />
-          <TableBody>
-            {ordering.ordered.map((i) => (
-              <TableRow hover key={i.username}>
-                {columns.map((col) => (
-                  <TableCell key={col.id} {...col.props}>
-                    {(col.getDisplay || R.identity)(col.getValue(i), i)}
-                  </TableCell>
-                ))}
-                <Table.InlineActions actions={inlineActions(i)} />
-              </TableRow>
-            ))}
-          </TableBody>
-        </MuiTable>
-      </Table.Wrapper>
+      <Table.Toolbar heading="Users" />
+      <Table.Progress />
     </Paper>
-  );
-};
+  )),
+  ({ users/* , roles: rolesP */ }) => {
+    // const roles = Cache.suspend(rolesP);
 
-const Placeholder = () => (
-  <Paper>
-    <Table.Toolbar heading="Users" />
-    <Table.Progress />
-  </Paper>
-);
+    const columns = React.useMemo(() => [
+      {
+        id: 'username',
+        label: 'Username',
+        getValue: R.prop('username'),
+        getDisplay: (v, u) => <Username admin={u.isAdmin}>{v}</Username>,
+        props: { component: 'th', scope: 'row' },
+      },
+      {
+        id: 'email',
+        label: 'Email',
+        getValue: R.prop('email'),
+      },
+      {
+        id: 'role',
+        label: 'Role',
+        getValue: () => null,
+        // TODO: dropdown
+        getDisplay: (v/* , u */) => <span>{v || '<None>'}</span>,
+      },
+      {
+        id: 'isActive',
+        label: 'Active',
+        getValue: R.prop('isActive'),
+        getDisplay: (v) => <Switch checked={v} />,
+      },
+      {
+        id: 'isAdmin',
+        label: 'Admin',
+        getValue: R.prop('isAdmin'),
+        getDisplay: (v) => <Switch checked={v} />,
+      },
+      // {
+      //   id: 'searchEnabled',
+      //   label: 'Search enabled',
+      //   getValue: () => true,
+      //   getDisplay: (v) => <Switch checked={v} />,
+      // },
+      {
+        id: 'dateJoined',
+        label: 'Date joined',
+        getValue: R.prop('dateJoined'),
+        getDisplay: (v) => <FormattedRelative value={v} />,
+      },
+      {
+        id: 'lastLogin',
+        label: 'Last login',
+        getValue: R.prop('lastLogin'),
+        getDisplay: (v) => <FormattedRelative value={v} />,
+      },
+    ], []);
 
-export default () => (
-  <React.Suspense fallback={<Placeholder />}>
-    <Users />
-  </React.Suspense>
-);
+    const rows = Cache.suspend(users);
+
+    const ordering = Table.useOrdering({ rows, column: columns[0] });
+    const dialogs = Dialogs.use();
+
+    const toolbarActions = [
+      {
+        title: 'Create',
+        icon: <Icons.Add />,
+        fn: React.useCallback(() => {
+          dialogs.open(({ close }) => <Create {...{ close }} />);
+        }, [dialogs.open]),
+      },
+    ];
+
+    const inlineActions = (user) => [
+      {
+        title: 'Delete',
+        icon: <Icons.Delete />,
+        fn: () => {
+          dialogs.open(({ close }) => <Delete {...{ user, close }} />);
+        },
+      },
+      // {
+      //  title: 'Edit',
+      //  icon: <Icons.Edit />,
+      //  fn: () => {
+      //  },
+      // },
+    ];
+
+    return (
+      <Paper>
+        {dialogs.render()}
+        <Table.Toolbar heading="Users" actions={toolbarActions} />
+        <Table.Wrapper>
+          <MuiTable padding="dense">
+            <Table.Head columns={columns} ordering={ordering} withInlineActions />
+            <TableBody>
+              {ordering.ordered.map((i) => (
+                <TableRow hover key={i.username}>
+                  {columns.map((col) => (
+                    <TableCell key={col.id} {...col.props}>
+                      {(col.getDisplay || R.identity)(col.getValue(i), i)}
+                    </TableCell>
+                  ))}
+                  <Table.InlineActions actions={inlineActions(i)} />
+                </TableRow>
+              ))}
+            </TableBody>
+          </MuiTable>
+        </Table.Wrapper>
+      </Paper>
+    );
+  });

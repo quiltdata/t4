@@ -24,6 +24,7 @@ import * as validators from 'utils/validators';
 
 import * as Form from './Form';
 import * as Table from './Table';
+import * as data from './data';
 
 
 const Mono = withStyles((t) => ({
@@ -70,7 +71,7 @@ const Create = RT.composeComponent('Admin.Roles.Create',
           body: JSON.stringify(values),
         })
           .then((res) => {
-            cache.patchOk(RolesResource, null, R.append(res));
+            cache.patchOk(data.RolesResource, null, R.append(res));
             push(`Role "${res.name}" created`);
             close();
           })
@@ -173,7 +174,7 @@ const Delete = RT.composeComponent('Admin.Roles.Delete',
           // ignore if role was not found
           if (APIConnector.HTTPError.is(e, 404, 'Role not found')) return;
           // put the role back into cache if it hasnt been deleted properly
-          cache.patchOk(RolesResource, null, R.append(role));
+          cache.patchOk(data.RolesResource, null, R.append(role));
           push(`Error deleting role "${role.name}"`);
           // eslint-disable-next-line no-console
           console.error('Error deleting role');
@@ -181,7 +182,7 @@ const Delete = RT.composeComponent('Admin.Roles.Delete',
           console.dir(e);
         });
       // optimistically remove the role from cache
-      cache.patchOk(RolesResource, null, R.reject(R.propEq('id', role.id)));
+      cache.patchOk(data.RolesResource, null, R.reject(R.propEq('id', role.id)));
     }, [role, close, req, cache, push]);
 
     return (
@@ -225,7 +226,7 @@ const Edit = RT.composeComponent('Admin.Roles.Edit',
           body: JSON.stringify(values),
         })
           .then((res) => {
-            cache.patchOk(RolesResource, null, R.map((r) =>
+            cache.patchOk(data.RolesResource, null, R.map((r) =>
               r.id === role.id ? res : r));
             close();
           })
@@ -313,80 +314,70 @@ const Edit = RT.composeComponent('Admin.Roles.Edit',
     );
   });
 
-const RolesResource = Cache.createResource({
-  name: 'Admin.Roles.roles',
-  fetch: ({ req }) => req({ endpoint: '/roles' }).then(R.prop('results')),
-  key: () => null,
-});
-
-const Roles = () => {
-  const req = APIConnector.use();
-  const rows = Cache.useData(RolesResource, { req }, { suspend: true });
-
-  const ordering = Table.useOrdering({ rows, column: columns[0] });
-  const dialogs = Dialogs.use();
-
-  const toolbarActions = [
-    {
-      title: 'Create',
-      icon: <Icons.Add />,
-      fn: React.useCallback(() => {
-        dialogs.open(({ close }) => <Create {...{ close }} />);
-      }, [dialogs.open]),
-    },
-  ];
-
-  const inlineActions = (role) => [
-    {
-      title: 'Delete',
-      icon: <Icons.Delete />,
-      fn: () => {
-        dialogs.open(({ close }) => <Delete {...{ role, close }} />);
-      },
-    },
-    {
-      title: 'Edit',
-      icon: <Icons.Edit />,
-      fn: () => {
-        dialogs.open(({ close }) => <Edit {...{ role, close }} />);
-      },
-    },
-  ];
-
-  return (
+export default RT.composeComponent('Admin.Roles',
+  RC.setPropTypes({
+    roles: PT.object.isRequired,
+  }),
+  RT.withSuspense(() => (
     <Paper>
-      {dialogs.render()}
-      <Table.Toolbar heading="Roles" actions={toolbarActions} />
-      <Table.Wrapper>
-        <MuiTable>
-          <Table.Head columns={columns} ordering={ordering} withInlineActions />
-          <TableBody>
-            {ordering.ordered.map((i) => (
-              <TableRow hover key={i.id}>
-                {columns.map((col) => (
-                  <TableCell key={col.id} {...col.props}>
-                    {(col.getDisplay || R.identity)(col.getValue(i))}
-                  </TableCell>
-                ))}
-                <Table.InlineActions actions={inlineActions(i)} />
-              </TableRow>
-            ))}
-          </TableBody>
-        </MuiTable>
-      </Table.Wrapper>
+      <Table.Toolbar heading="Roles" />
+      <Table.Progress />
     </Paper>
-  );
-};
+  )),
+  ({ roles }) => {
+    const rows = Cache.suspend(roles);
 
-const Placeholder = () => (
-  <Paper>
-    <Table.Toolbar heading="Roles" />
-    <Table.Progress />
-  </Paper>
-);
+    const ordering = Table.useOrdering({ rows, column: columns[0] });
+    const dialogs = Dialogs.use();
 
-export default () => (
-  <React.Suspense fallback={<Placeholder />}>
-    <Roles />
-  </React.Suspense>
-);
+    const toolbarActions = [
+      {
+        title: 'Create',
+        icon: <Icons.Add />,
+        fn: React.useCallback(() => {
+          dialogs.open(({ close }) => <Create {...{ close }} />);
+        }, [dialogs.open]),
+      },
+    ];
+
+    const inlineActions = (role) => [
+      {
+        title: 'Delete',
+        icon: <Icons.Delete />,
+        fn: () => {
+          dialogs.open(({ close }) => <Delete {...{ role, close }} />);
+        },
+      },
+      {
+        title: 'Edit',
+        icon: <Icons.Edit />,
+        fn: () => {
+          dialogs.open(({ close }) => <Edit {...{ role, close }} />);
+        },
+      },
+    ];
+
+    return (
+      <Paper>
+        {dialogs.render()}
+        <Table.Toolbar heading="Roles" actions={toolbarActions} />
+        <Table.Wrapper>
+          <MuiTable>
+            <Table.Head columns={columns} ordering={ordering} withInlineActions />
+            <TableBody>
+              {ordering.ordered.map((i) => (
+                <TableRow hover key={i.id}>
+                  {columns.map((col) => (
+                    <TableCell key={col.id} {...col.props}>
+                      {(col.getDisplay || R.identity)(col.getValue(i))}
+                    </TableCell>
+                  ))}
+                  <Table.InlineActions actions={inlineActions(i)} />
+                </TableRow>
+              ))}
+            </TableBody>
+          </MuiTable>
+        </Table.Wrapper>
+      </Paper>
+    );
+  });
