@@ -6,12 +6,12 @@ import json
 import os
 from tempfile import NamedTemporaryFile
 
-from jsonschema import Draft4Validator, ValidationError
 from nbconvert import HTMLExporter
 import nbformat
 import pyarrow.parquet as pq
 import requests
 
+from t4_lambda_shared.decorator import api, validate
 
 ALLOWED_ORIGINS = [
     'http://localhost:3000',
@@ -32,28 +32,14 @@ SCHEMA = {
     'additionalProperties': False
 }
 
-Draft4Validator.check_schema(SCHEMA)
-VALIDATOR = Draft4Validator(SCHEMA)
-
-def lambda_handler(event, _):
+@api(cors_origins=ALLOWED_ORIGINS)
+@validate(SCHEMA)
+def lambda_handler(params, _):
     """
     dynamically handle preview requests for bytes in S3
 
     caller must specify input_type (since there may be no file extension)
     """
-    # this weird-looking code is correct since event['queryStringParameters']
-    # will return a None if no query params
-    params = event['queryStringParameters'] or {}
-    headers = event['headers'] or {}
-
-    try:
-        VALIDATOR.validate(params)
-    except ValidationError as ex:
-        return {
-            "body": str(ex),
-            "statusCode": 400
-        }
-
     url = params['url']
     input_type = params.get('input')
 
@@ -119,16 +105,5 @@ def lambda_handler(event, _):
     response_headers = {
         "Content-Type": 'application/json'
     }
-    if headers.get('origin') in ALLOWED_ORIGINS:
-        response_headers.update({
-            'access-control-allow-origin': '*',
-            'access-control-allow-methods': 'GET',
-            'access-control-allow-headers': '*',
-            'access-control-max-age': 86400
-        })
 
-    return {
-        "statusCode": 200,
-        "body": json.dumps(ret_val),
-        "headers": response_headers
-    }
+    return 200, json.dumps(ret_val), response_headers

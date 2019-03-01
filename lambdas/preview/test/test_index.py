@@ -12,7 +12,7 @@ MOCK_ORIGIN = 'http://localhost:3000'
 
 BASE_DIR = pathlib.Path(__file__).parent / 'data'
 
-# pylint: disable=no-member
+# pylint: disable=no-member,invalid-sequence-index
 class TestIndex():
     """Class to test various inputs to the main indexing function"""
 
@@ -27,10 +27,11 @@ class TestIndex():
 
     def test_bad(self):
         """send a known bad event (no input query parameter)"""
-        event = self._make_event({'url': self.FILE_URL})
+        event = self._make_event({'url': self.FILE_URL}, {'origin': MOCK_ORIGIN})
         resp = lambda_handler(event, None)
         assert resp['statusCode'] == 400, "Expected 400 on event without 'input' query param"
         assert resp['body'], 'Expected explanation for 400'
+        assert resp['headers']['access-control-allow-origin'] == '*'
 
     @responses.activate
     def test_ipynb(self):
