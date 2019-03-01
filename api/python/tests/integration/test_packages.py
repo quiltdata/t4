@@ -11,7 +11,7 @@ import pytest
 import t4
 from t4 import Package
 from t4.util import (QuiltException, APP_NAME, APP_AUTHOR, BASE_DIR, BASE_PATH,
-                     validate_package_name, parse_file_url)
+                     validate_package_name, parse_file_url, fix_url)
 
 from ..utils import QuiltTestCase
 
@@ -369,11 +369,6 @@ class PackageTest(QuiltTestCase):
         pkg = pkg.set_dir('/','foo_dir/baz_dir/')
         # todo nested at set_dir site or relative to set_dir path.
         assert (bazdir / 'baz').resolve().as_uri() == pkg['baz'].physical_keys[0]
-
-        pkg = Package()
-        pkg = pkg.set_dir('my_keys', 'foo_dir/baz_dir/')
-        # todo nested at set_dir site or relative to set_dir path.
-        assert (bazdir / 'baz').resolve().as_uri() == pkg['my_keys/baz'].physical_keys[0]
 
         # Verify ignoring files in the presence of a dot-quiltignore
         with open('.quiltignore', 'w') as fd:
