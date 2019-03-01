@@ -102,8 +102,9 @@ by you in the following step.
 
 ![](./imgs/outputs.png)
 
-1. If desired, set a `CNAME` record with your DNS service that points to your CloudFrontDomain. The `CNAME` must also be present in your [CORS policy](#pre-requisites). Now users can access the T4 catalog at your custom
-`CNAME`.
+1. Set a `CNAME` record with your DNS service that points to your CloudFrontDomain. The `CNAME` must also be present in your [CORS policy](#pre-requisites). Now users can access the T4 catalog at your custom
+`CNAME`. 
+2. Additionally, set a `CNAME` record with your DNS service that points to your ELB Endpoint (this is in the output of the Cloud Formation Stack). This is required for users to be able to login and register with the catalogue.
 
 ## Federations and Bucket Config
 
