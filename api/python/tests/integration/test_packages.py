@@ -172,14 +172,14 @@ def test_browse_package_from_registry():
         pkgmock.return_value = pkg
         top_hash = pkg.top_hash()
 
-        # default registry load
-        pkg = Package.browse(top_hash=top_hash)
+        # local registry load
+        pkg = Package.browse(registry='local', top_hash=top_hash)
         assert '{}/.quilt/packages/{}'.format(registry, top_hash) \
                 in [x[0][0] for x in pkgmock.call_args_list]
 
         pkgmock.reset_mock()
 
-        pkg = Package.browse('Quilt/nice-name', top_hash=top_hash)
+        pkg = Package.browse('Quilt/nice-name', registry='local', top_hash=top_hash)
         assert '{}/.quilt/packages/{}'.format(registry, top_hash) \
                 in [x[0][0] for x in pkgmock.call_args_list]
 
@@ -187,7 +187,7 @@ def test_browse_package_from_registry():
 
         with patch('t4.packages.get_bytes') as dl_mock:
             dl_mock.return_value = (top_hash.encode('utf-8'), None)
-            pkg = Package.browse('Quilt/nice-name')
+            pkg = Package.browse('Quilt/nice-name', registry='local')
             assert registry + '/.quilt/named_packages/Quilt/nice-name/latest' \
                     == dl_mock.call_args_list[0][0][0]
 
@@ -669,8 +669,8 @@ def test_diff():
     new_pkg = new_pkg.set('foo', test_file_name)
     top_hash = new_pkg.build("Quilt/Test")
 
-    p1 = Package.browse('Quilt/Test')
-    p2 = Package.browse('Quilt/Test')
+    p1 = Package.browse('Quilt/Test', registry='local')
+    p2 = Package.browse('Quilt/Test', registry='local')
     assert p1.diff(p2) == ([], [], [])
 
 
@@ -894,7 +894,7 @@ def test_manifest():
     top_hash = pkg.build()
     manifest = list(pkg.manifest)
 
-    pkg2 = Package.browse(top_hash=top_hash)
+    pkg2 = Package.browse(top_hash=top_hash, registry='local')
     assert list(pkg.manifest) == list(pkg2.manifest)
 
 

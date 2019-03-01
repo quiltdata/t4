@@ -349,7 +349,12 @@ class Package(object):
             top_hash(string): top hash of package version to load
         """
         if registry is None:
-            # use default remote registry if present
+            registry = get_from_config('default_remote_registry')
+            if registry is None:
+                raise QuiltException("No registry specified and no default remote "
+                                     "registry configured. Please specify a registry "
+                                     "or configure a default remote registry with t4.config")
+        elif registry == 'local':
             registry = get_from_config('default_local_registry')
 
         registry_prefix = get_package_registry(fix_url(registry) if registry else None)
