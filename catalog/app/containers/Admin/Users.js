@@ -9,7 +9,9 @@ import Button from '@material-ui/core/Button';
 import DialogActions from '@material-ui/core/DialogActions';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogTitle from '@material-ui/core/DialogTitle';
+import MenuItem from '@material-ui/core/MenuItem';
 import Paper from '@material-ui/core/Paper';
+import Select from '@material-ui/core/Select';
 import Switch from '@material-ui/core/Switch';
 import MuiTable from '@material-ui/core/Table';
 import TableBody from '@material-ui/core/TableBody';
@@ -29,15 +31,6 @@ import * as Form from './Form';
 import * as Table from './Table';
 import * as data from './data';
 
-
-/*
-user mngmnt:
-create: POST /api/users/create { username, email }
-delete: POST /api/users/delete { username } (disabled)
-change admin: POST /api/users/{grant,revoke}_admin { username }
-change active: POST /api/users/{enable,disable} { username }
-change role: POST /api/users/set_role { username, role }
-*/
 
 const Mono = withStyles((t) => ({
   root: {
@@ -211,7 +204,7 @@ const Delete = RT.composeComponent('Admin.Users.Delete',
       <React.Fragment>
         <DialogTitle>Delete a user</DialogTitle>
         <DialogContent>
-          You are about to delete the &quot;{user.username}&quot; user.
+          You are about to delete user &quot;{user.username}&quot;.
           This operation is irreversible.
         </DialogContent>
         <DialogActions>
@@ -258,6 +251,31 @@ const Username = RT.composeComponent('Admin.Users.Username',
     />
   ));
 
+const Editable = ({ value, onChange, children }) => {
+  const [busy, setBusy] = React.useState(false);
+  const [savedValue, saveValue] = React.useState(value);
+  const change = React.useCallback((newValue) => {
+    if (savedValue === newValue) return;
+    if (busy) return;
+    setBusy(true);
+    saveValue(newValue);
+    Promise.resolve(onChange(newValue))
+      .then(() => {
+        setBusy(false);
+      })
+      .catch((e) => {
+        saveValue(savedValue);
+        setBusy(false);
+        throw e;
+      });
+  }, [onChange, busy, setBusy, savedValue, saveValue]);
+
+  return children({ change, busy, value: savedValue });
+};
+
+// not a valid role name
+const emptyRole = '<None>';
+
 export default RT.composeComponent('Admin.Users',
   RC.setPropTypes({
     users: PT.object.isRequired,
@@ -269,8 +287,70 @@ export default RT.composeComponent('Admin.Users',
       <Table.Progress />
     </Paper>
   )),
-  ({ users/* , roles: rolesP */ }) => {
-    // const roles = Cache.suspend(rolesP);
+  ({ users, roles: rolesP }) => {
+    const rows = Cache.suspend(users);
+    const roles = Cache.suspend(rolesP);
+
+    const req = APIConnector.use();
+    const cache = Cache.use();
+    const { push } = Notifications.use();
+
+    const setRole = React.useCallback((username, role) =>
+      req({
+        method: 'POST',
+        endpoint: '/users/set_role',
+        body: JSON.stringify({ username, role }),
+      })
+        .then(() => {
+          cache.patchOk(data.UsersResource, null, R.map((u) =>
+            u.username === username ? { ...u, role } : u));
+        })
+        .catch((e) => {
+          push(`Error changing role for "${username}"`);
+          // eslint-disable-next-line no-console
+          console.error('Error chaging role', { username, role });
+          // eslint-disable-next-line no-console
+          console.dir(e);
+          throw e;
+        }), [req, cache, push]);
+
+    const setIsActive = React.useCallback((username, active) =>
+      req({
+        method: 'POST',
+        endpoint: `/users/${active ? 'enable' : 'disable'}`,
+        body: JSON.stringify({ username }),
+      })
+        .then(() => {
+          cache.patchOk(data.UsersResource, null, R.map((u) =>
+            u.username === username ? { ...u, isActive: active } : u));
+        })
+        .catch((e) => {
+          push(`Error ${active ? '' : 'de'}activating "${username}"`);
+          // eslint-disable-next-line no-console
+          console.error('Error (de)activating user', { username, active });
+          // eslint-disable-next-line no-console
+          console.dir(e);
+          throw e;
+        }), [req, cache, push]);
+
+    const setIsAdmin = React.useCallback((username, admin) =>
+      req({
+        method: 'POST',
+        endpoint: `/users/${admin ? 'grant' : 'revoke'}_admin`,
+        body: JSON.stringify({ username }),
+      })
+        .then(() => {
+          cache.patchOk(data.UsersResource, null, R.map((u) =>
+            u.username === username ? { ...u, isAdmin: admin } : u));
+        })
+        .catch((e) => {
+          push(`Error ${admin ? 'granting' : 'revoking'} admin status for "${username}"`);
+          // eslint-disable-next-line no-console
+          console.error('Error changing user admin status', { username, admin });
+          // eslint-disable-next-line no-console
+          console.dir(e);
+          throw e;
+        }), [req, cache, push]);
 
     const columns = React.useMemo(() => [
       {
@@ -288,21 +368,64 @@ export default RT.composeComponent('Admin.Users',
       {
         id: 'role',
         label: 'Role',
-        getValue: () => null,
-        // TODO: dropdown
-        getDisplay: (v/* , u */) => <span>{v || '<None>'}</span>,
+        getValue: R.prop('role'),
+        getDisplay: (v, u) => (
+          <Editable
+            value={v}
+            onChange={(role) => setRole(u.username, role)}
+          >
+            {({ change, busy, value }) => (
+              <Select
+                value={value || emptyRole}
+                onChange={(e) => change(e.target.value)}
+                disabled={busy}
+                renderValue={R.identity}
+              >
+                {roles.map((r) => (
+                  <MenuItem value={r.name} key={r.id}>{r.name}</MenuItem>
+                ))}
+              </Select>
+            )}
+          </Editable>
+        ),
       },
       {
         id: 'isActive',
         label: 'Active',
         getValue: R.prop('isActive'),
-        getDisplay: (v) => <Switch checked={v} />,
+        getDisplay: (v, u) => (
+          <Editable
+            value={v}
+            onChange={(active) => setIsActive(u.username, active)}
+          >
+            {({ change, busy, value }) => (
+              <Switch
+                checked={value}
+                onChange={(e) => change(e.target.checked)}
+                disabled={busy}
+              />
+            )}
+          </Editable>
+        ),
       },
       {
         id: 'isAdmin',
         label: 'Admin',
         getValue: R.prop('isAdmin'),
-        getDisplay: (v) => <Switch checked={v} />,
+        getDisplay: (v, u) => (
+          <Editable
+            value={v}
+            onChange={(admin) => setIsAdmin(u.username, admin)}
+          >
+            {({ change, busy, value }) => (
+              <Switch
+                checked={value}
+                onChange={(e) => change(e.target.checked)}
+                disabled={busy}
+              />
+            )}
+          </Editable>
+        ),
       },
       // {
       //   id: 'searchEnabled',
@@ -323,8 +446,6 @@ export default RT.composeComponent('Admin.Users',
         getDisplay: (v) => <FormattedRelative value={v} />,
       },
     ], []);
-
-    const rows = Cache.suspend(users);
 
     const ordering = Table.useOrdering({ rows, column: columns[0] });
     const dialogs = Dialogs.use();
