@@ -15,10 +15,10 @@ def api(cors_origins=[]):
             headers = event['headers'] or {}
             try:
                 status, body, response_headers = f(params, headers)
-            except Exception:
+            except Exception as ex:
                 traceback.print_exc()
                 status = 500
-                body = 'Internal Server Error'
+                body = str(ex)
                 response_headers = {
                     'Content-Type': 'text/plain'
                 }
