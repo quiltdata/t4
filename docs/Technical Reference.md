@@ -2,110 +2,102 @@ This page provides a technical reference on certain advanced configuration optio
 
 ## Deploying the T4 Catalog on AWS
 
-The following section uses AWS CloudFormation to deploy and manage the resources required to run a T4 bucket and catalog in your own VPC.
+The following instructions use CloudFormation to install T4 on a bucket in your AWS account.
 
+<!--
 ### Known limitations
 
 * Supports only one bucket
 * Search is only enabled for *new objects* uploaded through T4's Python API
 * Any IAM users with `ESFullAccess` or `AdministratorAccess` can invoke ElasticSearch over your bucket
+-->
 
-### Pre-requisites
+1. Ensure you have sufficient permissions to proceed. The `AdministratorAccess` policy is sufficient.
+2. If you are going to use Quilt T4 with an existing bucket, make sure that your target bucket has [object versioning enabled](https://docs.aws.amazon.com/AmazonS3/latest/user-guide/enable-versioning.html), as well as the following [CORS policy](https://docs.aws.amazon.com/AmazonS3/latest/dev/cors.html#how-do-i-enable-cors):
 
-1. *Sufficient permissions* - Creating a CloudFormation stack requires sufficient permissions, such as the
-`AdministratorAccess` policy
-1. *A properly configured S3 bucket* where you will search, store, and browse data with Quilt. It is **highly recommended** that you back up said S3 bucket before proceeding.
-   * [Enable object versioning](https://docs.aws.amazon.com/AmazonS3/latest/user-guide/enable-versioning.html) on the bucket
-   * Set a [CORS policy](https://docs.aws.amazon.com/AmazonS3/latest/dev/cors.html#how-do-i-enable-cors), similar to the following, on the bucket:
+    ```xml
+    <?xml version="1.0" encoding="UTF-8"?>
+    <CORSConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+    <CORSRule>
+        <AllowedOrigin>https://yourcompanydomain.com</AllowedOrigin>
+        <AllowedMethod>GET</AllowedMethod>
+        <AllowedMethod>HEAD</AllowedMethod>
+        <AllowedMethod>PUT</AllowedMethod>
+        <AllowedMethod>POST</AllowedMethod>
+        <AllowedHeader>*</AllowedHeader>
+        <MaxAgeSeconds>3000</MaxAgeSeconds>
+    </CORSRule>
+    </CORSConfiguration>
+    ```
 
-      ```xml
-      <?xml version="1.0" encoding="UTF-8"?>
-      <CORSConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
-      <CORSRule>
-          <AllowedOrigin>https://yourcompanydomain.com</AllowedOrigin>
-          <AllowedMethod>GET</AllowedMethod>
-          <AllowedMethod>HEAD</AllowedMethod>
-          <AllowedMethod>PUT</AllowedMethod>
-          <AllowedMethod>POST</AllowedMethod>
-          <AllowedHeader>*</AllowedHeader>
-          <MaxAgeSeconds>3000</MaxAgeSeconds>
-      </CORSRule>
-      </CORSConfiguration>
-      ```
+    > Note: bucket CORS does not grant permissions of any kind.
+    > `AllowedMethod` actions are only available to IAM users or roles with sufficient permissions.
 
-      The above policy makes it possible for your users to browse buckets on the web.
-      > Note: bucket CORS does not grant permissions of any kind.
-      > `AllowedMethod`s are only callable by IAM users or roles with sufficient permissions.
-1. *ARN for server certificate* - We require HTTPS for access to the Quilt web catalog. You may use the CloudFront domain output by CloudFormation. Alternatively, if you wish to use a custom domain, create or upload an [SSL/TLS server certificate](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_server-certs.html).
-1. *ARNs for search users* - Only select users that you specifcy can search S3. Search users can view contents for any bucket object, so only add users that you trust to this list.
+    Note the `AllowedOrigin` field. This should be parameterized with the domain you will host your catalog from.
 
-### Permissions
+    If you are going to use Quilt T4 with a new bucket, create the bucket now, and set these policies as part of the flow for bucket creation.
 
-Your users use their IAM credentials to access T4 on the web and in Python.
+3. Create, or ensure you have already created, an [AWS Certificate](https://aws.amazon.com/certificate-manager/) which maps to the public domain name you want your catalog to use. For example, if you want your catalog to be publicly accessible from `t4.foo.com`, you will need to have a certificate for `t4.foo.com` or `*.foo.com` registered in your account.
 
-Your designated Search users will be able *to search and preview file contents
-on anything in your T4 bucket*. **Only enable search for users who should be
-able to see the entire bucket contents**.
+   An AWS certificate is just an Amazon-issued HTTPS certificate, and it's a necessity because it enables HTTPS access to your catalog. If you have not created one, [step through the flow for creating one now](https://docs.aws.amazon.com/acm/latest/userguide/gs-acm-request-public.html). If you already have a certificate for your website, but it's not an AWS-issued certificate, see the instructions on [importing an external certificate into AWS](https://docs.aws.amazon.com/acm/latest/userguide/import-certificate.html).
 
-### CloudFormation
+4. Go to `Services > CloudFormation > Create stack` in your AWS Console.
 
-The following instructions use CloudFormation to install T4 on a bucket in
-your AWS account.
+    ![](./imgs/start.png)
 
-1. Log in to your AWS console
+5. Click "Upload a template to Amazon S3" and select the `t4-deployment.yaml` file provided to you by Quilt. Click Next.
 
-1. Go to Services > CloudFormation > Create stack
+6. You should now be at the stack parameters screen. This is where you will fill out of all of the configurable details of your Quilt T4 instance. These are, in order:
 
-![](./imgs/start.png)
-  
-1. Click "Upload a template to Amazon S3" and select `t4.yaml`, provided to
-you by Quilt
-1. Click Next
-1. Fill in Stack name and Parameters.
+    * **Stack name**&mdash;CloudFormation will deploy your T4 catalog instance and all of its associated services as a "stack" with this name. This name is currently only used for administering your resources; it will not be seen by end users.
+    * **AdminEmail**, **AdminPassword**, **AdminUsername**&mdash;This is the account login for the initial catalog administrator account. Only admins can configure catalog permissions. The initial admin account can promote other accounts to admin.
+    * **BucketDescription**, **BucketIcon**, **BucketTitle**&mdash;A bucket title and description, and a URL pointing to a (preferably square) image (in any reasonable image format) that will be used as the bucket logo. These fields are exposed to users in the catalog selection dropdown menu:
+    ![](./imgs/buckets_dropdown.png)
 
-![](./imgs/params.jpg)
+      > These values cannot be updated after-the-fact using AWS CloudFormation. Instead, see the instructions in the section "Federations and bucket config".
 
-* **BucketDescription** - This is a short explanation of your bucket that will be displayed alongside its icon and title in the dropdown menu at the top-left of the navigator.
+    * **CertificateArn**&mdash;The [ARN](https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html) associated with the HTTP certificate you will use for HTTPS access to the catalog. See step 3 for instructions on getting one.
+    * **ConfigBucketName**&mdash;Name of a new S3 bucket that will be created automatically by the stack. This bucket will be used to store certain configuration files associated with your catalog instance. The bucket name must be globally unique, e.g. it cannot point to a bucket that already exists (even if that bucket is in your account).
 
-* **BucketIcon** - This is a URL that points to a square icon that will display as part of your bucket's entry in the dropdown manu.
+      We recommend a bucket name ending in `-config`, to make it more obvious that this bucket is configuration-only.
+    * **DBPassword**&mdash;The auth database password. This doesn't need to be very secure because it will not be publicly accessible. You should only need to access the auth database directly in unusual circumstances.
+    * **DefaultSender**, **MixPanelToken**, **ProductCode**&mdash;These are Quilt-set fields with autogenerated values that can be safely ignored.
+    * **QuiltBucketName**&mdash;Name of the S3 bucket that this catalog instance will be based out of. This should be the same S3 bucket that you configured for access authorization in step 2.
+    * **QuiltWebHost**&mdash;The URL that your catalog will be served out of. Must pattern match the AWS certificate you provide to the `CertificateARN` field. For example, an AWS certificate for `*.foo.com` allows for `t4.foo.com` or `catalog.foo.com` as your `QuiltWebHost`, but not `t4.notfoo.com`.
+    * **RegistryHost**&mdash;The URL that the T4 auth service will be served out of. As with `QuiltWebHost`, this field must pattern match the AWS certificate you provide in `CertificateARN`. It may not be the same value as `QuiltWebHost`.
 
-* **BucketTitle** - Human-friendly title for your bucket to be displayed in the dropdown menu.
+      We recommend appending `-registry` to namespace you set in `QuiltWebHost`. For example, `catalog.foo.com` and `catalog-registry.foo.com`.
+    * **SecretKey**&mdash;Used for session authorization. Provide a random value to this field (e.g. by running `run uuidgen | sha256sum` in the command line).
+    * **SentryDNS** &mdash; Set this field to "`-`".
+    * **Smtphost**, **Smtpassword**, **Smtpusername**&mdash;Log-in information for an SMTP mail server. These fields are necessary because the T4 catalog will need to send (very occassional) service emails on your behalf.
+    * **Users**&mdash;Comma-separated list of ARNs of IAM users and/or IAM roles that will be able to perform searches in the bucket.
 
-* **CertificateArn** - This is the arn for your AWS-managed SSL certificate for your QuiltWebHost domain. Use AWS Certificate Manager to set this up.
+      Note that users with search access can see the entire contents of the bucket. Use with care.
 
-* **ConfigBucketName** - An unused bucket name for the template to create and populate with your navigator's configuration.
+7. Click Next.
+8. On the Options screen that follows, go to the "Termination Protection" section in "Advanced" and click "Enable".
 
-* **QuiltBucketName** - The name of an existing S3 bucket you want to use with T4. It will store your T4 data.
+    ![](./imgs/term_protect.png)
 
-* **QuiltWebHost** - The URL you want to use to access your navigator on the Internet. You must have a valid SSL certificate for this domain in `CertificateArn` if you want to use https.
+    This protects the stack deployment pipeline from accidental deletion. Click Next.
 
-* **Users** - A non-empty comma-separated list of IAM User ARNs that will grant permission to those users to search. A good first entry in this list is your own ARN, which you can find in IAM.
+9. On the conformation screen, check the box asking you to acknowledge that CloudFormation may create IAM roles, then click Create.
 
-* Notes - Updating BucketIcon, BucketDescription, or BucketTitle will not update your navigator configuration -- these parameters are only checked when a stack is being created at this time. You'll need to update your federation.json in your config bucket to update these values.
+    ![](./imgs/finish.png)
 
-1. Click Next
-1. On the Options screen, Under the Advanced section, next to Termination Protection, select the Enable check box. This protects the stack deployment pipeline from deletion. Then continue by clicking Next
+    Click Create.
 
-![](./imgs/term_protect.png)
+10. CloudFormation typically takes around 30 minutes to spin up your stack. Once that is done, you should see `CREATE_COMPLETE` as the Status for your CloudFormation stack.
 
-1. Acknowledge that CloudFormation may create IAM roles
+    ![](./imgs/outputs.png)
 
-![](./imgs/finish.png)
+11. Select the stack and open the Outputs tab. Copy the `CloudFrontDomain` value&mdash;this is your CloudFront origin.
 
-1. Click Create (typically takes 30 minutes to complete)
+12. Set a `CNAME` record with your DNS service that points to your `CloudFrontDomain`. Double check that this the `CloudFrontDomain` value matches the `AllowedOrigin` value in the CORS policy you set in step 1.
 
-1. You should see `CREATE_COMPLETE` as the Status for your CloudFormation stack.
-Select the stack and open the Outputs tab. The Value of `CloudFrontDomain`
-is your CloudFront origin. Depending on your S3 bucket's [CORS policy](#pre-requisites)
-your web catalog is available at the CloudFront and/or the `CNAME` set
-by you in the following step.
+If all went well, your catalog should now be available and accessible.
 
-![](./imgs/outputs.png)
-
-1. If desired, set a `CNAME` record with your DNS service that points to your CloudFrontDomain. The `CNAME` must also be present in your [CORS policy](#pre-requisites). Now users can access the T4 catalog at your custom
-`CNAME`.
-
-## Federations and Bucket Config
+## Federations and bucket config
 
 In this section we will discuss how you can configure your catalog instance using _federations_ and _bucket config_.
 
