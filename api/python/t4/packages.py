@@ -441,8 +441,15 @@ class Package(object):
         """
         # TODO: do this with improved parallelism? connections etc. could be reused
         nice_dest = fix_url(dest).rstrip('/')
+
+        file_list = []
         for logical_key, entry in self.walk():
-            entry.fetch('{}/{}'.format(nice_dest, quote(logical_key)))
+            physical_key = _to_singleton(entry.physical_keys)
+            new_physical_key = f'{nice_dest}/{logical_key}'
+            entry_meta = entry.meta
+            file_list.append((physical_key, new_physical_key, entry_meta))
+
+        copy_file_list(file_list)
 
     def keys(self):
         """
