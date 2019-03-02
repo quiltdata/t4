@@ -23,7 +23,7 @@ To make a remote package and all of its data available locally, `install` it.
 import t4
 p = t4.Package.install(
     "username/packagename",
-    registry="s3://your-bucket",
+    "s3://your-bucket",
 )
 ```
 
@@ -61,7 +61,7 @@ import t4
 p  = t4.Package.browse("username/packagename")
 
 # load a package manifest from a remote registry
-p = t4.Package.browse("username/packagename", registry="s3://your-bucket")
+p = t4.Package.browse("username/packagename", "s3://your-bucket")
 ```
 
 `browse` is advantageous when you don't want to download everything in a package at once. For example if you just want to look at a package's metadata.
