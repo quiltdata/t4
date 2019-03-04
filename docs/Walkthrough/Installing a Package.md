@@ -57,11 +57,14 @@ An alternative to `install` is `browse`. `browse` downloads a package manifest w
 ```python
 import t4
 
-# load a package manifest from the local registry
+# load a package manifest from a remote registry
+p  = t4.Package.browse("username/packagename", "s3://your-bucket")
+
+# load a package manifest from the default remote registry
 p  = t4.Package.browse("username/packagename")
 
-# load a package manifest from a remote registry
-p = t4.Package.browse("username/packagename", "s3://your-bucket")
+# load a package manifest from the local registry
+p = t4.Package.browse("username/packagename", "local")
 ```
 
 `browse` is advantageous when you don't want to download everything in a package at once. For example if you just want to look at a package's metadata.
