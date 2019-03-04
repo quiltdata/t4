@@ -2,7 +2,7 @@ This page provides a technical reference on certain advanced configuration optio
 
 ## Deploying the T4 Catalog on AWS
 
-The following instructions use CloudFormation to install T4 on a bucket in your AWS account.
+The following instructions use Cloudformation to deploy T4 services to your private AWS account.
 
 <!--
 ### Known limitations
@@ -19,7 +19,7 @@ The following instructions use CloudFormation to install T4 on a bucket in your 
     <?xml version="1.0" encoding="UTF-8"?>
     <CORSConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
     <CORSRule>
-        <AllowedOrigin>https://yourcompanydomain.com</AllowedOrigin>
+        <AllowedOrigin>$YOURCOMPANYDOMAIN.COM</AllowedOrigin>
         <AllowedMethod>GET</AllowedMethod>
         <AllowedMethod>HEAD</AllowedMethod>
         <AllowedMethod>PUT</AllowedMethod>
@@ -33,7 +33,7 @@ The following instructions use CloudFormation to install T4 on a bucket in your 
     > Note: bucket CORS does not grant permissions of any kind.
     > `AllowedMethod` actions are only available to IAM users or roles with sufficient permissions.
 
-    Note the `AllowedOrigin` field. This should be parameterized with the domain you will host your catalog from.
+    Note the `AllowedOrigin` field. This should be parameterized with the domain you will host your catalog from. For example, `https://yourcompany.com`.
 
     If you are going to use Quilt T4 with a new bucket, create the bucket now, and set these policies as part of the flow for bucket creation.
 
@@ -67,8 +67,8 @@ The following instructions use CloudFormation to install T4 on a bucket in your 
     * **RegistryHost**&mdash;The URL that the T4 auth service will be served out of. As with `QuiltWebHost`, this field must pattern match the AWS certificate you provide in `CertificateARN`. It may not be the same value as `QuiltWebHost`.
 
       We recommend appending `-registry` to namespace you set in `QuiltWebHost`. For example, `catalog.foo.com` and `catalog-registry.foo.com`.
-    * **SecretKey**&mdash;Used for session authorization. Provide a random value to this field (e.g. by running `run uuidgen | sha256sum` in the command line).
-    * **SentryDNS** &mdash; Set this field to "`-`".
+    * **SecretKey**&mdash;Used for session authorization. Provide a random value to this field (e.g. by running `uuidgen | sha256sum` in the command line).
+    * **SentryDSN** &mdash; Set this field to a single dash: `-`.
     * **Smtphost**, **Smtpassword**, **Smtpusername**&mdash;Log-in information for an SMTP mail server. These fields are necessary because the T4 catalog will need to send (very occassional) service emails on your behalf.
     * **Users**&mdash;Comma-separated list of ARNs of IAM users and/or IAM roles that will be able to perform searches in the bucket.
 
@@ -81,7 +81,7 @@ The following instructions use CloudFormation to install T4 on a bucket in your 
 
     This protects the stack deployment pipeline from accidental deletion. Click Next.
 
-9. On the conformation screen, check the box asking you to acknowledge that CloudFormation may create IAM roles, then click Create.
+9. On the confirmation screen, check the box asking you to acknowledge that CloudFormation may create IAM roles, then click Create.
 
     ![](./imgs/finish.png)
 
