@@ -212,6 +212,11 @@ def test_browse_package_from_registry():
         assert '{}/.quilt/packages/{}'.format(remote_registry, top_hash) \
                 in [x[0][0] for x in pkgmock.call_args_list]
 
+        # default remote registry failure case
+        with patch('t4.packages.get_from_config', return_value=None):
+            with pytest.raises(QuiltException):
+                Package.browse('Quilt/nice-name')
+
 def test_local_install(tmpdir):
     """Verify that installing from a local package works as expected."""
     with patch('t4.packages.get_from_config') as get_config_mock, \
