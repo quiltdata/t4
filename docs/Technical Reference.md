@@ -2,18 +2,11 @@ This page provides a technical reference on certain advanced configuration optio
 
 ## Deploying the T4 Catalog on AWS
 
-The following instructions use Cloudformation to deploy T4 services to your private AWS account.
-
-<!--
-### Known limitations
-
-* Supports only one bucket
-* Search is only enabled for *new objects* uploaded through T4's Python API
-* Any IAM users with `ESFullAccess` or `AdministratorAccess` can invoke ElasticSearch over your bucket
--->
+The following instructions use CloudFormation to deploy T4 services to your private AWS account.
 
 1. Ensure you have sufficient permissions to proceed. The `AdministratorAccess` policy is sufficient.
-2. If you are going to use Quilt T4 with an existing bucket, make sure that your target bucket has [object versioning enabled](https://docs.aws.amazon.com/AmazonS3/latest/user-guide/enable-versioning.html), as well as the following [CORS policy](https://docs.aws.amazon.com/AmazonS3/latest/dev/cors.html#how-do-i-enable-cors):
+2. If you are going to use Quilt T4 with an existing bucket, it is recommended that you first back up your bucket.
+3. If you are going to use Quilt T4 with an existing bucket, make sure that your target bucket has [object versioning enabled](https://docs.aws.amazon.com/AmazonS3/latest/user-guide/enable-versioning.html), as well as the following [CORS policy](https://docs.aws.amazon.com/AmazonS3/latest/dev/cors.html#how-do-i-enable-cors):
 
     ```xml
     <?xml version="1.0" encoding="UTF-8"?>
@@ -37,17 +30,17 @@ The following instructions use Cloudformation to deploy T4 services to your priv
 
     If you are going to use Quilt T4 with a new bucket, create the bucket now, and set these policies as part of the flow for bucket creation.
 
-3. Create, or ensure you have already created, an [AWS Certificate](https://aws.amazon.com/certificate-manager/) which maps to the public domain name you want your catalog to use. For example, if you want your catalog to be publicly accessible from `t4.foo.com`, you will need to have a certificate for `t4.foo.com` or `*.foo.com` registered in your account.
+4. Create, or ensure you have already created, an [AWS TLS Certificate](https://aws.amazon.com/certificate-manager/) which maps to the public domain name you want your catalog to use. For example, if you want your catalog to be publicly accessible from `t4.foo.com`, you will need to have a certificate for `t4.foo.com` or `*.foo.com` registered in your account.
 
-   An AWS certificate is just an Amazon-issued HTTPS certificate, and it's a necessity because it enables HTTPS access to your catalog. If you have not created one, [step through the flow for creating one now](https://docs.aws.amazon.com/acm/latest/userguide/gs-acm-request-public.html). If you already have a certificate for your website, but it's not an AWS-issued certificate, see the instructions on [importing an external certificate into AWS](https://docs.aws.amazon.com/acm/latest/userguide/import-certificate.html).
+   An AWS certificate is an Amazon-issued HTTPS certificate, created via the [AWS Certificate Manager service](https://aws.amazon.com/certificate-manager/), and it's a necessity because it enables HTTPS access to your catalog. If you have not created one, [step through the flow for creating one now](https://docs.aws.amazon.com/acm/latest/userguide/gs-acm-request-public.html). If you already have a certificate for your website, but it's not an AWS-issued certificate, see the instructions on [importing an external certificate into AWS](https://docs.aws.amazon.com/acm/latest/userguide/import-certificate.html).
 
-4. Go to `Services > CloudFormation > Create stack` in your AWS Console.
+5. Go to `Services > CloudFormation > Create stack` in your AWS Console.
 
     ![](./imgs/start.png)
 
-5. Click "Upload a template to Amazon S3" and select the `t4-deployment.yaml` file provided to you by Quilt. Click Next.
+6. Click "Upload a template to Amazon S3" and select the `t4-deployment.yaml` file provided to you by Quilt. Click Next.
 
-6. You should now be at the stack parameters screen. This is where you will fill out of all of the configurable details of your Quilt T4 instance. These are, in order:
+7. You should now be at the stack parameters screen. This is where you will fill out of all of the configurable details of your Quilt T4 instance. These are, in order:
 
     * **Stack name**&mdash;CloudFormation will deploy your T4 catalog instance and all of its associated services as a "stack" with this name. This name is currently only used for administering your resources; it will not be seen by end users.
     * **AdminEmail**, **AdminPassword**, **AdminUsername**&mdash;This is the account login for the initial catalog administrator account. Only admins can configure catalog permissions. The initial admin account can promote other accounts to admin.
@@ -69,33 +62,40 @@ The following instructions use Cloudformation to deploy T4 services to your priv
       We recommend appending `-registry` to namespace you set in `QuiltWebHost`. For example, `catalog.foo.com` and `catalog-registry.foo.com`.
     * **SecretKey**&mdash;Used for session authorization. Provide a random value to this field (e.g. by running `uuidgen | sha256sum` in the command line).
     * **SentryDSN** &mdash; Set this field to a single dash: `-`.
-    * **Smtphost**, **Smtpassword**, **Smtpusername**&mdash;Log-in information for an SMTP mail server. These fields are necessary because the T4 catalog will need to send (very occassional) service emails on your behalf.
+    * **SmtpHost**, **SmtpPassword**, **SmtpUsername**&mdash;Log-in information for an SMTP mail server. These fields are necessary because the T4 catalog will need to send (very occassional) service emails on your behalf.
     * **Users**&mdash;Comma-separated list of ARNs of IAM users and/or IAM roles that will be able to perform searches in the bucket.
 
       Note that users with search access can see the entire contents of the bucket. Use with care.
 
-7. Click Next.
-8. On the Options screen that follows, go to the "Termination Protection" section in "Advanced" and click "Enable".
+8. Click Next.
+9. On the Options screen that follows, go to the "Termination Protection" section in "Advanced" and click "Enable".
 
     ![](./imgs/term_protect.png)
 
     This protects the stack deployment pipeline from accidental deletion. Click Next.
 
-9. On the confirmation screen, check the box asking you to acknowledge that CloudFormation may create IAM roles, then click Create.
+10. On the confirmation screen, check the box asking you to acknowledge that CloudFormation may create IAM roles, then click Create.
 
     ![](./imgs/finish.png)
 
     Click Create.
 
-10. CloudFormation typically takes around 30 minutes to spin up your stack. Once that is done, you should see `CREATE_COMPLETE` as the Status for your CloudFormation stack.
+11. CloudFormation typically takes around 30 minutes to spin up your stack. Once that is done, you should see `CREATE_COMPLETE` as the Status for your CloudFormation stack.
 
     ![](./imgs/outputs.png)
 
-11. Select the stack and open the Outputs tab. Copy the `CloudFrontDomain` value&mdash;this is your CloudFront origin.
+12. Select the stack and open the Outputs tab. Copy the `CloudFrontDomain` value&mdash;this is your CloudFront origin.
 
-12. Set a `CNAME` record with your DNS service that points to your `CloudFrontDomain`. Double check that this the `CloudFrontDomain` value matches the `AllowedOrigin` value in the CORS policy you set in step 1.
+13. Set a `CNAME` record with your DNS service that points to your `CloudFrontDomain`. Double check that this the `CloudFrontDomain` value matches the `AllowedOrigin` value in the CORS policy you set in step 1.
 
 If all went well, your catalog should now be available and accessible.
+
+## Known limitations
+
+Some known limitations of the catalog are:
+
+* Supports only one bucket
+* Search is only enabled for *new objects* uploaded through the T4 Python API
 
 ## Federations and bucket config
 
