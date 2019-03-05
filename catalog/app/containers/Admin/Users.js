@@ -450,6 +450,18 @@ export default RT.composeComponent('Admin.Users',
         ),
       },
       {
+        id: 'dateJoined',
+        label: 'Date joined',
+        getValue: R.prop('dateJoined'),
+        getDisplay: (v) => <FormattedRelative value={v} />,
+      },
+      {
+        id: 'lastLogin',
+        label: 'Last login',
+        getValue: R.prop('lastLogin'),
+        getDisplay: (v) => <FormattedRelative value={v} />,
+      },
+      {
         id: 'isAdmin',
         label: 'Admin',
         getValue: R.prop('isAdmin'),
@@ -475,18 +487,6 @@ export default RT.composeComponent('Admin.Users',
             )}
           </Editable>
         ),
-      },
-      {
-        id: 'dateJoined',
-        label: 'Date joined',
-        getValue: R.prop('dateJoined'),
-        getDisplay: (v) => <FormattedRelative value={v} />,
-      },
-      {
-        id: 'lastLogin',
-        label: 'Last login',
-        getValue: R.prop('lastLogin'),
-        getDisplay: (v) => <FormattedRelative value={v} />,
       },
     ], [roles]);
 
