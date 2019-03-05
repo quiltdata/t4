@@ -225,6 +225,64 @@ const Delete = RT.composeComponent('Admin.Users.Delete',
     );
   });
 
+const AdminRights = RT.composeComponent('Admin.Users.AdminRights',
+  RC.setPropTypes({
+    admin: PT.bool.isRequired,
+    username: PT.string.isRequired,
+    close: PT.func.isRequired,
+  }),
+  ({ username, admin, close }) => {
+    const req = APIConnector.use();
+    const cache = Cache.use();
+    const { push } = Notifications.use();
+    const doChange = React.useCallback(() =>
+      close(req({
+        method: 'POST',
+        endpoint: `/users/${admin ? 'grant' : 'revoke'}_admin`,
+        body: JSON.stringify({ username }),
+      })
+        .then(() => {
+          cache.patchOk(data.UsersResource, null, R.map((u) =>
+            u.username === username ? { ...u, isAdmin: admin } : u));
+          return 'ok';
+        })
+        .catch((e) => {
+          push(`Error ${admin ? 'granting' : 'revoking'} admin status for "${username}"`);
+          // eslint-disable-next-line no-console
+          console.error('Error changing user admin status', { username, admin });
+          // eslint-disable-next-line no-console
+          console.dir(e);
+          throw e;
+        })), [req, cache, push]);
+
+    return (
+      <React.Fragment>
+        <DialogTitle>{admin ? 'Grant' : 'Revoke'} admin rights</DialogTitle>
+        <DialogContent>
+          You are about to {
+            admin
+              ? 'grant admin rights to'
+              : 'revoke admin rights from'
+          } &quot;{username}&quot;.
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => close('cancel')}
+            color="primary"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={doChange}
+            color="primary"
+          >
+            {admin ? 'Grant' : 'Revoke'}
+          </Button>
+        </DialogActions>
+      </React.Fragment>
+    );
+  });
+
 const Username = RT.composeComponent('Admin.Users.Username',
   RC.setPropTypes({
     admin: PT.bool,
@@ -333,25 +391,6 @@ export default RT.composeComponent('Admin.Users',
           throw e;
         }), [req, cache, push]);
 
-    const setIsAdmin = React.useCallback((username, admin) =>
-      req({
-        method: 'POST',
-        endpoint: `/users/${admin ? 'grant' : 'revoke'}_admin`,
-        body: JSON.stringify({ username }),
-      })
-        .then(() => {
-          cache.patchOk(data.UsersResource, null, R.map((u) =>
-            u.username === username ? { ...u, isAdmin: admin } : u));
-        })
-        .catch((e) => {
-          push(`Error ${admin ? 'granting' : 'revoking'} admin status for "${username}"`);
-          // eslint-disable-next-line no-console
-          console.error('Error changing user admin status', { username, admin });
-          // eslint-disable-next-line no-console
-          console.dir(e);
-          throw e;
-        }), [req, cache, push]);
-
     const columns = React.useMemo(() => [
       {
         id: 'username',
@@ -416,7 +455,14 @@ export default RT.composeComponent('Admin.Users',
         getDisplay: (v, u) => (
           <Editable
             value={v}
-            onChange={(admin) => setIsAdmin(u.username, admin)}
+            onChange={(admin) =>
+              dialogs
+                .open(({ close }) =>
+                  <AdminRights {...{ close, admin, username: u.username }} />)
+                .then((res) => {
+                  if (res !== 'ok') throw new Error('cancelled');
+                })
+            }
           >
             {({ change, busy, value }) => (
               <Switch
