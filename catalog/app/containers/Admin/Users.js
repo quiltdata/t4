@@ -443,6 +443,7 @@ export default RT.composeComponent('Admin.Users',
                 checked={value}
                 onChange={(e) => change(e.target.checked)}
                 disabled={busy}
+                color="default"
               />
             )}
           </Editable>
@@ -469,6 +470,7 @@ export default RT.composeComponent('Admin.Users',
                 checked={value}
                 onChange={(e) => change(e.target.checked)}
                 disabled={busy}
+                color="default"
               />
             )}
           </Editable>
