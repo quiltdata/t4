@@ -120,6 +120,7 @@ const Create = RT.composeComponent('Admin.Users.Create',
                       </span>
                     ),
                   }}
+                  autoComplete="off"
                 />
                 <RF.Field
                   component={Form.Field}
@@ -133,6 +134,7 @@ const Create = RT.composeComponent('Admin.Users.Create',
                     taken: 'Email already taken',
                     invalid: 'Enter a valid email',
                   }}
+                  autoComplete="off"
                 />
                 {submitFailed && (
                   <Form.FormError
