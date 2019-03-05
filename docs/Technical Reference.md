@@ -146,8 +146,7 @@ A bucket config can be included inline in a federation, or it can be a standalon
 
 These instructions document how to set up an existing role for use with T4. If the role you want to use doesn't exist yet, create it now.
 
-Go to your T4 stack in CloudFormation. Go to `Resources`, then find `RegistryUser` and click on the linked user.
-Copy the `ARN` of that user. This will look something like this: `arn:aws:iam::730278974607:user/t4-staging-RegistryUser-1CQZVBO2OZO87`.
+Go to your T4 stack in CloudFormation. Go to `Outputs`, then find `RegistryRoleARN` and copy its value. It should look something like this: `arn:aws:iam::000000000000:role/stackname-ecsTaskExecutionRole`.
 
 Go to the IAM console and navigate to `Roles`. Select the role you want to use. Go to the `Trust Relationships` tab for the role, and select `Edit Trust Relationship`. The statement might look something like this:
 
@@ -166,7 +165,7 @@ Add an object to the beginning of the Statement array with the following content
 {
   "Effect": "Allow",
   "Principal": {
-    "AWS": "$YOUR_REGISTRY_USER_ARN"
+    "AWS": "$YOUR_REGISTRY_ROLE_ARN"
   },
   "Action": "sts:AssumeRole"
 },
@@ -181,7 +180,7 @@ Note the comma after the object. Your trust relationship should now look somethi
     {
       "Effect": "Allow",
       "Principal": {
-        "AWS": "$YOUR_REGISTRY_USER_ARN"
+        "AWS": "$YOUR_REGISTRY_ROLE_ARN"
       },
       "Action": "sts:AssumeRole"
     },
