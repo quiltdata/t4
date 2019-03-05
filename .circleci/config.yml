@@ -69,7 +69,8 @@ jobs:
             virtualenv venv
             . venv/bin/activate
             pip install lambdas/shared/
-            pip install lambdas/preview[tests]
+            pip install -r lambdas/preview/requirements.txt
+            pip install -r lambdas/preview/test-requirements.txt
       - run:
           name: Pytest
           command: |
