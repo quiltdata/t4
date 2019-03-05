@@ -19,10 +19,14 @@ const redirectTo = (path) => ({ location: { search } }) =>
 const useAuth = () => {
   const { alwaysRequiresAuth } = Config.useConfig();
   return React.useMemo(
-    () => alwaysRequiresAuth ? Auth.requireAuth : R.identity,
+    () => alwaysRequiresAuth ? Auth.requireAuth() : R.identity,
     [alwaysRequiresAuth],
   );
 };
+
+const requireAdmin = Auth.requireAuth({
+  authorizedSelector: Auth.selectors.isAdmin,
+});
 
 export default () => {
   const protect = useAuth();
@@ -43,7 +47,7 @@ export default () => {
         <Route path={paths.code} component={protect(Auth.Code)} exact />
         <Route path={paths.activationError} component={Auth.ActivationError} exact />
 
-        <Route path={paths.admin} component={Admin} exact />
+        <Route path={paths.admin} component={requireAdmin(Admin)} exact />
 
         <Route path={paths.bucketRoot} component={protect(Bucket)} />
 
