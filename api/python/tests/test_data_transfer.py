@@ -166,22 +166,22 @@ def test_get_size_and_meta_no_version():
         assert data_transfer.get_size_and_meta('s3://my_bucket/my_obj')[2] == '1.0'
 
 def test_list_local_url():
-    contents = set(list(data_transfer.list_url(DATA_DIR.as_uri())))
+    dir_path = DATA_DIR / 'dir'
+    contents = set(list(data_transfer.list_url(dir_path.as_uri())))
     assert contents == set([
-        ('buggy_parquet.parquet', 423215),
-        ('csv.csv', 24),
-        ('dir/foo.txt', 4)
+        ('foo.txt', 4),
+        ('x/blah.txt', 6)
     ])
 
 def test_etag():
-    assert data_transfer._calculate_etag(DATA_DIR / 'csv.csv') == '"db4cee7cc9933007b5a5bac1f501064e"'
+    assert data_transfer._calculate_etag(DATA_DIR / 'small_file.csv') == '"0bec5bf6f93c547bc9c6774acaf85e1a"'
     assert data_transfer._calculate_etag(DATA_DIR / 'buggy_parquet.parquet') == '"dfb5aca048931d396f4534395617363f"'
 
 
 def test_simple_upload():
     stubber = Stubber(data_transfer.s3_client)
 
-    path = DATA_DIR / 'csv.csv'
+    path = DATA_DIR / 'small_file.csv'
 
     # Unversioned bucket
     stubber.add_response(
@@ -192,13 +192,13 @@ def test_simple_upload():
         expected_params={
             'Body': ANY,
             'Bucket': 'example',
-            'Key': 'csv.csv',
+            'Key': 'foo.csv',
             'Metadata': {'helium': '{}'}
         }
     )
 
     with stubber:
-        data_transfer.copy_file(path.as_uri(), 's3://example/csv.csv')
+        data_transfer.copy_file(path.as_uri(), 's3://example/foo.csv')
 
     stubber.assert_no_pending_responses()
 
@@ -206,7 +206,7 @@ def test_simple_upload():
 def test_multi_upload():
     stubber = Stubber(data_transfer.s3_client)
 
-    path1 = DATA_DIR / 'csv.csv'
+    path1 = DATA_DIR / 'small_file.csv'
     path2 = DATA_DIR / 'dir/foo.txt'
 
     # Unversioned bucket
@@ -218,7 +218,7 @@ def test_multi_upload():
         expected_params={
             'Body': ANY,
             'Bucket': 'example1',
-            'Key': 'csv.csv',
+            'Key': 'foo.csv',
             'Metadata': {'helium': '{}'}
         }
     )
@@ -239,11 +239,11 @@ def test_multi_upload():
 
     with stubber:
         urls = data_transfer.copy_file_list([
-            (path1.as_uri(), 's3://example1/csv.csv', None),
+            (path1.as_uri(), 's3://example1/foo.csv', None),
             (path2.as_uri(), 's3://example2/foo.txt', {'foo': 'bar'}),
         ])
 
-        assert urls[0] == 's3://example1/csv.csv'
+        assert urls[0] == 's3://example1/foo.csv'
         assert urls[1] == 's3://example2/foo.txt?versionId=v123'
 
     stubber.assert_no_pending_responses()
@@ -252,14 +252,14 @@ def test_multi_upload():
 def test_upload_large_file():
     stubber = Stubber(data_transfer.s3_client)
 
-    path = DATA_DIR / 'buggy_parquet.parquet'
+    path = DATA_DIR / 'large_file.npy'
 
     stubber.add_client_error(
         method='head_object',
         http_status_code=404,
         expected_params={
             'Bucket': 'example',
-            'Key': 'foo.parquet',
+            'Key': 'large_file.npy',
         }
     )
 
@@ -271,16 +271,16 @@ def test_upload_large_file():
         expected_params={
             'Body': ANY,
             'Bucket': 'example',
-            'Key': 'foo.parquet',
+            'Key': 'large_file.npy',
             'Metadata': {'helium': '{}'}
         }
     )
 
     with stubber:
         urls = data_transfer.copy_file_list([
-            (path.as_uri(), 's3://example/foo.parquet', None),
+            (path.as_uri(), 's3://example/large_file.npy', None),
         ])
-        assert urls[0] == 's3://example/foo.parquet?versionId=v1'
+        assert urls[0] == 's3://example/large_file.npy?versionId=v1'
 
     stubber.assert_no_pending_responses()
 
@@ -288,7 +288,7 @@ def test_upload_large_file():
 def test_upload_large_file_etag_match():
     stubber = Stubber(data_transfer.s3_client)
 
-    path = DATA_DIR / 'buggy_parquet.parquet'
+    path = DATA_DIR / 'large_file.npy'
 
     stubber.add_response(
         method='head_object',
@@ -299,15 +299,15 @@ def test_upload_large_file_etag_match():
         },
         expected_params={
             'Bucket': 'example',
-            'Key': 'foo.parquet',
+            'Key': 'large_file.npy',
         }
     )
 
     with stubber:
         urls = data_transfer.copy_file_list([
-            (path.as_uri(), 's3://example/foo.parquet', None),
+            (path.as_uri(), 's3://example/large_file.npy', None),
         ])
-        assert urls[0] == 's3://example/foo.parquet?versionId=v1'
+        assert urls[0] == 's3://example/large_file.npy?versionId=v1'
 
     stubber.assert_no_pending_responses()
 
@@ -315,7 +315,7 @@ def test_upload_large_file_etag_match():
 def test_upload_large_file_etag_mismatch():
     stubber = Stubber(data_transfer.s3_client)
 
-    path = DATA_DIR / 'buggy_parquet.parquet'
+    path = DATA_DIR / 'large_file.npy'
 
     stubber.add_response(
         method='head_object',
@@ -326,7 +326,7 @@ def test_upload_large_file_etag_mismatch():
         },
         expected_params={
             'Bucket': 'example',
-            'Key': 'foo.parquet',
+            'Key': 'large_file.npy',
         }
     )
 
@@ -338,16 +338,16 @@ def test_upload_large_file_etag_mismatch():
         expected_params={
             'Body': ANY,
             'Bucket': 'example',
-            'Key': 'foo.parquet',
+            'Key': 'large_file.npy',
             'Metadata': {'helium': '{}'}
         }
     )
 
     with stubber:
         urls = data_transfer.copy_file_list([
-            (path.as_uri(), 's3://example/foo.parquet', None),
+            (path.as_uri(), 's3://example/large_file.npy', None),
         ])
-        assert urls[0] == 's3://example/foo.parquet?versionId=v2'
+        assert urls[0] == 's3://example/large_file.npy?versionId=v2'
 
     stubber.assert_no_pending_responses()
 
@@ -355,7 +355,7 @@ def test_upload_large_file_etag_mismatch():
 def test_upload_large_file_etag_match_metadata():
     stubber = Stubber(data_transfer.s3_client)
 
-    path = DATA_DIR / 'buggy_parquet.parquet'
+    path = DATA_DIR / 'large_file.npy'
     etag = data_transfer._calculate_etag(path)
 
     stubber.add_response(
@@ -367,7 +367,7 @@ def test_upload_large_file_etag_match_metadata():
         },
         expected_params={
             'Bucket': 'example',
-            'Key': 'foo.parquet',
+            'Key': 'large_file.npy',
         }
     )
 
@@ -379,12 +379,12 @@ def test_upload_large_file_etag_match_metadata():
         expected_params={
             'CopySource': {
                 'Bucket': 'example',
-                'Key': 'foo.parquet',
+                'Key': 'large_file.npy',
                 'VersionId': 'v1'
             },
             'CopySourceIfMatch': etag,
             'Bucket': 'example',
-            'Key': 'foo.parquet',
+            'Key': 'large_file.npy',
             'Metadata': {'helium': '{"foo": "bar"}'},
             'MetadataDirective': 'REPLACE'
         }
@@ -392,8 +392,8 @@ def test_upload_large_file_etag_match_metadata():
 
     with stubber:
         urls = data_transfer.copy_file_list([
-            (path.as_uri(), 's3://example/foo.parquet', {'foo': 'bar'}),
+            (path.as_uri(), 's3://example/large_file.npy', {'foo': 'bar'}),
         ])
-        assert urls[0] == 's3://example/foo.parquet?versionId=v2'
+        assert urls[0] == 's3://example/large_file.npy?versionId=v2'
 
     stubber.assert_no_pending_responses()
