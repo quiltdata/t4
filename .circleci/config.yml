@@ -50,7 +50,7 @@ jobs:
           command: |
             virtualenv venv
             . venv/bin/activate
-            pip install lambda/shared/requirements.txt
+            pip install lambdas/shared/
             pip install lambdas/es/indexer[tests]
       - run:
           name: Pytest
@@ -68,7 +68,7 @@ jobs:
           command: |
             virtualenv venv
             . venv/bin/activate
-            pip install lambda/shared/
+            pip install lambdas/shared/
             pip install lambdas/preview[tests]
       - run:
           name: Pytest
