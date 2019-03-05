@@ -368,7 +368,8 @@ export default RT.composeComponent('Admin.Users',
       {
         id: 'role',
         label: 'Role',
-        getValue: R.prop('role'),
+        getValue: (u) =>
+          u.roleId && (roles.find((r) => r.id === u.roleId) || {}).name,
         getDisplay: (v, u) => (
           <Editable
             value={v}
@@ -427,12 +428,6 @@ export default RT.composeComponent('Admin.Users',
           </Editable>
         ),
       },
-      // {
-      //   id: 'searchEnabled',
-      //   label: 'Search enabled',
-      //   getValue: () => true,
-      //   getDisplay: (v) => <Switch checked={v} />,
-      // },
       {
         id: 'dateJoined',
         label: 'Date joined',
@@ -445,7 +440,7 @@ export default RT.composeComponent('Admin.Users',
         getValue: R.prop('lastLogin'),
         getDisplay: (v) => <FormattedRelative value={v} />,
       },
-    ], []);
+    ], [roles]);
 
     const ordering = Table.useOrdering({ rows, column: columns[0] });
     const dialogs = Dialogs.use();

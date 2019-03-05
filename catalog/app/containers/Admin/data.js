@@ -22,6 +22,7 @@ export const UsersResource = Cache.createResource({
           isAdmin: u.is_superuser,
           lastLogin: new Date(u.last_login),
           username: u.username,
+          roleId: u.role_id,
         })),
       )),
   key: () => null,
