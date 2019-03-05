@@ -7,16 +7,20 @@ import defer from 'utils/defer';
 export const use = () => {
   // open | closed | closing
   const [state, setState] = React.useState('closed');
-  // { node, resolver }
+  // { render, resolver }
   const [dialog, setDialog] = React.useState(null);
 
-  const open = React.useCallback((fn) => {
+  const open = React.useCallback((render) => {
     const { resolver, promise } = defer();
-    const node = fn({ close });
-    setDialog({ node, resolver });
+    setDialog({ render, resolver });
     setState('open');
     return promise;
   }, [setDialog, setState]);
+
+  const close = React.useCallback((reason) => {
+    if (dialog) dialog.resolver.resolve(reason);
+    setState('closing');
+  }, [setState, dialog]);
 
   const cleanup = React.useCallback(() => {
     if (state === 'closing') {
@@ -25,18 +29,13 @@ export const use = () => {
     }
   }, [state, setState, setDialog]);
 
-  const close = React.useCallback((reason) => {
-    if (dialog) dialog.resolver.resolve(reason);
-    setState('closing');
-  }, [setState]);
-
   const render = () => (
     <Dialog
       open={state === 'open'}
       onClose={close}
       onExited={cleanup}
     >
-      {dialog ? dialog.node : ''}
+      {dialog ? dialog.render({ close }) : ''}
     </Dialog>
   );
 
