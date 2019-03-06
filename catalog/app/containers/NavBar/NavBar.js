@@ -71,6 +71,12 @@ const NavMenu = composeComponent('NavBar.Menu',
           color="inherit"
           onClick={open}
         >
+          {user.isAdmin && (
+            <React.Fragment>
+              <Icon fontSize="small">security</Icon>
+              &nbsp;
+            </React.Fragment>
+          )}
           {user.name} <Icon>expand_more</Icon>
         </Button>
         <Menu
@@ -79,7 +85,9 @@ const NavMenu = composeComponent('NavBar.Menu',
           onClose={close}
         >
           {user.isAdmin && (
-            <Item to={urls.admin()} onClick={close}>Admin</Item>
+            <Item to={urls.admin()} onClick={close} divider>
+              <Icon fontSize="small">security</Icon>&nbsp;Users and roles
+            </Item>
           )}
           <Item to={urls.signOut()} onClick={close}>Sign Out</Item>
         </Menu>
