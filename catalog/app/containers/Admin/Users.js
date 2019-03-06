@@ -9,6 +9,7 @@ import Button from '@material-ui/core/Button';
 import DialogActions from '@material-ui/core/DialogActions';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogTitle from '@material-ui/core/DialogTitle';
+import Icon from '@material-ui/core/Icon';
 import MenuItem from '@material-ui/core/MenuItem';
 import Paper from '@material-ui/core/Paper';
 import Select from '@material-ui/core/Select';
@@ -17,7 +18,6 @@ import MuiTable from '@material-ui/core/Table';
 import TableBody from '@material-ui/core/TableBody';
 import TableCell from '@material-ui/core/TableCell';
 import TableRow from '@material-ui/core/TableRow';
-import * as Icons from '@material-ui/icons';
 import { withStyles } from '@material-ui/core/styles';
 
 import * as Pagination from 'components/Pagination';
@@ -635,7 +635,7 @@ export default RT.composeComponent('Admin.Users',
     const toolbarActions = [
       {
         title: 'Invite',
-        icon: <Icons.Add />,
+        icon: <Icon>add</Icon>,
         fn: React.useCallback(() => {
           dialogs.open(({ close }) => <Invite {...{ close, roles }} />);
         }, [dialogs.open]),
@@ -645,14 +645,14 @@ export default RT.composeComponent('Admin.Users',
     const inlineActions = (user) => [
       {
         title: 'Delete',
-        icon: <Icons.Delete />,
+        icon: <Icon>delete</Icon>,
         fn: () => {
           dialogs.open(({ close }) => <Delete {...{ user, close }} />);
         },
       },
       {
         title: 'Edit',
-        icon: <Icons.Edit />,
+        icon: <Icon>edit</Icon>,
         fn: () => {
           dialogs.open(({ close }) => <Edit {...{ user, close }} />);
         },

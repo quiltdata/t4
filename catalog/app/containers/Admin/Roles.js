@@ -7,12 +7,12 @@ import Button from '@material-ui/core/Button';
 import DialogActions from '@material-ui/core/DialogActions';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogTitle from '@material-ui/core/DialogTitle';
+import Icon from '@material-ui/core/Icon';
 import Paper from '@material-ui/core/Paper';
 import MuiTable from '@material-ui/core/Table';
 import TableBody from '@material-ui/core/TableBody';
 import TableCell from '@material-ui/core/TableCell';
 import TableRow from '@material-ui/core/TableRow';
-import * as Icons from '@material-ui/icons';
 import { withStyles } from '@material-ui/core/styles';
 
 import * as Notifications from 'containers/Notifications';
@@ -343,7 +343,7 @@ export default RT.composeComponent('Admin.Roles',
     const toolbarActions = [
       {
         title: 'Create',
-        icon: <Icons.Add />,
+        icon: <Icon>add</Icon>,
         fn: React.useCallback(() => {
           dialogs.open(({ close }) => <Create {...{ close }} />);
         }, [dialogs.open]),
@@ -353,14 +353,14 @@ export default RT.composeComponent('Admin.Roles',
     const inlineActions = (role) => [
       {
         title: 'Delete',
-        icon: <Icons.Delete />,
+        icon: <Icon>delete</Icon>,
         fn: () => {
           dialogs.open(({ close }) => <Delete {...{ role, close }} />);
         },
       },
       {
         title: 'Edit',
-        icon: <Icons.Edit />,
+        icon: <Icon>edit</Icon>,
         fn: () => {
           dialogs.open(({ close }) => <Edit {...{ role, close }} />);
         },
