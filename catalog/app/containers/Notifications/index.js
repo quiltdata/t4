@@ -2,6 +2,8 @@ import PT from 'prop-types';
 import * as React from 'react';
 import { connect } from 'react-redux';
 import { defaultProps, setPropTypes, withProps } from 'recompose';
+import { bindActionCreators } from 'redux';
+import * as reduxHook from 'redux-react-hook';
 
 import { composeComponent } from 'utils/reactTools';
 import * as ReducerInjector from 'utils/ReducerInjector';
@@ -49,3 +51,11 @@ export const WithNotifications = composeComponent('Notifications.WithNotificatio
       <Display />
     </React.Fragment>
   ));
+
+export const use = () => {
+  const dispatch = reduxHook.useDispatch();
+  return React.useMemo(
+    () => bindActionCreators(actions, dispatch),
+    [dispatch],
+  );
+};

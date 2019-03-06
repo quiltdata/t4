@@ -169,10 +169,10 @@ export const Provider = RT.composeComponent('Config.Provider',
   ));
 
 export const useConfig = () =>
-  Cache.use()(ConfigResource, React.useContext(Ctx));
+  Cache.use().get(ConfigResource, React.useContext(Ctx));
 
 export const useFederations = () =>
-  Cache.use()(FederationsResource, useConfig().federations);
+  Cache.use().get(FederationsResource, useConfig().federations);
 
 export const use = () => ({
   ...useConfig(),

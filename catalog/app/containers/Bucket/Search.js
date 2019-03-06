@@ -426,7 +426,7 @@ const Results = RT.composeComponent('Bucket.Search.Results',
     });
 
     try {
-      const { total, hits } = cache(SearchResource, { es, query });
+      const { total, hits } = cache.get(SearchResource, { es, query });
       return (
         <React.Fragment>
           <Typography variant="h5" className={classes.heading}>
