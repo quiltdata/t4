@@ -22,7 +22,7 @@ export default withStyles((t) => ({
   return (
     <Layout>
       <div className={classes.section}>
-        <Typography variant="h4">Admin</Typography>
+        <Typography variant="h4">Users and roles</Typography>
       </div>
       <div className={classes.section}>
         <Users users={users} roles={roles} />

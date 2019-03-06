@@ -521,7 +521,7 @@ export default RT.composeComponent('Admin.Users',
             u.username === username ? { ...u, isActive: active } : u));
         })
         .catch((e) => {
-          push(`Error ${active ? '' : 'de'}activating "${username}"`);
+          push(`Error ${active ? 'enabling' : 'disabling'} "${username}"`);
           // eslint-disable-next-line no-console
           console.error('Error (de)activating user', { username, active });
           // eslint-disable-next-line no-console
@@ -530,6 +530,26 @@ export default RT.composeComponent('Admin.Users',
         }), [req, cache, push]);
 
     const columns = React.useMemo(() => [
+      {
+        id: 'isActive',
+        label: 'Enabled',
+        getValue: R.prop('isActive'),
+        getDisplay: (v, u) => (
+          <Editable
+            value={v}
+            onChange={(active) => setIsActive(u.username, active)}
+          >
+            {({ change, busy, value }) => (
+              <Switch
+                checked={value}
+                onChange={(e) => change(e.target.checked)}
+                disabled={busy}
+                color="default"
+              />
+            )}
+          </Editable>
+        ),
+      },
       {
         id: 'username',
         label: 'Username',
@@ -568,26 +588,6 @@ export default RT.composeComponent('Admin.Users',
         ),
       },
       {
-        id: 'isActive',
-        label: 'Active',
-        getValue: R.prop('isActive'),
-        getDisplay: (v, u) => (
-          <Editable
-            value={v}
-            onChange={(active) => setIsActive(u.username, active)}
-          >
-            {({ change, busy, value }) => (
-              <Switch
-                checked={value}
-                onChange={(e) => change(e.target.checked)}
-                disabled={busy}
-                color="default"
-              />
-            )}
-          </Editable>
-        ),
-      },
-      {
         id: 'dateJoined',
         label: 'Date joined',
         getValue: R.prop('dateJoined'),
@@ -602,6 +602,7 @@ export default RT.composeComponent('Admin.Users',
       {
         id: 'isAdmin',
         label: 'Admin',
+        hint: 'Admins can see this page, add/remove users, and make/remove admins',
         getValue: R.prop('isAdmin'),
         getDisplay: (v, u) => (
           <Editable

@@ -170,7 +170,7 @@ export const Head = RT.composeComponent('Admin.Table.Head',
             sortDirection={ord.column === col ? ord.direction : false}
           >
             <Tooltip
-              title="Sort"
+              title={col.hint || 'Sort'}
               placement="bottom-start"
               enterDelay={300}
             >
@@ -184,7 +184,8 @@ export const Head = RT.composeComponent('Admin.Table.Head',
             </Tooltip>
           </TableCell>
         ))}
-        {withInlineActions && <TableCell />}
+        {/* TODO: change `numeric` to align="right" after MUI update */}
+        {withInlineActions && <TableCell align="right" numeric>Actions</TableCell>}
       </TableRow>
     </TableHead>
   ));
