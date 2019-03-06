@@ -60,7 +60,7 @@ default_remote_registry:
 default_install_location:
 
 # Quilt2 registry URL
-registry_url: https://pkg.quiltdata.com
+registryUrl: https://quilt-t4-staging-registry.quiltdata.com
 """.format(BASE_PATH.as_uri())
 
 

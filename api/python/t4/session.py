@@ -40,7 +40,7 @@ def get_registry_url():
     if _registry_url is not None:
         return _registry_url
 
-    _registry_url = load_config()['registry_url']
+    _registry_url = load_config()['registryUrl']
 
     return _registry_url
 
