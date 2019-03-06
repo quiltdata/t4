@@ -14,12 +14,13 @@ export const Field = RT.composeComponent('Admin.Form.Field',
     input: PT.object.isRequired,
     meta: PT.object.isRequired,
     errors: PT.objectOf(PT.node),
+    label: PT.node,
   }),
-  ({ input, meta, errors, ...rest }) => {
+  ({ input, meta, errors, label, ...rest }) => {
     const error = meta.submitFailed && meta.error;
     const props = {
       error: !!error,
-      label: error ? errors[error] || error : undefined,
+      label: error ? errors[error] || error : label,
       disabled: meta.submitting || meta.submitSucceeded,
       ...input,
       ...rest,
