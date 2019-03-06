@@ -50,7 +50,7 @@ s3_threads = 4
 
 # When uploading files at least this size, compare the ETags first and skip the upload if they're equal;
 # copy the remote file onto itself if the metadata changes.
-UPLOAD_ETAG_OPTIMIZATION_THREADSHOLD = 1024
+UPLOAD_ETAG_OPTIMIZATION_THRESHOLD = 1024
 
 
 def _update_credentials(credentials):
@@ -272,7 +272,7 @@ def _copy_file_list_internal(file_list):
 
                     # Optimization: check if the remote file already exists and has the right ETag,
                     # and skip the upload.
-                    if size >= UPLOAD_ETAG_OPTIMIZATION_THREADSHOLD:
+                    if size >= UPLOAD_ETAG_OPTIMIZATION_THRESHOLD:
                         try:
                             resp = s3_client.head_object(Bucket=dest_bucket, Key=dest_path)
                         except ClientError:
