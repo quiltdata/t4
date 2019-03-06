@@ -242,7 +242,7 @@ const Edit = RT.composeComponent('Admin.Roles.Edit',
 
     return (
       <Form.ReduxForm
-        form="Admin.Roles.Edit"
+        form={`Admin.Roles.Edit(${role.id})`}
         onSubmit={onSubmit}
         initialValues={R.pick(['name', 'arn'], role)}
       >
@@ -366,7 +366,9 @@ export default RT.composeComponent('Admin.Roles',
                       {(col.getDisplay || R.identity)(col.getValue(i))}
                     </TableCell>
                   ))}
-                  <Table.InlineActions actions={inlineActions(i)} />
+                  <TableCell align="right" padding="none">
+                    <Table.InlineActions actions={inlineActions(i)} />
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

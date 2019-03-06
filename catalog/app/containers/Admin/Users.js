@@ -104,7 +104,7 @@ const Invite = RT.composeComponent('Admin.Users.Invite',
         console.dir(e);
         throw new RF.SubmissionError({ _error: 'unexpected' });
       }
-    }, [req, cache, push, close]);
+    }, [req, cache, push, close, roles]);
 
     return (
       <Form.ReduxForm
@@ -157,14 +157,6 @@ const Invite = RT.composeComponent('Admin.Users.Invite',
                   }}
                   autoComplete="off"
                 />
-                {submitFailed && (
-                  <Form.FormError
-                    error={error}
-                    errors={{
-                      unexpected: 'Something went wrong',
-                    }}
-                  />
-                )}
                 <RF.Field
                   component={Form.Field}
                   name="roleId"
@@ -202,6 +194,109 @@ const Invite = RT.composeComponent('Admin.Users.Invite',
                 disabled={submitting || (submitFailed && invalid)}
               >
                 Invite
+              </Button>
+            </DialogActions>
+          </React.Fragment>
+        )}
+      </Form.ReduxForm>
+    );
+  });
+
+const Edit = RT.composeComponent('Admin.Users.Edit',
+  RC.setPropTypes({
+    close: PT.func.isRequired,
+    user: PT.object.isRequired,
+  }),
+  ({ close, user: { email: oldEmail, username } }) => {
+    const req = APIConnector.use();
+    const cache = Cache.use();
+    const { push } = Notifications.use();
+
+    const onSubmit = React.useCallback(async (values) => {
+      const { email } = values.toJS();
+
+      if (email === oldEmail) {
+        close();
+        return;
+      }
+
+      try {
+        await req({
+          endpoint: '/users/edit_email',
+          method: 'POST',
+          body: JSON.stringify({ username, email }),
+        });
+
+        cache.patchOk(data.UsersResource, null, R.map((u) =>
+          u.username === username ? { ...u, email } : u));
+        push('Changes saved');
+        close();
+      } catch (e) {
+        console.log('edit err', e);
+        if (APIConnector.HTTPError.is(e, 400, /Another user already has that email/)) {
+          throw new RF.SubmissionError({ email: 'taken' });
+        }
+        if (APIConnector.HTTPError.is(e, 400, /Invalid email/)) {
+          throw new RF.SubmissionError({ email: 'invalid' });
+        }
+        // eslint-disable-next-line no-console
+        console.error('Error changing email');
+        // eslint-disable-next-line no-console
+        console.dir(e);
+        throw new RF.SubmissionError({ _error: 'unexpected' });
+      }
+    }, [close, username, req, cache, push]);
+
+    return (
+      <Form.ReduxForm
+        form={`Admin.Users.Edit(${username})`}
+        onSubmit={onSubmit}
+        initialValues={{ email: oldEmail }}
+      >
+        {({ handleSubmit, submitting, submitFailed, error, invalid }) => (
+          <React.Fragment>
+            <DialogTitle>Edit user: &quot;{username}&quot;</DialogTitle>
+            <DialogContent>
+              <form onSubmit={handleSubmit}>
+                <RF.Field
+                  component={Form.Field}
+                  name="email"
+                  validate={[validators.required]}
+                  label="Email"
+                  fullWidth
+                  margin="normal"
+                  errors={{
+                    required: 'Enter an email',
+                    taken: 'Email already taken',
+                    invalid: 'Enter a valid email',
+                  }}
+                  autoComplete="off"
+                />
+                {submitFailed && (
+                  <Form.FormError
+                    error={error}
+                    errors={{
+                      unexpected: 'Something went wrong',
+                    }}
+                  />
+                )}
+                <input type="submit" style={{ display: 'none' }} />
+              </form>
+            </DialogContent>
+            <DialogActions>
+              <Button
+                onClick={() => close('cancel')}
+                color="primary"
+                disabled={submitting}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSubmit}
+                color="primary"
+                disabled={submitting || (submitFailed && invalid)}
+              >
+                Save
               </Button>
             </DialogActions>
           </React.Fragment>
@@ -511,14 +606,11 @@ export default RT.composeComponent('Admin.Users',
         getDisplay: (v, u) => (
           <Editable
             value={v}
-            onChange={(admin) =>
-              dialogs
-                .open(({ close }) =>
-                  <AdminRights {...{ close, admin, username: u.username }} />)
-                .then((res) => {
-                  if (res !== 'ok') throw new Error('cancelled');
-                })
-            }
+            onChange={async (admin) => {
+              const res = await dialogs.open(({ close }) =>
+                <AdminRights {...{ close, admin, username: u.username }} />);
+              if (res !== 'ok') throw new Error('cancelled');
+            }}
           >
             {({ change, busy, value }) => (
               <Switch
@@ -554,17 +646,18 @@ export default RT.composeComponent('Admin.Users',
           dialogs.open(({ close }) => <Delete {...{ user, close }} />);
         },
       },
-      // {
-      //  title: 'Edit',
-      //  icon: <Icons.Edit />,
-      //  fn: () => {
-      //  },
-      // },
+      {
+        title: 'Edit',
+        icon: <Icons.Edit />,
+        fn: () => {
+          dialogs.open(({ close }) => <Edit {...{ user, close }} />);
+        },
+      },
     ];
 
     return (
       <Paper>
-        {dialogs.render()}
+        {dialogs.render({ maxWidth: 'xs', fullWidth: true })}
         <Table.Toolbar heading="Users" actions={toolbarActions} />
         <Table.Wrapper>
           <MuiTable padding="dense">
@@ -577,7 +670,9 @@ export default RT.composeComponent('Admin.Users',
                       {(col.getDisplay || R.identity)(col.getValue(i), i)}
                     </TableCell>
                   ))}
-                  <Table.InlineActions actions={inlineActions(i)} />
+                  <TableCell align="right" padding="none">
+                    <Table.InlineActions actions={inlineActions(i)} />
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

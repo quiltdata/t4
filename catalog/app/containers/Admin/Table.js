@@ -199,27 +199,25 @@ export const Wrapper = RT.composeComponent('Admin.Table.Wrapper',
 
 export const InlineActions = RT.composeComponent('Admin.Table.InlineActions',
   RC.setPropTypes({
-    actions: PT.array.isRequired,
+    actions: PT.array,
   }),
   withStyles((t) => ({
     root: {
+      opacity: 0,
+      paddingRight: t.spacing.unit,
       textAlign: 'right',
-      paddingRight: [t.spacing.unit, '!important'],
+      transition: 'opacity 100ms',
 
-      '& > *': {
-        opacity: 0,
-        transition: 'opacity 100ms',
-
-        'tr:hover > &': {
-          opacity: 1,
-        },
+      'tr:hover &': {
+        opacity: 1,
       },
     },
   })),
-  ({ actions, ...props }) => (
-    <TableCell {...props}>
+  ({ classes, actions = [], children, ...props }) => (
+    <div className={classes.root} {...props}>
       {actions.map(renderAction)}
-    </TableCell>
+      {children}
+    </div>
   ));
 
 export const Progress = RT.composeComponent('Admin.Table.Progress',
