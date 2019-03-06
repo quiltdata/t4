@@ -9,6 +9,7 @@ import CircularProgress from '@material-ui/core/CircularProgress';
 import IconButton from '@material-ui/core/IconButton';
 import TableCell from '@material-ui/core/TableCell';
 import TableHead from '@material-ui/core/TableHead';
+import TablePagination from '@material-ui/core/TablePagination';
 import TableRow from '@material-ui/core/TableRow';
 import TableSortLabel from '@material-ui/core/TableSortLabel';
 import MuiToolbar from '@material-ui/core/Toolbar';
@@ -228,3 +229,25 @@ export const Progress = RT.composeComponent('Admin.Table.Progress',
     },
   })),
   CircularProgress);
+
+export const Pagination = RT.composeComponent('Admin.Table.Pagination',
+  RC.setPropTypes({
+    pagination: PT.object.isRequired,
+  }),
+  withStyles((t) => ({
+    toolbar: {
+      paddingRight: [t.spacing.unit, '!important'],
+    },
+  })),
+  ({ classes, pagination, ...rest }) => (
+    <TablePagination
+      classes={classes}
+      component="div"
+      count={pagination.total}
+      rowsPerPage={pagination.perPage}
+      page={pagination.page - 1}
+      onChangePage={(e, page) => pagination.goToPage(page + 1)}
+      onChangeRowsPerPage={(e) => pagination.setPerPage(e.target.value)}
+      {...rest}
+    />
+  ));
