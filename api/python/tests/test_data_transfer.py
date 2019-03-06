@@ -202,7 +202,7 @@ def test_simple_upload():
 
     stubber.assert_no_pending_responses()
 
-
+@pytest.mark.xfail(reason="Thread nondeterminism")
 def test_multi_upload():
     stubber = Stubber(data_transfer.s3_client)
 
