@@ -39,68 +39,89 @@ const Mono = withStyles((t) => ({
 }))(({ className, classes, ...props }) =>
   <span className={cx(className, classes.root)} {...props} />);
 
-const Create = RT.composeComponent('Admin.Users.Create',
+const Invite = RT.composeComponent('Admin.Users.Invite',
   RC.setPropTypes({
     close: PT.func.isRequired,
+    roles: PT.array.isRequired,
   }),
-  ({ close }) => {
+  ({ close, roles }) => {
     const req = APIConnector.use();
     const cache = Cache.use();
     const { push } = Notifications.use();
-    const onSubmit = React.useCallback(
-      (values) =>
-        req({
+    const onSubmit = React.useCallback(async (values) => {
+      const { username, email, roleId } = values.toJS();
+      const role = roles.find((r) => r.id === roleId);
+
+      try {
+        await req({
           endpoint: '/users/create',
           method: 'POST',
-          body: JSON.stringify(values.toJS()),
-        })
-          .then(() => {
-            const user = {
-              dateJoined: new Date(),
-              email: values.get('email'),
-              isActive: true,
-              isAdmin: false,
-              lastLogin: new Date(),
-              username: values.get('username'),
-            };
-            cache.patchOk(data.UsersResource, null, R.append(user));
-            push(`User "${user.username}" <${user.email}> created`);
-            close();
-          })
-          .catch((e) => {
-            if (APIConnector.HTTPError.is(e, 400, /Username is not valid/)) {
-              throw new RF.SubmissionError({ username: 'invalid' });
-            }
-            if (APIConnector.HTTPError.is(e, 409, /Username already taken/)) {
-              throw new RF.SubmissionError({ username: 'taken' });
-            }
-            if (APIConnector.HTTPError.is(e, 400, /Invalid email/)) {
-              throw new RF.SubmissionError({ email: 'invalid' });
-            }
-            if (APIConnector.HTTPError.is(e, 409, /Email already taken/)) {
-              throw new RF.SubmissionError({ email: 'taken' });
-            }
-            // eslint-disable-next-line no-console
-            console.error('Error creating user');
-            // eslint-disable-next-line no-console
-            console.dir(e);
-            throw new RF.SubmissionError({ _error: 'unexpected' });
-          }),
-      [req, cache, push, close],
-    );
+          body: JSON.stringify({ username, email }),
+        });
+
+        const user = {
+          dateJoined: new Date(),
+          email,
+          isActive: true,
+          isAdmin: false,
+          lastLogin: new Date(),
+          username,
+        };
+
+        try {
+          await req({
+            method: 'POST',
+            endpoint: '/users/set_role',
+            body: JSON.stringify({ username, role: role.name }),
+          });
+          user.roleId = role.id;
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.error('Error setting role', { username, role });
+          // eslint-disable-next-line no-console
+          console.dir(e);
+        }
+
+        cache.patchOk(data.UsersResource, null, R.append(user));
+        push('User invited');
+        close();
+      } catch (e) {
+        if (APIConnector.HTTPError.is(e, 400, /Username is not valid/)) {
+          throw new RF.SubmissionError({ username: 'invalid' });
+        }
+        if (APIConnector.HTTPError.is(e, 409, /Username already taken/)) {
+          throw new RF.SubmissionError({ username: 'taken' });
+        }
+        if (APIConnector.HTTPError.is(e, 400, /Invalid email/)) {
+          throw new RF.SubmissionError({ email: 'invalid' });
+        }
+        if (APIConnector.HTTPError.is(e, 409, /Email already taken/)) {
+          throw new RF.SubmissionError({ email: 'taken' });
+        }
+        // eslint-disable-next-line no-console
+        console.error('Error creating user');
+        // eslint-disable-next-line no-console
+        console.dir(e);
+        throw new RF.SubmissionError({ _error: 'unexpected' });
+      }
+    }, [req, cache, push, close]);
 
     return (
-      <Form.ReduxForm form="Admin.Users.Create" onSubmit={onSubmit}>
+      <Form.ReduxForm
+        form="Admin.Users.Invite"
+        onSubmit={onSubmit}
+        initialValues={{ roleId: roles[0].id }}
+      >
         {({ handleSubmit, submitting, submitFailed, error, invalid }) => (
           <React.Fragment>
-            <DialogTitle>Create a user</DialogTitle>
+            <DialogTitle>Invite a user</DialogTitle>
             <DialogContent>
               <form onSubmit={handleSubmit}>
                 <RF.Field
                   component={Form.Field}
                   name="username"
                   validate={[validators.required]}
-                  placeholder="Username"
+                  label="Username"
                   fullWidth
                   margin="normal"
                   errors={{
@@ -126,7 +147,7 @@ const Create = RT.composeComponent('Admin.Users.Create',
                   component={Form.Field}
                   name="email"
                   validate={[validators.required]}
-                  placeholder="Email"
+                  label="Email"
                   fullWidth
                   margin="normal"
                   errors={{
@@ -136,6 +157,26 @@ const Create = RT.composeComponent('Admin.Users.Create',
                   }}
                   autoComplete="off"
                 />
+                {submitFailed && (
+                  <Form.FormError
+                    error={error}
+                    errors={{
+                      unexpected: 'Something went wrong',
+                    }}
+                  />
+                )}
+                <RF.Field
+                  component={Form.Field}
+                  name="roleId"
+                  label="Role"
+                  select
+                  fullWidth
+                  margin="normal"
+                >
+                  {roles.map((r) => (
+                    <MenuItem value={r.id} key={r.id}>{r.name}</MenuItem>
+                  ))}
+                </RF.Field>
                 {submitFailed && (
                   <Form.FormError
                     error={error}
@@ -160,7 +201,7 @@ const Create = RT.composeComponent('Admin.Users.Create',
                 color="primary"
                 disabled={submitting || (submitFailed && invalid)}
               >
-                Create
+                Invite
               </Button>
             </DialogActions>
           </React.Fragment>
@@ -497,10 +538,10 @@ export default RT.composeComponent('Admin.Users',
 
     const toolbarActions = [
       {
-        title: 'Create',
+        title: 'Invite',
         icon: <Icons.Add />,
         fn: React.useCallback(() => {
-          dialogs.open(({ close }) => <Create {...{ close }} />);
+          dialogs.open(({ close }) => <Invite {...{ close, roles }} />);
         }, [dialogs.open]),
       },
     ];
