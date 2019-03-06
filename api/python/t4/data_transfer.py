@@ -455,13 +455,12 @@ def _looks_like_dir(s):
 
 def copy_file_list(file_list):
     """
-    Takes a list of tuples (src, dest, override_meta) and copies them in parallel.
+    Takes a list of tuples (src, dest, size, override_meta) and copies them in parallel.
     URLs must be regular files, not directories.
     Returns versioned URLs for S3 destinations and regular file URLs for files.
     """
-    def worker(args):
-        src, dest, override_meta = args
-
+    processed_file_list = []
+    for src, dest, size, override_meta in file_list:
         src_url = urlparse(src)
         src_path = unquote(src_url.path)
         dest_url = urlparse(dest)
@@ -470,11 +469,7 @@ def copy_file_list(file_list):
         if _looks_like_dir(src_path) or _looks_like_dir(dest_path):
             raise ValueError("Directories are not allowed")
 
-        size, _, _ = get_size_and_meta(src)
-        return (src_url, dest_url, size, override_meta)
-
-    with ThreadPoolExecutor(s3_threads) as executor:
-        processed_file_list = list(executor.map(worker, file_list))
+        processed_file_list.append((src_url, dest_url, size, override_meta))
 
     return _copy_file_list_internal(processed_file_list)
 

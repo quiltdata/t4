@@ -239,8 +239,8 @@ def test_multi_upload():
 
     with stubber:
         urls = data_transfer.copy_file_list([
-            (path1.as_uri(), 's3://example1/foo.csv', None),
-            (path2.as_uri(), 's3://example2/foo.txt', {'foo': 'bar'}),
+            (path1.as_uri(), 's3://example1/foo.csv', path1.stat().st_size, None),
+            (path2.as_uri(), 's3://example2/foo.txt', path2.stat().st_size, {'foo': 'bar'}),
         ])
 
         assert urls[0] == 's3://example1/foo.csv'
@@ -278,7 +278,7 @@ def test_upload_large_file():
 
     with stubber:
         urls = data_transfer.copy_file_list([
-            (path.as_uri(), 's3://example/large_file.npy', None),
+            (path.as_uri(), 's3://example/large_file.npy', path.stat().st_size, None),
         ])
         assert urls[0] == 's3://example/large_file.npy?versionId=v1'
 
@@ -305,7 +305,7 @@ def test_upload_large_file_etag_match():
 
     with stubber:
         urls = data_transfer.copy_file_list([
-            (path.as_uri(), 's3://example/large_file.npy', None),
+            (path.as_uri(), 's3://example/large_file.npy', path.stat().st_size, None),
         ])
         assert urls[0] == 's3://example/large_file.npy?versionId=v1'
 
@@ -345,7 +345,7 @@ def test_upload_large_file_etag_mismatch():
 
     with stubber:
         urls = data_transfer.copy_file_list([
-            (path.as_uri(), 's3://example/large_file.npy', None),
+            (path.as_uri(), 's3://example/large_file.npy', path.stat().st_size, None),
         ])
         assert urls[0] == 's3://example/large_file.npy?versionId=v2'
 
@@ -392,7 +392,7 @@ def test_upload_large_file_etag_match_metadata():
 
     with stubber:
         urls = data_transfer.copy_file_list([
-            (path.as_uri(), 's3://example/large_file.npy', {'foo': 'bar'}),
+            (path.as_uri(), 's3://example/large_file.npy', path.stat().st_size, {'foo': 'bar'}),
         ])
         assert urls[0] == 's3://example/large_file.npy?versionId=v2'
 
