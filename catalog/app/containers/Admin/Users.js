@@ -20,6 +20,7 @@ import TableRow from '@material-ui/core/TableRow';
 import * as Icons from '@material-ui/icons';
 import { withStyles } from '@material-ui/core/styles';
 
+import * as Pagination from 'components/Pagination';
 import * as Notifications from 'containers/Notifications';
 import * as APIConnector from 'utils/APIConnector';
 import * as Dialogs from 'utils/Dialogs';
@@ -232,7 +233,6 @@ const Edit = RT.composeComponent('Admin.Users.Edit',
         push('Changes saved');
         close();
       } catch (e) {
-        console.log('edit err', e);
         if (APIConnector.HTTPError.is(e, 400, /Another user already has that email/)) {
           throw new RF.SubmissionError({ email: 'taken' });
         }
@@ -626,6 +626,9 @@ export default RT.composeComponent('Admin.Users',
     ], [roles]);
 
     const ordering = Table.useOrdering({ rows, column: columns[0] });
+    const pagination = Pagination.use(ordering.ordered, {
+      getItemId: R.prop('username'),
+    });
     const dialogs = Dialogs.use();
 
     const toolbarActions = [
@@ -663,7 +666,7 @@ export default RT.composeComponent('Admin.Users',
           <MuiTable padding="dense">
             <Table.Head columns={columns} ordering={ordering} withInlineActions />
             <TableBody>
-              {ordering.ordered.map((i) => (
+              {pagination.paginated.map((i) => (
                 <TableRow hover key={i.username}>
                   {columns.map((col) => (
                     <TableCell key={col.id} {...col.props}>
@@ -678,6 +681,7 @@ export default RT.composeComponent('Admin.Users',
             </TableBody>
           </MuiTable>
         </Table.Wrapper>
+        <Table.Pagination pagination={pagination} />
       </Paper>
     );
   });
