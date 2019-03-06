@@ -10,9 +10,9 @@ export const use = () => {
   // { render, resolver }
   const [dialog, setDialog] = React.useState(null);
 
-  const open = React.useCallback((render) => {
+  const open = React.useCallback((render, props) => {
     const { resolver, promise } = defer();
-    setDialog({ render, resolver });
+    setDialog({ render, props, resolver });
     setState('open');
     return promise;
   }, [setDialog, setState]);
@@ -29,11 +29,13 @@ export const use = () => {
     }
   }, [state, setState, setDialog]);
 
-  const render = () => (
+  const render = (props) => (
     <Dialog
       open={state === 'open'}
       onClose={close}
       onExited={cleanup}
+      {...props}
+      {...(dialog && dialog.props)}
     >
       {dialog ? dialog.render({ close }) : ''}
     </Dialog>
