@@ -19,6 +19,7 @@ import * as Notifications from 'containers/Notifications';
 import * as APIConnector from 'utils/APIConnector';
 import * as Dialogs from 'utils/Dialogs';
 import * as Cache from 'utils/ResourceCache';
+import StyledLink from 'utils/StyledLink';
 import * as RT from 'utils/reactTools';
 import * as validators from 'utils/validators';
 
@@ -34,6 +35,15 @@ const Mono = withStyles((t) => ({
 }))(({ classes, children }) =>
   <span className={classes.root}>{children}</span>);
 
+const getARNLink = (arn) => {
+  try {
+    const [, role] = arn.match(/^arn:aws:iam:[^:]*:\d+:role\/(.+)$/);
+    return `https://console.aws.amazon.com/iam/home#/roles/${role}`;
+  } catch (e) {
+    return undefined;
+  }
+};
+
 const columns = [
   {
     id: 'name',
@@ -45,7 +55,13 @@ const columns = [
     id: 'arn',
     label: 'ARN',
     getValue: R.prop('arn'),
-    getDisplay: (v) => <Mono>{v}</Mono>,
+    getDisplay: (v) => {
+      const link = getARNLink(v);
+      const mono = <Mono>{v}</Mono>;
+      return link
+        ? <StyledLink href={link} target="_blank">{mono}</StyledLink>
+        : mono;
+    },
   },
 ];
 
