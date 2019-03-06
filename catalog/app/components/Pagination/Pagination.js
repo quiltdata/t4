@@ -21,21 +21,28 @@ const useHasChanged = (value, getKey = R.identity) => {
 
 export const use = (items, {
   getItemId = R.identity,
-  perPage = PER_PAGE,
+  perPage: initialPerPage = PER_PAGE,
   onChange,
 } = {}) => {
+  const [page, setPage] = React.useState(1);
+  const [perPage, setPerPage] = React.useState(initialPerPage);
+
   const pages = Math.max(1, Math.ceil(items.length / perPage));
 
-  const [page, setPage] = React.useState(1);
+  const goToPage = React.useCallback(
+    R.pipe(R.clamp(1, pages), setPage),
+    [pages, setPage],
+  );
+
   const nextPage = React.useCallback(
-    () => setPage(Math.min(pages, page + 1)),
-    [setPage, pages, page],
+    () => goToPage(page + 1),
+    [goToPage, page],
   );
+
   const prevPage = React.useCallback(
-    () => setPage(Math.max(1, page - 1)),
-    [setPage, page],
+    () => goToPage(page - 1),
+    [goToPage, page],
   );
-  const goToPage = setPage;
 
   const getKey = useGetter(getItemId, R.map);
   if (useHasChanged(items, getKey) && page !== 1) {
@@ -45,14 +52,33 @@ export const use = (items, {
 
   const offset = (page - 1) * perPage;
 
-  const paginated = useGetter(items, R.slice(offset, offset + perPage));
+  const paginate = React.useCallback(
+    R.slice(offset, offset + perPage),
+    [offset, perPage],
+  );
+  const paginated = useGetter(items, paginate);
+
+  usePrevious(perPage, (prev) => {
+    if (prev && perPage !== prev) {
+      goToPage(Math.floor(((page - 1) * prev) / perPage) + 1);
+    }
+  });
 
   usePrevious(page, (prev) => {
     if (page !== prev && onChange) onChange(prev, page);
   });
 
-  // eslint-disable-next-line object-curly-newline
-  return { paginated, page, pages, nextPage, prevPage, goToPage };
+  return {
+    paginated,
+    total: items.length,
+    perPage,
+    setPerPage,
+    page,
+    pages,
+    nextPage,
+    prevPage,
+    goToPage,
+  };
 };
 
 export const Paginate = RT.composeComponent('Pagination.Paginate',
