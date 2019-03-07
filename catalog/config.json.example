@@ -1,5 +1,5 @@
 {
-  "registryUrl": "<registry url here>",
+  "registryUrl": "http://localhost:5000",
   "alwaysRequiresAuth": false,
   "signInRedirect": "/b/quilt-example",
   "signOutRedirect": "/",

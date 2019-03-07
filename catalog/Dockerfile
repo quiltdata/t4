@@ -5,6 +5,7 @@ ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
 
 RUN apt-get update && apt-get install -y \
+    nginx \
     curl \
     gettext \
     libssl-dev \
@@ -12,8 +13,6 @@ RUN apt-get update && apt-get install -y \
     libpng-dev
 RUN curl -sL https://deb.nodesource.com/setup_8.x | bash -
 RUN apt-get install -y nodejs
-
-EXPOSE 3000
 
 RUN mkdir /opt/app
 WORKDIR /opt/app
@@ -24,8 +23,20 @@ COPY internals internals
 RUN npm install
 
 # Install the app
-COPY . .
+COPY app app
+COPY static static
+COPY server server
 COPY config.json.example static/config.json
 COPY federation.json.example static/federation.json
+RUN npm run build
 RUN npm run build:dll
-CMD npm start
+
+# Set up nginx
+COPY nginx-web.conf /etc/nginx/sites-available/default
+RUN rm -rf /usr/share/nginx/html
+RUN cp -r ./build/ /usr/share/nginx/html/
+RUN cp static/config.json /usr/share/nginx/html/
+RUN cp static/federation.json /usr/share/nginx/html/                        
+
+# Run nginx
+CMD exec nginx -g 'daemon off;'
