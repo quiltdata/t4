@@ -202,7 +202,6 @@ def test_simple_upload():
 
     stubber.assert_no_pending_responses()
 
-@pytest.mark.xfail(reason="Thread nondeterminism")
 def test_multi_upload():
     stubber = Stubber(data_transfer.s3_client)
 
@@ -238,10 +237,12 @@ def test_multi_upload():
     )
 
     with stubber:
-        urls = data_transfer.copy_file_list([
-            (path1.as_uri(), 's3://example1/foo.csv', None),
-            (path2.as_uri(), 's3://example2/foo.txt', {'foo': 'bar'}),
-        ])
+        # stubber expects responses in order, so disable multi-threading.
+        with mock.patch('t4.data_transfer.s3_threads', 1):
+            urls = data_transfer.copy_file_list([
+                (path1.as_uri(), 's3://example1/foo.csv', None),
+                (path2.as_uri(), 's3://example2/foo.txt', {'foo': 'bar'}),
+            ])
 
         assert urls[0] == 's3://example1/foo.csv'
         assert urls[1] == 's3://example2/foo.txt?versionId=v123'
