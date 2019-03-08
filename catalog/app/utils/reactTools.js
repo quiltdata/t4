@@ -279,3 +279,17 @@ export const consume = ({ Consumer }, propMapper) => {
 export const extractProp = (prop, fn) =>
   ({ [prop]: value, ...props }) =>
     fn(value, props);
+
+/**
+ * Wrap component into React.Suspense with given fallback and extra props.
+ *
+ * @param {function} fallback
+ *   Function that renders fallback based on props.
+ *
+ * @param {object} options
+ *   Extra props passed to React.Suspense.
+ *
+ * @returns {HOC}
+ */
+export const withSuspense = (fallback, opts) =>
+  wrap(React.Suspense, (props) => ({ fallback: fallback(props), ...opts }));
