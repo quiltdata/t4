@@ -11,6 +11,8 @@ import cfnresponse
 
 S3_CLIENT = boto3.client('s3')
 
+SENTRY_DSN = "https://cfde44007c3844aab3d1ee3f0ba53a1a@sentry.io/1410550"
+
 def handler(event, context):
     """
     top-level handler for CloudFormation custom resource protocol
@@ -102,7 +104,9 @@ def autogenerate_configs(**kwargs):
         },
         'registryUrl': 'https://' + registry_host, # no trailing /
         'signInRedirect': '/',
-        'signOutRedirect': '/'
+        'signOutRedirect': '/',
+        'sentryDSN': SENTRY_DSN,
+        'mixPanelToken': kwargs['MixPanelToken']
     }
 
     return (federation, catalog_config)
