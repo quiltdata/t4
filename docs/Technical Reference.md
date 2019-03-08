@@ -60,9 +60,6 @@ The following instructions use CloudFormation to deploy T4 services to your priv
     * **SecretKey**&mdash;Used for session authorization. Provide a random value to this field (e.g. by running `uuidgen | sha256sum` in the command line).
     * **SentryDSN** &mdash; Set this field to a single dash: `-`.
     * **SmtpHost**, **SmtpPassword**, **SmtpUsername**&mdash;Log-in information for an SMTP mail server. These fields are necessary because the T4 catalog will need to send (very occassional) service emails on your behalf.
-    * **Users**&mdash;Comma-separated list of ARNs of IAM users and/or IAM roles that will be able to perform searches in the bucket.
-
-      Note that users with search access can see the entire contents of the bucket. Use with care.
 
 8. Click Next.
 9. On the Options screen that follows, go to the "Termination Protection" section in "Advanced" and click "Enable".
