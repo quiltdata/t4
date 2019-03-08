@@ -17,7 +17,7 @@ export default composeComponent('Layout',
   }),
   withStyles(({ palette }) => ({
     root: {
-      background: palette.background.default,
+      background: '#292a53',
       display: 'flex',
       flexDirection: 'column',
       minHeight: '100vh',

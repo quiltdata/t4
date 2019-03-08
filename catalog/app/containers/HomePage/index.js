@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { Grid } from 'react-bootstrap';
 
 import CTA from 'components/CallToAction';
 import Feature from 'components/Feature';
@@ -12,20 +13,13 @@ export default composeComponent('HomePage',
   () => (
     <Layout>
       <UnPad>
-        <Feature
-          header="T4 Web Catalog - Alpha Preview"
-          tagline="Search, browse, and preview S3 buckets"
-        />
-        <CTA />
-        <Pad top left right bottom>
-          <h1>Documentation</h1>
-          <p>Every file in T4 is indexed, versioned, and secure. T4 consists of a web catalog and a Python API.</p>
-          <QButton
-            href="https://github.com/quiltdata/t4/blob/master/README.md"
-            label="View docs"
+        <Grid fluid>
+          <Feature
+            header="Collaborate in S3"
+            tagline="Search, visualize, and version with the Quilt Data Catalog"
           />
-        </Pad>
-        <BigSkip />
+          <CTA />
+        </Grid>
       </UnPad>
     </Layout>
   ));

@@ -6,12 +6,12 @@ import styled from 'styled-components';
 
 import ImageRow from 'components/ImageRow';
 
-import background from './background.jpg';
+import hero from './cloudheroes.png';
 import strings from './messages';
 
 /* eslint-disable jsx-a11y/no-static-element-interactions */
 const Feature = ({ header, tagline }) => (
-  <ImageRow backgroundColor="white" src={background}>
+  <ImageRow height='600px' hero src={hero}>
     <Content>
       <h1 className="main">{header}</h1>
       <h2 className="main">{tagline}</h2>
@@ -36,8 +36,7 @@ const Content = styled.div`
   text-align: center;
 
   h1.main, h2.main {
-    color: ${colors.grey800};
-    font-size: 4em;
+    color: white;
     margin: 0;
     text-align: left;
     text-shadow: 0px 0px 0px black;
@@ -45,11 +44,12 @@ const Content = styled.div`
   }
 
   h1.main {
-    font-weight: bold;
+    font-size: 3em;
     margin-top: 0;
   }
 
   h2.main {
+    font-size: 1em;
     margin-bottom: 64px;
   }
 

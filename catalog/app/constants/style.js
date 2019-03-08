@@ -5,7 +5,7 @@ import { createMuiTheme } from '@material-ui/core/styles';
 import { fade, lighten } from '@material-ui/core/styles/colorManipulator';
 
 
-export const backgroundColor = 'rgb(16, 16, 16)';
+export const backgroundColor = 'rgba(0, 0, 0, 0)';
 export const bodyColor = colors.grey[900];
 export const bodySize = '1em';
 //  inspiration: https://v4-alpha.getbootstrap.com/layout/overview/#responsive-breakpoints
@@ -42,7 +42,7 @@ export const themeV0 = getMuiTheme({
 export const theme = createMuiTheme({
   palette: {
     primary: {
-      main: colors.grey[900],
+      main: '#2b2e69',
     },
     secondary: {
       main: colors.orange[600],
