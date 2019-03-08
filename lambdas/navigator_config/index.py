@@ -33,7 +33,7 @@ def handler(event, context):
             cfnresponse.send(event, context, cfnresponse.FAILED, {})
             raise
 
-    # event['RequestType'] == 'Update'
+    # The only case left is event['RequestType'] == 'Update'
     try:
         update_configs(**props)
         cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
