@@ -22,12 +22,12 @@ import t4
 p = t4.Package()
 p.push(
     "username/packagename",
-    dest="s3://your-bucket",
+    "s3://your-bucket",
     message="Updated version my package"
 )
 ```
 
-`push` targets a registry. A **registry** is a storage backend&mdash;currently either an S3 bucket (e.g. `s3://my-bucket`) or a local directory path (e.g. `/path/to/somewhere/`). By default the registry is infered from `dest`. You can omit `dest` entirely if you configure a default remote registry first:
+`push` targets a registry. A **registry** is a storage backend&mdash;currently either an S3 bucket (e.g. `s3://my-bucket`) or a local directory path (e.g. `/path/to/somewhere/`). By default the registry is infered from the second argument, `dest`. You can omit `dest` entirely if you configure a default remote registry first:
 
 ```python
 import t4

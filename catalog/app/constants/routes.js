@@ -71,4 +71,10 @@ export default {
     url: (bucket, name, revision, path = '') =>
       `/b/${bucket}/packages/${name}/tree/${revision}/${path}`,
   },
+
+  // admin
+  admin: {
+    path: '/admin',
+    url: () => '/admin',
+  },
 };

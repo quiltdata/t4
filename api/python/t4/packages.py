@@ -349,7 +349,12 @@ class Package(object):
             top_hash(string): top hash of package version to load
         """
         if registry is None:
-            # use default remote registry if present
+            registry = get_from_config('default_remote_registry')
+            if registry is None:
+                raise QuiltException("No registry specified and no default remote "
+                                     "registry configured. Please specify a registry "
+                                     "or configure a default remote registry with t4.config")
+        elif registry == 'local':
             registry = get_from_config('default_local_registry')
 
         registry_prefix = get_package_registry(fix_url(registry) if registry else None)
@@ -439,10 +444,17 @@ class Package(object):
         Returns:
             None
         """
-        # TODO: do this with improved parallelism? connections etc. could be reused
         nice_dest = fix_url(dest).rstrip('/')
+        file_list = []
+        
         for logical_key, entry in self.walk():
-            entry.fetch('{}/{}'.format(nice_dest, quote(logical_key)))
+            logical_key = quote(logical_key)
+            physical_key = _to_singleton(entry.physical_keys)
+            new_physical_key = f'{nice_dest}/{logical_key}'
+            entry_meta = entry.meta
+            file_list.append((physical_key, new_physical_key, entry_meta))
+
+        copy_file_list(file_list)
 
     def keys(self):
         """

@@ -45,10 +45,14 @@ const Item = composeComponent('NavBar.MenuItem',
   RC.withProps({ component: Link }),
   MenuItem);
 
+const selectUser = createStructuredSelector({
+  name: authSelectors.username,
+  isAdmin: authSelectors.isAdmin,
+});
+
 const NavMenu = composeComponent('NavBar.Menu',
   () => {
-    const name = reduxHook.useMappedState(authSelectors.username);
-
+    const user = reduxHook.useMappedState(selectUser);
     const { urls } = NamedRoutes.use();
     const [anchor, setAnchor] = React.useState(null);
 
@@ -67,13 +71,24 @@ const NavMenu = composeComponent('NavBar.Menu',
           color="inherit"
           onClick={open}
         >
-          {name} <Icon>expand_more</Icon>
+          {user.isAdmin && (
+            <React.Fragment>
+              <Icon fontSize="small">security</Icon>
+              &nbsp;
+            </React.Fragment>
+          )}
+          {user.name} <Icon>expand_more</Icon>
         </Button>
         <Menu
           anchorEl={anchor}
           open={!!anchor}
           onClose={close}
         >
+          {user.isAdmin && (
+            <Item to={urls.admin()} onClick={close} divider>
+              <Icon fontSize="small">security</Icon>&nbsp;Users and roles
+            </Item>
+          )}
           <Item to={urls.signOut()} onClick={close}>Sign Out</Item>
         </Menu>
       </div>

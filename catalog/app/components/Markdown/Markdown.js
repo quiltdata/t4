@@ -24,7 +24,7 @@ import * as RT from 'utils/reactTools';
  * which shouldn't be needed 
  */
 const SANITIZE_OPTS = {
-  'ALLOWED_TAGS': [
+  ALLOWED_TAGS: [
     'a',
     'abbr',
     'address',
@@ -80,8 +80,8 @@ const SANITIZE_OPTS = {
     'tr',
     'ul',
   ],
-  'FORBID_TAGS': ['style', 'script'],
-  'FORBID_ATTR': ['style'],
+  FORBID_TAGS: ['style', 'script'],
+  FORBID_ATTR: ['style'],
 };
 
 // TODO: switch to pluggable react-aware renderer
@@ -230,8 +230,21 @@ export const Container = RT.composeComponent('Markdown.Container',
         maxWidth: '100%',
       },
 
-      '& table th,td': {
-        'text-align': 'left',
+      '& a': linkStyle,
+
+      '& table': {
+        maxWidth: '100%',
+        width: '100%',
+
+        'th, td': {
+          lineHeight: '1.5em',
+          padding: '8px',
+          textAlign: 'left',
+        },
+
+        '&, th, td': {
+          border: '1px solid #ddd',
+        },
       },
     },
   })),
