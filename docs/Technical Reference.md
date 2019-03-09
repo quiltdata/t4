@@ -81,9 +81,9 @@ The following instructions use CloudFormation to deploy T4 services to your priv
 
     ![](./imgs/outputs.png)
 
-11. Select the stack and open the Outputs tab. These should be two values there. One is labeled `CloudFrontDomain`. The other is labeled `LoadBalancerDNSName`. These are the endpoints for your catalog and your authorization services, respectively. They still need to be mapped to user-facing URLs via DNS.
+11. Select the stack and open the Outputs tab. These should be three values there. They are `CloudFrontDomain`, `LoadBalancerDNSName`, and `RegistryHost`. These values still need to be mapped to user-facing URLs via DNS.
 
-13. Go to your DNS service (if you are using AWS, this is [Route 53](https://aws.amazon.com/route53/)). Create two `CNAME` records: one mapping your catalog URL (`QuiltWebHost`) to the `CloudFrontDomain`, and one mapping your auth service URL (`RegistryHost`) to the `LoadBalancerDNSName`. Make sure that the value you set for `CloudFrontDomain` matches the value you set for `AllowedOrigin` in step 1.
+12. Go to your DNS service (if you are using AWS, this is [Route 53](https://aws.amazon.com/route53/)). Create two `CNAME` records: one mapping your catalog URL (`QuiltWebHost`) to the `CloudFrontDomain`, and one mapping your auth service URL (`RegistryHost`) to the `LoadBalancerDNSName`. Make sure that the value you set for `CloudFrontDomain` matches the value you set for `AllowedOrigin` in step 1.
 
 If all went well, your catalog should now be available and accessible.
 
