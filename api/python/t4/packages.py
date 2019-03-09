@@ -451,8 +451,7 @@ class Package(object):
             logical_key = quote(logical_key)
             physical_key = _to_singleton(entry.physical_keys)
             new_physical_key = f'{nice_dest}/{logical_key}'
-            entry_meta = entry.meta
-            file_list.append((physical_key, new_physical_key, entry_meta))
+            file_list.append((physical_key, new_physical_key, entry.size, entry.meta))
 
         copy_file_list(file_list)
 
@@ -944,7 +943,7 @@ class Package(object):
             # Copy the datafiles in the package.
             physical_key = _to_singleton(entry.physical_keys)
             new_physical_key = dest_url + "/" + quote(logical_key)
-            file_list.append((physical_key, new_physical_key, entry.meta))
+            file_list.append((physical_key, new_physical_key, entry.size, entry.meta))
 
         results = copy_file_list(file_list)
 
