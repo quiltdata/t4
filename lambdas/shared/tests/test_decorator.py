@@ -120,7 +120,7 @@ class TestDecorator(TestCase):
         }, None)
 
         assert resp['statusCode'] == 500
-        assert resp['body'] == 'Internal Server Error'
+        assert resp['body'] == 'Fail!'
         assert resp['headers'] == {
             'Content-Type': 'text/plain',
             'access-control-allow-origin': '*',
