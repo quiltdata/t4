@@ -18,6 +18,7 @@ def handler(event, context):
         cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
         return
     except Exception as e:
+        print(e)
         cfnresponse.send(event, context, cfnresponse.FAILED, {})
         raise
 
