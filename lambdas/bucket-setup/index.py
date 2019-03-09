@@ -1,4 +1,5 @@
 import boto3
+import botocore
 import cfnresponse
 
 s3_client = boto3.client('s3')
@@ -17,6 +18,7 @@ def handler(event, context):
         cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
         return
     except Exception as e:
+        print(e)
         cfnresponse.send(event, context, cfnresponse.FAILED, {})
         raise
 
@@ -47,7 +49,13 @@ def set_cors(bucket, catalog_host):
         'MaxAgeSeconds': 3000
     }
             
-    existing_cors_rules = s3_client.get_bucket_cors(Bucket=bucket)['CORSRules']
+    try:
+        existing_cors_rules = s3_client.get_bucket_cors(Bucket=bucket)['CORSRules']
+    # if there's no CORS set at all, we'll get an error
+    except botocore.exceptions.ClientError as problem:
+        print(problem) # goes to CloudWatch
+        existing_cors_rules = []
+
     if new_cors_rule not in existing_cors_rules:
         existing_cors_rules.append(new_cors_rule)
         s3_client.put_bucket_cors(
