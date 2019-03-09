@@ -28,7 +28,7 @@ const paletteV0 = {
   accent1Color: colors.orange[600],
   accent2Color: colors.grey[200],
   accent3Color: colors.grey[300],
-  textColor: colors.grey[800], // see also global-styles.js
+  textColor: colors.grey[100], // see also global-styles.js
   borderColor: colors.grey[400],
 };
 

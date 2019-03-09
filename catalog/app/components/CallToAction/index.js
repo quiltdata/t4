@@ -8,8 +8,7 @@ import { slackInvite, t4Docs } from 'constants/urls';
 import FAIcon from 'components/FAIcon';
 
 const Styler = styled(Row)`
-  background-color: rgb(240, 240, 240);
-  border-bottom: 1px solid rgb(222, 222, 222);
+  color: white;
   padding: 16px;
   text-align: right;
 `;
