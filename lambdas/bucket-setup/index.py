@@ -53,8 +53,10 @@ def set_cors(bucket, catalog_host):
         existing_cors_rules = s3_client.get_bucket_cors(Bucket=bucket)['CORSRules']
     # if there's no CORS set at all, we'll get an error
     except botocore.exceptions.ClientError as problem:
-        print(problem) # goes to CloudWatch
-        existing_cors_rules = []
+        if 'NoSuchCORSConfiguration' in str(problem):
+            existing_cors_rules = []
+        else:
+            raise
 
     if new_cors_rule not in existing_cors_rules:
         existing_cors_rules.append(new_cors_rule)
@@ -64,3 +66,4 @@ def set_cors(bucket, catalog_host):
                 'CORSRules': existing_cors_rules
             }
         )
+
