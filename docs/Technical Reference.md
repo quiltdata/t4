@@ -5,41 +5,17 @@ This page provides a technical reference on certain advanced configuration optio
 The following instructions use CloudFormation to deploy T4 services to your private AWS account.
 
 1. Ensure you have sufficient permissions to proceed. The `AdministratorAccess` policy is sufficient.
-2. If you are going to use Quilt T4 with an existing bucket, make sure that your target bucket has [object versioning enabled](https://docs.aws.amazon.com/AmazonS3/latest/user-guide/enable-versioning.html), as well as the following [CORS policy](https://docs.aws.amazon.com/AmazonS3/latest/dev/cors.html#how-do-i-enable-cors):
-
-    ```xml
-    <?xml version="1.0" encoding="UTF-8"?>
-    <CORSConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
-    <CORSRule>
-        <AllowedOrigin>$YOURCOMPANYDOMAIN.COM</AllowedOrigin>
-        <AllowedMethod>GET</AllowedMethod>
-        <AllowedMethod>HEAD</AllowedMethod>
-        <AllowedMethod>PUT</AllowedMethod>
-        <AllowedMethod>POST</AllowedMethod>
-        <AllowedHeader>*</AllowedHeader>
-        <MaxAgeSeconds>3000</MaxAgeSeconds>
-    </CORSRule>
-    </CORSConfiguration>
-    ```
-
-    > Note: bucket CORS does not grant permissions of any kind.
-    > `AllowedMethod` actions are only available to IAM users or roles with sufficient permissions.
-
-    Note the `AllowedOrigin` field. This should be parameterized with the domain you will host your catalog from. For example, `https://yourcompany.com`.
-
-    If you are going to use Quilt T4 with a new bucket, create the bucket now, and set these policies as part of the flow for bucket creation.
-
-3. Create, or ensure you have already created, an [AWS TLS Certificate](https://aws.amazon.com/certificate-manager/) which maps to the public domain name you want your catalog to use. For example, if you want your catalog to be publicly accessible from `t4.foo.com`, you will need to have a certificate for `t4.foo.com` or `*.foo.com` registered in your account.
+2. Create, or ensure you have already created, an [AWS TLS Certificate](https://aws.amazon.com/certificate-manager/) which maps to the public domain name you want your catalog to use. For example, if you want your catalog to be publicly accessible from `t4.foo.com`, you will need to have a certificate for `t4.foo.com` or `*.foo.com` registered in your account.
 
    An AWS certificate is an Amazon-issued HTTPS certificate, created via the [AWS Certificate Manager service](https://aws.amazon.com/certificate-manager/), and it's a necessity because it enables HTTPS access to your catalog. If you have not created one, [step through the flow for creating one now](https://docs.aws.amazon.com/acm/latest/userguide/gs-acm-request-public.html). If you already have a certificate for your website, but it's not an AWS-issued certificate, see the instructions on [importing an external certificate into AWS](https://docs.aws.amazon.com/acm/latest/userguide/import-certificate.html).
 
-4. Go to `Services > CloudFormation > Create stack` in your AWS Console.
+3. Go to `Services > CloudFormation > Create stack` in your AWS Console.
 
     ![](./imgs/start.png)
 
-5. Click "Upload a template to Amazon S3" and select the `t4-deployment.yaml` file provided to you by Quilt. Click Next.
+4. Click "Upload a template to Amazon S3" and select the `t4-deployment.yaml` file provided to you by Quilt. Click Next.
 
-6. You should now be at the stack parameters screen. This is where you will fill out of all of the configurable details of your Quilt T4 instance. These are, in order:
+5. You should now be at the stack parameters screen. This is where you will fill out of all of the configurable details of your Quilt T4 instance. These are, in order:
 
     * **Stack name**&mdash;CloudFormation will deploy your T4 catalog instance and all of its associated services as a "stack" with this name. This name is currently only used for administering your resources; it will not be seen by end users.
     * **DefaultSender**&mdash;You can invite other users to T4 via emails from this address. This field is in the form `NAME <ADDRESS>`, where `NAME` is to name is the associated with the email (e.g. `Aleksey`) and `ADDRESS` is the email address that the email will actually be sent from. The name must be alphanumeric, and the address must be a valid email address. For example, `Aleksey <admin@quiltdata.com>`.
@@ -64,26 +40,26 @@ The following instructions use CloudFormation to deploy T4 services to your priv
       We recommend a bucket name ending in `-config`, to make it more obvious that this bucket is configuration-only.
     * **CreateDefaultRoles**&mdash;Whether or not to create default roles, which will be used as part of the invite flow for inviting new users to T4. If set to "False", you will need to do additional configuration before you can invite new users to T4. You should probably leave this set to "True".
 
-7. Click Next.
-8. On the Options screen that follows, go to the "Termination Protection" section in "Advanced" and click "Enable".
+6. Click Next.
+7. On the Options screen that follows, go to the "Termination Protection" section in "Advanced" and click "Enable".
 
     ![](./imgs/term_protect.png)
 
     This protects the stack deployment pipeline from accidental deletion. Click Next.
 
-9. On the confirmation screen, check the box asking you to acknowledge that CloudFormation may create IAM roles, then click Create.
+8. On the confirmation screen, check the box asking you to acknowledge that CloudFormation may create IAM roles, then click Create.
 
     ![](./imgs/finish.png)
 
     Click Create.
 
-10. CloudFormation typically takes around 30 minutes to spin up your stack. Once that is done, you should see `CREATE_COMPLETE` as the Status for your CloudFormation stack.
+9. CloudFormation typically takes around 30 minutes to spin up your stack. Once that is done, you should see `CREATE_COMPLETE` as the Status for your CloudFormation stack.
 
     ![](./imgs/outputs.png)
 
-11. Select the stack and open the Outputs tab. These should be three values there. They are `CloudFrontDomain`, `LoadBalancerDNSName`, and `RegistryHost`. These values still need to be mapped to user-facing URLs via DNS.
+10. Select the stack and open the Outputs tab. These should be three values there. They are `CloudFrontDomain`, `LoadBalancerDNSName`, and `RegistryHost`. These values still need to be mapped to user-facing URLs via DNS.
 
-12. Go to your DNS service (if you are using AWS, this is [Route 53](https://aws.amazon.com/route53/)). Create two `CNAME` records: one mapping your catalog URL (`QuiltWebHost`) to the `CloudFrontDomain`, and one mapping your auth service URL (`RegistryHost`) to the `LoadBalancerDNSName`. Make sure that the value you set for `CloudFrontDomain` matches the value you set for `AllowedOrigin` in step 1.
+11. Go to your DNS service (if you are using AWS, this is [Route 53](https://aws.amazon.com/route53/)). Create two `CNAME` records: one mapping your catalog URL (`QuiltWebHost`) to the `CloudFrontDomain`, and one mapping your auth service URL (`RegistryHost`) to the `LoadBalancerDNSName`.
 
 If all went well, your catalog should now be available and accessible.
 
