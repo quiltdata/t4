@@ -68,3 +68,23 @@ class TestIndex():
             expected = json.load(info_json)
         assert (body['info'] == expected), \
             f"Unexpected body['info'] for {parquet}"
+
+    @responses.activate
+    def test_vcf(self):
+        """test sending vcf bytes"""
+        vcf = BASE_DIR / 'example.vcf'
+        responses.add(
+            responses.GET,
+            self.FILE_URL,
+            body=vcf.read_bytes(),
+            status=200)
+        event = self._make_event({'url': self.FILE_URL, 'input': 'vcf'})
+        resp = lambda_handler(event, None)
+        print(resp)
+        """
+        body = json.loads(resp['body'])
+        html_ = BASE_DIR / 'ipynb_html_response.txt'
+        body_html = html_.read_text()
+        assert body['html'].startswith(body_html), \
+            f"Unexpected HTML:\n{body['html']}"
+        """

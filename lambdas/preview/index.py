@@ -25,7 +25,7 @@ SCHEMA = {
             'type': 'string'
         },
         'input': {
-            'enum': ['ipynb', 'parquet']
+            'enum': ['ipynb', 'parquet', 'vcf']
         }
     },
     'required': ['url', 'input'],
@@ -54,6 +54,8 @@ def lambda_handler(params, _):
                 html, info = extract_ipynb(file_)
             elif input_type == 'parquet':
                 html, info = extract_parquet(file_)
+            elif input_type == 'vcf':
+                html, info = extract_vcf(file_)
             else:
                 assert False
 
@@ -141,3 +143,32 @@ def extract_parquet(file_):
     html = row_group.to_pandas()._repr_html_() # pylint: disable=protected-access
 
     return html, info
+
+def extract_vcf(file_):
+    """
+    Pull summary info from VCF: meta-information, header line, and data lines 
+    (in that order, up to MAX_LINES)
+    """
+    MAX_LINES = 500
+
+    meta = []
+    header = []
+    data = []
+
+    with open(file_.name, 'r') as vcf:
+        for index, line in enumerate(vcf, start=1):
+            line = line.strip()
+            formatted = f'<p>{line}</p>'
+            if line.startswith('##'):
+                meta.append(formatted)
+            elif line.startswith('#'):
+                header.append(formatted)
+            else:
+                data.append(formatted)
+
+            if index >= MAX_LINES:
+                break
+
+    html = "<pre>{}{}{}</pre>".format(''.join(meta) + '\n', ''.join(header) + '\n', ''.join(data))
+
+    return html, {}
