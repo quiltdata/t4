@@ -4,7 +4,7 @@ import * as RC from 'recompose';
 import * as RF from 'redux-form/immutable';
 import TextField from '@material-ui/core/TextField';
 import Typography from '@material-ui/core/Typography';
-import { withStyles } from '@material-ui/core/styles';
+import { withStyles } from '@material-ui/styles';
 
 import * as RT from 'utils/reactTools';
 

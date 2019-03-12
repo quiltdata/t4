@@ -13,7 +13,7 @@ import Icon from '@material-ui/core/Icon';
 import Menu from '@material-ui/core/Menu';
 import MenuItem from '@material-ui/core/MenuItem';
 import Toolbar from '@material-ui/core/Toolbar';
-import { withStyles } from '@material-ui/core/styles';
+import { withStyles, useTheme } from '@material-ui/styles';
 
 import * as authSelectors from 'containers/Auth/selectors';
 import * as NamedRoutes from 'utils/NamedRoutes';
@@ -133,20 +133,23 @@ const SignIn = composeComponent('NavBar.SignIn',
   });
 
 export const Container = composeComponent('NavBar.Container',
-  withStyles(({ palette }) => ({
+  withStyles(({ palette }) => (console.log('palette', palette), {
     root: {
-      backgroundColor: palette.primary.dark,
-      color: palette.getContrastText(palette.primary.dark),
+      //backgroundColor: palette.primary.dark,
+      //color: palette.getContrastText(palette.primary.dark),
     },
   })),
-  ({ classes, children }) => (
-    <AppBar className={classes.root} color="default" position="static">
+  ({ classes, children }) => {
+    const theme = useTheme();
+    console.log('theme', theme);
+    return (
+    <AppBar className={classes.root} color="primary" position="static">
       <Toolbar>
         <Logo />
         {children}
       </Toolbar>
     </AppBar>
-  ));
+  ); });
 
 const Spacer = composeComponent('NavBar.Spacer',
   withStyles(() => ({

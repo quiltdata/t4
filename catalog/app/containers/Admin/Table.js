@@ -15,7 +15,7 @@ import TableSortLabel from '@material-ui/core/TableSortLabel';
 import MuiToolbar from '@material-ui/core/Toolbar';
 import Tooltip from '@material-ui/core/Tooltip';
 import Typography from '@material-ui/core/Typography';
-import { withStyles } from '@material-ui/core/styles';
+import { withStyles } from '@material-ui/styles';
 import { lighten } from '@material-ui/core/styles/colorManipulator';
 
 import * as RT from 'utils/reactTools';
@@ -184,8 +184,7 @@ export const Head = RT.composeComponent('Admin.Table.Head',
             </Tooltip>
           </TableCell>
         ))}
-        {/* TODO: change `numeric` to align="right" after MUI update */}
-        {withInlineActions && <TableCell align="right" numeric>Actions</TableCell>}
+        {withInlineActions && <TableCell align="right">Actions</TableCell>}
       </TableRow>
     </TableHead>
   ));

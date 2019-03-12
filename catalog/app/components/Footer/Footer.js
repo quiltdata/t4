@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { FormattedMessage } from 'react-intl';
-import { withStyles } from '@material-ui/core/styles';
+import { withStyles } from '@material-ui/styles';
 
 import FAIcon from 'components/FAIcon';
 import { blog, twitter, gitWeb } from 'constants/urls';

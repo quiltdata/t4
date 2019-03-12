@@ -1,6 +1,6 @@
 import * as React from 'react';
 import Typography from '@material-ui/core/Typography';
-import { withStyles } from '@material-ui/core/styles';
+import { makeStyles } from '@material-ui/styles';
 
 import Layout from 'components/Layout';
 import * as APIConnector from 'utils/APIConnector';
@@ -11,11 +11,14 @@ import Users from './Users';
 import * as data from './data';
 
 
-export default withStyles((t) => ({
+const useStyles = makeStyles((t) => ({
   section: {
     marginTop: t.spacing.unit * 2,
   },
-}))(({ classes }) => {
+}));
+
+export default () => {
+  const classes = useStyles();
   const req = APIConnector.use();
   const users = Cache.useData(data.UsersResource, { req });
   const roles = Cache.useData(data.RolesResource, { req });
@@ -32,4 +35,4 @@ export default withStyles((t) => ({
       </div>
     </Layout>
   );
-});
+};

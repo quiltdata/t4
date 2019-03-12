@@ -3,7 +3,7 @@ import cx from 'classnames';
 import PT from 'prop-types';
 import * as React from 'react';
 import * as RC from 'recompose';
-import { withStyles } from '@material-ui/core/styles';
+import { withStyles } from '@material-ui/styles';
 import embed from 'vega-embed';
 
 import * as RT from 'utils/reactTools';

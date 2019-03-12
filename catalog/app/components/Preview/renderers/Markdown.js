@@ -1,6 +1,6 @@
 import cx from 'classnames';
 import * as React from 'react';
-import { withStyles } from '@material-ui/core/styles';
+import { withStyles } from '@material-ui/styles';
 
 import { Container } from 'components/Markdown';
 import * as RT from 'utils/reactTools';

@@ -42,7 +42,7 @@ export const themeV0 = getMuiTheme({
 export const theme = createMuiTheme({
   palette: {
     primary: {
-      main: colors.grey[900],
+      main: colors.indigo[600],
     },
     secondary: {
       main: colors.orange[600],
