@@ -10,6 +10,7 @@ from PIL import Image
 import requests
 
 from t4_lambda_shared.decorator import api, validate
+from t4_lambda_shared.utils import get_default_origins, make_json_response
 
 
 # Eventually we'll want to precompute/cache thumbnails, so we won't be able to support
@@ -27,13 +28,7 @@ SUPPORTED_SIZES = [
     (2048, 1536)
 ]
 # Map URL parameters to actual sizes, e.g. 'w128h128' -> (128, 128)
-# TODO(dima): Is this a good idea? Don't know why Dropbox does it that way.
 SIZE_PARAMETER_MAP = {f'w{w}h{h}': (w, h) for w, h in SUPPORTED_SIZES}
-
-ALLOWED_ORIGINS = [
-    'http://localhost:3000',
-    os.environ.get('WEB_ORIGIN')
-]
 
 SCHEMA = {
     'type': 'object',
@@ -49,7 +44,7 @@ SCHEMA = {
     'additionalProperties': False
 }
 
-@api(cors_origins=ALLOWED_ORIGINS)
+@api(cors_origins=get_default_origins())
 @validate(SCHEMA)
 def lambda_handler(params, _):
     """
@@ -85,8 +80,4 @@ def lambda_handler(params, _):
             'error': resp.reason
         }
 
-    response_headers = {
-        "Content-Type": 'application/json'
-    }
-
-    return 200, json.dumps(ret_val), response_headers
+    return make_json_response(200, ret_val)
