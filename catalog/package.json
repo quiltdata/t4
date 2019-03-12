@@ -250,6 +250,7 @@
   },
   "dependencies": {
     "@material-ui/core": "^3.9.2",
+    "@material-ui/styles": "^3.0.0-alpha.6",
     "assert": "^1.4.1",
     "autobind-decorator": "^2.3.1",
     "aws-sdk": "^2.348.0",
