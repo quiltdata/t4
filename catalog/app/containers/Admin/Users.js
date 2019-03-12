@@ -427,24 +427,22 @@ const Username = RT.composeComponent('Admin.Users.Username',
   }),
   withStyles((t) => ({
     root: {
-      position: 'relative',
+      alignItems: 'center',
+      display: 'flex',
     },
     admin: {
       fontWeight: 600,
-
-      '&::before': {
-        color: t.palette.secondary.main,
-        content: '"*"',
-        position: 'absolute',
-        right: 'calc(100% + 0.2em)',
-      },
+    },
+    icon: {
+      fontSize: '1em',
+      marginLeft: t.spacing.unit * 0.5,
     },
   })),
-  ({ className, classes, admin = false, ...props }) => (
-    <Mono
-      className={cx(className, classes.root, { [classes.admin]: admin })}
-      {...props}
-    />
+  ({ className, classes, admin = false, children, ...props }) => (
+    <span className={cx(className, classes.root)} {...props}>
+      <Mono className={cx({ [classes.admin]: admin })}>{children}</Mono>
+      {admin && <Icon className={classes.icon}>security</Icon>}
+    </span>
   ));
 
 const Editable = ({ value, onChange, children }) => {
