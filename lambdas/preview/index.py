@@ -12,11 +12,8 @@ import pyarrow.parquet as pq
 import requests
 
 from t4_lambda_shared.decorator import api, validate
+from t4_lambda_shared.utils import get_default_origins, make_json_response
 
-ALLOWED_ORIGINS = [
-    'http://localhost:3000',
-    os.environ.get('WEB_ORIGIN')
-]
 
 SCHEMA = {
     'type': 'object',
@@ -32,7 +29,7 @@ SCHEMA = {
     'additionalProperties': False
 }
 
-@api(cors_origins=ALLOWED_ORIGINS)
+@api(cors_origins=get_default_origins())
 @validate(SCHEMA)
 def lambda_handler(params, _):
     """
@@ -54,8 +51,11 @@ def lambda_handler(params, _):
                 html, info = extract_ipynb(file_)
             elif input_type == 'parquet':
                 html, info = extract_parquet(file_)
+<<<<<<< HEAD
             elif input_type == 'vcf':
                 html, info = extract_vcf(file_)
+=======
+>>>>>>> master
             else:
                 assert False
 
@@ -76,7 +76,7 @@ def lambda_handler(params, _):
         "Content-Type": 'application/json'
     }
 
-    return 200, json.dumps(ret_val), response_headers
+    return make_json_response(200, ret_val)
 
 def extract_ipynb(file_):
     """

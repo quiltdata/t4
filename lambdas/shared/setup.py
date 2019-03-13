@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='t4-lambda-shared',
-    version='0.0.1',
+    version='0.0.2',
     packages=['t4_lambda_shared'],
     install_requires=[
         'jsonschema>=2.6.0',
