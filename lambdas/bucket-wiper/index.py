@@ -1,7 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
-import json
 import boto3
 import cfnresponse
 
@@ -18,7 +14,13 @@ def lambda_handler(event, context):
             for obj_version in bucket.object_versions.all():
                 versioned_objs.append({'Key': obj_version.object_key,
                                        'VersionId': obj_version.id})
-            bucket.delete_objects(Delete={'Objects': versioned_objs})
+
+            # Use a list comprehension to break into chunks of size 1000
+            # for API limits.
+            n = 1000
+            for shard in [versioned_objs[i * n:(i + 1) * n] \
+                for i in range((len(versioned_objs) + n - 1) // n )]:
+                bucket.delete_objects(Delete={'Objects': shard})
         cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
     except Exception as e:
         print(e)
