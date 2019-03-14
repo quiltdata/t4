@@ -2,7 +2,7 @@ import { injectGlobal } from 'styled-components';
 
 import { bodyColor, bodySize, headerColor } from 'constants/style';
 
-// TODO: deprecate this, use MUI baseline, theme and typography
+// TODO: deprecate this, use MUI css baseline, theme and typography
 /* eslint no-unused-expressions: 0 */
 injectGlobal`
   html,
