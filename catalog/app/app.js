@@ -15,7 +15,6 @@ import createHistory from 'history/createBrowserHistory';
 import 'sanitize.css/sanitize.css';
 //  Need to bypass CSS modules used by standard loader
 //  See https://github.com/react-boilerplate/react-boilerplate/issues/238#issuecomment-222080327
-import '!!style-loader!css-loader!css/bootstrap-grid.css';
 import { ThemeProvider } from '@material-ui/styles';
 
 // Import root app
