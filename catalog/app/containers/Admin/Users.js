@@ -435,13 +435,14 @@ const Username = RT.composeComponent('Admin.Users.Username',
     },
     icon: {
       fontSize: '1em',
-      marginLeft: t.spacing.unit * 0.5,
+      marginLeft: `calc(-1em - ${t.spacing.unit * 0.5}px)`,
+      marginRight: t.spacing.unit * 0.5,
     },
   })),
   ({ className, classes, admin = false, children, ...props }) => (
     <span className={cx(className, classes.root)} {...props}>
-      <Mono className={cx({ [classes.admin]: admin })}>{children}</Mono>
       {admin && <Icon className={classes.icon}>security</Icon>}
+      <Mono className={cx({ [classes.admin]: admin })}>{children}</Mono>
     </span>
   ));
 
