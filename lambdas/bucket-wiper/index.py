@@ -12,7 +12,7 @@ def lambda_handler(event, context):
             # for obj_version in bucket.object_versions.all():
             versioned_objs = []
 
-            files_to_delete = ['config.json', 'federations.json']
+            files_to_delete = ['config.json', 'federation.json']
             for prefix in files_to_delete:
                 for obj_version in bucket.object_versions.filter(Prefix=prefix):
                     versioned_objs.append({'Key': obj_version.object_key,
