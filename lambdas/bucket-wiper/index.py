@@ -11,9 +11,12 @@ def lambda_handler(event, context):
             bucket = s3.Bucket(bucket)
             # for obj_version in bucket.object_versions.all():
             versioned_objs = []
-            for obj_version in bucket.object_versions.all():
-                versioned_objs.append({'Key': obj_version.object_key,
-                                       'VersionId': obj_version.id})
+
+            files_to_delete = ['config.json', 'federations.json']
+            for prefix in files_to_delete:
+                for obj_version in bucket.object_versions.filter(Prefix=prefix):
+                    versioned_objs.append({'Key': obj_version.object_key,
+                                           'VersionId': obj_version.id})
 
             # Use a list comprehension to break into chunks of size 1000
             # for API limits.
