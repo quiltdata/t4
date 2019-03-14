@@ -13,7 +13,7 @@ import Icon from '@material-ui/core/Icon';
 import Menu from '@material-ui/core/Menu';
 import MenuItem from '@material-ui/core/MenuItem';
 import Toolbar from '@material-ui/core/Toolbar';
-import { withStyles, useTheme } from '@material-ui/styles';
+import { withStyles } from '@material-ui/styles';
 
 import * as authSelectors from 'containers/Auth/selectors';
 import * as NamedRoutes from 'utils/NamedRoutes';
@@ -50,50 +50,49 @@ const selectUser = createStructuredSelector({
   isAdmin: authSelectors.isAdmin,
 });
 
-const NavMenu = composeComponent('NavBar.Menu',
-  () => {
-    const user = reduxHook.useMappedState(selectUser);
-    const { urls } = NamedRoutes.use();
-    const [anchor, setAnchor] = React.useState(null);
+const NavMenu = () => {
+  const user = reduxHook.useMappedState(selectUser);
+  const { urls } = NamedRoutes.use();
+  const [anchor, setAnchor] = React.useState(null);
 
-    const open = React.useCallback((evt) => {
-      setAnchor(evt.target);
-    }, [setAnchor]);
+  const open = React.useCallback((evt) => {
+    setAnchor(evt.target);
+  }, [setAnchor]);
 
-    const close = React.useCallback(() => {
-      setAnchor(null);
-    }, [setAnchor]);
+  const close = React.useCallback(() => {
+    setAnchor(null);
+  }, [setAnchor]);
 
-    return (
-      <div>
-        <Button
-          variant="text"
-          color="inherit"
-          onClick={open}
-        >
-          {user.isAdmin && (
-            <React.Fragment>
-              <Icon fontSize="small">security</Icon>
-              &nbsp;
-            </React.Fragment>
-          )}
-          {user.name} <Icon>expand_more</Icon>
-        </Button>
-        <Menu
-          anchorEl={anchor}
-          open={!!anchor}
-          onClose={close}
-        >
-          {user.isAdmin && (
-            <Item to={urls.admin()} onClick={close} divider>
-              <Icon fontSize="small">security</Icon>&nbsp;Users and roles
-            </Item>
-          )}
-          <Item to={urls.signOut()} onClick={close}>Sign Out</Item>
-        </Menu>
-      </div>
-    );
-  });
+  return (
+    <div>
+      <Button
+        variant="text"
+        color="inherit"
+        onClick={open}
+      >
+        {user.isAdmin && (
+          <React.Fragment>
+            <Icon fontSize="small">security</Icon>
+            &nbsp;
+          </React.Fragment>
+        )}
+        {user.name} <Icon>expand_more</Icon>
+      </Button>
+      <Menu
+        anchorEl={anchor}
+        open={!!anchor}
+        onClose={close}
+      >
+        {user.isAdmin && (
+          <Item to={urls.admin()} onClick={close} divider>
+            <Icon fontSize="small">security</Icon>&nbsp;Users and roles
+          </Item>
+        )}
+        <Item to={urls.signOut()} onClick={close}>Sign Out</Item>
+      </Menu>
+    </div>
+  );
+};
 
 const SignIn = composeComponent('NavBar.SignIn',
   RC.setPropTypes({
@@ -133,23 +132,20 @@ const SignIn = composeComponent('NavBar.SignIn',
   });
 
 export const Container = composeComponent('NavBar.Container',
-  withStyles(({ palette }) => (console.log('palette', palette), {
+  withStyles(({ palette }) => ({
     root: {
-      //backgroundColor: palette.primary.dark,
-      //color: palette.getContrastText(palette.primary.dark),
+      backgroundColor: palette.primary.dark,
+      color: palette.getContrastText(palette.primary.dark),
     },
   })),
-  ({ classes, children }) => {
-    const theme = useTheme();
-    console.log('theme', theme);
-    return (
-    <AppBar className={classes.root} color="primary" position="static">
+  ({ classes, children }) => (
+    <AppBar className={classes.root} position="static">
       <Toolbar>
         <Logo />
         {children}
       </Toolbar>
     </AppBar>
-  ); });
+  ));
 
 const Spacer = composeComponent('NavBar.Spacer',
   withStyles(() => ({

@@ -26,12 +26,10 @@ import * as RT from 'utils/reactTools';
 
 const LINK_INSTALLATION = 'https://github.com/quiltdata/t4/blob/master/docs/Installation.md#aws-t4-instance-via-cloudformation';
 
-const withInvertedTheme =
-  RT.wrap(ThemeProvider, () => ({ theme: style.themeInverted }));
 
 const NavInput = RT.composeComponent('NavBar.BucketSelect.NavInput',
-  //withInvertedTheme,
-  withStyles(({ palette }) => (console.log('palette inv', palette), {
+  RT.wrap(ThemeProvider, () => ({ theme: style.themeInverted })),
+  withStyles(({ palette }) => ({
     underline: {
       '&:after': {
         borderBottomColor: palette.secondary.main,
