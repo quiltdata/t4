@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 
 const lookup = {
+  book: 'fa-book',
   bookmark: 'fa-bookmark',
   chatBubble: 'fa-chat-bubble',
   github: 'fa-mark-github',
@@ -21,6 +22,7 @@ function FAIcon({ className, type }) {
 FAIcon.propTypes = {
   className: PropTypes.string,
   type: PropTypes.oneOf([
+    'book',
     'bookmark',
     'chatBubble',
     'github',
