@@ -275,7 +275,6 @@
     "jss": "^10.0.0-alpha.13",
     "katex": "^0.10.0",
     "lodash": "^4.17.11",
-    "material-ui": "^0.20.2",
     "minimist": "^1.2.0",
     "mixpanel-browser": "^2.23.0",
     "prop-types": "^15.6.2",
