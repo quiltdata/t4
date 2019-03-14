@@ -534,7 +534,7 @@ class Package(object):
 
         return pkg
 
-    def set_dir(self, lkey, path, meta=None):
+    def set_dir(self, lkey, path=None, meta=None):
         """
         Adds all files from `path` to the package.
 
@@ -545,6 +545,7 @@ class Package(object):
             lkey(string): prefix to add to every logical key,
                 use '/' for the root of the package.
             path(string): path to scan for files to add to package.
+                If None, lkey will be substituted in as the path.
             meta(dict): user level metadata dict to attach to lkey directory entry.
 
         Returns:
@@ -554,9 +555,14 @@ class Package(object):
             When `path` doesn't exist
         """
         lkey = lkey.strip("/")
-        root = self._ensure_subpackage(self._split_key(lkey)) if lkey else self
 
+        root = self._ensure_subpackage(self._split_key(lkey)) if lkey else self
         root.set_meta(meta)
+
+        if not path:
+            current_working_dir = pathlib.Path.cwd()
+            logical_key_abs_path = pathlib.Path(lkey).absolute()
+            path = logical_key_abs_path.relative_to(current_working_dir)
 
         # TODO: deserialization metadata
         url = urlparse(fix_url(path).strip('/'))
@@ -754,14 +760,15 @@ class Package(object):
             self.set(prefix + logical_key, entry, meta)
         return self
 
-    def set(self, logical_key, entry, meta=None):
+    def set(self, logical_key, entry=None, meta=None):
         """
         Returns self with the object at logical_key set to entry.
 
         Args:
             logical_key(string): logical key to update
-            entry(PackageEntry OR string): new entry to place at logical_key in the package
-                if entry is a string, it is treated as a URL, and an entry is created based on it
+            entry(PackageEntry OR string): new entry to place at logical_key in the package.
+                If entry is a string, it is treated as a URL, and an entry is created based on it.
+                If entry is None, the logical key string will be substituted as the entry value.
             meta(dict): user level metadata dict to attach to entry
 
         Returns:
@@ -769,6 +776,11 @@ class Package(object):
         """
         if not logical_key or logical_key.endswith('/'):
             raise QuiltException("Invalid logical_key: %r; cannot be a directory" % logical_key)
+
+        if not entry:
+            current_working_dir = pathlib.Path.cwd()
+            logical_key_abs_path = pathlib.Path(logical_key).absolute()
+            entry = logical_key_abs_path.relative_to(current_working_dir)
 
         if isinstance(entry, (string_types, getattr(os, 'PathLike', str))):
             url = fix_url(str(entry))
