@@ -1,5 +1,4 @@
-import RaisedButton from 'material-ui/RaisedButton';
-import React from 'react';
+import * as React from 'react';
 import { FormattedMessage as FM } from 'react-intl';
 import { connect } from 'react-redux';
 import {
@@ -9,8 +8,8 @@ import {
   withHandlers,
   withStateHandlers,
 } from 'recompose';
-// import { createStructuredSelector } from 'reselect';
-import styled from 'styled-components';
+import Button from '@material-ui/core/Button';
+import { styled } from '@material-ui/styles';
 
 import Working from 'components/Working';
 import copyToClipboard from 'utils/clipboard';
@@ -20,14 +19,14 @@ import { composeComponent } from 'utils/reactTools';
 
 import { getCode } from './actions';
 import msg from './messages';
-// import * as selectors from './selectors';
 import * as Layout from './Layout';
+
 
 const Container = Layout.mkLayout(<FM {...msg.codeHeading} />);
 
-const Code = styled.div`
-  overflow-wrap: break-word;
-`;
+const Code = styled('div')({
+  overflowWrap: 'break-word',
+});
 
 export default composeComponent('Auth.Code',
   connect(),
@@ -64,10 +63,13 @@ export default composeComponent('Auth.Code',
     <Container>
       <Code>{result}</Code>
       <Layout.Actions>
-        <RaisedButton
+        <Button
+          color="primary"
+          variant="contained"
           onClick={copy}
-          label={<FM {...msg.codeCopy} />}
-        />
+        >
+          <FM {...msg.codeCopy} />
+        </Button>
       </Layout.Actions>
     </Container>
   ))),
