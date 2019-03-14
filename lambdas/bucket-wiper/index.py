@@ -2,7 +2,7 @@ import boto3
 import cfnresponse
 
 
-def lambda_handler(event, context):
+def handler(event, context):
     try:
         bucket = event['ResourceProperties']['BucketName']
 
