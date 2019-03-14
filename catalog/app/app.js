@@ -4,11 +4,10 @@ import 'babel-polyfill';
 import 'whatwg-fetch';
 
 // TODO: remove after mui v4 release
-// eslint-disable-next-line import/first
 import './installStyles';
+/* eslint-disable import/first */
 
 // Import all the third party stuff
-import MuiThemeProviderV0 from 'material-ui/styles/MuiThemeProvider';
 import * as React from 'react';
 import ReactDOM from 'react-dom';
 // import { LOCATION_CHANGE } from 'connected-react-router/immutable';
@@ -92,7 +91,6 @@ const render = (messages) => {
   ReactDOM.render(
     nest(
       FinalBoundary,
-      [MuiThemeProviderV0, { muiTheme: style.themeV0 }],
       [ThemeProvider, { theme: style.theme }],
       [StoreProvider, { store }],
       [LanguageProvider, { messages }],
