@@ -250,7 +250,7 @@
   },
   "dependencies": {
     "@material-ui/core": "^3.9.2",
-    "@material-ui/styles": "^3.0.0-alpha.6",
+    "@material-ui/styles": "^3.0.0-alpha.10",
     "@material-ui/system": "^3.0.0-alpha.2",
     "assert": "^1.4.1",
     "autobind-decorator": "^2.3.1",
@@ -272,6 +272,7 @@
     "intl": "^1.2.5",
     "invariant": "^2.2.4",
     "ip": "^1.1.5",
+    "jss": "^10.0.0-alpha.13",
     "katex": "^0.10.0",
     "lodash": "^4.17.11",
     "material-ui": "^0.20.2",
