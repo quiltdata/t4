@@ -450,40 +450,6 @@ def test_s3_set_dir(tmpdir):
 
         list_object_versions_mock.assert_called_with('bucket', 'foo/')
 
-def test_updates(tmpdir):
-    """ Verify building a package from a directory. """
-    pkg = (
-        Package()
-        .set('foo', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
-             {'foo_meta': 'blah'})
-        .set('bar', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
-            {'bar_meta': 'blah'})
-    )
-    pkg['foo'].meta['target'] = 'unicode'
-    pkg['bar'].meta['target'] = 'unicode'
-    pkg.build()
-
-    assert pkg['foo']() == '123\n'
-    assert pkg['bar']() == '123\n'
-
-    # Build a dummy file to add to the map.
-    with open('bar.txt', "w") as fd:
-        fd.write('test_file_content_string')
-        test_file = Path(fd.name)
-    pkg = pkg.update({'bar': 'bar.txt'})
-    assert test_file.resolve().as_uri() == pkg['bar'].physical_keys[0]
-
-    assert pkg['foo']() == '123\n'
-
-    # Build a dummy file to add to the map with a prefix.
-    with open('baz.txt', "w") as fd:
-        fd.write('test_file_content_string')
-        test_file = Path(fd.name)
-    pkg = pkg.update({'baz': 'baz.txt'}, prefix='prefix/')
-    assert test_file.resolve().as_uri() == pkg['prefix/baz'].physical_keys[0]
-
-    assert pkg['foo']() == '123\n'
-
 
 def test_package_entry_meta():
     pkg = (

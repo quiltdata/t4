@@ -739,27 +739,6 @@ class Package(object):
         for logical_key, entry in self.walk():
             yield {'logical_key': logical_key, **entry.as_dict()}
 
-    def update(self, new_keys_dict, meta=None, prefix=None):
-        """
-        Updates the package with the keys and values in `new_keys_dict`.
-
-        If a metadata dict is provided, it is attached to and overwrites
-        metadata for all entries in `new_keys_dict`.
-
-        Args:
-            new_dict(dict): dict of logical keys to update.
-            meta(dict): metadata dict to attach to every input entry.
-            prefix(string): a prefix string to prepend to every logical key.
-
-        Returns:
-            self
-
-        """
-        prefix = "" if not prefix else prefix.strip("/") + "/"
-        for logical_key, entry in new_keys_dict.items():
-            self.set(prefix + logical_key, entry, meta)
-        return self
-
     def set(self, logical_key, entry=None, meta=None):
         """
         Returns self with the object at logical_key set to entry.
