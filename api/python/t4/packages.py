@@ -303,7 +303,7 @@ class Package(object):
         return repr_str
 
     @classmethod
-    def install(cls, name, registry=None, pkg_hash=None, dest=None, dest_registry=None):
+    def install(cls, name, registry=None, top_hash=None, dest=None, dest_registry=None):
         """
         Installs a named package to the local registry and downloads its files.
 
@@ -311,7 +311,7 @@ class Package(object):
             name(str): Name of package to install.
             registry(str): Registry where package is located. 
                 Defaults to the default remote registry.
-            pkg_hash(str): Hash of package to install. Defaults to latest.
+            top_hash(str): Hash of package to install. Defaults to latest.
             dest(str): Local path to download files to.
             dest_registry(str): Registry to install package to. Defaults to local registry.
 
@@ -326,11 +326,11 @@ class Package(object):
                                      "or configure a default remote registry with t4.config")
         elif registry == 'local':
             registry = get_from_config('default_local_registry')
-        
+
         if dest_registry is None:
             dest_registry = get_from_config('default_local_registry')
 
-        pkg = cls.browse(name=name, registry=registry, pkg_hash=pkg_hash)
+        pkg = cls.browse(name=name, registry=registry, top_hash=top_hash)
 
         if dest is None:
             dest = get_install_location()
@@ -339,24 +339,29 @@ class Package(object):
 
 
     @classmethod
-    def browse(cls, name=None, registry=None, pkg_hash=None):
+    def browse(cls, name=None, registry=None, top_hash=None):
         """
         Load a package into memory from a registry without making a local copy of
         the manifest.
         Args:
             name(string): name of package to load
             registry(string): location of registry to load package from
-            pkg_hash(string): top hash of package version to load
+            top_hash(string): top hash of package version to load
         """
         if registry is None:
-            # use default remote registry if present
+            registry = get_from_config('default_remote_registry')
+            if registry is None:
+                raise QuiltException("No registry specified and no default remote "
+                                     "registry configured. Please specify a registry "
+                                     "or configure a default remote registry with t4.config")
+        elif registry == 'local':
             registry = get_from_config('default_local_registry')
 
         registry_prefix = get_package_registry(fix_url(registry) if registry else None)
 
-        if pkg_hash is not None:
+        if top_hash is not None:
             # If hash is specified, name doesn't matter.
-            pkg_path = '{}/packages/{}'.format(registry_prefix, pkg_hash)
+            pkg_path = '{}/packages/{}'.format(registry_prefix, top_hash)
             return cls._from_path(pkg_path)
         else:
             validate_package_name(name)
@@ -439,10 +444,16 @@ class Package(object):
         Returns:
             None
         """
-        # TODO: do this with improved parallelism? connections etc. could be reused
         nice_dest = fix_url(dest).rstrip('/')
+        file_list = []
+        
         for logical_key, entry in self.walk():
-            entry.fetch('{}/{}'.format(nice_dest, quote(logical_key)))
+            logical_key = quote(logical_key)
+            physical_key = _to_singleton(entry.physical_keys)
+            new_physical_key = f'{nice_dest}/{logical_key}'
+            file_list.append((physical_key, new_physical_key, entry.size, entry.meta))
+
+        copy_file_list(file_list)
 
     def keys(self):
         """
@@ -523,7 +534,7 @@ class Package(object):
 
         return pkg
 
-    def set_dir(self, lkey, path, meta=None):
+    def set_dir(self, lkey, path=None, meta=None):
         """
         Adds all files from `path` to the package.
 
@@ -534,6 +545,7 @@ class Package(object):
             lkey(string): prefix to add to every logical key,
                 use '/' for the root of the package.
             path(string): path to scan for files to add to package.
+                If None, lkey will be substituted in as the path.
             meta(dict): user level metadata dict to attach to lkey directory entry.
 
         Returns:
@@ -543,9 +555,14 @@ class Package(object):
             When `path` doesn't exist
         """
         lkey = lkey.strip("/")
-        root = self._ensure_subpackage(self._split_key(lkey)) if lkey else self
 
+        root = self._ensure_subpackage(self._split_key(lkey)) if lkey else self
         root.set_meta(meta)
+
+        if not path:
+            current_working_dir = pathlib.Path.cwd()
+            logical_key_abs_path = pathlib.Path(lkey).absolute()
+            path = logical_key_abs_path.relative_to(current_working_dir)
 
         # TODO: deserialization metadata
         url = urlparse(fix_url(path).strip('/'))
@@ -722,14 +739,15 @@ class Package(object):
         for logical_key, entry in self.walk():
             yield {'logical_key': logical_key, **entry.as_dict()}
 
-    def set(self, logical_key, entry, meta=None):
+    def set(self, logical_key, entry=None, meta=None):
         """
         Returns self with the object at logical_key set to entry.
 
         Args:
             logical_key(string): logical key to update
-            entry(PackageEntry OR string): new entry to place at logical_key in the package
-                if entry is a string, it is treated as a URL, and an entry is created based on it
+            entry(PackageEntry OR string): new entry to place at logical_key in the package.
+                If entry is a string, it is treated as a URL, and an entry is created based on it.
+                If entry is None, the logical key string will be substituted as the entry value.
             meta(dict): user level metadata dict to attach to entry
 
         Returns:
@@ -737,6 +755,11 @@ class Package(object):
         """
         if not logical_key or logical_key.endswith('/'):
             raise QuiltException("Invalid logical_key: %r; cannot be a directory" % logical_key)
+
+        if not entry:
+            current_working_dir = pathlib.Path.cwd()
+            logical_key_abs_path = pathlib.Path(logical_key).absolute()
+            entry = logical_key_abs_path.relative_to(current_working_dir)
 
         if isinstance(entry, (string_types, getattr(os, 'PathLike', str))):
             url = fix_url(str(entry))
@@ -911,7 +934,7 @@ class Package(object):
             # Copy the datafiles in the package.
             physical_key = _to_singleton(entry.physical_keys)
             new_physical_key = dest_url + "/" + quote(logical_key)
-            file_list.append((physical_key, new_physical_key, entry.meta))
+            file_list.append((physical_key, new_physical_key, entry.size, entry.meta))
 
         results = copy_file_list(file_list)
 

@@ -18,6 +18,8 @@ export const username = createSelector(getIn([REDUX_KEY, 'user', 'current_user']
 
 export const authenticated = createSelector(username, Boolean);
 
+export const isAdmin = createSelector(getIn([REDUX_KEY, 'user', 'is_staff']), id);
+
 export const email = createSelector(getIn([REDUX_KEY, 'user', 'email']), id);
 
 export const tokens = createSelector(getIn([REDUX_KEY, 'tokens']), toJS());

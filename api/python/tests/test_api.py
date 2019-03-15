@@ -9,6 +9,8 @@ from ruamel.yaml import YAML
 import t4 as he
 from t4 import util
 
+DEFAULT_URL = 'https://quilt-t4-staging-registry.quiltdata.com'
+
 class TestAPI():
     @responses.activate
     def test_config(self):
@@ -30,7 +32,7 @@ class TestAPI():
         content['default_local_registry'] = util.BASE_PATH.as_uri()
         content['default_remote_registry'] = None
         content['default_install_location'] = None
-        content['registry_url'] = 'https://pkg.quiltdata.com'
+        content['registryUrl'] = DEFAULT_URL
 
         assert config == content
 
@@ -121,7 +123,7 @@ class TestAPI():
     @responses.activate
     def test_empty_list_role(self):
         empty_list_response = { 'results': [] }
-        responses.add(responses.GET, 'https://pkg.quiltdata.com/api/roles',
+        responses.add(responses.GET, DEFAULT_URL + '/api/roles',
                 json=empty_list_response, status=200)
         assert he.admin.list_roles() == []
 
@@ -133,7 +135,7 @@ class TestAPI():
             'id': '1234-1234'
         }
         list_response = { 'results': [result] }
-        responses.add(responses.GET, 'https://pkg.quiltdata.com/api/roles',
+        responses.add(responses.GET, DEFAULT_URL + '/api/roles',
                 json=list_response, status=200)
         assert he.admin.list_roles() == [result]
 
@@ -144,7 +146,7 @@ class TestAPI():
             'arn': 'asdf123',
             'id': '1234-1234'
         }
-        responses.add(responses.GET, 'https://pkg.quiltdata.com/api/roles/1234-1234',
+        responses.add(responses.GET, DEFAULT_URL + '/api/roles/1234-1234',
                 json=result, status=200)
         assert he.admin.get_role('1234-1234') == result
 
@@ -155,7 +157,7 @@ class TestAPI():
             'arn': 'asdf123',
             'id': '1234-1234'
         }
-        responses.add(responses.POST, 'https://pkg.quiltdata.com/api/roles',
+        responses.add(responses.POST, DEFAULT_URL + '/api/roles',
                 json=result, status=200)
         assert he.admin.create_role('test', 'asdf123') == result
 
@@ -171,27 +173,27 @@ class TestAPI():
             'arn': 'qwer456',
             'id': '1234-1234'
         }
-        responses.add(responses.GET, 'https://pkg.quiltdata.com/api/roles/1234-1234',
+        responses.add(responses.GET, DEFAULT_URL + '/api/roles/1234-1234',
                 json=get_result, status=200)
-        responses.add(responses.PUT, 'https://pkg.quiltdata.com/api/roles/1234-1234',
+        responses.add(responses.PUT, DEFAULT_URL + '/api/roles/1234-1234',
                 json=result, status=200)
         assert he.admin.edit_role('1234-1234', 'test_new_name', 'qwer456') == result
 
     @responses.activate
     def test_delete_role(self):
-        responses.add(responses.DELETE, 'https://pkg.quiltdata.com/api/roles/1234-1234',
+        responses.add(responses.DELETE, DEFAULT_URL + '/api/roles/1234-1234',
                 status=200)
         he.admin.delete_role('1234-1234')
 
     @responses.activate
     def test_set_role(self):
-        responses.add(responses.POST, 'https://pkg.quiltdata.com/api/users/set_role',
+        responses.add(responses.POST, DEFAULT_URL + '/api/users/set_role',
                 json={}, status=200)
 
         not_found_result = {
             'message': "No user exists by the provided name."
         }
-        responses.add(responses.POST, 'https://pkg.quiltdata.com/api/users/set_role',
+        responses.add(responses.POST, DEFAULT_URL + '/api/users/set_role',
                 json=not_found_result, status=400)
 
         he.admin.set_role('test_user', 'test_role')

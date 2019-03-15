@@ -43,9 +43,10 @@ export const createResource = ({ name, fetch, key = R.identity }) => ({
 });
 
 const Action = tagged([
-  'Init', // { fetch: fn, input: any, promise, resolver }
-  'Request', // { fetch: fn, input: any }
-  'Response', // { fetch: fn, input: any, result: Result }
+  'Init', // { resource, input: any, promise, resolver }
+  'Request', // { resource, input: any }
+  'Response', // { resource, input: any, result: Result }
+  'Patch', // { resource, input: any, update: fn }
   // TODO
   // 'Dispose', // { fetch: fn, input: any }
 ]);
@@ -74,6 +75,11 @@ const reducer = reduxTools.withInitialState(I.Map(), Action.reducer({
       }
       return { ...entry, result };
     }),
+  Patch: ({ resource, input, update }) => (s) =>
+    s.updateIn(keyFor(resource, input), (entry) => {
+      if (!entry) throw new Error('Patch: entry does not exist');
+      return update(entry);
+    }),
   __: () => R.identity,
 }));
 
@@ -100,7 +106,7 @@ function* saga() {
   yield sagaTools.takeEveryTagged(Action.Init, handleInit);
 }
 
-const suspend = ({ promise, result }) =>
+export const suspend = ({ promise, result }) =>
   AsyncResult.case({
     Init: () => { throw promise; },
     Pending: () => { throw promise; },
@@ -121,13 +127,48 @@ export const Provider = ({ children }) => {
     return getEntry();
   }, [store]);
 
-  const get = React.useMemo(
-    () => R.pipe(accessResult, suspend),
-    [accessResult],
-  );
+  const get = React.useCallback(R.pipe(accessResult, suspend), [accessResult]);
 
-  return <Ctx.Provider value={get}>{children}</Ctx.Provider>;
+  const patch = React.useCallback((resource, input, update) => {
+    store.dispatch(Action.Patch({ resource, input, update }));
+  }, [store]);
+
+  const patchOk = React.useCallback((resource, input, updateOk) => {
+    const update = R.when(
+      (s) => AsyncResult.Ok.is(s.result),
+      R.evolve({
+        result: AsyncResult.case({
+          Ok: R.pipe(updateOk, AsyncResult.Ok),
+          _: R.identity,
+        }),
+        promise: R.then(updateOk),
+      }),
+    );
+    return patch(resource, input, update);
+  }, [patch]);
+
+  const inst = { access: accessResult, get, patch, patchOk };
+
+  return <Ctx.Provider value={inst}>{children}</Ctx.Provider>;
 };
 
-// TODO: claim / release in useEffect
 export const use = () => React.useContext(Ctx);
+
+// TODO: claim / release in useEffect
+export const useData = (resource, input, opts = {}) => {
+  const cache = use();
+  const get = React.useCallback(
+    () => cache.access(resource, input),
+    [cache, resource, input],
+  );
+  const [entry, setEntry] = React.useState(get());
+  const store = React.useContext(reduxHook.StoreContext);
+  React.useEffect(() => store.subscribe(() => {
+    const newEntry = get();
+    if (!R.equals(newEntry, entry)) {
+      setEntry(newEntry);
+    }
+  }), [store, get]);
+
+  return opts.suspend ? suspend(entry) : entry;
+};

@@ -48,6 +48,10 @@ else:
 s3_transfer_config = TransferConfig()
 s3_threads = 4
 
+# When uploading files at least this size, compare the ETags first and skip the upload if they're equal;
+# copy the remote file onto itself if the metadata changes.
+UPLOAD_ETAG_OPTIMIZATION_THRESHOLD = 1024
+
 
 def _update_credentials(credentials):
     session = get_session()
@@ -57,6 +61,7 @@ def _update_credentials(credentials):
     updated_session = boto3.Session(botocore_session=session)
     global s3_client
     s3_client = updated_session.client('s3')
+
 
 def _parse_metadata(resp):
     return json.loads(resp['Metadata'].get(HELIUM_METADATA, '{}'))
@@ -195,7 +200,8 @@ NO_OP_COPY_ERROR_MESSAGE = ("An error occurred (InvalidRequest) when calling "
                             "attributes.")
 
 
-def _copy_remote_file(callback, size, src_bucket, src_key, src_version, dest_bucket, dest_key, override_meta):
+def _copy_remote_file(callback, size, src_bucket, src_key, src_version,
+                      dest_bucket, dest_key, override_meta, extra_args=None):
     src_params = dict(
         Bucket=src_bucket,
         Key=src_key
@@ -220,6 +226,9 @@ def _copy_remote_file(callback, size, src_bucket, src_key, src_version, dest_buc
             Metadata={HELIUM_METADATA: json.dumps(override_meta)}
         ))
 
+    if extra_args:
+        params.update(extra_args)
+
     try:
         resp = s3_client.copy_object(**params)
         callback(size)
@@ -228,6 +237,9 @@ def _copy_remote_file(callback, size, src_bucket, src_key, src_version, dest_buc
     except ClientError as e:
         # suppress error from copying a file to itself
         if str(e) == NO_OP_COPY_ERROR_MESSAGE:
+            callback(size)
+            # TODO: We need to return a new URL, but the error does not tell us
+            # the file's version ID!
             return
         raise
 
@@ -257,6 +269,41 @@ def _copy_file_list_internal(file_list):
                     dest_bucket, dest_path, dest_version_id = parse_s3_url(dest_url)
                     if dest_version_id:
                         raise ValueError("Cannot set VersionId on destination")
+
+                    # Optimization: check if the remote file already exists and has the right ETag,
+                    # and skip the upload.
+                    if size >= UPLOAD_ETAG_OPTIMIZATION_THRESHOLD:
+                        try:
+                            resp = s3_client.head_object(Bucket=dest_bucket, Key=dest_path)
+                        except ClientError:
+                            # Destination doesn't exist, so fall through to the normal upload.
+                            pass
+                        else:
+                            # Check the ETag.
+                            dest_size = resp['ContentLength']
+                            dest_etag = resp['ETag']
+                            dest_version_id = resp['VersionId']
+                            if size == dest_size:
+                                src_etag = _calculate_etag(src_path)
+                                if src_etag == dest_etag:
+                                    if override_meta is None:
+                                        # Nothing more to do. We should not attempt to copy the object because
+                                        # that would cause the "copy object to itself" error.
+                                        progress_callback(size)
+                                        return make_s3_url(dest_bucket, dest_path, dest_version_id)
+                                    else:
+                                        # NOTE(dima): There is technically a race condition here: if the S3 file
+                                        # got modified after the `head_object` call AND we have no version ID,
+                                        # we could end up with mismatched body and metadata. It makes no sense
+                                        # for the user to perform such actions, but just in case, pass
+                                        # CopySourceIfMatch to make the request fail.
+                                        extra_args = dict(CopySourceIfMatch=src_etag)
+                                        return _copy_remote_file(
+                                            progress_callback, size, dest_bucket, dest_path, dest_version_id,
+                                            dest_bucket, dest_path, override_meta, extra_args
+                                        )
+
+                    # If the optimization didn't happen, do the normal upload.
                     return _upload_file(progress_callback, size, src_path, dest_bucket, dest_path, override_meta)
                 else:
                     raise NotImplementedError
@@ -283,7 +330,7 @@ def _copy_file_list_internal(file_list):
     return results
 
 
-def _calculate_etag(file_obj):
+def _calculate_etag(file_path):
     """
     Attempts to calculate a local file's ETag the way S3 does:
     - Normal uploads: MD5 of the file
@@ -291,8 +338,8 @@ def _calculate_etag(file_obj):
     We can't know how the file was actually uploaded - but we're assuming it was done using
     the default settings, which we get from `s3_transfer_config`.
     """
-    size = file_obj.stat().st_size
-    with open(file_obj, 'rb') as fd:
+    size = pathlib.Path(file_path).stat().st_size
+    with open(file_path, 'rb') as fd:
         if size <= s3_transfer_config.multipart_threshold:
             contents = fd.read()
             etag = hashlib.md5(contents).hexdigest()
@@ -408,13 +455,12 @@ def _looks_like_dir(s):
 
 def copy_file_list(file_list):
     """
-    Takes a list of tuples (src, dest, override_meta) and copies them in parallel.
+    Takes a list of tuples (src, dest, size, override_meta) and copies them in parallel.
     URLs must be regular files, not directories.
     Returns versioned URLs for S3 destinations and regular file URLs for files.
     """
-    def worker(args):
-        src, dest, override_meta = args
-
+    processed_file_list = []
+    for src, dest, size, override_meta in file_list:
         src_url = urlparse(src)
         src_path = unquote(src_url.path)
         dest_url = urlparse(dest)
@@ -423,11 +469,7 @@ def copy_file_list(file_list):
         if _looks_like_dir(src_path) or _looks_like_dir(dest_path):
             raise ValueError("Directories are not allowed")
 
-        size, _, _ = get_size_and_meta(src)
-        return (src_url, dest_url, size, override_meta)
-
-    with ThreadPoolExecutor(s3_threads) as executor:
-        processed_file_list = list(executor.map(worker, file_list))
+        processed_file_list.append((src_url, dest_url, size, override_meta))
 
     return _copy_file_list_internal(processed_file_list)
 
