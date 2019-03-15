@@ -24,18 +24,20 @@ export default () => (
           tagline="Search, visualize, and version with the Quilt Data Catalog"
         />
         <Box
-          bgcolor="common.white"
+          color="common.white"
           display="flex"
           p={2}
         >
           <Box flexGrow={1} />
-          <Button href={urls.slackInvite}>
+          <Button href={urls.slackInvite} color="inherit">
             <FAIcon type="slack" />&nbsp;Join Slack
           </Button>
-          <Button href={urls.t4Docs}>
+          <Box width="1em" />
+          <Button href={urls.t4Docs} color="inherit">
             <FAIcon type="book" />&nbsp;Read Docs
           </Button>
-          <Button onClick={openIntercom}>
+          <Box width="1em" />
+          <Button onClick={openIntercom} color="inherit">
             <FAIcon type="chatBubble" />&nbsp;Chat
           </Button>
         </Box>
