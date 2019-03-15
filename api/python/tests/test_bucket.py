@@ -171,6 +171,12 @@ def test_bucket_put_file():
         copy_dest = copy_mock.call_args_list[0][0][1]
         assert urlparse(copy_dest).scheme == 's3'
 
+        copy_mock.reset_mock()
+        test_meta = {'asdf': 'jkl;'}
+        bucket.put_file(key='README.md', path='./README', meta=test_meta)
+        (src, dest, meta) = copy_mock.call_args_list[0][0]
+        assert meta == test_meta
+
 def test_bucket_put_dir():
     path = pathlib.Path(__file__).parent / 'data'
     bucket = Bucket('s3://test-bucket')
