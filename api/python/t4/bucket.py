@@ -142,7 +142,8 @@ class Bucket(object):
             key(str): key in bucket to store file at
             path(str): string representing local path to file
         Optional args:
-            meta(dict): metadata to attach to file
+            meta(dict): T4 metadata to attach to file
+                Must be less than 2KiB serialized
 
         Returns:
             None
