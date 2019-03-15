@@ -134,13 +134,16 @@ class Bucket(object):
         all_meta.update(format_meta)
         put_bytes(data, dest, all_meta)
 
-    def put_file(self, key, path):
+    def put_file(self, key, path, meta=None):
         """
         Stores file at path to key in bucket.
 
         Args:
             key(str): key in bucket to store file at
             path(str): string representing local path to file
+        Optional args:
+            meta(dict): T4 metadata to attach to file
+                Must be less than 2KiB serialized
 
         Returns:
             None
@@ -150,7 +153,7 @@ class Bucket(object):
             * if copy fails
         """
         dest = self._uri + key
-        copy_file(fix_url(path), dest)
+        copy_file(fix_url(path), dest, meta)
 
     def put_dir(self, key, directory):
         """
