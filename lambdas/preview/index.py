@@ -3,6 +3,7 @@ Preview file types in S3 by returning preview HTML and other metadata from
 a lambda function.
 """
 import json
+import subprocess
 from tempfile import NamedTemporaryFile
 
 from nbconvert import HTMLExporter
@@ -22,7 +23,7 @@ SCHEMA = {
             'type': 'string'
         },
         'input': {
-            'enum': ['ipynb', 'parquet', 'vcf']
+            'enum': ['ipynb', 'parquet', 'txt', 'vcf']
         }
     },
     'required': ['url', 'input'],
@@ -53,6 +54,8 @@ def lambda_handler(params, _):
                 html, info = extract_parquet(file_)
             elif input_type == 'vcf':
                 html, info = extract_vcf(file_)
+            elif input_type == 'txt':
+                html, info = extract_txt(file_)
             else:
                 assert False
 
@@ -141,8 +144,10 @@ def extract_vcf(file_):
     """
     Pull summary info from VCF: meta-information, header line, and data lines
     (in that order, up to MAX_LINES)
-    """
 
+    Args:
+        file_ - file-like
+    """
     meta = []
     header = []
     data = []
@@ -163,13 +168,61 @@ def extract_vcf(file_):
                 break
 
     # pylint: disable=bad-continuation
-    html = ("<div>"
+    html = ('<div>'
                 "<div data-type='meta'>{}</div>"
                 "<div data-type='header'>{}</div>"
                 "<div data-type='data'>{}</div>"
-            "</div>").format(
-                ''.join(meta) + '<br />',
-                ''.join(header) + '<br />',
+            '</div>').format(
+                ''.join(meta),
+                ''.join(header),
                 ''.join(data))
+
+    return html, {}
+
+def extract_txt(file_):
+    """
+    Display first and last lines of file.
+    Uses UNIX utils for speed and convenience (no easy way to tail in Python).
+
+    Args:
+        file_ - file-like
+
+    Throws:
+        CalledProcessError
+    """
+    available = 0
+    ellipsis = False
+    # find out how many lines <= MAX_LINES are available
+    # we need to know this so that head and tail don't overlap
+    # loop finishes in constant time
+    with open(file_.name, 'rb') as txt:
+        for index, line in enumerate(txt, start=1):
+            available = index
+            if available > MAX_LINES:
+                ellipsis = True
+                break
+    # if maxlines == 0, everything still works
+    available = min(available, MAX_LINES)
+    # pylint should never flag for 3.6 but it does
+    headlines = int(available/2) # pylint: disable=old-division
+    taillines = available - headlines
+
+    head = subprocess.check_output(['head', file_.name, '-n', str(headlines)])
+    tail = subprocess.check_output(['tail', file_.name, '-n', str(taillines)])
+    html_buffer = [[], []]
+    for i, lines in enumerate([head, tail]):
+        for line in lines.splitlines():
+            line = line.strip().decode('unicode_escape')
+            html_buffer[i].append(f'<p>{line}</p>')
+
+    # pylint: disable=bad-continuation
+    html = ('<div>'
+                "<div data-type='head'>{}</div>"
+                "<div>{}<div>"
+                "<div data-type='tail'>{}</div>"
+            '</div>').format(
+                ''.join(html_buffer[0]),
+                '<p>&hellip;</p>' if ellipsis else '',
+                ''.join(html_buffer[1]))
 
     return html, {}

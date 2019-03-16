@@ -6,7 +6,7 @@ import pathlib
 
 import responses
 
-from ..index import lambda_handler
+from ..index import lambda_handler, MAX_LINES
 
 MOCK_ORIGIN = 'http://localhost:3000'
 
@@ -47,6 +47,7 @@ class TestIndex():
         body = json.loads(resp['body'])
         html_ = BASE_DIR / 'ipynb_html_response.txt'
         expected = html_.read_text().strip()
+        assert resp['statusCode'] == 200, 'preview lambda failed on nb_1200727.ipynb'
         assert body['html'].strip() == expected, \
             f"Unexpected HTML:\n{body['html']}"
 
@@ -70,6 +71,48 @@ class TestIndex():
             f"Unexpected body['info'] for {parquet}"
 
     @responses.activate
+    def test_txt_long(self):
+        """test sending txt bytes"""
+        txt = BASE_DIR / 'long.txt'
+        responses.add(
+            responses.GET,
+            self.FILE_URL,
+            body=txt.read_bytes(),
+            status=200)
+        event = self._make_event({'url': self.FILE_URL, 'input': 'txt'})
+        resp = lambda_handler(event, None)
+        body = json.loads(resp['body'])
+        assert resp['statusCode'] == 200, 'preview lambda failed on long.txt'
+        # +1 to account for the inserted ellipsis paragraph
+        assert body['html'].count('<p>') == MAX_LINES + 1, 'unexpected number of lines'
+        assert body['html'].count('</p>') == MAX_LINES + 1, 'unexpected number of lines'
+        assert body['html'].count('&hellip;') == 1, 'expected exactly one ellipsis'
+        assert body['html'].startswith("<div><div data-type='head'><p>Line 1</p>"), \
+            f"Unexpected HTML:\n{body['html']}"
+        assert body['html'].endswith("<p>Line 999</p></div></div>"), \
+            f"Unexpected HTML:\n{body['html']}"
+
+    @responses.activate
+    def test_txt_short(self):
+        """test sending txt bytes"""
+        txt = BASE_DIR / 'short.txt'
+        responses.add(
+            responses.GET,
+            self.FILE_URL,
+            body=txt.read_bytes(),
+            status=200)
+        event = self._make_event({'url': self.FILE_URL, 'input': 'txt'})
+        resp = lambda_handler(event, None)
+        body = json.loads(resp['body'])
+        assert resp['statusCode'] == 200, 'preview lambda failed on short.txt'
+        assert body['html'].count('<p>') == 98, 'unexpected number of lines from endpoint'
+        assert body['html'].count('</p>') == 98, 'unexpected number of lines from endpoint'
+        assert body['html'].startswith("<div><div data-type='head'><p>Line 1</p>"), \
+            f"Unexpected HTML:\n{body['html']}"
+        assert body['html'].endswith("<p>Line 98</p></div></div>"), \
+            f"Unexpected HTML:\n{body['html']}"
+
+    @responses.activate
     def test_vcf(self):
         """test sending vcf bytes"""
         vcf = BASE_DIR / 'example.vcf'
@@ -83,5 +126,6 @@ class TestIndex():
         body = json.loads(resp['body'])
         html_ = BASE_DIR / 'vcf_html_response.txt'
         expected = html_.read_text().rstrip()
+        assert resp['statusCode'] == 200, 'preview lambda failed on vcf_html_response.txt'
         assert body['html'] == expected, \
             f"Unexpected HTML:\n{body['html']}"
