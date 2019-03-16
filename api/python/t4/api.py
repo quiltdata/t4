@@ -2,16 +2,18 @@ import json
 import re
 from six.moves import urllib
 from urllib.parse import urlparse, unquote
+import datetime
+import pytz
 
 from aws_requests_auth.boto_utils import BotoAWSRequestsAuth
 from elasticsearch import Elasticsearch, RequestsHttpConnection
 import requests
-import arrow
+import humanize
 
 from .data_transfer import (copy_file, get_bytes, put_bytes, delete_object, list_objects,
                             list_object_versions, _update_credentials)
 from .formats import FormatRegistry
-from .packages import get_package_registry
+from .packages import get_package_registry, Package
 from .session import get_registry_url, get_session
 from .util import (HeliumConfig, QuiltException, CONFIG_PATH,
                    CONFIG_TEMPLATE, fix_url, parse_file_url, parse_s3_url, read_yaml, validate_url,
@@ -231,39 +233,32 @@ def list_packages(registry=None):
         def _fmt_str(string, strlen):
             """Formats strings to a certain width"""
             if len(string) > strlen - 3:
-                return string[:strlen - 6] + '...' + '   '
+                return string[:strlen - 1] + '…'
             else:
-                return string.ljust(strlen)[:strlen - 3] + '   '
-
-        @staticmethod
-        def _humanize_bytesize(nbytes):
-            """Turns raw byte count into a human readable bytesize"""
-            suffixes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']
-            i = 0
-            while nbytes >= 1024 and i < len(suffixes) - 1:
-                nbytes /= 1024
-                i += 1
-            filesize = (f'{nbytes:.2f}').rstrip('0').rstrip('.')
-            suffix = suffixes[i]
-            return f'{filesize} {suffix}'
+                return string.ljust(strlen)
 
         def create_str(self, pkg_info):
             """Generates a human-readable string representation of a registry"""
             if pkg_info:
-                pkg_name_display_width = max(max([len(info[0]) for info in pkg_info]), 30)
+                pkg_name_display_width = max(max([len(info[0]) for info in pkg_info]), 27)
             else:
-                pkg_name_display_width = 30
+                pkg_name_display_width = 27
 
-            out = (f"{self._fmt_str('PACKAGE', pkg_name_display_width)}"
-                   f"TOPHASH        "
-                   f"CREATED        "
-                   f"SIZE"
+            out = (f"{self._fmt_str('PACKAGE', pkg_name_display_width)}\t"
+                   f"{self._fmt_str('TOPHASH', 12)}\t"
+                   f"{self._fmt_str('CREATED', 12)}\t"
+                   f"{self._fmt_str('SIZE', 12)}\t"
                    f"\n")
             for name, tophash, ctime, size in pkg_info:
+                tdelta = datetime.datetime.now(pytz.utc) -\
+                    datetime.datetime.fromtimestamp(int(ctime), pytz.utc)
+                tdelta_str = humanize.naturaltime(tdelta)
+                size_str = humanize.naturalsize(size)
+
                 out += (f"{self._fmt_str(name, pkg_name_display_width)}"
                         f"{self._fmt_str(tophash[:12], 15)}"
-                        f"{self._fmt_str(arrow.get(ctime).humanize(), 15)}"
-                        f"{self._fmt_str(self._humanize_bytesize(size), 15).rstrip(' ')}\n")
+                        f"{self._fmt_str(tdelta_str, 15)}"
+                        f"{self._fmt_str(size_str, 15).rstrip(' ')}\n")
             return out
 
     base_registry = get_package_registry(fix_url(registry) if registry else None)
@@ -300,21 +295,11 @@ def list_packages(registry=None):
 
                 pkg_ctimes.append(pkg_hash_path.stat().st_ctime)
 
-                from t4 import Package
                 pkg = Package.browse(name, pkg_hash=pkg_hash)
                 pkg_sizes.append(pkg.reduce(lambda tot, tup: tot + tup[1].size, default=0))
 
             pkg_info += [(pkg_name, hash, ctime, size) for (hash, ctime, size) in
                          zip(pkg_hashes, pkg_ctimes, pkg_sizes)]
-
-        def sorter(pkg_info_tup):
-            pkg_name, pkg_cdate = pkg_info_tup[0], pkg_info_tup[2]
-            is_latest = ':latest' in pkg_name
-            pkg_realname = pkg_name.replace(':latest', '')
-            return (pkg_realname, not is_latest, -pkg_cdate)
-
-        pkg_info = sorted(pkg_info, key=sorter)
-        return PackageList(pkg_info)
 
     elif registry_url.scheme == 's3':
         bucket_name, bucket_registry_path, _ = parse_s3_url(registry_url)
@@ -380,7 +365,6 @@ def list_packages(registry=None):
                     pkg_names.append(pkg_name)
                     pkg_hashes.append(pkg_hash)
 
-                    from t4 import Package
                     pkg = Package.browse(
                         pkg_name, pkg_hash=pkg_hash, registry='s3://' + bucket_name
                     )
@@ -389,11 +373,17 @@ def list_packages(registry=None):
                 pkg_info += [(pkg_name, hash, ctime, size) for (pkg_name, hash, ctime, size) in
                              zip(pkg_names, pkg_hashes, pkg_ctimes, pkg_sizes)]
 
-        return PackageList(pkg_info)
-
     else:
         raise NotImplementedError
 
+    def sorter(pkg_info_tup):
+        pkg_name, pkg_cdate = pkg_info_tup[0], pkg_info_tup[2]
+        is_latest = ':latest' in pkg_name
+        pkg_realname = pkg_name.replace(':latest', '')
+        return (pkg_realname, not is_latest, -pkg_cdate)
+
+    pkg_info = sorted(pkg_info, key=sorter)
+    return PackageList(pkg_info)
 
 
 ########################################
