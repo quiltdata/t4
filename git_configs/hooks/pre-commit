@@ -1,11 +1,11 @@
 #!/bin/bash
 
-EXIT_ON_WARNING_ERROR=1
 # Use 0 if need to avoid pylint failure and proceed to 'git commit'
+EXIT_ON_WARNING_ERROR=1
 PYLINT_ARGS="--rcfile=$(pwd)/.pylintrc"
 
 #
-# Checking... if pylint installed
+# Check if pylint is installed
 #
 python -c "import pylint"
 if [[ $? -ne 0 ]]
@@ -16,7 +16,7 @@ then
 fi
 
 #
-# Checking all directories inside repo 
+# Check all directories inside repo 
 #
 git diff --staged --name-only HEAD | while read -r i; do 
     echo "$0: Checking file $i" 
@@ -34,4 +34,4 @@ git diff --staged --name-only HEAD | while read -r i; do
         fi
     fi
 done
-# otherwise hook exit with 0
+# Otherwise hook exits with 0
