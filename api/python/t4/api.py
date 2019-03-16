@@ -256,14 +256,13 @@ def list_packages(registry=None):
                 size_str = humanize.naturalsize(pkg_dict['size'])
 
                 out += (f"{self._fmt_str(pkg_dict['pkg_name'], pkg_name_display_width)}"
-                        f"{self._fmt_str(pkg_dict['hash'][:12], 15)}"
+                        f"{self._fmt_str(pkg_dict['top_hash'][:12], 15)}"
                         f"{self._fmt_str(tdelta_str, 15)}"
                         f"{self._fmt_str(size_str, 15).rstrip(' ')}\n")
             return out
 
     base_registry = get_package_registry(fix_url(registry) if registry else None)
     named_packages = base_registry + '/named_packages'
-    packages = base_registry + '/packages'
 
     pkg_info = []
 
@@ -298,9 +297,9 @@ def list_packages(registry=None):
                 pkg = Package.browse(name, pkg_hash=pkg_hash)
                 pkg_sizes.append(pkg.reduce(lambda tot, tup: tot + tup[1].size, default=0))
 
-            for hash, ctime, size in zip(pkg_hashes, pkg_ctimes, pkg_sizes):
+            for top_hash, ctime, size in zip(pkg_hashes, pkg_ctimes, pkg_sizes):
                 pkg_info.append(
-                    {'pkg_name': pkg_name, 'hash': hash, 'ctime': ctime, 'size': size}
+                    {'pkg_name': pkg_name, 'top_hash': top_hash, 'ctime': ctime, 'size': size}
                 )
 
     elif registry_url.scheme == 's3':
@@ -372,9 +371,9 @@ def list_packages(registry=None):
                     )
                     pkg_sizes.append(pkg.reduce(lambda tot, tup: tot + tup[1].size, default=0))
 
-                for hash, ctime, size in zip(pkg_hashes, pkg_ctimes, pkg_sizes):
+                for top_hash, ctime, size in zip(pkg_hashes, pkg_ctimes, pkg_sizes):
                     pkg_info.append(
-                        {'pkg_name': pkg_name, 'hash': hash, 'ctime': ctime, 'size': size}
+                        {'pkg_name': pkg_name, 'top_hash': top_hash, 'ctime': ctime, 'size': size}
                     )
 
     else:
