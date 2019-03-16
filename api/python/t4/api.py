@@ -214,7 +214,7 @@ def list_packages(registry=None):
         """Display wrapper for list_packages"""
 
         def __init__(self, pkg_info):
-            self.pkg_names = [info[0].replace(':latest', '') for info in pkg_info]
+            self.pkg_names = [info['pkg_name'].replace(':latest', '') for info in pkg_info]
             self._repr = self.create_str(pkg_info)
 
         def __repr__(self):
@@ -240,7 +240,7 @@ def list_packages(registry=None):
         def create_str(self, pkg_info):
             """Generates a human-readable string representation of a registry"""
             if pkg_info:
-                pkg_name_display_width = max(max([len(info[0]) for info in pkg_info]), 27)
+                pkg_name_display_width = max(max([len(info['pkg_name']) for info in pkg_info]), 27)
             else:
                 pkg_name_display_width = 27
 
@@ -249,14 +249,14 @@ def list_packages(registry=None):
                    f"{self._fmt_str('CREATED', 12)}\t"
                    f"{self._fmt_str('SIZE', 12)}\t"
                    f"\n")
-            for name, tophash, ctime, size in pkg_info:
+            for pkg_dict in pkg_info:
                 tdelta = datetime.datetime.now(pytz.utc) -\
-                    datetime.datetime.fromtimestamp(int(ctime), pytz.utc)
+                    datetime.datetime.fromtimestamp(int(pkg_dict['ctime']), pytz.utc)
                 tdelta_str = humanize.naturaltime(tdelta)
-                size_str = humanize.naturalsize(size)
+                size_str = humanize.naturalsize(pkg_dict['size'])
 
-                out += (f"{self._fmt_str(name, pkg_name_display_width)}"
-                        f"{self._fmt_str(tophash[:12], 15)}"
+                out += (f"{self._fmt_str(pkg_dict['pkg_name'], pkg_name_display_width)}"
+                        f"{self._fmt_str(pkg_dict['hash'][:12], 15)}"
                         f"{self._fmt_str(tdelta_str, 15)}"
                         f"{self._fmt_str(size_str, 15).rstrip(' ')}\n")
             return out
@@ -298,8 +298,10 @@ def list_packages(registry=None):
                 pkg = Package.browse(name, pkg_hash=pkg_hash)
                 pkg_sizes.append(pkg.reduce(lambda tot, tup: tot + tup[1].size, default=0))
 
-            pkg_info += [(pkg_name, hash, ctime, size) for (hash, ctime, size) in
-                         zip(pkg_hashes, pkg_ctimes, pkg_sizes)]
+            for hash, ctime, size in zip(pkg_hashes, pkg_ctimes, pkg_sizes):
+                pkg_info.append(
+                    {'pkg_name': pkg_name, 'hash': hash, 'ctime': ctime, 'size': size}
+                )
 
     elif registry_url.scheme == 's3':
         bucket_name, bucket_registry_path, _ = parse_s3_url(registry_url)
@@ -370,14 +372,16 @@ def list_packages(registry=None):
                     )
                     pkg_sizes.append(pkg.reduce(lambda tot, tup: tot + tup[1].size, default=0))
 
-                pkg_info += [(pkg_name, hash, ctime, size) for (pkg_name, hash, ctime, size) in
-                             zip(pkg_names, pkg_hashes, pkg_ctimes, pkg_sizes)]
+                for hash, ctime, size in zip(pkg_hashes, pkg_ctimes, pkg_sizes):
+                    pkg_info.append(
+                        {'pkg_name': pkg_name, 'hash': hash, 'ctime': ctime, 'size': size}
+                    )
 
     else:
         raise NotImplementedError
 
-    def sorter(pkg_info_tup):
-        pkg_name, pkg_cdate = pkg_info_tup[0], pkg_info_tup[2]
+    def sorter(pkg_info):
+        pkg_name, pkg_cdate = pkg_info['pkg_name'], pkg_info['ctime']
         is_latest = ':latest' in pkg_name
         pkg_realname = pkg_name.replace(':latest', '')
         return (pkg_realname, not is_latest, -pkg_cdate)
