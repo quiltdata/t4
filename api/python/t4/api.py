@@ -255,10 +255,10 @@ def list_packages(registry=None):
                 tdelta_str = humanize.naturaltime(tdelta)
                 size_str = humanize.naturalsize(pkg_dict['size'])
 
-                out += (f"{self._fmt_str(pkg_dict['pkg_name'], pkg_name_display_width)}"
-                        f"{self._fmt_str(pkg_dict['top_hash'][:12], 15)}"
-                        f"{self._fmt_str(tdelta_str, 15)}"
-                        f"{self._fmt_str(size_str, 15).rstrip(' ')}\n")
+                out += (f"{self._fmt_str(pkg_dict['pkg_name'], pkg_name_display_width)}\t"
+                        f"{self._fmt_str(pkg_dict['top_hash'][:12], 15)}\t"
+                        f"{self._fmt_str(tdelta_str, 15)}\t"
+                        f"{self._fmt_str(size_str, 15).rstrip(' ')}\t\n")
             return out
 
     base_registry = get_package_registry(fix_url(registry) if registry else None)
