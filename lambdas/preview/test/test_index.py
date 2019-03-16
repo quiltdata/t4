@@ -107,6 +107,7 @@ class TestIndex():
         assert resp['statusCode'] == 200, 'preview lambda failed on short.txt'
         assert body['html'].count('<p>') == 98, 'unexpected number of lines from endpoint'
         assert body['html'].count('</p>') == 98, 'unexpected number of lines from endpoint'
+        assert body['html'].count('&hellip;') == 0, 'expected no ellipsis'
         assert body['html'].startswith("<div><div data-type='head'><p>Line 1</p>"), \
             f"Unexpected HTML:\n{body['html']}"
         assert body['html'].endswith("<p>Line 98</p></div></div>"), \
