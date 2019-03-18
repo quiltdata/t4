@@ -4,6 +4,7 @@ import * as R from 'ramda';
 import * as React from 'react';
 import { Link } from 'react-router-dom';
 import * as RC from 'recompose';
+import { unstable_Box as Box } from '@material-ui/core/Box';
 import Button from '@material-ui/core/Button';
 import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
@@ -448,7 +449,11 @@ const Results = RT.composeComponent('Bucket.Search.Results',
                         hit={hit}
                       />
                     ))}
-                    {props.pages > 1 && <Pagination.Controls {...props} />}
+                    {props.pages > 1 && (
+                      <Box mt={2}>
+                        <Pagination.Controls {...props} />
+                      </Box>
+                    )}
                   </React.Fragment>
                 )}
               </Pagination.Paginate>
