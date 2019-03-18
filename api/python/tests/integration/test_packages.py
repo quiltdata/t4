@@ -489,6 +489,12 @@ def test_list_local_packages(tmpdir):
         assert "Quilt/Foo" in pkgs
         assert "Quilt/Bar" in pkgs
 
+        # Verify package repr is as expected.
+        pkgs_repr = str(pkgs)
+        assert 'Quilt/Test:latest' in pkgs_repr
+        assert 'Quilt/Foo:latest' in pkgs_repr
+        assert 'Quilt/Bar:latest' in pkgs_repr
+
         # Test unnamed packages are not added.
         Package().build()
         pkgs = t4.list_packages()
@@ -612,12 +618,38 @@ def test_brackets():
         pkg[0]
 
 def test_list_remote_packages():
-    with patch('t4.api.list_objects',
-               return_value=([{'Prefix': 'foo'},{'Prefix': 'bar'}],[])) as mock:
-        pkgs = t4.list_packages('s3://my_test_bucket/')
-        assert mock.call_args_list[0][0] == ('my_test_bucket', '.quilt/named_packages/')
+    # with patch('t4.api.list_objects',
+    #            return_value=([{'Prefix': 'foo'},{'Prefix': 'bar'}],[])) as mock:
+    def pseudo_list_objects(bucket, prefix, recursive):
+        if prefix == '.quilt/named_packages/':
+            return ([{'Prefix': '.quilt/named_packages/foo/'}], [])
+        elif prefix == '.quilt/named_packages/foo/':
+            return ([{'Prefix': '.quilt/named_packages/foo/bar/'}], [])
+        elif prefix == '.quilt/named_packages/foo/bar/':
+            import datetime
+            return (
+                [], [
+                    {'Key': '.quilt/named_packages/foo/bar/1549931634',
+                     'LastModified': datetime.datetime.now()},
+                    {'Key': '.quilt/named_packages/foo/bar/latest',
+                     'LastModified': datetime.datetime.now()}]
+            )
+        else:
+            raise ValueError
 
-    assert True
+    with patch('t4.api.list_objects', side_effect=pseudo_list_objects), \
+        patch('t4.api.get_bytes', return_value=(b'100', None)), \
+        patch('t4.Package.browse', return_value=Package()):
+        pkgs = t4.list_packages('s3://my_test_bucket/')
+
+        assert len(pkgs) == 1
+        assert list(pkgs) == ['foo/bar']
+
+        expected = (
+            'PACKAGE                    \tTOPHASH     \tCREATED     \tSIZE        \t\n'
+            'foo/bar:latest             \t100            \tnow            \t0 Bytes\t\n'
+        )
+        assert str(pkgs) == expected
 
 
 def test_validate_package_name():

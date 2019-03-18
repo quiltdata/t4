@@ -121,13 +121,14 @@ To see all the packages available on a catalog, use `list_packages`:
 
 ```python
 t4.list_packages('s3://your-bucket')
-# outputs ['username/packagename', 'foo/bar']
+PACKAGE                           TOPHASH        CREATED        SIZE
+username/packagename:latest       cac145b9c3dc   just now       2.4 GB
 ```
 
 To download a package and all of its data from a remote catalog to a `dest` on your machine, `install` it.
 
 ```python
-p = t4.Package.install('username/packagename', 's3://your-bucket', dest='temp_folder/')
+p = t4.Package.install('username/packagename', 's3://your-bucket', dest='./')
 ```
 
 You can also choose to download just the  **package manifest** without downloading the data files it references. A package manifest is a simple JSON metadata file that is independent of the actual package data:

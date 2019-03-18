@@ -8,11 +8,15 @@ $ python
 
 >>> t4.list_packages()  # list local packages
 
-["namespace/packagename", "othernamespace/otherpackagename"]
+PACKAGE                            TOPHASH        CREATED        SIZE
+namespace/packagename:latest       cac145b9c3dc   just now       2.4 GB
+othernamespace/packagename:latest  95a134c80z48   14 days ago    2.4 GB
 
 >>> t4.list_packages("s3://my-bucket")  # list remote packages
 
-["user1/seattle-weather", "user2/new-york-ballgames", ...]
+PACKAGE                            TOPHASH        CREATED        SIZE
+user1/seattle-weather:latest       cac145b9c3dc   1 hour ago     2.4 GB
+user2/new-york-ballgames:latest    95a134c80z48   6 days ago     2.4 GB
 ```
 
 ## Installing a package

@@ -1,23 +1,25 @@
 import json
-import requests
 import re
+from six.moves import urllib
+from urllib.parse import urlparse, unquote
+import datetime
+import pytz
 
 from aws_requests_auth.boto_utils import BotoAWSRequestsAuth
 from elasticsearch import Elasticsearch, RequestsHttpConnection
-from six.moves import urllib
-from urllib.parse import urlparse, unquote
+import requests
+import humanize
 
 from .data_transfer import (copy_file, get_bytes, put_bytes, delete_object, list_objects,
                             list_object_versions, _update_credentials)
 from .formats import FormatRegistry
-from .packages import get_package_registry
+from .packages import get_package_registry, Package
 from .session import get_registry_url, get_session
 from .util import (HeliumConfig, QuiltException, CONFIG_PATH,
                    CONFIG_TEMPLATE, fix_url, parse_file_url, parse_s3_url, read_yaml, validate_url,
                    write_yaml, yaml_has_comments, validate_package_name)
 
 # backports
-from six.moves import urllib
 try:
     import pathlib2 as pathlib
 except ImportError:
@@ -208,27 +210,183 @@ def list_packages(registry=None):
     Returns:
         A list of strings containing the names of the packages
     """
-    registry = get_package_registry(fix_url(registry) if registry else None) + '/named_packages'
+    class PackageList:
+        """Display wrapper for list_packages"""
 
-    registry_url = urlparse(registry)
+        def __init__(self, pkg_info):
+            self.pkg_names = [info['pkg_name'].replace(':latest', '') for info in pkg_info]
+            self._repr = self.create_str(pkg_info)
+
+        def __repr__(self):
+            return self._repr
+
+        def __iter__(self):
+            return iter(self.pkg_names)
+
+        def __len__(self):
+            return len(self.pkg_names)
+
+        def __contains__(self, item):
+            return item in self.pkg_names
+
+        @staticmethod
+        def _fmt_str(string, strlen):
+            """Formats strings to a certain width"""
+            if len(string) > strlen - 1:
+                return string[:strlen - 1] + '…'
+            else:
+                return string.ljust(strlen)
+
+        def create_str(self, pkg_info):
+            """Generates a human-readable string representation of a registry"""
+            if pkg_info:
+                pkg_name_display_width = max(max([len(info['pkg_name']) for info in pkg_info]), 27)
+            else:
+                pkg_name_display_width = 27
+
+            out = (f"{self._fmt_str('PACKAGE', pkg_name_display_width)}\t"
+                   f"{self._fmt_str('TOPHASH', 12)}\t"
+                   f"{self._fmt_str('CREATED', 12)}\t"
+                   f"{self._fmt_str('SIZE', 12)}\t"
+                   f"\n")
+            for pkg_dict in pkg_info:
+                tdelta = datetime.datetime.now(pytz.utc) -\
+                    datetime.datetime.fromtimestamp(int(pkg_dict['ctime']), pytz.utc)
+                tdelta_str = humanize.naturaltime(tdelta)
+                size_str = humanize.naturalsize(pkg_dict['size'])
+
+                out += (f"{self._fmt_str(pkg_dict['pkg_name'], pkg_name_display_width)}\t"
+                        f"{self._fmt_str(pkg_dict['top_hash'][:12], 15)}\t"
+                        f"{self._fmt_str(tdelta_str, 15)}\t"
+                        f"{self._fmt_str(size_str, 15).rstrip(' ')}\t\n")
+            return out
+
+    base_registry = get_package_registry(fix_url(registry) if registry else None)
+    named_packages = base_registry + '/named_packages'
+
+    pkg_info = []
+
+    registry_url = urlparse(named_packages)
     if registry_url.scheme == 'file':
         registry_dir = pathlib.Path(parse_file_url(registry_url))
-        return [x.relative_to(registry_dir).as_posix() for x in registry_dir.glob('*/*')]
+
+        for named_path in registry_dir.glob('*/*'):
+            name = named_path.relative_to(registry_dir).as_posix()
+
+            pkg_hashes = []
+            pkg_sizes = []
+            pkg_ctimes = []
+            pkg_name = name
+
+            with open(named_path / 'latest', 'r') as latest_hash_file:
+                latest_hash = latest_hash_file.read()
+
+            for pkg_hash_path in named_path.rglob('*/'):
+                if pkg_hash_path.name == 'latest':
+                    continue
+
+                with open(pkg_hash_path, 'r') as pkg_hash_file:
+                    pkg_hash = pkg_hash_file.read()
+                    pkg_hashes.append(pkg_hash)
+
+                if pkg_hash == latest_hash:
+                    pkg_name = f'{pkg_name}:latest'
+
+                pkg_ctimes.append(pkg_hash_path.stat().st_ctime)
+
+                pkg = Package.browse(name, pkg_hash=pkg_hash)
+                pkg_sizes.append(pkg.reduce(lambda tot, tup: tot + tup[1].size, default=0))
+
+            for top_hash, ctime, size in zip(pkg_hashes, pkg_ctimes, pkg_sizes):
+                pkg_info.append(
+                    {'pkg_name': pkg_name, 'top_hash': top_hash, 'ctime': ctime, 'size': size}
+                )
 
     elif registry_url.scheme == 's3':
-        src_bucket, src_path, _ = parse_s3_url(registry_url)
-        prefixes, _ = list_objects(src_bucket, src_path + '/', recursive=False)
-        # Pull out the directory fields and remove the src_path prefix.
-        names = []
-        # Search each org directory for named packages.
-        for org in [x['Prefix'][len(src_path):].strip('/') for x in prefixes]:
-            packages, _ = list_objects(src_bucket, src_path + '/' + org + '/', recursive=False)
-            names.extend(y['Prefix'][len(src_path):].strip('/') for y in packages)
-        return names
+        bucket_name, bucket_registry_path, _ = parse_s3_url(registry_url)
+        bucket_registry_path = bucket_registry_path + '/'
+
+        pkg_namespaces, _ = list_objects(bucket_name, bucket_registry_path, recursive=False)
+        pkg_namespaces = [result['Prefix'] for result in pkg_namespaces]
+
+        # go through package namespaces to get packages
+        for pkg_namespace in pkg_namespaces:
+            pkg_names, _ = list_objects(
+                bucket_name,
+                pkg_namespace,
+                recursive=False
+            )
+            pkg_names = [pkg_name['Prefix'] for pkg_name in pkg_names]
+
+            # go through packages to get package hash files
+            for pkg_name in pkg_names:
+                pkg_hashes = []
+                pkg_sizes = []
+                pkg_ctimes = []
+                pkg_names = []
+
+                _, pkg_hashfiles = list_objects(
+                    bucket_name,
+                    pkg_name,
+                    recursive=False
+                )
+
+                latest_hashfile = next(hf for hf in pkg_hashfiles if '/latest' in hf['Key'])['Key']
+                latest_hashfile_fullpath = f's3://{bucket_name}/{latest_hashfile}'
+                latest_hash, _ = get_bytes(latest_hashfile_fullpath)
+                latest_hash = latest_hash.decode()
+
+                # go through package hashfiles to get manifest files
+                pkg_hash_paths = []
+                for pkg_hashfile in pkg_hashfiles:
+                    pkg_hashfile_key = pkg_hashfile['Key']
+
+                    if pkg_hashfile_key.split('/')[-1] == 'latest':
+                        continue
+
+                    pkg_hash, _ = get_bytes(f's3://{bucket_name}/{pkg_hashfile_key}')
+                    pkg_hash = pkg_hash.decode()
+
+                    pkg_last_modified = pkg_hashfile['LastModified'].timestamp()
+                    pkg_hash_paths.append(pkg_hashfile_key)
+                    pkg_ctimes.append(pkg_last_modified)
+
+                # go through manifest files to get package info
+                for pkg_hash_path in pkg_hash_paths:
+                    name = pkg_name[len(bucket_registry_path):].strip('/')
+
+                    pkg_hash, _ = get_bytes('s3://' + bucket_name + '/' + pkg_hash_path)
+                    pkg_hash = pkg_hash.decode()
+
+                    if pkg_hash == latest_hash:
+                        pkg_name = name + ':latest'
+                    else:
+                        pkg_name = name
+
+                    pkg_names.append(pkg_name)
+                    pkg_hashes.append(pkg_hash)
+
+                    pkg = Package.browse(
+                        pkg_name, pkg_hash=pkg_hash, registry='s3://' + bucket_name
+                    )
+                    pkg_sizes.append(pkg.reduce(lambda tot, tup: tot + tup[1].size, default=0))
+
+                for top_hash, ctime, size in zip(pkg_hashes, pkg_ctimes, pkg_sizes):
+                    pkg_info.append(
+                        {'pkg_name': pkg_name, 'top_hash': top_hash, 'ctime': ctime, 'size': size}
+                    )
 
     else:
         raise NotImplementedError
 
+    def sorter(pkg_info):
+        pkg_name, pkg_cdate = pkg_info['pkg_name'], pkg_info['ctime']
+        is_latest = ':latest' in pkg_name
+        pkg_realname = pkg_name.replace(':latest', '')
+        return (pkg_realname, not is_latest, -pkg_cdate)
+
+    pkg_info = sorted(pkg_info, key=sorter)
+    return PackageList(pkg_info)
 
 
 ########################################
