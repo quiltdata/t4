@@ -3,7 +3,6 @@ Preview file types in S3 by returning preview HTML and other metadata from
 a lambda function.
 """
 import json
-import os
 from tempfile import NamedTemporaryFile
 
 from nbconvert import HTMLExporter
@@ -14,6 +13,7 @@ import requests
 from t4_lambda_shared.decorator import api, validate
 from t4_lambda_shared.utils import get_default_origins, make_json_response
 
+MAX_LINES = 500
 
 SCHEMA = {
     'type': 'object',
@@ -22,7 +22,7 @@ SCHEMA = {
             'type': 'string'
         },
         'input': {
-            'enum': ['ipynb', 'parquet']
+            'enum': ['ipynb', 'parquet', 'vcf']
         }
     },
     'required': ['url', 'input'],
@@ -51,6 +51,8 @@ def lambda_handler(params, _):
                 html, info = extract_ipynb(file_)
             elif input_type == 'parquet':
                 html, info = extract_parquet(file_)
+            elif input_type == 'vcf':
+                html, info = extract_vcf(file_)
             else:
                 assert False
 
@@ -66,10 +68,6 @@ def lambda_handler(params, _):
         ret_val = {
             'error': resp.reason
         }
-
-    response_headers = {
-        "Content-Type": 'application/json'
-    }
 
     return make_json_response(200, ret_val)
 
@@ -138,4 +136,40 @@ def extract_parquet(file_):
     html = row_group.to_pandas()._repr_html_() # pylint: disable=protected-access
 
     return html, info
- 
+
+def extract_vcf(file_):
+    """
+    Pull summary info from VCF: meta-information, header line, and data lines
+    (in that order, up to MAX_LINES)
+    """
+
+    meta = []
+    header = []
+    data = []
+
+    with open(file_.name, 'rb') as vcf:
+        for index, line in enumerate(vcf, start=1):
+            # don't escape quotes
+            line = line.strip().decode('unicode_escape')
+            formatted = f'<p>{line}</p>'
+            if line.startswith('##'):
+                meta.append(formatted)
+            elif line.startswith('#'):
+                header.append(formatted)
+            else:
+                data.append(formatted)
+
+            if index >= MAX_LINES:
+                break
+
+    # pylint: disable=bad-continuation
+    html = ("<div>"
+                "<div data-type='meta'>{}</div>"
+                "<div data-type='header'>{}</div>"
+                "<div data-type='data'>{}</div>"
+            "</div>").format(
+                ''.join(meta) + '<br />',
+                ''.join(header) + '<br />',
+                ''.join(data))
+
+    return html, {}
