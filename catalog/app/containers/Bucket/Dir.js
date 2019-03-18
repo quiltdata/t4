@@ -98,7 +98,7 @@ export default ({ match: { params: { bucket, path = '' } } }) => {
             return items.length
               ? (
                 <React.Fragment>
-                  <Listing items={items} />
+                  <Listing items={items} truncated={res.truncated} />
                   <Summary files={res.files} />
                 </React.Fragment>
               )
@@ -114,7 +114,11 @@ export default ({ match: { params: { bucket, path = '' } } }) => {
             Ok: (res) => res
               ? (
                 <React.Fragment>
-                  <Listing items={formatListing({ urls }, res)} locked />
+                  <Listing
+                    items={formatListing({ urls }, res)}
+                    truncated={res.truncated}
+                    locked
+                  />
                   <Summary files={res.files} />
                 </React.Fragment>
               )
