@@ -232,7 +232,7 @@ def list_packages(registry=None):
         @staticmethod
         def _fmt_str(string, strlen):
             """Formats strings to a certain width"""
-            if len(string) > strlen - 3:
+            if len(string) > strlen - 1:
                 return string[:strlen - 1] + '…'
             else:
                 return string.ljust(strlen)
