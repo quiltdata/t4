@@ -3,15 +3,14 @@ import { basename } from 'path';
 import dedent from 'dedent';
 import * as R from 'ramda';
 import * as React from 'react';
+import { unstable_Box as Box } from '@material-ui/core/Box';
 import CircularProgress from '@material-ui/core/CircularProgress';
-import { withStyles } from '@material-ui/styles';
 
 import AsyncResult from 'utils/AsyncResult';
 import * as AWS from 'utils/AWS';
 import Data from 'utils/Data';
 import * as NamedRoutes from 'utils/NamedRoutes';
 import Link from 'utils/StyledLink';
-import { composeComponent } from 'utils/reactTools';
 import {
   getBreadCrumbs,
   ensureNoSlash,
@@ -79,75 +78,52 @@ const formatListing = ({ urls }, r) => {
   );
 };
 
-export default composeComponent('Bucket.Dir',
-  withStyles(({ spacing: { unit } }) => ({
-    topBar: {
-      alignItems: 'flex-start',
-      display: 'flex',
-      marginBottom: 2 * unit,
-      marginTop: unit,
-    },
-    spacer: {
-      flexGrow: 1,
-    },
-    button: {
-      color: 'inherit !important',
-      marginLeft: unit,
-      textDecoration: 'none !important',
-    },
-  })),
-  ({ match: { params: { bucket, path = '' } }, classes }) => (
-    <NamedRoutes.Inject>
-      {({ urls }) => (
-        <React.Fragment>
-          <div className={classes.topBar}>
-            <BreadCrumbs items={getCrumbs({ bucket, path, urls })} />
-            <div className={classes.spacer} />
-            <CodeButton>{code({ bucket, path })}</CodeButton>
-          </div>
+// eslint-disable-next-line react/prop-types
+export default ({ match: { params: { bucket, path = '' } } }) => {
+  const { urls } = NamedRoutes.use();
+  const s3 = AWS.S3.use();
+  return (
+    <React.Fragment>
+      <Box display="flex" alignItems="flex-start" mb={2} mt={1}>
+        <BreadCrumbs items={getCrumbs({ bucket, path, urls })} />
+        <Box flexGrow={1} />
+        <CodeButton>{code({ bucket, path })}</CodeButton>
+      </Box>
 
-          <AWS.S3.Inject>
-            {(s3) => (
-              <Data
-                fetch={requests.bucketListing}
-                params={{ s3, bucket, path }}
-              >
-                {AsyncResult.case({
-                  Err: displayError(),
-                  Ok: (res) => {
-                    const items = formatListing({ urls }, res);
-                    return items.length
-                      ? (
-                        <React.Fragment>
-                          <Listing items={items} />
-                          <Summary files={res.files} />
-                        </React.Fragment>
-                      )
-                      : (
-                        <Message headline="No files">
-                          <Link href={HELP_LINK}>
-                            Learn how to upload files
-                          </Link>.
-                        </Message>
-                      );
-                  },
-                  Pending: AsyncResult.case({
-                    Ok: (res) => res
-                      ? (
-                        <React.Fragment>
-                          <Listing items={formatListing({ urls }, res)} locked />
-                          <Summary files={res.files} />
-                        </React.Fragment>
-                      )
-                      : <CircularProgress />,
-                    _: () => null,
-                  }),
-                  Init: () => null,
-                })}
-              </Data>
-            )}
-          </AWS.S3.Inject>
-        </React.Fragment>
-      )}
-    </NamedRoutes.Inject>
-  ));
+      <Data fetch={requests.bucketListing} params={{ s3, bucket, path }}>
+        {AsyncResult.case({
+          Err: displayError(),
+          Ok: (res) => {
+            const items = formatListing({ urls }, res);
+            return items.length
+              ? (
+                <React.Fragment>
+                  <Listing items={items} />
+                  <Summary files={res.files} />
+                </React.Fragment>
+              )
+              : (
+                <Message headline="No files">
+                  <Link href={HELP_LINK}>
+                    Learn how to upload files
+                  </Link>.
+                </Message>
+              );
+          },
+          Pending: AsyncResult.case({
+            Ok: (res) => res
+              ? (
+                <React.Fragment>
+                  <Listing items={formatListing({ urls }, res)} locked />
+                  <Summary files={res.files} />
+                </React.Fragment>
+              )
+              : <CircularProgress />,
+            _: () => null,
+          }),
+          Init: () => null,
+        })}
+      </Data>
+    </React.Fragment>
+  );
+};
