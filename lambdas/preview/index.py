@@ -152,11 +152,13 @@ def extract_vcf(file_):
     meta = []
     header = []
     data = []
+    size = 0
 
     with open(file_.name, 'rb') as vcf:
         for index, line in enumerate(vcf, start=1):
             # don't escape quotes
             line = line.rstrip().decode()
+            size += len(line)
             if line.startswith('##'):
                 meta.append(line)
             elif line.startswith('#'):
@@ -164,7 +166,7 @@ def extract_vcf(file_):
             else:
                 data.append(line)
             # stop if we're over the max
-            if index >= MAX_LINES:
+            if index >= MAX_LINES or size > MAX_BYTES:
                 break
 
     info = {
@@ -192,11 +194,13 @@ def extract_txt(file_):
         for index, line in enumerate(txt, start=1):
             line = line.rstrip().decode()
             size += len(line)
-            # this is a heuristic; can fail to add return shorter tail lines
-            # if post-head lines are uncharacteristically long
+            # this is a heuristic; can fail to return shorter tail lines
+            # if head lines are uncharacteristically long
             # we're guarding against, for example, huge single-line JSON files
             if index <= MAX_LINES and size < MAX_BYTES:
                 head.append(line)
+            if size > MAX_BYTES:
+                break
             if index > MAX_LINES:
                 ellipsis = True
                 break
