@@ -32,8 +32,7 @@ const HELP_LINK =
 
 const code = ({ bucket, path }) => dedent`
   import t4
-  b = Bucket("s3://${bucket}")
-  # replace ./ to change destination directory
+  b = t4.Bucket("s3://${bucket}")
   b.fetch("${path}", "./")
 `;
 
