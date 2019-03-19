@@ -238,7 +238,7 @@ def _truncate(line, size):
         size - bytes consumed so far (without input_string)
     """
     remaining = MAX_BYTES - size
-    if remaining > 0 and len(line) > remaining:
+    if 0 < remaining < len(line):
         line = line[:remaining]
     elif remaining < 0:
         line = ''
