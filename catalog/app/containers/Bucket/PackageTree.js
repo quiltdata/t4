@@ -7,7 +7,7 @@ import * as React from 'react';
 import * as RC from 'recompose';
 import Button from '@material-ui/core/Button';
 import CircularProgress from '@material-ui/core/CircularProgress';
-import { withStyles } from '@material-ui/core/styles';
+import { withStyles } from '@material-ui/styles';
 
 import { ThrowNotFound } from 'containers/NotFoundPage';
 import AsyncResult from 'utils/AsyncResult';

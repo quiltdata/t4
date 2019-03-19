@@ -1,6 +1,6 @@
 import * as React from 'react';
 import CircularProgress from '@material-ui/core/CircularProgress';
-import { withStyles } from '@material-ui/core/styles';
+import { withStyles } from '@material-ui/styles';
 
 import * as AWS from 'utils/AWS';
 import AsyncResult from 'utils/AsyncResult';

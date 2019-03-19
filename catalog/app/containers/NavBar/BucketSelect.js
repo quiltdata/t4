@@ -13,7 +13,7 @@ import MenuItem from '@material-ui/core/MenuItem';
 import MenuList from '@material-ui/core/MenuList';
 import Paper from '@material-ui/core/Paper';
 import Popper from '@material-ui/core/Popper';
-import { MuiThemeProvider, withStyles } from '@material-ui/core/styles';
+import { ThemeProvider, withStyles } from '@material-ui/styles';
 
 import * as style from 'constants/style';
 import * as BucketConfig from 'utils/BucketConfig';
@@ -26,11 +26,9 @@ import * as RT from 'utils/reactTools';
 
 const LINK_INSTALLATION = 'https://github.com/quiltdata/t4/blob/master/docs/Installation.md#aws-t4-instance-via-cloudformation';
 
-const withInvertedTheme =
-  RT.wrap(MuiThemeProvider, () => ({ theme: style.themeInverted }));
 
 const NavInput = RT.composeComponent('NavBar.BucketSelect.NavInput',
-  withInvertedTheme,
+  RT.wrap(ThemeProvider, () => ({ theme: style.themeInverted })),
   withStyles(({ palette }) => ({
     underline: {
       '&:after': {

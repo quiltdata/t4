@@ -13,7 +13,7 @@ import MuiTable from '@material-ui/core/Table';
 import TableBody from '@material-ui/core/TableBody';
 import TableCell from '@material-ui/core/TableCell';
 import TableRow from '@material-ui/core/TableRow';
-import { withStyles } from '@material-ui/core/styles';
+import { withStyles } from '@material-ui/styles';
 
 import * as Notifications from 'containers/Notifications';
 import * as APIConnector from 'utils/APIConnector';

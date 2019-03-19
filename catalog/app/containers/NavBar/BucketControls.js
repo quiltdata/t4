@@ -3,7 +3,7 @@ import * as React from 'react';
 import * as RC from 'recompose';
 import Button from '@material-ui/core/Button';
 import Icon from '@material-ui/core/Icon';
-import { withStyles } from '@material-ui/core/styles';
+import { withStyles } from '@material-ui/styles';
 
 import * as BucketConfig from 'utils/BucketConfig';
 import * as RT from 'utils/reactTools';

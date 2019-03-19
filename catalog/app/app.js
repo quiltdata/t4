@@ -3,9 +3,11 @@
 import 'babel-polyfill';
 import 'whatwg-fetch';
 
+// TODO: remove after mui v4 release
+import './installStyles';
+/* eslint-disable import/first */
+
 // Import all the third party stuff
-import MuiThemeProviderV0 from 'material-ui/styles/MuiThemeProvider';
-import { MuiThemeProvider } from '@material-ui/core/styles';
 import * as React from 'react';
 import ReactDOM from 'react-dom';
 // import { LOCATION_CHANGE } from 'connected-react-router/immutable';
@@ -13,7 +15,7 @@ import createHistory from 'history/createBrowserHistory';
 import 'sanitize.css/sanitize.css';
 //  Need to bypass CSS modules used by standard loader
 //  See https://github.com/react-boilerplate/react-boilerplate/issues/238#issuecomment-222080327
-import '!!style-loader!css-loader!css/bootstrap-grid.css';
+import { ThemeProvider } from '@material-ui/styles';
 
 // Import root app
 import Error from 'components/Error';
@@ -88,8 +90,7 @@ const render = (messages) => {
   ReactDOM.render(
     nest(
       FinalBoundary,
-      [MuiThemeProviderV0, { muiTheme: style.themeV0 }],
-      [MuiThemeProvider, { theme: style.theme }],
+      [ThemeProvider, { theme: style.theme }],
       [StoreProvider, { store }],
       [LanguageProvider, { messages }],
       [NamedRoutes.Provider, { routes }],

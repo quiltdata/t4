@@ -13,7 +13,7 @@ import Icon from '@material-ui/core/Icon';
 import IconButton from '@material-ui/core/IconButton';
 import Typography from '@material-ui/core/Typography';
 import * as colors from '@material-ui/core/colors';
-import { withStyles } from '@material-ui/core/styles';
+import { withStyles } from '@material-ui/styles';
 
 import * as Pagination from 'components/Pagination';
 import * as Preview from 'components/Preview';

@@ -12,7 +12,6 @@ import {
   setDisplayName,
   wrapDisplayName,
 } from 'recompose';
-import styled from 'styled-components';
 
 
 /**
@@ -149,34 +148,6 @@ export const restoreProps = ({ key = DEFAULT_SAVED_PROPS_KEY, keep = [] } = {}) 
   composeHOC('restoreProps',
     mapProps(({ [key]: original, ...props }) =>
       ({ ...original, ...pick(props, keep) })));
-
-/**
- * A composition-friendly interface for styled-components decorator.
- *
- * @example
- * const styledComponent = withStyle`
- *   color: #f00;
- * `(Component);
- *
- * // equivalent to:
- * const styledComponent = styled(Component)`
- *   color: #f00;
- * `;
- *
- * // composition friendliness:
- * const ComplexComponent = composeComponent('ComplexComponent',
- *   someHOC,
- *   withStyle`
- *     color: #f00;
- *   `,
- *   someOtherHOC,
- *   Component);
- *
- * @returns {HOC}
- */
-export const withStyle = (...args) =>
-  composeHOC('withStyle',
-    (C) => styled(C)(...args));
 
 /**
  * Component that simply renders its children.

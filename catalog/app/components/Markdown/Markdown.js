@@ -8,7 +8,7 @@ import * as React from 'react';
 import * as RC from 'recompose';
 import Remarkable from 'remarkable';
 import { replaceEntities, escapeHtml, unescapeMd } from 'remarkable/lib/common/utils';
-import { withStyles } from '@material-ui/core/styles';
+import { withStyles } from '@material-ui/styles';
 
 import { linkStyle } from 'utils/StyledLink';
 import * as RT from 'utils/reactTools';
@@ -18,10 +18,10 @@ import * as RT from 'utils/reactTools';
  * dir, fieldset, form, frame, frameset, head, html, iframe, link, main, menu,
  * menuitem, meta, noframes,  optgroup, option, source (we don't support audio),
  * track (we don't support video).
- * 
+ *
  * I opted not to include UI tags (opt, optgroup); ditto for base, body, head,
  * meta, title
- * which shouldn't be needed 
+ * which shouldn't be needed
  */
 const SANITIZE_OPTS = {
   ALLOWED_TAGS: [
@@ -216,7 +216,6 @@ export const Container = RT.composeComponent('Markdown.Container',
   }),
   withStyles(() => ({
     root: {
-
       overflow: 'auto',
 
       '& a': linkStyle,
@@ -229,8 +228,6 @@ export const Container = RT.composeComponent('Markdown.Container',
       '& img': {
         maxWidth: '100%',
       },
-
-      '& a': linkStyle,
 
       '& table': {
         maxWidth: '100%',

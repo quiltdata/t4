@@ -1,29 +1,27 @@
-import { red500 } from 'material-ui/styles/colors';
-import RaisedButton from 'material-ui/RaisedButton';
-import TextField from 'material-ui/TextField';
 import PT from 'prop-types';
-import React from 'react';
+import * as React from 'react';
 import { Link } from 'react-router-dom';
 import { mapProps, setPropTypes } from 'recompose';
-import styled from 'styled-components';
+import Button from '@material-ui/core/Button';
+import TextField from '@material-ui/core/TextField';
+import { styled, withStyles } from '@material-ui/styles';
 
 import Layout from 'components/Layout';
 import Spinner from 'components/Spinner';
-import handleAutofilledInput from 'utils/handleAutofilledInput';
-import { composeComponent, withStyle } from 'utils/reactTools';
+import { composeComponent } from 'utils/reactTools';
 
 
-export const Container = styled.div`
-  margin-left: auto;
-  margin-right: auto;
-  max-width: 280px;
-  min-height: calc(100vh - 300px);
-  width: 100%;
-`;
+export const Container = styled('div')({
+  marginLeft: 'auto',
+  marginRight: 'auto',
+  maxWidth: 280,
+  minHeight: 'calc(100vh - 300px)',
+  width: '100%',
+}, { name: 'Auth.Container' });
 
-export const Heading = styled.h1`
-  text-align: center;
-`;
+export const Heading = styled('h1')({
+  textAlign: 'center',
+}, { name: 'Auth.Heading' });
 
 export const Field = composeComponent('Auth.Field',
   setPropTypes({
@@ -31,64 +29,71 @@ export const Field = composeComponent('Auth.Field',
     meta: PT.object.isRequired,
     errors: PT.objectOf(PT.node),
   }),
-  mapProps(({ input, meta, errors, ...rest }) => ({
-    errorText:
+  mapProps(({ input, meta, errors, floatingLabelText: label, ...rest }) => ({
+    error: meta.submitFailed && meta.error,
+    helperText:
       meta.submitFailed && meta.error
         ? errors[meta.error] || /* istanbul ignore next */ meta.error
         : undefined,
+    label,
     fullWidth: true,
+    margin: 'normal',
     ...input,
     ...rest,
   })),
-  (props) => <TextField ref={handleAutofilledInput} {...props} />);
+  TextField);
 
-export const FieldErrorLink = styled(Link)`
-  color: inherit !important;
-  text-decoration: underline;
-`;
+export const FieldErrorLink = styled(Link)({
+  color: 'inherit !important',
+  textDecoration: 'underline',
+}, { name: 'Auth.FieldErrorLink' });
 
 export const Error = composeComponent('Auth.Error',
-  withStyle`
-    color: ${red500};
-    margin-top: 24px;
-    text-align: center;
+  withStyles((t) => ({
+    root: {
+      color: t.palette.error.main,
+      marginTop: t.spacing.unit * 3,
+      textAlign: 'center',
 
-    a {
-      color: inherit !important;
-      text-decoration: underline;
-    }
-  `,
-  mapProps(({ submitFailed, error, errors, ...rest }) => ({
+      '& a': {
+        color: 'inherit !important',
+        textDecoration: 'underline',
+      },
+    },
+  })),
+  mapProps(({ submitFailed, error, errors, classes, ...rest }) => ({
     error:
       submitFailed && error
         ? errors[error] /* istanbul ignore next */ || error
         : undefined,
+    className: classes.root,
     ...rest,
   })),
   ({ error, ...rest }) =>
     error ? <p {...rest}>{error}</p> : null);
 
-export const Actions = styled.div`
-  display: flex;
-  justify-content: center;
-  margin-top: 32px;
-`;
+export const Actions = styled('div')(({ theme: t }) => ({
+  display: 'flex',
+  justifyContent: 'center',
+  marginTop: t.spacing.unit * 4,
+}), { name: 'Auth.Actions' });
 
-export const Hint = styled.p`
-  font-size: 12px;
-  line-height: 16px;
-  margin-bottom: 12px;
-  margin-top: 32px;
-  text-align: center;
+export const Hint = styled('p')(({ theme: t }) => ({
+  fontSize: 12,
+  lineHeight: '16px',
+  marginBottom: t.spacing.unit * 1.5,
+  marginTop: t.spacing.unit * 4,
+  textAlign: 'center',
 
-  & + & {
-    margin-top: 12px;
-  }
-`;
+  // TODO: this selector is quite fragile, we should fix this
+  'p + &': {
+    marginTop: t.spacing.unit * 1.5,
+  },
+}), { name: 'Auth.Hint' });
 
-export const Message = styled.p`
-  text-align: center;
-`;
+export const Message = styled('p')({
+  textAlign: 'center',
+}, { name: 'Auth.Message' });
 
 // eslint-disable-next-line react/prop-types
 export const mkLayout = (heading) => ({ children }) => (
@@ -103,22 +108,31 @@ export const mkLayout = (heading) => ({ children }) => (
 export const Submit = composeComponent('Auth.Submit',
   setPropTypes({
     busy: PT.bool,
+    // TODO: deprecate
+    label: PT.node,
+    children: PT.node,
   }),
-  ({ busy, ...rest }) => (
-    <RaisedButton
+  ({ busy, label, children, ...rest }) => (
+    <Button
+      color="primary"
+      variant="contained"
       type="submit"
-      primary
       {...rest}
     >
+      {label}
+      {children}
       {busy && (
-        <Spinner
-          style={{
-            fontSize: '1.5em',
-            opacity: '.5',
-            position: 'absolute',
-            right: '-1.5em',
-          }}
-        />
+        <React.Fragment>
+          &nbsp;
+          <Spinner
+            style={{
+              fontSize: '1.5em',
+              opacity: '.5',
+              position: 'absolute',
+              right: '-1.5em',
+            }}
+          />
+        </React.Fragment>
       )}
-    </RaisedButton>
+    </Button>
   ));
