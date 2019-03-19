@@ -127,6 +127,8 @@ class TestIndex():
         assert resp['statusCode'] == 200, 'preview lambda failed on example.vcf'
         data = body['info']['data']
         assert data['meta'][0] == '##fileformat=VCFv4.0', 'unexpected meta first line'
+        assert data['meta'][5] == '##INFO=<ID=NS,Number=1,Type=Integer,Description="Number of Samples With Data">', 'unexpected meta fifth line'
+        '##INFO=<ID=NS,Number=1,Type=Integer,Description="Number of Samples With Data">'
         assert data['header'][0] =='#CHROM POS     ID        REF ALT    QUAL FILTER INFO                              FORMAT      NA00001        NA00002        NA00003', 'unexpected header'
         assert data['data'][0] == '20     14370   rs6054257 G      A       29   PASS   NS=3;DP=14;AF=0.5;DB;H2           GT:GQ:DP:HQ 0|0:48:1:51,51 1|0:48:8:51,51 1/1:43:5:.,.', 'unexpected first data line'
         assert data['data'][-1] =='20     1234567 microsat1 GTCT   G,GTACT 50   PASS   NS=3;DP=9;AA=G                    GT:GQ:DP    0/1:35:4       0/2:17:2       1/1:40:3', 'unexpected last data line'

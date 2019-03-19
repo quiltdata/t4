@@ -14,6 +14,7 @@ import requests
 from t4_lambda_shared.decorator import api, validate
 from t4_lambda_shared.utils import get_default_origins, make_json_response
 
+MAX_BYTES = 1_000_000
 MAX_LINES = 500
 
 SCHEMA = {
@@ -155,7 +156,7 @@ def extract_vcf(file_):
     with open(file_.name, 'rb') as vcf:
         for index, line in enumerate(vcf, start=1):
             # don't escape quotes
-            line = line.rstrip().decode('unicode_escape')
+            line = line.rstrip().decode()
             if line.startswith('##'):
                 meta.append(line)
             elif line.startswith('#'):
@@ -181,19 +182,21 @@ def extract_txt(file_):
     Display first and last few lines of a potentially large file.
 
     Args:
-        file_ - file-like
+        file_ - file-like object
     """
-    assert MAX_LINES >= 1 and int(MAX_LINES) == MAX_LINES, 'expected positive integer'
-
+    assert MAX_LINES >= 1 and int(MAX_LINES) == MAX_LINES, 'expected MAX_LINES as positive int'
+    size = 0
     ellipsis = False
-    # find out how many lines <= MAX_LINES are available
-    # we need to know this so that head and tail don't overlap
-    # loop finishes in constant time
     head = []
     with open(file_.name, 'rb') as txt:
         for index, line in enumerate(txt, start=1):
-            if index <= MAX_LINES:
-                head.append(line.rstrip().decode('unicode_escape'))
+            line = line.rstrip().decode()
+            size += len(line)
+            # this is a heuristic; can fail to add return shorter tail lines
+            # if post-head lines are uncharacteristically long
+            # we're guarding against, for example, huge single-line JSON files
+            if index <= MAX_LINES and size < MAX_BYTES:
+                head.append(line)
             if index > MAX_LINES:
                 ellipsis = True
                 break
@@ -205,13 +208,18 @@ def extract_txt(file_):
         head = head[:headlen]
         # grow tail
         with open(file_.name, 'rb') as txt:
+            count = 0
             txt.seek(0, os.SEEK_END) # the very end
-            for _ in range(taillen):
+            while count < taillen:
                 txt.seek(-2, os.SEEK_CUR)
-                while txt.read(1) != b'\n':
-                    txt.seek(-2, os.SEEK_CUR)
+                if txt.read(1) == b'\n':
+                    count +=1 
+
             for _ in range(taillen):
-                tail.append(txt.readline().rstrip().decode('unicode_escape'))
+                line = txt.readline().rstrip().decode()
+                size += len(line)
+                if size < MAX_BYTES:
+                    tail.append(line)
 
     info = {
         'data': {
