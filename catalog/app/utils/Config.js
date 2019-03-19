@@ -23,6 +23,7 @@ const validateConfig = conforms({
   registryUrl: R.is(String),
   alwaysRequiresAuth: R.is(Boolean),
   sentryDSN: isNullable(String),
+  intercomAppId: isNullable(String),
   apiGatewayEndpoint: R.is(String),
   defaultBucket: R.is(String),
   signInRedirect: R.is(String),
