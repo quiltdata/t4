@@ -48,8 +48,7 @@ const getCrumbs = ({ bucket, path, urls }) => R.chain(
 
 const code = ({ bucket, path }) => dedent`
   import t4
-  b = Bucket("s3://${bucket}")
-  # replace ./${basename(path)} to change destination file
+  b = t4.Bucket("s3://${bucket}")
   b.fetch("${path}", "./${basename(path)}")
 `;
 
