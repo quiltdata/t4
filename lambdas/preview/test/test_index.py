@@ -83,14 +83,14 @@ class TestIndex():
         resp = lambda_handler(event, None)
         body = json.loads(resp['body'])
         assert resp['statusCode'] == 200, 'preview lambda failed on long.txt'
-        # +1 to account for the inserted ellipsis paragraph
-        assert body['html'].count('<p>') == MAX_LINES + 1, 'unexpected number of lines'
-        assert body['html'].count('</p>') == MAX_LINES + 1, 'unexpected number of lines'
-        assert body['html'].count('&hellip;') == 1, 'expected exactly one ellipsis'
-        assert body['html'].startswith("<div><div data-type='head'><p>Line 1</p>"), \
-            f"Unexpected HTML:\n{body['html']}"
-        assert body['html'].endswith("<p>Line 999</p></div></div>"), \
-            f"Unexpected HTML:\n{body['html']}"
+        headlist = body['info']['data']['head']
+        assert len(headlist) == MAX_LINES/2, 'unexpected number of lines in head'
+        assert headlist[0] == 'Line 1', 'unexpected first line in head'
+        assert headlist[-1] == f'Line {len(headlist)}', 'unexpected last line in head'
+        taillist = body['info']['data']['tail']
+        assert len(taillist) == MAX_LINES/2, 'expected empty tail'
+        assert taillist[0] == f'Line 750', 'unexpected first line in head'
+        assert taillist[-1] == f'Line 999', 'unexpected last line in head'
 
     @responses.activate
     def test_txt_short(self):
@@ -105,13 +105,12 @@ class TestIndex():
         resp = lambda_handler(event, None)
         body = json.loads(resp['body'])
         assert resp['statusCode'] == 200, 'preview lambda failed on short.txt'
-        assert body['html'].count('<p>') == 98, 'unexpected number of lines from endpoint'
-        assert body['html'].count('</p>') == 98, 'unexpected number of lines from endpoint'
-        assert body['html'].count('&hellip;') == 0, 'expected no ellipsis'
-        assert body['html'].startswith("<div><div data-type='head'><p>Line 1</p>"), \
-            f"Unexpected HTML:\n{body['html']}"
-        assert body['html'].endswith("<p>Line 98</p></div></div>"), \
-            f"Unexpected HTML:\n{body['html']}"
+        headlist = body['info']['data']['head']
+        assert len(headlist) == 98, 'unexpected number of lines head'
+        assert headlist[0] == 'Line 1', 'unexpected first line in head'
+        assert headlist[97] == 'Line 98', 'unexpected last line in head'
+        taillist = body['info']['data']['tail']
+        assert not taillist, 'expected empty tail'
 
     @responses.activate
     def test_vcf(self):
@@ -125,8 +124,9 @@ class TestIndex():
         event = self._make_event({'url': self.FILE_URL, 'input': 'vcf'})
         resp = lambda_handler(event, None)
         body = json.loads(resp['body'])
-        html_ = BASE_DIR / 'vcf_html_response.txt'
-        expected = html_.read_text().rstrip()
-        assert resp['statusCode'] == 200, 'preview lambda failed on vcf_html_response.txt'
-        assert body['html'] == expected, \
-            f"Unexpected HTML:\n{body['html']}"
+        assert resp['statusCode'] == 200, 'preview lambda failed on example.vcf'
+        data = body['info']['data']
+        assert data['meta'][0] == '##fileformat=VCFv4.0', 'unexpected meta first line'
+        assert data['header'][0] =='#CHROM POS     ID        REF ALT    QUAL FILTER INFO                              FORMAT      NA00001        NA00002        NA00003', 'unexpected header'
+        assert data['data'][0] == '20     14370   rs6054257 G      A       29   PASS   NS=3;DP=14;AF=0.5;DB;H2           GT:GQ:DP:HQ 0|0:48:1:51,51 1|0:48:8:51,51 1/1:43:5:.,.', 'unexpected first data line'
+        assert data['data'][-1] =='20     1234567 microsat1 GTCT   G,GTACT 50   PASS   NS=3;DP=9;AA=G                    GT:GQ:DP    0/1:35:4       0/2:17:2       1/1:40:3', 'unexpected last data line'

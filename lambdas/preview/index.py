@@ -3,7 +3,7 @@ Preview file types in S3 by returning preview HTML and other metadata from
 a lambda function.
 """
 import json
-import subprocess
+import os
 from tempfile import NamedTemporaryFile
 
 from nbconvert import HTMLExporter
@@ -155,74 +155,68 @@ def extract_vcf(file_):
     with open(file_.name, 'rb') as vcf:
         for index, line in enumerate(vcf, start=1):
             # don't escape quotes
-            line = line.strip().decode('unicode_escape')
-            formatted = f'<p>{line}</p>'
+            line = line.rstrip().decode('unicode_escape')
             if line.startswith('##'):
-                meta.append(formatted)
+                meta.append(line)
             elif line.startswith('#'):
-                header.append(formatted)
+                header.append(line)
             else:
-                data.append(formatted)
-
+                data.append(line)
+            # stop if we're over the max
             if index >= MAX_LINES:
                 break
 
-    # pylint: disable=bad-continuation
-    html = ('<div>'
-                "<div data-type='meta'>{}</div>"
-                "<div data-type='header'>{}</div>"
-                "<div data-type='data'>{}</div>"
-            '</div>').format(
-                ''.join(meta),
-                ''.join(header),
-                ''.join(data))
+    info = {
+        'data': {
+            'meta': meta,
+            'header': header,
+            'data': data,
+        }
+    }
 
-    return html, {}
+    return '', info
 
 def extract_txt(file_):
     """
-    Display first and last lines of file.
-    Uses UNIX utils for speed and convenience (no easy way to tail in Python).
+    Display first and last few lines of a potentially large file.
 
     Args:
         file_ - file-like
-
-    Throws:
-        CalledProcessError
     """
-    available = 0
+    assert MAX_LINES >= 1 and int(MAX_LINES) == MAX_LINES, 'expected positive integer'
+
     ellipsis = False
     # find out how many lines <= MAX_LINES are available
     # we need to know this so that head and tail don't overlap
     # loop finishes in constant time
+    head = []
     with open(file_.name, 'rb') as txt:
         for index, line in enumerate(txt, start=1):
-            available = index
-            if available > MAX_LINES:
+            if index <= MAX_LINES:
+                head.append(line.rstrip().decode('unicode_escape'))
+            if index > MAX_LINES:
                 ellipsis = True
                 break
-    # if maxlines == 0, everything still works
-    available = min(available, MAX_LINES)
-    # pylint should never flag for 3.6 but it does
-    headlines = int(available/2) # pylint: disable=old-division
-    taillines = available - headlines
+    tail = []
+    if ellipsis: # in this case we need a tail
+        headlen = int(MAX_LINES/2) # pylint: disable=old-division
+        taillen = MAX_LINES - headlen
+        # cut head
+        head = head[:headlen]
+        # grow tail
+        with open(file_.name, 'rb') as txt:
+            txt.seek(0, os.SEEK_END) # the very end
+            for _ in range(taillen):
+                txt.seek(-2, os.SEEK_CUR)
+                while txt.read(1) != b'\n':
+                    txt.seek(-2, os.SEEK_CUR)
+            for _ in range(taillen):
+                tail.append(txt.readline().rstrip().decode('unicode_escape'))
 
-    head = subprocess.check_output(['head', file_.name, '-n', str(headlines)])
-    tail = subprocess.check_output(['tail', file_.name, '-n', str(taillines)])
-    html_buffer = [[], []]
-    for i, lines in enumerate([head, tail]):
-        for line in lines.splitlines():
-            line = line.strip().decode('unicode_escape')
-            html_buffer[i].append(f'<p>{line}</p>')
-
-    # pylint: disable=bad-continuation
-    html = ('<div>'
-                "<div data-type='head'>{}</div>"
-                "<div>{}<div>"
-                "<div data-type='tail'>{}</div>"
-            '</div>').format(
-                ''.join(html_buffer[0]),
-                '<p>&hellip;</p>' if ellipsis else '',
-                ''.join(html_buffer[1]))
-
-    return html, {}
+    info = {
+        'data': {
+            'head': head,
+            'tail': tail
+        }
+    }
+    return '', info
