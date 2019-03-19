@@ -14,8 +14,8 @@ import requests
 from t4_lambda_shared.decorator import api, validate
 from t4_lambda_shared.utils import get_default_origins, make_json_response
 
-MAX_BYTES = 1_000_000
-MAX_LINES = 500
+MAX_BYTES = 1_000_000 # must be positive int
+MAX_LINES = 500 # must be positive int
 
 SCHEMA = {
     'type': 'object',
@@ -186,7 +186,6 @@ def extract_txt(file_):
     Args:
         file_ - file-like object
     """
-    assert MAX_LINES >= 1 and int(MAX_LINES) == MAX_LINES, 'expected MAX_LINES as positive int'
     size = 0
     ellipsis = False
     head = []
