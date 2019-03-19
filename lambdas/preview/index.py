@@ -153,18 +153,16 @@ def extract_vcf(file_):
     header = []
     data = []
     size = 0
-
     with open(file_.name, 'rb') as vcf:
         for index, line in enumerate(vcf, start=1):
-            # don't escape quotes
-            line = line.rstrip().decode()
-            size += len(line)
+            line = _truncate(line.rstrip().decode(), size)
             if line.startswith('##'):
                 meta.append(line)
             elif line.startswith('#'):
                 header.append(line)
             else:
                 data.append(line)
+            size += len(line)
             # stop if we're over the max
             if index >= MAX_LINES or size > MAX_BYTES:
                 break
@@ -191,12 +189,12 @@ def extract_txt(file_):
     head = []
     with open(file_.name, 'rb') as txt:
         for index, line in enumerate(txt, start=1):
-            line = line.rstrip().decode()
+            line = _truncate(line.rstrip().decode(), size)
             size += len(line)
             # this is a heuristic; can fail to return shorter tail lines
             # if head lines are uncharacteristically long
             # we're guarding against, for example, huge single-line JSON files
-            if index <= MAX_LINES and size < MAX_BYTES:
+            if index <= MAX_LINES and size <= MAX_BYTES:
                 head.append(line)
             if size > MAX_BYTES:
                 break
@@ -231,3 +229,18 @@ def extract_txt(file_):
         }
     }
     return '', info
+
+
+def _truncate(line, size):
+    """chop string, if needed, to fit in remaining bytes
+    Args:
+        line - string to truncate
+        size - bytes consumed so far (without input_string)
+    """
+    remaining = MAX_BYTES - size
+    if remaining > 0 and len(line) > remaining:
+        line = line[:remaining]
+    elif remaining < 0:
+        line = ''
+    
+    return line
