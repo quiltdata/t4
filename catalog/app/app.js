@@ -19,6 +19,7 @@ import { ThemeProvider } from '@material-ui/styles';
 
 // Import root app
 import Error from 'components/Error';
+import * as Intercom from 'components/Intercom';
 import Layout from 'components/Layout';
 import App from 'containers/App';
 import Placeholder from 'containers/App/Placeholder';
@@ -86,6 +87,15 @@ const MOUNT_NODE = document.getElementById('app');
 // TODO: make storage injectable
 const storage = mkStorage({ user: 'USER', tokens: 'TOKENS' });
 
+const intercomUserSelector = (state) => {
+  const { user: u } = Auth.selectors.domain(state);
+  return u && {
+    user_id: u.current_user,
+    name: u.current_user,
+    email: u.email,
+  };
+};
+
 const render = (messages) => {
   ReactDOM.render(
     nest(
@@ -104,6 +114,7 @@ const render = (messages) => {
       [React.Suspense, { fallback: <Placeholder /> }],
       [APIConnector.Provider, { fetch, middleware: [Auth.apiMiddleware] }],
       [Auth.Provider, { checkOn: LOCATION_CHANGE, storage }],
+      [Intercom.Provider, { userSelector: intercomUserSelector }],
       AWS.Credentials.Provider,
       AWS.Config.Provider,
       AWS.S3.Provider,
