@@ -146,7 +146,7 @@ def extract_parquet(file_):
 def extract_vcf(file_):
     """
     Pull summary info from VCF: meta-information, header line, and data lines
-    (in that order, up to MAX_LINES)
+    (in that order, up to MAX_LINES). Skips empty lines.
 
     Args:
         file_ - file-like object
@@ -186,7 +186,7 @@ def extract_txt(file_):
     """
     Display first and last few lines of a potentially large file.
     Because we process files in binary mode, we risk breaking some unicode
-    characters mid-word. Does NOT preview empty lines.
+    characters mid-word. Skips empty lines.
 
     Args:
         file_ - file-like object
@@ -215,6 +215,7 @@ def extract_txt(file_):
             remaining = min(MAX_BYTES - size, file_size)
             # go to the earliest available byte
             file_.seek(-remaining, os.SEEK_END)
+            # remaining lines, less empty lines
             tail = [l for l in file_.read().split(b'\n') if l]
             # chop tails with lots of lines, OR, if we only have a few lines,
             # throw away the very first line, because it might not be complete
