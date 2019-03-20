@@ -35,7 +35,7 @@ export default RT.composeComponent('Pagination.Controls',
     prevPage: PT.func.isRequired,
   }),
   ({ page, pages, nextPage, prevPage }) => pages <= 1 ? null : (
-    <Box display="flex" alignItems="center" mt={2}>
+    <Box display="flex" alignItems="center">
       <Chevron
         direction="left"
         onClick={prevPage}
