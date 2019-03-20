@@ -8,6 +8,8 @@ import sys
 from . import api, session
 from .util import QuiltException
 
+def config_with_catalog_url(catalog_url):
+    api.config(catalog_url.rstrip('/') + '/config.json')
 
 def create_parser():
     parser = argparse.ArgumentParser()
@@ -29,7 +31,7 @@ def create_parser():
     config_p = subparsers.add_parser("config", description=shorthelp, help=shorthelp)
     config_p.add_argument("catalog_url", help="URL of catalog to config with",
                           type=str, nargs="?")
-    config_p.set_defaults(func=api.config)
+    config_p.set_defaults(func=config_with_catalog_url)
 
     return parser
 
