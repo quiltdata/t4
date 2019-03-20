@@ -3,14 +3,17 @@ import * as R from 'ramda';
 import * as React from 'react';
 import { Link } from 'react-router-dom';
 import * as RC from 'recompose';
+import { unstable_Box as Box } from '@material-ui/core/Box';
 import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
 import CircularProgress from '@material-ui/core/CircularProgress';
+import Divider from '@material-ui/core/Divider';
 import Icon from '@material-ui/core/Icon';
 import ListItem from '@material-ui/core/ListItem';
 import Typography from '@material-ui/core/Typography';
 import { withStyles } from '@material-ui/styles';
 
+import * as Pagination from 'components/Pagination';
 import { composeComponent } from 'utils/reactTools';
 import { readableBytes } from 'utils/string';
 import tagged from 'utils/tagged';
@@ -84,6 +87,7 @@ const computeStats = R.reduce(ListingItem.reducer({
 const Stats = composeComponent('Bucket.Listing.Stats',
   RC.setPropTypes({
     items: PT.array.isRequired,
+    truncated: PT.bool.isRequired,
   }),
   withStyles(({ palette, spacing: { unit } }) => ({
     root: {
@@ -97,19 +101,26 @@ const Stats = composeComponent('Bucket.Listing.Stats',
       marginLeft: unit,
       marginRight: unit,
     },
+    truncated: {
+      color: palette.text.secondary,
+      marginLeft: unit,
+    },
     spacer: {
       flexGrow: 1,
     },
   })),
-  ({ classes, items }) => {
-    const stats = computeStats(items);
+  ({ classes, items, truncated }) => {
+    const stats = React.useMemo(() => computeStats(items), [items]);
     return (
       <div className={classes.root}>
         <span>{stats.dirs} folders</span>
         <span className={classes.divider}> | </span>
-        <span>{stats.files} files</span>
+        <span>{truncated && '> '}{stats.files} files</span>
         <span className={classes.divider}> | </span>
-        <span>{readableBytes(stats.size)}</span>
+        <span>{truncated && '> '}{readableBytes(stats.size)}</span>
+        {truncated && (
+          <span className={classes.truncated}>(truncated)</span>
+        )}
         <span className={classes.spacer} />
         {!!stats.modified && (
           <span>Last modified {stats.modified.toLocaleString()}</span>
@@ -123,6 +134,7 @@ export default composeComponent('Bucket.Listing',
     // Array of ListingItems
     items: PT.array.isRequired,
     locked: PT.bool,
+    truncated: PT.bool,
   }),
   withStyles(({ spacing: { unit }, palette }) => ({
     root: {
@@ -157,51 +169,69 @@ export default composeComponent('Bucket.Listing',
       width: '12em',
     },
   })),
-  ({ classes, items, locked = false }) => (
-    <Card>
-      <CardContent className={classes.root}>
-        {locked && (
-          <div className={classes.lock}>
-            <CircularProgress />
-          </div>
-        )}
-        {!items.length
-          ? (
-            <Typography className={classes.empty} variant="h5">
-              No files
-            </Typography>
-          )
-          : (
-            <React.Fragment>
-              <Stats items={items} />
-              {items.map(ListingItem.case({
-                // eslint-disable-next-line react/prop-types
-                Dir: ({ name, to }) => (
-                  <Item
-                    icon="folder_open"
-                    key={name}
-                    name={name}
-                    to={to}
-                  />
-                ),
-                // eslint-disable-next-line react/prop-types
-                File: ({ name, to, size, modified }) => (
-                  <Item
-                    icon="insert_drive_file"
-                    key={name}
-                    name={name}
-                    to={to}
-                  >
-                    <div className={classes.size}>{readableBytes(size)}</div>
-                    {!!modified && (
-                      <div className={classes.modified}>{modified.toLocaleString()}</div>
-                    )}
-                  </Item>
-                ),
-              }))}
-            </React.Fragment>
-          )
-        }
-      </CardContent>
-    </Card>
-  ));
+  ({ classes, items, truncated = false, locked = false }) => {
+    const scrollRef = React.useRef(null);
+    const scroll = React.useCallback((prev) => {
+      if (prev && scrollRef.current) scrollRef.current.scrollIntoView();
+    });
+
+    const pagination = Pagination.use(items, { perPage: 25, onChange: scroll });
+
+    return (
+      <Card>
+        <CardContent className={classes.root}>
+          {locked && (
+            <div className={classes.lock}>
+              <CircularProgress />
+            </div>
+          )}
+          {!items.length
+            ? (
+              <Typography className={classes.empty} variant="h5">
+                No files
+              </Typography>
+            )
+            : (
+              <React.Fragment>
+                <Stats items={items} truncated={truncated} />
+                <div ref={scrollRef} />
+                {pagination.paginated.map(ListingItem.case({
+                  // eslint-disable-next-line react/prop-types
+                  Dir: ({ name, to }) => (
+                    <Item
+                      icon="folder_open"
+                      key={name}
+                      name={name}
+                      to={to}
+                    />
+                  ),
+                  // eslint-disable-next-line react/prop-types
+                  File: ({ name, to, size, modified }) => (
+                    <Item
+                      icon="insert_drive_file"
+                      key={name}
+                      name={name}
+                      to={to}
+                    >
+                      <div className={classes.size}>{readableBytes(size)}</div>
+                      {!!modified && (
+                        <div className={classes.modified}>{modified.toLocaleString()}</div>
+                      )}
+                    </Item>
+                  ),
+                }))}
+                {pagination.pages > 1 && (
+                  <Box>
+                    <Divider />
+                    <Box display="flex" justifyContent="flex-end" px={1} py={0.25}>
+                      <Pagination.Controls {...pagination} />
+                    </Box>
+                  </Box>
+                )}
+              </React.Fragment>
+            )
+          }
+        </CardContent>
+      </Card>
+    );
+  });

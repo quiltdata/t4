@@ -46,6 +46,7 @@ export const bucketListing = ({ s3, bucket, path = '' }) =>
           etag: i.ETag,
         })),
       ),
+      truncated: R.prop('IsTruncated'),
       bucket: () => bucket,
       path: () => path,
     }))

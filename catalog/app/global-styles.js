@@ -44,12 +44,6 @@ injectGlobal`
       margin-bottom: 1em;
     }
 
-    hr {
-      border-style: none none solid none;
-      border-width: 1px;
-      opacity: 0.2;
-    }
-
     h1, h2, h3, h4, h5, h6 {
       color: ${headerColor};
       font-weight: lighter;
