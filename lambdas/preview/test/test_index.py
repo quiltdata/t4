@@ -109,7 +109,7 @@ class TestIndex():
         assert resp['statusCode'] == 200, 'preview lambda failed on long.txt'
         data = body['info']['data']
         assert body['info']['data']['head'][0] == '12345', 'failed to truncate to MAX_BYTES'
-        assert data['tail'], 'expected empty tail'
+        assert not data['tail'], 'expected empty tail'
 
     @responses.activate
     @patch(__name__ + '.index.MAX_BYTES', 5)
@@ -128,7 +128,7 @@ class TestIndex():
         data = body['info']['data']
         assert data['head'][0] == '1234', 'failed to truncate to MAX_BYTES'
         assert data['head'][1] == '5', 'failed to truncate to MAX_BYTES'
-        assert data['tail'], 'expected empty tail'
+        assert not data['tail'], 'expected empty tail'
 
     @responses.activate
     def test_txt_short(self):
