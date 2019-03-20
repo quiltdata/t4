@@ -46,7 +46,7 @@ def lambda_handler(params, _):
 
     resp = requests.get(url)
     if resp.ok:
-        with NamedTemporaryFile(mode='r+b') as file_:
+        with NamedTemporaryFile() as file_:
             for chunk in resp.iter_content(chunk_size=1024):
                 file_.write(chunk)
             file_.seek(0)
@@ -209,14 +209,14 @@ def extract_txt(file_):
             # cut the head back to make room for the tail
             head = head[:headmax]
             # correct the size for the lines we just dropped
-            size = sum([len(s) for s in head])
-            file_size = os.stat(file_.name).st_size
+            size = sum(len(s) for s in head)
+            file_size = os.fstat(file_.fileno()).st_size
             # avoid rewinding past start of file
             remaining = min(MAX_BYTES - size, file_size)
             # go to the earliest available byte
             file_.seek(-remaining, os.SEEK_END)
             # remaining lines, less empty lines
-            tail = [l for l in file_.read().split(b'\n') if l]
+            tail = [l.rstrip() for l in file_ if l]
             # chop tails with lots of lines, OR, if we only have a few lines,
             # throw away the very first line, because it might not be complete
             tail = tail[-tailmax:] if len(tail) > tailmax else tail[1:]
