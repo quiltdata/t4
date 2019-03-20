@@ -1,4 +1,10 @@
-import { takeEvery } from 'redux-saga/effects';
+import * as R from 'ramda';
+import * as React from 'react';
+import * as reduxHook from 'redux-react-hook';
+
+import * as Config from 'utils/Config';
+import usePrevious from 'utils/usePrevious';
+
 
 const loadMixpanel = (token) =>
   import('mixpanel-browser')
@@ -12,7 +18,7 @@ const consoleTracker = Promise.resolve({
   track: (evt, opts) => console.log(`track: ${evt}`, opts),
 });
 
-export const mkTracker = (token) => {
+const mkTracker = (token) => {
   const tracker = token ? loadMixpanel(token) : consoleTracker;
 
   return {
@@ -29,12 +35,24 @@ export const mkTracker = (token) => {
   };
 };
 
-export default function* tracking({
-  locationChangeAction,
-  token,
-}) {
-  const tracker = mkTracker(token);
-  yield takeEvery(locationChangeAction, function* onLocationChange({ payload: location }) {
-    tracker.nav(location, undefined);
+export default ({ locationSelector, userSelector, children }) => {
+  const cfg = Config.useConfig();
+
+  const tracker = React.useMemo(() => mkTracker(cfg.mixpanelToken),
+    [cfg.mixpanelToken]);
+
+  const selector = React.useCallback(R.applySpec({
+    loc: locationSelector,
+    u: userSelector,
+  }), [locationSelector, userSelector]);
+
+  const data = reduxHook.useMappedState(selector);
+
+  usePrevious(data, (prev) => {
+    if (!R.equals(data, prev)) {
+      tracker.nav(data.loc, data.u);
+    }
   });
-}
+
+  return children;
+};

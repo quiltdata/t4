@@ -24,6 +24,7 @@ const validateConfig = conforms({
   alwaysRequiresAuth: R.is(Boolean),
   sentryDSN: isNullable(String),
   intercomAppId: isNullable(String),
+  mixpanelToken: isNullable(String),
   apiGatewayEndpoint: R.is(String),
   defaultBucket: R.is(String),
   signInRedirect: R.is(String),

@@ -10,7 +10,6 @@ import './installStyles';
 // Import all the third party stuff
 import * as React from 'react';
 import ReactDOM from 'react-dom';
-// import { LOCATION_CHANGE } from 'connected-react-router/immutable';
 import createHistory from 'history/createBrowserHistory';
 import 'sanitize.css/sanitize.css';
 //  Need to bypass CSS modules used by standard loader
@@ -39,9 +38,9 @@ import * as Cache from 'utils/ResourceCache';
 import StoreProvider from 'utils/StoreProvider';
 import fontLoader from 'utils/fontLoader';
 import { nest } from 'utils/reactTools';
-import RouterProvider, { LOCATION_CHANGE } from 'utils/router';
+import RouterProvider, { LOCATION_CHANGE, selectLocation } from 'utils/router';
 import mkStorage from 'utils/storage';
-// import tracking from 'utils/tracking';
+import Tracking from 'utils/tracking';
 // Load the favicon, the manifest.json file and the .htaccess file
 /* eslint-disable import/no-unresolved, import/extensions */
 import '!file-loader?name=[name].[ext]!./favicon.ico';
@@ -115,6 +114,10 @@ const render = (messages) => {
       [APIConnector.Provider, { fetch, middleware: [Auth.apiMiddleware] }],
       [Auth.Provider, { checkOn: LOCATION_CHANGE, storage }],
       [Intercom.Provider, { userSelector: intercomUserSelector }],
+      [Tracking, {
+        locationSelector: selectLocation,
+        userSelector: Auth.selectors.username,
+      }],
       AWS.Credentials.Provider,
       AWS.Config.Provider,
       AWS.S3.Provider,
@@ -126,14 +129,6 @@ const render = (messages) => {
     MOUNT_NODE
   );
 };
-
-// track navigation
-/*
-store.runSaga(tracking, {
-  locationChangeAction: LOCATION_CHANGE,
-  token: config.mixpanelToken,
-});
-*/
 
 if (module.hot) {
   // Hot reloadable React components and translation json files
