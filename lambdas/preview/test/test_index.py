@@ -108,7 +108,7 @@ class TestIndex():
         body = json.loads(resp['body'])
         assert resp['statusCode'] == 200, 'preview lambda failed on long.txt'
         data = body['info']['data']
-        assert body['info']['data']['head'][0] == '12345', 'failed to truncate to MAX_BYTES'
+        assert body['info']['data']['head'][0] == '1234', 'failed to truncate at unicode char'
         assert not data['tail'], 'expected empty tail'
 
     @responses.activate

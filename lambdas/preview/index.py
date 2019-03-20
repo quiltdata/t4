@@ -173,9 +173,10 @@ def extract_vcf(file_):
 
     info = {
         'data': {
-            'meta': [s.decode('utf-8') for s in meta],
-            'header': [s.decode('utf-8') for s in header],
-            'data': [s.decode('utf-8') for s in data]
+            # ignore b/c we might snap a multi-byte unicode character in two
+            'meta': [s.decode('utf-8', 'ignore') for s in meta],
+            'header': [s.decode('utf-8', 'ignore') for s in header],
+            'data': [s.decode('utf-8', 'ignore') for s in data]
         }
     }
 
@@ -222,8 +223,8 @@ def extract_txt(file_):
 
     info = {
         'data': {
-            'head': [s.decode('utf-8') for s in head],
-            'tail': [s.decode('utf-8') for s in tail]
+            'head': [s.decode('utf-8', 'ignore') for s in head],
+            'tail': [s.decode('utf-8', 'ignore') for s in tail]
         }
     }
 
