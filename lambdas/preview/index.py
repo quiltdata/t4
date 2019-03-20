@@ -158,7 +158,7 @@ def extract_vcf(file_):
     header = []
     data = []
     size = 0
-    for index, line in enumerate(file_, start=1):
+    for line in file_:
         line = _truncate(line.rstrip(), MAX_BYTES - size)
         if line.startswith(b'##'):
             meta.append(line)
