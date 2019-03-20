@@ -36,15 +36,17 @@ SCHEMA = {
 def lambda_handler(params, _):
     """
     dynamically handle preview requests for bytes in S3
-
     caller must specify input_type (since there may be no file extension)
+
+    Returns:
+        JSON response
     """
     url = params['url']
     input_type = params.get('input')
 
     resp = requests.get(url)
     if resp.ok:
-        with NamedTemporaryFile() as file_:
+        with NamedTemporaryFile(mode='r+b') as file_:
             for chunk in resp.iter_content(chunk_size=1024):
                 file_.write(chunk)
             file_.seek(0)
@@ -102,9 +104,9 @@ def extract_parquet(file_):
         file_ - named temporary file
 
     Returns:
-        html - html summary of main contents (if applicable)
-        info - metdata for user consumption
-
+        dict
+            html - html summary of main contents (if applicable)
+            info - metdata for user consumption
     """
     # TODO: generalize to datasets, multipart files
     # As written, only works for single files, and metadata
@@ -147,31 +149,33 @@ def extract_vcf(file_):
     (in that order, up to MAX_LINES)
 
     Args:
-        file_ - file-like
+        file_ - file-like object
+    
+    Returns:
+        dict
     """
     meta = []
     header = []
     data = []
     size = 0
-    with open(file_.name, 'rb') as vcf:
-        for index, line in enumerate(vcf, start=1):
-            line = _truncate(line.rstrip().decode(), size)
-            if line.startswith('##'):
-                meta.append(line)
-            elif line.startswith('#'):
-                header.append(line)
-            else:
-                data.append(line)
-            size += len(line)
-            # stop if we're over the max
-            if index >= MAX_LINES or size > MAX_BYTES:
-                break
+    for index, line in enumerate(file_, start=1):
+        line = _truncate(line.rstrip(), MAX_BYTES - size)
+        if line.startswith(b'##'):
+            meta.append(line)
+        elif line.startswith(b'#'):
+            header.append(line)
+        elif line:
+            data.append(line)
+        size += len(line)
+        total_lines = len(meta) + len(header) + len(data)
+        if total_lines >= MAX_LINES or size >= MAX_BYTES:
+            break
 
     info = {
         'data': {
-            'meta': meta,
-            'header': header,
-            'data': data,
+            'meta': [s.decode('utf-8') for s in meta],
+            'header': [s.decode('utf-8') for s in header],
+            'data': [s.decode('utf-8') for s in data]
         }
     }
 
@@ -180,67 +184,57 @@ def extract_vcf(file_):
 def extract_txt(file_):
     """
     Display first and last few lines of a potentially large file.
+    Because we process files in binary mode, we risk breaking some unicode
+    characters mid-word. Does NOT preview empty lines.
 
     Args:
         file_ - file-like object
+    Returns:
+        dict - head and tail. tail may be empty. returns at most MAX_LINES
+        lines that occupy a total of MAX_BYTES bytes.
     """
     size = 0
-    ellipsis = False
     head = []
-    with open(file_.name, 'rb') as txt:
-        for index, line in enumerate(txt, start=1):
-            line = _truncate(line.rstrip().decode(), size)
-            size += len(line)
-            # this is a heuristic; can fail to return shorter tail lines
-            # if head lines are uncharacteristically long
-            # we're guarding against, for example, huge single-line JSON files
-            if index <= MAX_LINES and size <= MAX_BYTES:
-                head.append(line)
-            if size > MAX_BYTES:
-                break
-            if index > MAX_LINES:
-                ellipsis = True
-                break
     tail = []
-    if ellipsis: # in this case we need a tail
-        headlen = int(MAX_LINES/2) # pylint: disable=old-division
-        taillen = MAX_LINES - headlen
-        # cut head
-        head = head[:headlen]
-        # grow tail
-        with open(file_.name, 'rb') as txt:
-            count = 0
-            txt.seek(0, os.SEEK_END) # the very end
-            while count < taillen:
-                txt.seek(-2, os.SEEK_CUR)
-                if txt.read(1) == b'\n':
-                    count +=1 
-
-            for _ in range(taillen):
-                line = txt.readline().rstrip().decode()
-                size += len(line)
-                if size < MAX_BYTES:
-                    tail.append(line)
+    for index, line in enumerate(file_, start=1):
+        line = _truncate(line.rstrip(), MAX_BYTES - size)
+        size += len(line)
+        if line and len(head) < MAX_LINES:
+            head.append(line)
+        # if the file is longer than MAX_LINES, we need a tail
+        if index > MAX_LINES:
+            headmax = MAX_LINES//2
+            tailmax = MAX_LINES - headmax
+            # cut the head back to make room for the tail
+            head = head[:headmax]
+            # correct the size for the lines we just dropped
+            size = sum([len(s) for s in head])
+            file_size = os.stat(file_.name).st_size
+            # avoid rewinding past start of file
+            remaining = min(MAX_BYTES - size, file_size)
+            # go to the earliest available byte
+            file_.seek(-remaining, os.SEEK_END)
+            tail = [l for l in file_.read().split(b'\n') if l]
+            # chop tails with lots of lines, OR, if we only have a few lines,
+            # throw away the very first line, because it might not be complete
+            tail = tail[-tailmax:] if len(tail) > tailmax else tail[1:]
+            break
 
     info = {
         'data': {
-            'head': head,
-            'tail': tail
+            'head': [s.decode('utf-8') for s in head],
+            'tail': [s.decode('utf-8') for s in tail]
         }
     }
+
     return '', info
 
-
-def _truncate(line, size):
-    """chop string, if needed, to fit in remaining bytes
+def _truncate(line, stop):
+    """chop string, if needed, to fit in remaining characters
     Args:
         line - string to truncate
-        size - bytes consumed so far (without input_string)
+        stop - max allowable characters
+    Returns:
+        string
     """
-    remaining = MAX_BYTES - size
-    if 0 < remaining < len(line):
-        line = line[:remaining]
-    elif remaining < 0:
-        line = ''
-    
-    return line
+    return line[:max(0, stop)]

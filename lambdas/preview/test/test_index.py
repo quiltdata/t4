@@ -161,6 +161,7 @@ class TestIndex():
             status=200)
         event = self._make_event({'url': self.FILE_URL, 'input': 'vcf'})
         resp = index.lambda_handler(event, None)
+        print('*********', resp)
         body = json.loads(resp['body'])
         assert resp['statusCode'] == 200, 'preview lambda failed on example.vcf'
         data = body['info']['data']
