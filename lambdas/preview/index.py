@@ -82,7 +82,7 @@ def extract_ipynb(file_):
     parse and extract ipynb files
 
     Args:
-        file_ - named temporary file
+        file_ - file-like object opened in binary mode (+b)
 
     Returns:
         html - html version of notebook
@@ -101,7 +101,7 @@ def extract_parquet(file_):
     parse and extract key metadata from parquet files
 
     Args:
-        file_ - named temporary file
+        file_ - file-like object opened in binary mode (+b)
 
     Returns:
         dict
@@ -149,7 +149,7 @@ def extract_vcf(file_):
     (in that order, up to MAX_LINES). Skips empty lines.
 
     Args:
-        file_ - file-like object
+        file_ - file-like object opened in binary mode (+b)
     
     Returns:
         dict
@@ -189,7 +189,8 @@ def extract_txt(file_):
     characters mid-word. Skips empty lines.
 
     Args:
-        file_ - file-like object
+        file_ - file-like object opened in binary mode (+b)
+
     Returns:
         dict - head and tail. tail may be empty. returns at most MAX_LINES
         lines that occupy a total of MAX_BYTES bytes.
