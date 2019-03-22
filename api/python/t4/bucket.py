@@ -315,4 +315,4 @@ class Bucket(object):
         """
         meta = self.get_meta(key)
         uri = self._uri + key
-        return select(uri, query, meta=meta, alt_s3_client=None, raw=raw)
+        return select(uri, query, meta=meta, raw=raw)
