@@ -51,46 +51,49 @@ export default composeComponent('Auth.SignIn',
       const cfg = Config.useConfig();
       return <Redirect to={query.next || cfg.signInRedirect} />;
     })),
-  ({ handleSubmit, submitting, submitFailed, invalid, error }) => (
-    <Container>
-      <form onSubmit={handleSubmit}>
-        <Field
-          component={Layout.Field}
-          name="username"
-          validate={[validators.required]}
-          disabled={submitting}
-          floatingLabelText={<FM {...msg.signInUsernameLabel} />}
-          errors={{
-            required: <FM {...msg.signInUsernameRequired} />,
-          }}
-        />
-        <Field
-          component={Layout.Field}
-          name="password"
-          type="password"
-          validate={[validators.required]}
-          disabled={submitting}
-          floatingLabelText={<FM {...msg.signInPassLabel} />}
-          errors={{
-            required: <FM {...msg.signInPassRequired} />,
-          }}
-        />
-        <Layout.Error
-          {...{ submitFailed, error }}
-          errors={{
-            invalidCredentials: <FM {...msg.signInErrorInvalidCredentials} />,
-            unexpected: <FM {...msg.signInErrorUnexpected} />,
-          }}
-        />
-        <Layout.Actions>
-          <Layout.Submit
-            label={<FM {...msg.signInSubmit} />}
-            disabled={submitting || (submitFailed && invalid)}
-            busy={submitting}
+  ({ handleSubmit, submitting, submitFailed, invalid, error }) => {
+    const cfg = Config.useConfig();
+    const { urls } = NamedRoutes.use();
+
+    return (
+      <Container>
+        <form onSubmit={handleSubmit}>
+          <Field
+            component={Layout.Field}
+            name="username"
+            validate={[validators.required]}
+            disabled={submitting}
+            floatingLabelText={<FM {...msg.signInUsernameLabel} />}
+            errors={{
+              required: <FM {...msg.signInUsernameRequired} />,
+            }}
           />
-        </Layout.Actions>
-        <NamedRoutes.Inject>
-          {({ urls }) => (
+          <Field
+            component={Layout.Field}
+            name="password"
+            type="password"
+            validate={[validators.required]}
+            disabled={submitting}
+            floatingLabelText={<FM {...msg.signInPassLabel} />}
+            errors={{
+              required: <FM {...msg.signInPassRequired} />,
+            }}
+          />
+          <Layout.Error
+            {...{ submitFailed, error }}
+            errors={{
+              invalidCredentials: <FM {...msg.signInErrorInvalidCredentials} />,
+              unexpected: <FM {...msg.signInErrorUnexpected} />,
+            }}
+          />
+          <Layout.Actions>
+            <Layout.Submit
+              label={<FM {...msg.signInSubmit} />}
+              disabled={submitting || (submitFailed && invalid)}
+              busy={submitting}
+            />
+          </Layout.Actions>
+          {!cfg.disableSignUp && (
             <Layout.Hint>
               <FM
                 {...msg.signInHintSignUp}
@@ -104,23 +107,19 @@ export default composeComponent('Auth.SignIn',
               />
             </Layout.Hint>
           )}
-        </NamedRoutes.Inject>
-        <NamedRoutes.Inject>
-          {({ urls }) => (
-            <Layout.Hint>
-              <FM
-                {...msg.signInHintReset}
-                values={{
-                  link: (
-                    <Link to={urls.passReset()}>
-                      <FM {...msg.signInHintResetLink} />
-                    </Link>
-                  ),
-                }}
-              />
-            </Layout.Hint>
-          )}
-        </NamedRoutes.Inject>
-      </form>
-    </Container>
-  ));
+          <Layout.Hint>
+            <FM
+              {...msg.signInHintReset}
+              values={{
+                link: (
+                  <Link to={urls.passReset()}>
+                    <FM {...msg.signInHintResetLink} />
+                  </Link>
+                ),
+              }}
+            />
+          </Layout.Hint>
+        </form>
+      </Container>
+    );
+  });

@@ -8,6 +8,7 @@ import {
 } from 'recompose';
 import { reduxForm, Field, SubmissionError } from 'redux-form/immutable';
 
+import * as Config from 'utils/Config';
 import * as NamedRoutes from 'utils/NamedRoutes';
 import Link from 'utils/StyledLink';
 import defer from 'utils/defer';
@@ -52,6 +53,7 @@ export default composeComponent('Auth.PassReset',
     </Container>
   ))),
   ({ handleSubmit, submitting, submitFailed, invalid, error }) => {
+    const cfg = Config.useConfig();
     const { urls } = NamedRoutes.use();
     return (
       <Container>
@@ -79,18 +81,20 @@ export default composeComponent('Auth.PassReset',
               busy={submitting}
             />
           </Layout.Actions>
-          <Layout.Hint>
-            <FM
-              {...msg.passResetHintSignUp}
-              values={{
-                link: (
-                  <Link to={urls.signUp()}>
-                    <FM {...msg.passResetHintSignUpLink} />
-                  </Link>
-                ),
-              }}
-            />
-          </Layout.Hint>
+          {!cfg.disableSignUp && (
+            <Layout.Hint>
+              <FM
+                {...msg.passResetHintSignUp}
+                values={{
+                  link: (
+                    <Link to={urls.signUp()}>
+                      <FM {...msg.passResetHintSignUpLink} />
+                    </Link>
+                  ),
+                }}
+              />
+            </Layout.Hint>
+          )}
         </form>
       </Container>
     );
