@@ -74,3 +74,11 @@ export class InvalidPassword extends AuthError {
     super(withDefaultMessage('invalid password', props));
   }
 }
+
+export class SMTPError extends AuthError {
+  static displayName = 'SMTPError';
+
+  constructor(props) {
+    super(withDefaultMessage('SMTP error', props));
+  }
+}

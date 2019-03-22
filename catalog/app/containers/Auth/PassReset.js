@@ -16,6 +16,7 @@ import { composeComponent } from 'utils/reactTools';
 import * as validators from 'utils/validators';
 
 import { resetPassword } from './actions';
+import * as errors from './errors';
 import msg from './messages';
 import * as Layout from './Layout';
 
@@ -39,6 +40,9 @@ export default composeComponent('Auth.PassReset',
         await result.promise;
         setDone();
       } catch (e) {
+        if (e instanceof errors.SMTPError) {
+          throw new SubmissionError({ _error: 'smtp' });
+        }
         captureError(e);
         throw new SubmissionError({ _error: 'unexpected' });
       }
@@ -70,6 +74,7 @@ export default composeComponent('Auth.PassReset',
             {...{ submitFailed, error }}
             errors={{
               unexpected: <FM {...msg.passResetErrorUnexpected} />,
+              smtp: <FM {...msg.passResetErrorSMTP} />,
             }}
           />
           <Layout.Actions>
