@@ -1,10 +1,11 @@
-from unittest import TestCase
-
 from t4 import main
+
+from .utils import QuiltTestCase
+
 
 create_parser = main.create_parser
 
-class CommandLineTestCase(TestCase):
+class CommandLineTestCase(QuiltTestCase):
     """
     Base TestCase class, sets up a CLI parser
     """
