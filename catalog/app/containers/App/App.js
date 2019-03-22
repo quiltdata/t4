@@ -16,20 +16,16 @@ import { useLocation } from 'utils/router';
 const redirectTo = (path) => ({ location: { search } }) =>
   <Redirect to={`${path}${search}`} />;
 
-const useAuth = () => {
-  const { alwaysRequiresAuth } = Config.useConfig();
-  return React.useMemo(
-    () => alwaysRequiresAuth ? Auth.requireAuth() : R.identity,
-    [alwaysRequiresAuth],
-  );
-};
-
 const requireAdmin = Auth.requireAuth({
   authorizedSelector: Auth.selectors.isAdmin,
 });
 
 export default () => {
-  const protect = useAuth();
+  const cfg = Config.useConfig();
+  const protect = React.useMemo(
+    () => cfg.alwaysRequiresAuth ? Auth.requireAuth() : R.identity,
+    [cfg.alwaysRequiresAuth],
+  );
   const { paths, urls } = NamedRoutes.use();
   const l = useLocation();
 
@@ -41,7 +37,8 @@ export default () => {
         <Route path={paths.signIn} component={Auth.SignIn} exact />
         <Route path="/login" component={redirectTo(urls.signIn())} exact />
         <Route path={paths.signOut} component={Auth.SignOut} exact />
-        <Route path={paths.signUp} component={Auth.SignUp} exact />
+        {!cfg.disableSignUp &&
+          <Route path={paths.signUp} component={Auth.SignUp} exact />}
         <Route path={paths.passReset} component={Auth.PassReset} exact />
         <Route path={paths.passChange} component={Auth.PassChange} exact />
         <Route path={paths.code} component={protect(Auth.Code)} exact />
