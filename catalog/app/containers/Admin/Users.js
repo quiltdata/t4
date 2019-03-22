@@ -99,6 +99,9 @@ const Invite = RT.composeComponent('Admin.Users.Invite',
         if (APIConnector.HTTPError.is(e, 409, /Email already taken/)) {
           throw new RF.SubmissionError({ email: 'taken' });
         }
+        if (APIConnector.HTTPError.is(e, 500, /SMTP.*invalid/)) {
+          throw new RF.SubmissionError({ _error: 'smtp' });
+        }
         // eslint-disable-next-line no-console
         console.error('Error creating user');
         // eslint-disable-next-line no-console
@@ -175,6 +178,7 @@ const Invite = RT.composeComponent('Admin.Users.Invite',
                     error={error}
                     errors={{
                       unexpected: 'Something went wrong',
+                      smtp: 'SMTP error: contact your administrator',
                     }}
                   />
                 )}

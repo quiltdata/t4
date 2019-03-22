@@ -54,6 +54,9 @@ export default composeComponent('Auth.SignUp',
         if (e instanceof errors.InvalidPassword) {
           throw new SubmissionError({ password: 'invalid' });
         }
+        if (e instanceof errors.SMTPError) {
+          throw new SubmissionError({ _error: 'smtp' });
+        }
         captureError(e);
         throw new SubmissionError({ _error: 'unexpected' });
       }
@@ -148,6 +151,7 @@ export default composeComponent('Auth.SignUp',
             {...{ submitFailed, error }}
             errors={{
               unexpected: <FM {...msg.signUpErrorUnexpected} />,
+              smtp: <FM {...msg.signUpErrorSMTP} />,
             }}
           />
           <Layout.Actions>

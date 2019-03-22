@@ -73,6 +73,9 @@ function* signUp(credentials) {
       if (e.status === 409 && e.json && e.json.message === 'Email already taken.') {
         throw new errors.EmailTaken({ originalError: e });
       }
+      if (e.status === 500 && e.json && e.json.message.match(/SMTP.*invalid/)) {
+        throw new errors.SMTPError({ originalError: e });
+      }
     }
     throw new errors.AuthError({
       message: 'unable to sign up',
@@ -179,6 +182,10 @@ function* resetPassword(email) {
       body: { email },
     });
   } catch (e) {
+    if (HTTPError.is(e, 500, /SMTP.*invalid/)) {
+      throw new errors.SMTPError({ originalError: e });
+    }
+
     throw new errors.AuthError({
       message: 'unable to reset password',
       originalError: e,

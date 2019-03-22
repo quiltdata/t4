@@ -100,6 +100,10 @@ export default defineMessages({
     id: `${scope}.SignUp.errorUnexpected`,
     defaultMessage: 'Something went wrong. Try again later.',
   },
+  signUpErrorSMTP: {
+    id: `${scope}.SignUp.errorSMTP`,
+    defaultMessage: 'SMTP error: contact your administrator',
+  },
   signUpSubmit: {
     id: `${scope}.SignUp.submit`,
     defaultMessage: 'Sign up',
@@ -197,6 +201,10 @@ export default defineMessages({
   passResetErrorUnexpected: {
     id: `${scope}.PassReset.errorUnexpected`,
     defaultMessage: 'Something went wrong. Try again later.',
+  },
+  passResetErrorSMTP: {
+    id: `${scope}.PassReset.errorSMTP`,
+    defaultMessage: 'SMTP error: contact your administrator',
   },
   passResetHintSignUp: {
     id: `${scope}.PassReset.hintSignUp`,
