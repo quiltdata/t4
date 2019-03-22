@@ -8,6 +8,7 @@ export const PreviewData = tagged([
   'Parquet', // { preview: string }
   'Notebook', // { preview: string }
   'Text', // { contents: string, lang: string }
+  'Vcf', // { meta: string[], header: string[][], body: string[][] }
 ]);
 
 export const PreviewError = tagged([
