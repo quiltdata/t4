@@ -9,22 +9,25 @@ from ruamel.yaml import YAML
 import t4 as he
 from t4 import util
 
+from .utils import QuiltTestCase
+
+
 DEFAULT_URL = 'https://quilt-t4-staging-registry.quiltdata.com'
 
-class TestAPI():
-    @responses.activate
+class TestAPI(QuiltTestCase):
     def test_config(self):
         content = {
             'navigator_url': 'https://foo.bar',
             'elastic_search_url': 'https://es.foo',
             'accept_invalid_config_keys': 'yup',
         }
-        responses.add(responses.GET, 'https://foo.bar/config.json', json=content, status=200)
+        self.requests_mock.add(responses.GET, 'https://foo.bar/config.json', json=content, status=200)
 
         he.config('foo.bar')
 
-        assert len(responses.calls) == 1
-        assert responses.calls[0].request.url == 'https://foo.bar/config.json'
+        # TODO: This seems unnecessary?
+        assert len(self.requests_mock.calls) == 1
+        assert self.requests_mock.calls[0].request.url == 'https://foo.bar/config.json'
 
         yaml = YAML()
         config = yaml.load(util.CONFIG_PATH)
@@ -36,7 +39,6 @@ class TestAPI():
 
         assert config == content
 
-    @responses.activate
     def test_config_invalid_host(self):
         # Our URL handling is very forgiving, since we might receive a host
         # defined in local DNS, like 'foo' instead of 'foo.com' -- and on top
@@ -93,7 +95,6 @@ class TestAPI():
         assert meta == meta2
 
     @patch('t4.session.get_session')
-    @responses.activate
     def test_credentials_from_registry(self, get_session):
         mock_session = Mock()
         get_session.return_value = mock_session
@@ -120,14 +121,12 @@ class TestAPI():
         assert frozen_creds.access_key == 'asdf'
         assert frozen_creds.secret_key == 'asdf'
 
-    @responses.activate
     def test_empty_list_role(self):
         empty_list_response = { 'results': [] }
-        responses.add(responses.GET, DEFAULT_URL + '/api/roles',
+        self.requests_mock.add(responses.GET, DEFAULT_URL + '/api/roles',
                 json=empty_list_response, status=200)
         assert he.admin.list_roles() == []
 
-    @responses.activate
     def test_list_role(self):
         result = {
             'name': 'test',
@@ -135,33 +134,30 @@ class TestAPI():
             'id': '1234-1234'
         }
         list_response = { 'results': [result] }
-        responses.add(responses.GET, DEFAULT_URL + '/api/roles',
+        self.requests_mock.add(responses.GET, DEFAULT_URL + '/api/roles',
                 json=list_response, status=200)
         assert he.admin.list_roles() == [result]
 
-    @responses.activate
     def test_get_role(self):
         result = {
             'name': 'test',
             'arn': 'asdf123',
             'id': '1234-1234'
         }
-        responses.add(responses.GET, DEFAULT_URL + '/api/roles/1234-1234',
+        self.requests_mock.add(responses.GET, DEFAULT_URL + '/api/roles/1234-1234',
                 json=result, status=200)
         assert he.admin.get_role('1234-1234') == result
 
-    @responses.activate
     def test_create_role(self):
         result = {
             'name': 'test',
             'arn': 'asdf123',
             'id': '1234-1234'
         }
-        responses.add(responses.POST, DEFAULT_URL + '/api/roles',
+        self.requests_mock.add(responses.POST, DEFAULT_URL + '/api/roles',
                 json=result, status=200)
         assert he.admin.create_role('test', 'asdf123') == result
 
-    @responses.activate
     def test_edit_role(self):
         get_result = {
             'name': 'test',
@@ -173,27 +169,25 @@ class TestAPI():
             'arn': 'qwer456',
             'id': '1234-1234'
         }
-        responses.add(responses.GET, DEFAULT_URL + '/api/roles/1234-1234',
+        self.requests_mock.add(responses.GET, DEFAULT_URL + '/api/roles/1234-1234',
                 json=get_result, status=200)
-        responses.add(responses.PUT, DEFAULT_URL + '/api/roles/1234-1234',
+        self.requests_mock.add(responses.PUT, DEFAULT_URL + '/api/roles/1234-1234',
                 json=result, status=200)
         assert he.admin.edit_role('1234-1234', 'test_new_name', 'qwer456') == result
 
-    @responses.activate
     def test_delete_role(self):
-        responses.add(responses.DELETE, DEFAULT_URL + '/api/roles/1234-1234',
+        self.requests_mock.add(responses.DELETE, DEFAULT_URL + '/api/roles/1234-1234',
                 status=200)
         he.admin.delete_role('1234-1234')
 
-    @responses.activate
     def test_set_role(self):
-        responses.add(responses.POST, DEFAULT_URL + '/api/users/set_role',
+        self.requests_mock.add(responses.POST, DEFAULT_URL + '/api/users/set_role',
                 json={}, status=200)
 
         not_found_result = {
             'message': "No user exists by the provided name."
         }
-        responses.add(responses.POST, DEFAULT_URL + '/api/users/set_role',
+        self.requests_mock.add(responses.POST, DEFAULT_URL + '/api/users/set_role',
                 json=not_found_result, status=400)
 
         he.admin.set_role('test_user', 'test_role')

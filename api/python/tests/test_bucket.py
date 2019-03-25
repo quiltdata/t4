@@ -10,11 +10,14 @@ import pytest
 from t4 import Bucket, data_transfer, config
 from t4.util import QuiltException
 
-def test_bucket_construct():
-    bucket = Bucket('s3://test-bucket')
+from .utils import QuiltTestCase
 
-def test_bucket_meta():
-    with Stubber(data_transfer.s3_client) as stubber:
+
+class TestBucket(QuiltTestCase):
+    def test_bucket_construct(self):
+        Bucket('s3://test-bucket')
+
+    def test_bucket_meta(self):
         test_meta = {
             'helium': json.dumps({'target': 'json'})
         }
@@ -26,7 +29,7 @@ def test_bucket_meta():
             'Bucket': 'test-bucket',
             'Key': 'test'
         }
-        stubber.add_response('head_object', response, params)
+        self.s3_stubber.add_response('head_object', response, params)
         bucket = Bucket('s3://test-bucket')
         meta = bucket.get_meta('test')
         assert meta == {'target': 'json'}
@@ -43,7 +46,7 @@ def test_bucket_meta():
             'Bucket': 'test-bucket',
             'Key': 'test'
         }
-        stubber.add_response('head_object', head_response, head_params)
+        self.s3_stubber.add_response('head_object', head_response, head_params)
         new_test_meta = {
             'helium': json.dumps({
                 'target': 'json',
@@ -61,11 +64,10 @@ def test_bucket_meta():
             'Metadata': new_test_meta,
             'MetadataDirective': 'REPLACE'
         }
-        stubber.add_response('copy_object', response, params)
+        self.s3_stubber.add_response('copy_object', response, params)
         bucket.set_meta('test', {})
 
-def test_bucket_fetch():
-    with Stubber(data_transfer.s3_client) as stubber:
+    def test_bucket_fetch(self):
         response = {
             'IsTruncated': False
         }
@@ -73,75 +75,74 @@ def test_bucket_fetch():
             'Bucket': 'test-bucket',
             'Prefix': 'does/not/exist/'
         }
-        stubber.add_response('list_objects_v2', response, params)
+        self.s3_stubber.add_response('list_objects_v2', response, params)
         with pytest.raises(QuiltException):
             Bucket('s3://test-bucket').fetch('does/not/exist/', './')
 
 
-def test_bucket_select():
-    # Stubber doesn't have an accurate shape for the results of select_object_content
-    chunks = [
-        b'{"foo": ',
-        b'9, "b',
-        b'ar": 3',
-        b'}\n{"foo"',
-        b': 9, "bar": 1}\n{"foo": 6, "bar": 9}\n{"foo":',
-        b' 1, "bar": 7}\n{"foo":',
-        b' 6, "bar": 1}\n{"foo": 6, "bar": 6}',
-        b'\n{"foo": 9, "bar": 6}',
-        b'\n{"foo": 6, "bar": 4}\n',
-        b'{"foo": 2, "bar": 0}',
-        b'\n{"foo": 2, "bar": 0}\n',
-        ]
-    records = [{'Records': {'Payload': chunk}} for chunk in chunks]
-    # noinspection PyTypeChecker
-    records.append({'Stats': {
-        'BytesScanned': 100,
-        'BytesProcessed': 100,
-        'BytesReturned': 210,
-        }})
-    records.append({'End': {}})
+    def test_bucket_select(self):
+        # Stubber doesn't have an accurate shape for the results of select_object_content
+        chunks = [
+            b'{"foo": ',
+            b'9, "b',
+            b'ar": 3',
+            b'}\n{"foo"',
+            b': 9, "bar": 1}\n{"foo": 6, "bar": 9}\n{"foo":',
+            b' 1, "bar": 7}\n{"foo":',
+            b' 6, "bar": 1}\n{"foo": 6, "bar": 6}',
+            b'\n{"foo": 9, "bar": 6}',
+            b'\n{"foo": 6, "bar": 4}\n',
+            b'{"foo": 2, "bar": 0}',
+            b'\n{"foo": 2, "bar": 0}\n',
+            ]
+        records = [{'Records': {'Payload': chunk}} for chunk in chunks]
+        # noinspection PyTypeChecker
+        records.append({'Stats': {
+            'BytesScanned': 100,
+            'BytesProcessed': 100,
+            'BytesReturned': 210,
+            }})
+        records.append({'End': {}})
 
-    expected_result = pd.DataFrame.from_records([
-        {'foo': 9, 'bar': 3},
-        {'foo': 9, 'bar': 1},
-        {'foo': 6, 'bar': 9},
-        {'foo': 1, 'bar': 7},
-        {'foo': 6, 'bar': 1},
-        {'foo': 6, 'bar': 6},
-        {'foo': 9, 'bar': 6},
-        {'foo': 6, 'bar': 4},
-        {'foo': 2, 'bar': 0},
-        {'foo': 2, 'bar': 0},
-        ])
+        expected_result = pd.DataFrame.from_records([
+            {'foo': 9, 'bar': 3},
+            {'foo': 9, 'bar': 1},
+            {'foo': 6, 'bar': 9},
+            {'foo': 1, 'bar': 7},
+            {'foo': 6, 'bar': 1},
+            {'foo': 6, 'bar': 6},
+            {'foo': 9, 'bar': 6},
+            {'foo': 6, 'bar': 4},
+            {'foo': 2, 'bar': 0},
+            {'foo': 2, 'bar': 0},
+            ])
 
-    # test normal use from extension
-    expected_args = {
-        'Bucket': 'test-bucket',
-        'Key': 'test',
-        'Expression': 'select * from S3Object',
-        'ExpressionType': 'SQL',
-        'InputSerialization': {
-            'CompressionType': 'NONE',
-            'JSON': {'Type': 'DOCUMENT'}
-            },
-        'OutputSerialization': {'JSON': {}},
+        # test normal use from extension
+        expected_args = {
+            'Bucket': 'test-bucket',
+            'Key': 'test',
+            'Expression': 'select * from S3Object',
+            'ExpressionType': 'SQL',
+            'InputSerialization': {
+                'CompressionType': 'NONE',
+                'JSON': {'Type': 'DOCUMENT'}
+                },
+            'OutputSerialization': {'JSON': {}},
+            }
+
+        test_meta = {
+            'helium': json.dumps({'target': 'json'})
+        }
+        response = {
+            'Metadata': test_meta,
+            'ContentLength': 123
+        }
+        params = {
+            'Bucket': 'test-bucket',
+            'Key': 'test'
         }
 
-    test_meta = {
-        'helium': json.dumps({'target': 'json'})
-    }
-    response = {
-        'Metadata': test_meta,
-        'ContentLength': 123
-    }
-    params = {
-        'Bucket': 'test-bucket',
-        'Key': 'test'
-    }
-
-    with Stubber(data_transfer.s3_client) as stubber:
-        stubber.add_response('head_object', response, params)
+        self.s3_stubber.add_response('head_object', response, params)
 
         boto_return_val = {'Payload': iter(records)}
         patched_s3 = patch.object(
@@ -162,86 +163,86 @@ def test_bucket_select():
     # Further testing specific to select() is in test_data_transfer
 
 
-def test_bucket_put_file():
-    with patch("t4.bucket.copy_file") as copy_mock:
+    def test_bucket_put_file(self):
+        with patch("t4.bucket.copy_file") as copy_mock:
+            bucket = Bucket('s3://test-bucket')
+            bucket.put_file(key='README.md', path='./README') # put local file to bucket
+            copy_src = copy_mock.call_args_list[0][0][0]
+            assert urlparse(copy_src).scheme == 'file'
+            copy_dest = copy_mock.call_args_list[0][0][1]
+            assert urlparse(copy_dest).scheme == 's3'
+
+            copy_mock.reset_mock()
+            test_meta = {'asdf': 'jkl;'}
+            bucket.put_file(key='README.md', path='./README', meta=test_meta)
+            (src, dest, meta) = copy_mock.call_args_list[0][0]
+            assert meta == test_meta
+
+    def test_bucket_put_dir(self):
+        path = pathlib.Path(__file__).parent / 'data'
         bucket = Bucket('s3://test-bucket')
-        bucket.put_file(key='README.md', path='./README') # put local file to bucket
-        copy_src = copy_mock.call_args_list[0][0][0]
-        assert urlparse(copy_src).scheme == 'file'
-        copy_dest = copy_mock.call_args_list[0][0][1]
-        assert urlparse(copy_dest).scheme == 's3'
 
-        copy_mock.reset_mock()
-        test_meta = {'asdf': 'jkl;'}
-        bucket.put_file(key='README.md', path='./README', meta=test_meta)
-        (src, dest, meta) = copy_mock.call_args_list[0][0]
-        assert meta == test_meta
+        with patch("t4.bucket.copy_file") as copy_mock:
+            bucket.put_dir('test', path)
+            copy_mock.assert_called_once_with(path.as_uri() + '/', 's3://test-bucket/test/')
 
-def test_bucket_put_dir():
-    path = pathlib.Path(__file__).parent / 'data'
-    bucket = Bucket('s3://test-bucket')
+        with patch("t4.bucket.copy_file") as copy_mock:
+            bucket.put_dir('test/', path)
+            copy_mock.assert_called_once_with(path.as_uri() + '/', 's3://test-bucket/test/')
 
-    with patch("t4.bucket.copy_file") as copy_mock:
-        bucket.put_dir('test', path)
-        copy_mock.assert_called_once_with(path.as_uri() + '/', 's3://test-bucket/test/')
+        with patch("t4.bucket.copy_file") as copy_mock:
+            bucket.put_dir('', path)
+            copy_mock.assert_called_once_with(path.as_uri() + '/', 's3://test-bucket/')
 
-    with patch("t4.bucket.copy_file") as copy_mock:
-        bucket.put_dir('test/', path)
-        copy_mock.assert_called_once_with(path.as_uri() + '/', 's3://test-bucket/test/')
+    @patch('t4.data_transfer.s3_client')
+    def test_remote_delete(self, s3_client):
+        bucket = Bucket('s3://test-bucket')
+        bucket.delete('file.json')
+        call_kwargs = {'Bucket': 'test-bucket', 'Key': 'file.json'}
+        s3_client.head_object.assert_called_with(**call_kwargs)
+        s3_client.delete_object.assert_called_with(**call_kwargs)
 
-    with patch("t4.bucket.copy_file") as copy_mock:
-        bucket.put_dir('', path)
-        copy_mock.assert_called_once_with(path.as_uri() + '/', 's3://test-bucket/')
-
-@patch('t4.data_transfer.s3_client')
-def test_remote_delete(s3_client):
-    bucket = Bucket('s3://test-bucket')
-    bucket.delete('file.json')
-    call_kwargs = {'Bucket': 'test-bucket', 'Key': 'file.json'}
-    s3_client.head_object.assert_called_with(**call_kwargs)
-    s3_client.delete_object.assert_called_with(**call_kwargs)
-
-    with pytest.raises(QuiltException):
-        bucket.delete('s3://test-bucket/dir/')
+        with pytest.raises(QuiltException):
+            bucket.delete('s3://test-bucket/dir/')
 
 
-@patch('t4.data_transfer.s3_client')
-def test_remote_delete_dir(s3_client):
-    s3_client.list_objects_v2.return_value = {
-        'IsTruncated': False,
-        'Contents': [{'Key': 'a'}, {'Key': 'b'}],
-    }
-    bucket = Bucket('s3://test-bucket')
-    bucket.delete_dir('s3://test-bucket/dir/')
+    @patch('t4.data_transfer.s3_client')
+    def test_remote_delete_dir(self, s3_client):
+        s3_client.list_objects_v2.return_value = {
+            'IsTruncated': False,
+            'Contents': [{'Key': 'a'}, {'Key': 'b'}],
+        }
+        bucket = Bucket('s3://test-bucket')
+        bucket.delete_dir('s3://test-bucket/dir/')
 
-    a_kwargs = {'Bucket': 'test-bucket', 'Key': 'a'}
-    b_kwargs = {'Bucket': 'test-bucket', 'Key': 'b'}
-    s3_client.delete_object.assert_any_call(**a_kwargs)
-    s3_client.delete_object.assert_any_call(**b_kwargs)
+        a_kwargs = {'Bucket': 'test-bucket', 'Key': 'a'}
+        b_kwargs = {'Bucket': 'test-bucket', 'Key': 'b'}
+        s3_client.delete_object.assert_any_call(**a_kwargs)
+        s3_client.delete_object.assert_any_call(**b_kwargs)
 
-    with pytest.raises(ValueError):
-        bucket.delete_dir('s3://test-bucket/dir')
+        with pytest.raises(ValueError):
+            bucket.delete_dir('s3://test-bucket/dir')
 
-@patch('t4.bucket.find_bucket_config')
-@patch('t4.bucket.get_from_config')
-def test_bucket_config(config_mock, bucket_config_mock):
-    bucket_config_mock.return_value = {
-        'name': 'test-bucket',
-        'title': 'Test Bucket',
-        'icon': 'url',
-        'description': 'description',
-        'searchEndpoint': 'https://foo.bar/search'
-    }
-    config_mock.return_value = 'https://foo.bar'
-    b = Bucket('s3://test-bucket')
-    b.config()
-    assert b._search_endpoint == 'https://foo.bar/search'
-    config_mock.assert_called_once_with('navigator_url')
-    bucket_config_mock.assert_called_once_with('test-bucket', 'https://foo.bar/config.json')
+    @patch('t4.bucket.find_bucket_config')
+    @patch('t4.bucket.get_from_config')
+    def test_bucket_config(self, config_mock, bucket_config_mock):
+        bucket_config_mock.return_value = {
+            'name': 'test-bucket',
+            'title': 'Test Bucket',
+            'icon': 'url',
+            'description': 'description',
+            'searchEndpoint': 'https://foo.bar/search'
+        }
+        config_mock.return_value = 'https://foo.bar'
+        b = Bucket('s3://test-bucket')
+        b.config()
+        assert b._search_endpoint == 'https://foo.bar/search'
+        config_mock.assert_called_once_with('navigator_url')
+        bucket_config_mock.assert_called_once_with('test-bucket', 'https://foo.bar/config.json')
 
-    config_mock.reset_mock()
-    bucket_config_mock.reset_mock()
+        config_mock.reset_mock()
+        bucket_config_mock.reset_mock()
 
-    b.config('https://bar.foo/config.json')
-    assert not config_mock.called
-    bucket_config_mock.assert_called_once_with('test-bucket', 'https://bar.foo/config.json')
+        b.config('https://bar.foo/config.json')
+        assert not config_mock.called
+        bucket_config_mock.assert_called_once_with('test-bucket', 'https://bar.foo/config.json')
