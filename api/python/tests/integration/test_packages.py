@@ -13,8 +13,9 @@ from t4 import Package
 from t4.util import (QuiltException, APP_NAME, APP_AUTHOR, BASE_DIR, BASE_PATH,
                      validate_package_name, parse_file_url)
 
-LOCAL_MANIFEST = os.path.join(os.path.dirname(__file__), 'data', 'local_manifest.jsonl')
-REMOTE_MANIFEST = os.path.join(os.path.dirname(__file__), 'data', 't4_manifest.jsonl')
+DATA_DIR = Path(__file__).parent / 'data'
+LOCAL_MANIFEST = DATA_DIR / 'local_manifest.jsonl'
+REMOTE_MANIFEST = DATA_DIR / 't4_manifest.jsonl'
 
 def mock_make_api_call(self, operation_name, kwarg):
     """ Mock boto3's AWS API Calls for testing. """
@@ -34,7 +35,7 @@ def mock_make_api_call(self, operation_name, kwarg):
     raise NotImplementedError(operation_name)
 
 @patch('appdirs.user_data_dir', lambda x,y: os.path.join('test_appdir', x))
-def test_build(tmpdir):
+def test_build():
     """Verify that build dumps the manifest to appdirs directory."""
     new_pkg = Package()
 
@@ -69,7 +70,7 @@ def test_build(tmpdir):
         assert test_file.resolve().as_uri() == pkg['bar'].physical_keys[0]
 
 @patch('appdirs.user_data_dir', lambda x,y: os.path.join('test_appdir', x))
-def test_default_registry(tmpdir):
+def test_default_registry():
     new_pkg = Package()
 
     # Create a dummy file to add to the package.
@@ -120,7 +121,7 @@ def test_default_registry(tmpdir):
 
 @patch('appdirs.user_data_dir', lambda x,y: os.path.join('test_appdir', x))
 @patch('t4.Package.browse', lambda name, registry, top_hash: Package())
-def test_default_install_location(tmpdir):
+def test_default_install_location():
     """Verify that pushes to the default local install location work as expected"""
     with patch('t4.Package.push') as push_mock:
         Package.install('Quilt/nice-name', registry='s3://my-test-bucket')
@@ -130,12 +131,12 @@ def test_default_install_location(tmpdir):
             registry=ANY
         )
 
-def test_read_manifest(tmpdir):
+def test_read_manifest():
     """ Verify reading serialized manifest from disk. """
     with open(LOCAL_MANIFEST) as fd:
         pkg = Package.load(fd)
 
-    out_path = os.path.join(tmpdir, 'new_manifest.jsonl')
+    out_path = 'new_manifest.jsonl'
     with open(out_path, 'w') as fd:
         pkg.dump(fd)
 
@@ -153,16 +154,16 @@ def test_read_manifest(tmpdir):
 def no_op_mock(*args, **kwargs):
     pass
 
-def test_materialize_from_remote(tmpdir):
+def test_materialize_from_remote():
     """ Verify loading data and mainfest transforms from S3. """
     with patch('botocore.client.BaseClient._make_api_call', new=mock_make_api_call):
         with open(REMOTE_MANIFEST) as fd:
             pkg = Package.load(fd)
-        with patch('t4.data_transfer._download_file'), \
+        with patch('t4.data_transfer._download_file', return_value='foo.txt'), \
                 patch('t4.Package.build', new=no_op_mock), \
                 patch('t4.packages.get_from_config') as config_mock:
-            config_mock.return_value = tmpdir
-            mat_pkg = pkg.push('Quilt/test_pkg_name', tmpdir / 'pkg')
+            config_mock.return_value = '.'
+            mat_pkg = pkg.push('Quilt/test_pkg_name', 'pkg')
 
 def test_browse_package_from_registry():
     """ Verify loading manifest locally and from s3 """
@@ -217,11 +218,11 @@ def test_browse_package_from_registry():
             with pytest.raises(QuiltException):
                 Package.browse('Quilt/nice-name')
 
-def test_local_install(tmpdir):
+def test_local_install():
     """Verify that installing from a local package works as expected."""
     with patch('t4.packages.get_from_config') as get_config_mock, \
         patch('t4.Package.push') as push_mock:
-        local_registry = tmpdir
+        local_registry = '.'
         get_config_mock.return_value = local_registry
         pkg = Package()
         pkg.build('Quilt/nice-name')
@@ -229,11 +230,11 @@ def test_local_install(tmpdir):
         t4.Package.install('Quilt/nice-name', registry='local', dest='./')
         push_mock.assert_called_once_with(dest='./', name='Quilt/nice-name', registry=local_registry)
 
-def test_remote_install(tmpdir):
+def test_remote_install():
     """Verify that installing from a local package works as expected."""
     with patch('t4.packages.get_from_config') as get_config_mock, \
         patch('t4.Package.push') as push_mock:
-        remote_registry = tmpdir
+        remote_registry = '.'
         get_config_mock.return_value = remote_registry
         pkg = Package()
         pkg.build('Quilt/nice-name')
@@ -241,12 +242,11 @@ def test_remote_install(tmpdir):
         t4.Package.install('Quilt/nice-name', dest='./')
         push_mock.assert_called_once_with(dest='./', name='Quilt/nice-name', registry=remote_registry)
 
-def test_package_fetch(tmpdir):
+def test_package_fetch():
     """ Package.fetch() on nested, relative keys """
-    input_dir = os.path.dirname(__file__)
-    package_ = Package().set_dir('/', os.path.join(input_dir, 'data', 'nested'))
+    package_ = Package().set_dir('/', DATA_DIR / 'nested')
 
-    out_dir = os.path.join(tmpdir, 'output')
+    out_dir = 'output'
     package_.fetch(out_dir)
 
     expected = {'one.txt': '1', 'two.txt': '2', 'three.txt': '3'}
@@ -254,7 +254,7 @@ def test_package_fetch(tmpdir):
     for dirpath, _, files in os.walk(out_dir):
         for name in files:
             file_count += 1
-            with open(os.path.join(out_dir, dirpath, name)) as file_:
+            with open(os.path.join(dirpath, name)) as file_:
                 assert name in expected, 'unexpected file: {}'.format(file_)
                 contents = file_.read().strip()
                 assert contents == expected[name], \
@@ -262,39 +262,38 @@ def test_package_fetch(tmpdir):
     assert file_count == len(expected), \
         'fetch wrote {} files; expected: {}'.format(file_count, expected)
 
-def test_fetch(tmpdir):
+def test_fetch():
     """ Verify fetching a package entry. """
     pkg = (
         Package()
-        .set('foo', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
-             {'user_meta': 'blah'})
-        .set('bar', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
-             {'user_meta': 'blah'})
+        .set('foo', DATA_DIR / 'foo.txt', {'user_meta': 'blah'})
+        .set('bar', DATA_DIR / 'foo.txt', {'user_meta': 'blah'})
     )
     pkg['foo'].meta['target'] = 'unicode'
     pkg['bar'].meta['target'] = 'unicode'
 
-    with open(os.path.join(os.path.dirname(__file__), 'data', 'foo.txt')) as fd:
+    with open(DATA_DIR / 'foo.txt') as fd:
         assert fd.read().replace('\n', '') == '123'
     # Copy foo.text to bar.txt
-    pkg['foo'].fetch(os.path.join(tmpdir, 'data', 'bar.txt'))
-    with open(os.path.join(tmpdir, 'data', 'bar.txt')) as fd:
+    pkg['foo'].fetch('data/bar.txt')
+    with open('data/bar.txt') as fd:
         assert fd.read().replace('\n', '') == '123'
 
     # Raise an error if you copy to yourself.
     with pytest.raises(shutil.SameFileError):
-        pkg['foo'].fetch(os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'))
+        pkg['foo'].fetch(DATA_DIR / 'foo.txt')
 
-def test_load_into_t4(tmpdir):
+def test_load_into_t4():
     """ Verify loading local manifest and data into S3. """
     with patch('t4.packages.put_bytes') as bytes_mock, \
          patch('t4.data_transfer._upload_file') as file_mock, \
          patch('t4.packages.get_from_config') as config_mock:
+        file_mock.return_value = 'foo.txt'
         config_mock.return_value = 's3://my_test_bucket'
         new_pkg = Package()
         # Create a dummy file to add to the package.
         contents = 'blah'
-        test_file = pathlib.Path(tmpdir) / 'bar'
+        test_file = Path('bar')
         test_file.write_text(contents)
         new_pkg = new_pkg.set('foo', test_file)
         new_pkg.push('Quilt/package', 's3://my_test_bucket/')
@@ -305,22 +304,23 @@ def test_load_into_t4(tmpdir):
         bytes_mock.assert_any_call(ANY, 's3://my_test_bucket/.quilt/packages/' + top_hash)
 
         # Data copied
-        file_mock.assert_called_once_with(ANY, len(contents), str(test_file), 'my_test_bucket', 'Quilt/package/foo', {})
+        file_mock.assert_called_once_with(ANY, len(contents), str(test_file.resolve()), 'my_test_bucket', 'Quilt/package/foo', {})
 
-def test_local_push(tmpdir):
+def test_local_push():
     """ Verify loading local manifest and data into S3. """
     with patch('t4.packages.put_bytes') as bytes_mock, \
          patch('t4.data_transfer._copy_local_file') as file_mock, \
          patch('t4.packages.get_from_config') as config_mock:
-        config_mock.return_value = tmpdir / 'package_contents'
+        file_mock.return_value = 'foo.txt'
+        config_mock.return_value = 'package_contents'
         new_pkg = Package()
         contents = 'blah'
-        test_file = pathlib.Path(tmpdir) / 'bar'
+        test_file = Path('bar')
         test_file.write_text(contents)
         new_pkg = new_pkg.set('foo', test_file)
-        new_pkg.push('Quilt/package', tmpdir / 'package_contents')
+        new_pkg.push('Quilt/package', 'package_contents')
 
-        push_uri = pathlib.Path(tmpdir, 'package_contents').as_uri()
+        push_uri = Path('package_contents').resolve().as_uri()
 
         # Manifest copied
         top_hash = new_pkg.top_hash()
@@ -328,17 +328,16 @@ def test_local_push(tmpdir):
         bytes_mock.assert_any_call(ANY, push_uri + '/.quilt/packages/' + top_hash)
 
         # Data copied
-        file_mock.assert_called_once_with(ANY, len(contents), str(test_file), str(tmpdir / 'package_contents/Quilt/package/foo'), {})
+        file_mock.assert_called_once_with(ANY, len(contents), str(test_file.resolve()), str(Path('package_contents/Quilt/package/foo').resolve()), {})
 
 
-def test_package_deserialize(tmpdir):
+def test_package_deserialize():
     """ Verify loading data from a local file. """
     pkg = (
         Package()
-        .set('foo', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
-             {'user_meta_foo': 'blah'})
-        .set('bar', os.path.join(os.path.dirname(__file__), 'data', 'foo.unrecognized.ext'))
-        .set('baz', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'))
+        .set('foo', DATA_DIR / 'foo.txt', {'user_meta_foo': 'blah'})
+        .set('bar', DATA_DIR / 'foo.unrecognized.ext')
+        .set('baz', DATA_DIR / 'foo.txt')
     )
     pkg.build()
 
@@ -349,7 +348,7 @@ def test_package_deserialize(tmpdir):
     with pytest.raises(QuiltException):
         pkg['bar'].deserialize()
 
-def test_local_set_dir(tmpdir):
+def test_local_set_dir():
     """ Verify building a package from a local directory. """
     pkg = Package()
 
@@ -422,7 +421,7 @@ def test_local_set_dir(tmpdir):
     assert pathlib.Path('bar').resolve().as_uri() == pkg['bar'].physical_keys[0]
 
 
-def test_s3_set_dir(tmpdir):
+def test_s3_set_dir():
     """ Verify building a package from an S3 directory. """
     with patch('t4.packages.list_object_versions') as list_object_versions_mock:
         pkg = Package()
@@ -454,10 +453,8 @@ def test_s3_set_dir(tmpdir):
 def test_package_entry_meta():
     pkg = (
         Package()
-        .set('foo', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
-            {'value': 'blah'})
-        .set('bar', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
-            {'value': 'blah2'})
+        .set('foo', DATA_DIR / 'foo.txt', {'value': 'blah'})
+        .set('bar', DATA_DIR / 'foo.txt', {'value': 'blah2'})
     )
     pkg['foo'].meta['target'] = 'unicode'
     pkg['bar'].meta['target'] = 'unicode'
@@ -473,9 +470,9 @@ def test_package_entry_meta():
     assert pkg['foo'].meta == {'target': 'unicode', 'user_meta': {'value': 'other value'}}
 
 
-def test_list_local_packages(tmpdir):
+def test_list_local_packages():
     """Verify that list returns packages in the appdirs directory."""
-    temp_local_registry = Path(os.path.join(tmpdir, 'test_registry')).as_uri()
+    temp_local_registry = Path('test_registry').resolve().as_uri()
     with patch('t4.packages.get_package_registry', lambda path: temp_local_registry), \
          patch('t4.api.get_package_registry', lambda path: temp_local_registry):
         # Build a new package into the local registry.
@@ -505,14 +502,12 @@ def test_list_local_packages(tmpdir):
         assert "Quilt/Foo" in pkgs
         assert "Quilt/Bar" in pkgs
 
-def test_set_package_entry(tmpdir):
+def test_set_package_entry():
     """ Set the physical key for a PackageEntry"""
     pkg = (
         Package()
-        .set('foo', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
-             {'user_meta': 'blah'})
-        .set('bar', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
-             {'user_meta': 'blah'})
+        .set('foo', DATA_DIR / 'foo.txt', {'user_meta': 'blah'})
+        .set('bar', DATA_DIR / 'foo.txt', {'user_meta': 'blah'})
     )
     pkg['foo'].meta['target'] = 'unicode'
     pkg['bar'].meta['target'] = 'unicode'
@@ -529,8 +524,8 @@ def test_set_package_entry(tmpdir):
     pkg = Package().set('bar.txt')
     assert test_file.resolve().as_uri() == pkg['bar.txt'].physical_keys[0]
 
-def test_tophash_changes(tmpdir):
-    test_file = tmpdir / 'test.txt'
+def test_tophash_changes():
+    test_file = Path('test.txt')
     test_file.write_text('asdf', 'utf-8')
 
     pkg = Package()
@@ -575,7 +570,7 @@ def test_iter():
     pkg.set('jkl;', REMOTE_MANIFEST)
     assert set(pkg) == {'asdf', 'jkl;'}
 
-def test_invalid_set_key(tmpdir):
+def test_invalid_set_key():
     """Verify an exception when setting a key with a path object."""
     pkg = Package()
     with pytest.raises(TypeError):
@@ -591,15 +586,14 @@ def test_brackets():
     pkg2 = pkg['asdf']
     assert set(pkg2.keys()) == {'jkl', 'qwer'}
 
-    assert pkg['asdf']['qwer'].get() == pathlib.Path(LOCAL_MANIFEST).as_uri()
+    assert pkg['asdf']['qwer'].get() == LOCAL_MANIFEST.as_uri()
 
     assert pkg['asdf']['qwer'] == pkg['asdf/qwer'] == pkg[('asdf', 'qwer')]
     assert pkg[[]] == pkg
 
     pkg = (
         Package()
-        .set('foo', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'),
-             {'foo': 'blah'})
+        .set('foo', DATA_DIR / 'foo.txt', {'foo': 'blah'})
     )
     pkg['foo'].meta['target'] = 'unicode'
 
@@ -688,7 +682,7 @@ def test_diff():
     assert p1.diff(p2) == ([], [], [])
 
 
-def test_dir_meta(tmpdir):
+def test_dir_meta():
     test_meta = {'test': 'meta'}
     pkg = Package()
     pkg.set('asdf/jkl', LOCAL_MANIFEST)
@@ -705,7 +699,7 @@ def test_dir_meta(tmpdir):
     assert pkg['qwer']['as'].get_meta() == test_meta
     pkg.set_meta(test_meta)
     assert pkg.get_meta() == test_meta
-    dump_path = os.path.join(tmpdir, 'test_meta')
+    dump_path = 'test_meta'
     with open(dump_path, 'w') as f:
         pkg.dump(f)
     with open(dump_path) as f:
@@ -717,7 +711,7 @@ def test_dir_meta(tmpdir):
 def test_top_hash_stable():
     """Ensure that top_hash() never changes for a given manifest"""
 
-    registry = Path(__file__).parent / 'data'
+    registry = DATA_DIR
     top_hash = '20de5433549a4db332a11d8d64b934a82bdea8f144b4aecd901e7d4134f8e733'
 
     pkg = Package.browse(registry=registry, top_hash=top_hash)
@@ -727,7 +721,7 @@ def test_top_hash_stable():
 
 
 @patch('appdirs.user_data_dir', lambda x, y: os.path.join('test_appdir', x))
-def test_local_package_delete(tmpdir):
+def test_local_package_delete():
     """Verify local package delete works."""
     top_hash = Package().build("Quilt/Test")
     t4.delete_package('Quilt/Test', registry=BASE_PATH)
@@ -738,7 +732,7 @@ def test_local_package_delete(tmpdir):
 
 
 @patch('appdirs.user_data_dir', lambda x, y: os.path.join('test_appdir', x))
-def test_local_package_delete_overlapping(tmpdir):
+def test_local_package_delete_overlapping():
     """
     Verify local package delete works when multiple packages reference the
     same tophash.
@@ -758,7 +752,7 @@ def test_local_package_delete_overlapping(tmpdir):
 
 
 @patch('t4.data_transfer.s3_client')
-def test_remote_package_delete(tmpdir):
+def test_remote_package_delete(s3_client):
     """Verify remote package delete works."""
     def list_packages_mock(*args, **kwargs): return ['Quilt/Test']
 
@@ -786,7 +780,7 @@ def test_remote_package_delete(tmpdir):
 
 
 @patch('t4.data_transfer.s3_client')
-def test_remote_package_delete_overlapping(tmpdir):
+def test_remote_package_delete_overlapping(s3_client):
     """
     Verify remote package delete works when multiple packages reference the
     same tophash.
@@ -820,21 +814,21 @@ def test_remote_package_delete_overlapping(tmpdir):
         delete_mock.assert_any_call('test-bucket', '.quilt/named_packages/Quilt/Test1/latest')
 
 
-def test_commit_message_on_push(tmpdir):
+def test_commit_message_on_push():
     """ Verify commit messages populate correctly on push."""
     with patch('botocore.client.BaseClient._make_api_call', new=mock_make_api_call):
         with open(REMOTE_MANIFEST) as fd:
             pkg = Package.load(fd)
-        with patch('t4.data_transfer._download_file'), \
+        with patch('t4.data_transfer._download_file', return_value='foo.txt'), \
                 patch('t4.Package.build', new=no_op_mock), \
                 patch('t4.packages.get_from_config') as config_mock:
             config_mock.return_value = BASE_DIR
-            pkg.push('Quilt/test_pkg_name', tmpdir / 'pkg', message='test_message')
+            pkg.push('Quilt/test_pkg_name', 'pkg', message='test_message')
             assert pkg._meta['message'] == 'test_message'
 
             # ensure messages are strings
             with pytest.raises(ValueError):
-                pkg.push('Quilt/test_pkg_name', tmpdir / 'pkg', message={})
+                pkg.push('Quilt/test_pkg_name', 'pkg', message={})
 
 def test_overwrite_dir_fails():
     with pytest.raises(QuiltException):
@@ -876,7 +870,7 @@ def test_local_repr():
     pkg.set('path2/second/asdf', LOCAL_MANIFEST)
     assert repr(pkg) == TEST_REPR
 
-def test_remote_repr(tmpdir):
+def test_remote_repr():
     with patch('t4.packages.get_size_and_meta', return_value=(0, dict(), '0')):
         TEST_REPR = (
             "(remote Package)\n"
