@@ -633,7 +633,7 @@ def calculate_sha256(src_list, total_size):
     return results
 
 
-def select(url, query, meta=None, alt_s3_client=None, raw=False, **kwargs):
+def select(url, query, meta=None, raw=False, **kwargs):
     """Perform an S3 Select SQL query, return results as a Pandas DataFrame
 
     The data returned by Boto3 for S3 Select is fairly convoluted, to say the
@@ -657,7 +657,6 @@ def select(url, query, meta=None, alt_s3_client=None, raw=False, **kwargs):
         query(str): An SQL query using the 'SELECT' directive. See examples at
             https://docs.aws.amazon.com/AmazonS3/latest/API/RESTObjectSELECTContent.html
         meta: T4 Object Metadata
-        alt_s3_client(boto3.client('s3')):  Default client used if not given
         raw(bool):  True to return the raw Boto3 response object
         **kwargs:  s3_client.select() kwargs override.
             All kwargs specified passed to S3 client directly, overriding
@@ -670,8 +669,6 @@ def select(url, query, meta=None, alt_s3_client=None, raw=False, **kwargs):
             something other than JSON Lines.
 
     """
-    # use passed in client, otherwise module-level client
-    s3 = alt_s3_client if alt_s3_client else s3_client
     # We don't process any other kind of response at this time.
     output_serialization = {'JSON': {}}
     query_type = "SQL"  # AWS S3 doesn't currently support anything else.
@@ -770,7 +767,7 @@ def select(url, query, meta=None, alt_s3_client=None, raw=False, **kwargs):
     # Include user-specified passthrough options, overriding other options
     select_kwargs.update(kwargs)
 
-    response = s3.select_object_content(**select_kwargs)
+    response = s3_client.select_object_content(**select_kwargs)
 
     # we don't want multiple copies of large chunks of data hanging around.
     # ..iteration ftw.  It's what we get from amazon, anyways..
