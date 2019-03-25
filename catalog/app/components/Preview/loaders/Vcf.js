@@ -4,7 +4,7 @@ import { PreviewData } from '../types';
 import * as utils from './utils';
 
 
-export const detect = utils.extIs('.vcf');
+export const detect = utils.extIn(['.vcf', '.vcf.gz']);
 
 export const load = utils.previewFetcher('vcf', ({ info: { data: d } }) =>
   AsyncResult.Ok(PreviewData.Vcf({
