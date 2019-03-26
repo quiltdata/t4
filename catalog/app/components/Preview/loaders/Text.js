@@ -3,6 +3,8 @@ import { basename } from 'path';
 import hljs from 'highlight.js';
 import * as R from 'ramda';
 
+import AsyncResult from 'utils/AsyncResult';
+
 import { PreviewData } from '../types';
 import * as utils from './utils';
 
@@ -13,7 +15,7 @@ const LANGS = {
   clojure: /\.clj$/,
   coffeescript: /\.(coffee|cson|iced)$/,
   coq: /\.v$/,
-  cpp: /\.(c(c|\+\+|pp|xx)?)|(h(\+\+|pp|xx)?)$/,
+  cpp: /\.((c(c|\+\+|pp|xx)?)|(h(\+\+|pp|xx)?))$/,
   cs: /\.cs$/,
   css: /\.css$/,
   diff: /\.(diff|patch)$/,
@@ -24,6 +26,7 @@ const LANGS = {
   ini: /\.(ini|toml)$/,
   java: /\.(java|jsp)$/,
   javascript: /\.m?jsx?$/,
+  json: /\.jsonl?$/,
   lisp: /\.lisp$/,
   makefile: /^(gnu)?makefile$/,
   matlab: /\.m$/,
@@ -55,9 +58,13 @@ export const detect = R.pipe(findLang, Boolean);
 
 const getLang = R.pipe(findLang, ([lang] = []) => lang);
 
-export const load = utils.gatedS3Request(utils.objectGetter((r, { handle }) => {
-  const contents = r.Body.toString('utf-8');
-  const lang = getLang(handle.key);
-  const highlighted = hljs.highlight(lang, contents).value;
-  return PreviewData.Text({ contents, lang, highlighted });
-}));
+const hl = (lang) => (contents) => hljs.highlight(lang, contents).value;
+
+export const load = utils.previewFetcher('txt',
+  ({ info: { data } }, { handle }) => {
+    const head = data.head.join('\n');
+    const tail = data.tail.join('\n');
+    const lang = getLang(handle.key);
+    const highlighted = R.map(hl(lang), { head, tail });
+    return AsyncResult.Ok(PreviewData.Text({ head, tail, lang, highlighted }));
+  });
