@@ -85,6 +85,13 @@ export const gatedS3Request = (fetcher) => (handle, callback, extraParams) =>
       _: callback,
     })));
 
+const parseRange = (range) => {
+  if (!range) return undefined;
+  const m = range.match(/bytes \d+-\d+\/(\d+)$/);
+  if (!m) return undefined;
+  return Number(m[1]);
+};
+
 const getFirstBytes = (bytes) => async ({ s3, handle }) => {
   try {
     const res = await s3.getObject({
@@ -94,8 +101,7 @@ const getFirstBytes = (bytes) => async ({ s3, handle }) => {
       Range: `bytes=0-${bytes}`,
     }).promise();
     const firstBytes = res.Body.toString('utf-8');
-    // TODO: expose and parse res.ContentRange
-    const contentLength = 1;
+    const contentLength = parseRange(res.ContentRange) || 0;
     return { firstBytes, contentLength };
   } catch (e) {
     if (['NoSuchKey', 'NotFound'].includes(e.name)) {
