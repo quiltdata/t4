@@ -154,17 +154,6 @@ def test_read_manifest():
 def no_op_mock(*args, **kwargs):
     pass
 
-def test_materialize_from_remote():
-    """ Verify loading data and mainfest transforms from S3. """
-    with patch('botocore.client.BaseClient._make_api_call', new=mock_make_api_call):
-        with open(REMOTE_MANIFEST) as fd:
-            pkg = Package.load(fd)
-        with patch('t4.data_transfer._download_file', return_value='foo.txt'), \
-                patch('t4.Package.build', new=no_op_mock), \
-                patch('t4.packages.get_from_config') as config_mock:
-            config_mock.return_value = '.'
-            mat_pkg = pkg.push('Quilt/test_pkg_name', 'pkg')
-
 def test_browse_package_from_registry():
     """ Verify loading manifest locally and from s3 """
     with patch('t4.Package._from_path') as pkgmock:
@@ -765,13 +754,11 @@ def test_remote_package_delete(s3_client):
 
     def get_bytes_mock(*args): return b'101', None
 
-    with patch('t4.Package.push', new=no_op_mock), \
-            patch('t4.api.list_packages', new=list_packages_mock), \
+    with patch('t4.api.list_packages', new=list_packages_mock), \
             patch('t4.api._tophashes_with_packages', new=_tophashes_with_packages_mock), \
             patch('t4.api.list_objects', new=list_objects_mock), \
             patch('t4.api.get_bytes', new=get_bytes_mock), \
             patch('t4.api.delete_object') as delete_mock:
-        top_hash = Package().push('Quilt/Test', 's3://test-bucket')
         t4.delete_package('Quilt/Test', registry='s3://test-bucket')
 
         delete_mock.assert_any_call('test-bucket', '.quilt/packages/101')
@@ -798,14 +785,11 @@ def test_remote_package_delete_overlapping(s3_client):
 
     def get_bytes_mock(*args): return b'101', None
 
-    with patch('t4.Package.push', new=no_op_mock), \
-            patch('t4.api.list_packages', new=list_packages_mock), \
+    with patch('t4.api.list_packages', new=list_packages_mock), \
             patch('t4.api._tophashes_with_packages', new=_tophashes_with_packages_mock), \
             patch('t4.api.list_objects', new=list_objects_mock), \
             patch('t4.api.get_bytes', new=get_bytes_mock), \
             patch('t4.api.delete_object') as delete_mock:
-        top_hash = Package().push('Quilt/Test1', 's3://test-bucket')
-        top_hash = Package().push('Quilt/Test2', 's3://test-bucket')
         t4.delete_package('Quilt/Test1', registry='s3://test-bucket')
 
         # the reference count for the tophash 101 is still one, so it should still exist
