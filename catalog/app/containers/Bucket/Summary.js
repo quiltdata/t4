@@ -14,6 +14,7 @@ import Typography from '@material-ui/core/Typography';
 import { withStyles } from '@material-ui/styles';
 
 import * as Preview from 'components/Preview';
+import Thumbnail from 'components/Thumbnail';
 import * as AWS from 'utils/AWS';
 import AsyncResult from 'utils/AsyncResult';
 import Data from 'utils/Data';
@@ -185,7 +186,6 @@ const Thumbnails = composeComponent('Bucket.Summary.Thumbnails',
       display: 'block',
       marginLeft: 'auto',
       marginRight: 'auto',
-      maxHeight: 200,
       maxWidth: '100%',
     },
     filler: {
@@ -210,14 +210,12 @@ const Thumbnails = composeComponent('Bucket.Summary.Thumbnails',
                 to={urls.bucketFile(i.bucket, i.key, i.version)}
                 className={classes.link}
               >
-                {withSignedUrl(i, (url) => (
-                  <img
-                    className={classes.img}
-                    alt={basename(i.logicalKey || i.key)}
-                    title={basename(i.logicalKey || i.key)}
-                    src={url}
-                  />
-                ))}
+                <Thumbnail
+                  handle={i}
+                  className={classes.img}
+                  alt={basename(i.logicalKey || i.key)}
+                  title={basename(i.logicalKey || i.key)}
+                />
               </Link>
             ))}
             {R.times(
