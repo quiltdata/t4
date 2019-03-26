@@ -2,7 +2,7 @@ import tagged from 'utils/tagged';
 
 
 export const PreviewData = tagged([
-  'Image', // { url: string }
+  'Image', // { handle: object }
   'Markdown', // { rendered: string }
   'Vega', // { spec: Object }
   'Parquet', // { preview: string }
