@@ -261,6 +261,7 @@
     "compression": "^1.7.3",
     "connected-react-router": "^5.0.0",
     "cross-env": "^5.2.0",
+    "csv-parse": "^4.3.4",
     "dedent": "^0.7.0",
     "dompurify": "^1.0.10",
     "elasticsearch-browser": "^15.2.0",
