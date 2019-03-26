@@ -1,10 +1,13 @@
+import * as R from 'ramda';
+
 import AsyncResult from 'utils/AsyncResult';
 
 import { PreviewData } from '../types';
 import * as utils from './utils';
 
 
-export const detect = utils.extIn(['.vcf', '.vcf.gz']);
+export const detect = R.pipe(utils.stripCompression,
+  utils.extIs('.vcf'));
 
 export const load = utils.previewFetcher('vcf', ({ info: { data: d } }) =>
   AsyncResult.Ok(PreviewData.Vcf({

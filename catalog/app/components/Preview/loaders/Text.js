@@ -51,6 +51,7 @@ const langPairs = Object.entries(LANGS);
 const findLang = R.pipe(
   basename,
   R.toLower,
+  utils.stripCompression,
   (name) => langPairs.find(([, re]) => re.test(name)),
 );
 
