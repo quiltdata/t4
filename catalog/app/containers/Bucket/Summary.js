@@ -142,6 +142,12 @@ const SummaryItemFile = composeComponent('Bucket.Summary.ItemFile',
               DoesNotExist: () => (
                 <Typography variant="body1">Object does not exist</Typography>
               ),
+              // eslint-disable-next-line react/prop-types
+              MalformedJson: ({ originalError: { message } }) => (
+                <Typography variant="body1" gutterBottom>
+                  Malformed JSON: {message}
+                </Typography>
+              ),
               Unexpected: (_, { fetch }) => (
                 <React.Fragment>
                   <Typography variant="body1" gutterBottom>

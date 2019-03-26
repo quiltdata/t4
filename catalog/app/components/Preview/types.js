@@ -16,4 +16,5 @@ export const PreviewError = tagged([
   'Unsupported', // { handle }
   'DoesNotExist', // { handle }
   'Unexpected', // { handle, originalError: any }
+  'MalformedJson', // { handle, originalError: SyntaxError }
 ]);

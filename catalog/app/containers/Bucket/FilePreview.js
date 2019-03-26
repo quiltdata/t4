@@ -87,6 +87,14 @@ export default RT.composeComponent('Bucket.FilePreview',
               <Typography variant="body1">Object does not exist</Typography>
             </Message>
           ),
+          // eslint-disable-next-line react/prop-types
+          MalformedJson: ({ originalError: { message } }) => (
+            <Message>
+              <Typography variant="body1" gutterBottom>
+                Malformed JSON: {message}
+              </Typography>
+            </Message>
+          ),
           Unexpected: (_, { fetch }) => (
             <Message>
               <Typography variant="body1" gutterBottom>

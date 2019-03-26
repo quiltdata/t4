@@ -1,13 +1,16 @@
-import hljs from 'highlight.js';
 import R from 'ramda';
 
+import AsyncResult from 'utils/AsyncResult';
 import * as Resource from 'utils/Resource';
 
-import { PreviewData } from '../types';
+import { PreviewData, PreviewError } from '../types';
+import * as Text from './Text';
 import * as utils from './utils';
 
 
-const VEGA_SCHEMA = 'https://vega.github.io/schema/vega/v4.json';
+const MAX_SIZE = 1024 * 1024;
+const SCHEMA_RE =
+  /"\$schema":\s*"https:\/\/vega\.github\.io\/schema\/vega\/(.+)\.json"/;
 
 const signVegaSpec = ({ signer, handle }) => R.evolve({
   data: R.map(R.evolve({
@@ -19,25 +22,39 @@ const signVegaSpec = ({ signer, handle }) => R.evolve({
   })),
 });
 
-const fetch = utils.gatedS3Request(utils.objectGetter((r, { handle, signer }) => {
-  const contents = r.Body.toString('utf-8');
+const detectVersion = (txt) => {
+  const m = txt.match(SCHEMA_RE);
+  return m ? m[1] : false;
+};
 
+const vegaFetcher = utils.objectGetter((r, { handle, signer }) => {
   try {
+    const contents = r.Body.toString('utf-8');
     const spec = JSON.parse(contents);
-    if (spec.$schema === VEGA_SCHEMA) {
-      return PreviewData.Vega({ spec: signVegaSpec({ signer, handle })(spec) });
-    }
+    return PreviewData.Vega({ spec: signVegaSpec({ signer, handle })(spec) });
   } catch (e) {
-    if (!(e instanceof SyntaxError)) throw e;
+    if (e instanceof SyntaxError) {
+      throw PreviewError.MalformedJson({ handle, originalError: e });
+    }
+    throw PreviewError.Unexpected({ handle, originalError: e });
   }
+});
 
-  const lang = 'json';
-  const highlighted = hljs.highlight(lang, contents).value;
-  return PreviewData.Text({ contents, lang, highlighted });
+const loadVega = (handle, callback) =>
+  utils.withSigner((signer) =>
+    utils.withS3((s3) =>
+      vegaFetcher({ s3, handle, signer }, callback)));
+
+const loadText = (handle, callback) => Text.load(handle, AsyncResult.case({
+  Ok: callback,
+  _: callback,
 }));
-
 
 export const detect = utils.extIs('.json');
 
-export const load = (handle, callback) =>
-  utils.withSigner((signer) => fetch(handle, callback, { signer }));
+export const load = utils.withFirstBytes(256,
+  ({ firstBytes, contentLength, handle }, callback) => {
+    const version = detectVersion(firstBytes);
+    const vega = !!version && contentLength <= MAX_SIZE;
+    return (vega ? loadVega : loadText)(handle, callback);
+  });
