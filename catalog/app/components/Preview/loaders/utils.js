@@ -70,6 +70,45 @@ export const gatedS3Request = (fetcher) => (handle, callback, extraParams) =>
       _: callback,
     })));
 
+const getFirstBytes = (bytes) => async ({ s3, handle }) => {
+  try {
+    const res = await s3.getObject({
+      Bucket: handle.bucket,
+      Key: handle.key,
+      VersionId: handle.version,
+      Range: `bytes=0-${bytes}`,
+    }).promise();
+    const firstBytes = res.Body.toString('utf-8');
+    // TODO: expose and parse res.ContentRange
+    const contentLength = 1;
+    return { firstBytes, contentLength };
+  } catch (e) {
+    if (['NoSuchKey', 'NotFound'].includes(e.name)) {
+      throw PreviewError.DoesNotExist({ handle });
+    }
+    // eslint-disable-next-line no-console
+    console.error('Error loading preview');
+    // eslint-disable-next-line no-console
+    console.error(e);
+    throw PreviewError.Unexpected({ handle, originalError: e });
+  }
+};
+
+export const withFirstBytes = (bytes, fetcher) => {
+  const fetch = getFirstBytes(bytes);
+
+  return (handle, callback) =>
+    withS3((s3) =>
+      withData({ fetch, params: { s3, handle } }, AsyncResult.case({
+        Ok: ({ firstBytes, contentLength }) =>
+          fetcher(
+            { s3, handle, firstBytes, contentLength },
+            (r, ...args) => callback(AsyncResult.Ok(r), ...args),
+          ),
+        _: callback,
+      })));
+};
+
 export const objectGetter = (process) => {
   const fetch = ({ s3, handle, ...extra }) =>
     s3.getObject({
@@ -120,7 +159,7 @@ const withGatewayEndpoint = (callback) => (
 );
 
 export const previewFetcher = (type, process) => {
-  const fetch = R.pipeWith(R.then, [fetchPreview, process]);
+  const fetch = (x) => fetchPreview(x).then((res) => process(res, x));
   return (handle, callback) =>
     withSigner((signer) =>
       withGatewayEndpoint(AsyncResult.case({
