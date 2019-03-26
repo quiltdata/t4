@@ -18,6 +18,21 @@ export const SIZE_THRESHOLDS = [
   1024 * 1024, // never load if > 1MB
 ];
 
+export const COMPRESSION_TYPES = { gz: '.gz', bz2: '.bz2' };
+
+// eslint-disable-next-line consistent-return
+export const getCompression = (key) => {
+  // eslint-disable-next-line no-restricted-syntax
+  for (const [type, ext] of Object.entries(COMPRESSION_TYPES)) {
+    if (key.endsWith(ext)) return type;
+  }
+};
+
+export const stripCompression = (key) => {
+  const comp = getCompression(key);
+  return comp ? key.slice(0, -COMPRESSION_TYPES[comp].length) : key;
+};
+
 export const extIs = (ext) => (key) => extname(key).toLowerCase() === ext;
 
 export const extIn = (exts) => (key) => exts.includes(extname(key).toLowerCase());
@@ -124,12 +139,13 @@ export const objectGetter = (process) => {
     );
 };
 
-const previewUrl = (endpoint, url, type) =>
-  `${endpoint}/preview?url=${encodeURIComponent(url)}&input=${type}`;
+const previewUrl = (endpoint, url, input, compression) =>
+  `${endpoint}/preview${NamedRoutes.mkSearch({ url, input, compression })}`;
 
 const fetchPreview = async ({ endpoint, type, handle, signer }) => {
   const signed = signer.getSignedS3URL(handle);
-  const r = await fetch(previewUrl(endpoint, signed, type));
+  const compression = getCompression(handle.key);
+  const r = await fetch(previewUrl(endpoint, signed, type, compression));
   const json = await r.json();
   return json;
 };
