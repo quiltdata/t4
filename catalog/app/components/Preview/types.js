@@ -9,6 +9,7 @@ export const PreviewData = tagged([
   'Notebook', // { preview: string }
   'Text', // { contents: string, lang: string }
   'Vcf', // { meta: string[], header: string[][], body: string[][] }
+  'Table', // { head: string[], tail: string[] }
 ]);
 
 export const PreviewError = tagged([
