@@ -1,4 +1,5 @@
 import cx from 'classnames';
+import * as R from 'ramda';
 import * as React from 'react';
 import Table from '@material-ui/core/Table';
 import TableBody from '@material-ui/core/TableBody';
@@ -7,6 +8,8 @@ import TableHead from '@material-ui/core/TableHead';
 import TableRow from '@material-ui/core/TableRow';
 import { makeStyles } from '@material-ui/styles';
 
+
+const COL_LIMIT = 250;
 
 const useStyles = makeStyles((t) => ({
   root: {
@@ -40,9 +43,28 @@ const useStyles = makeStyles((t) => ({
   },
 }));
 
+const Skip = Symbol('Skip');
+const compact = R.when(
+  (l) => l.length > COL_LIMIT * 2,
+  (l) => [...R.take(COL_LIMIT, l), Skip, ...R.takeLast(COL_LIMIT, l)],
+);
+
 // eslint-disable-next-line react/prop-types
 const Vcf = ({ meta, header, data }) => {
   const classes = useStyles();
+
+  const renderCell = (type, i) => (col, j) => (
+    <TableCell
+      // eslint-disable-next-line react/no-array-index-key
+      key={`${type}:${i}:${j}`}
+      className={cx(classes.cell, classes[type])}
+    >
+      {col === Skip ? <React.Fragment>&hellip;</React.Fragment> : col}
+    </TableCell>
+  );
+
+  const compactHeader = React.useMemo(() => header.map(compact), [header]);
+  const compactData = React.useMemo(() => data.map(compact), [data]);
 
   return (
     <div className={classes.root}>
@@ -59,31 +81,18 @@ const Vcf = ({ meta, header, data }) => {
               </TableCell>
             </TableRow>
           ))}
-          {header.map((row, i) => (
+          {compactHeader.map((row, i) => (
             // eslint-disable-next-line react/no-array-index-key
             <TableRow key={`header:${i}`} className={classes.row}>
-              {row.map((col, j) => (
-                <TableCell
-                  // eslint-disable-next-line react/no-array-index-key
-                  key={`header:${i}:${j}`}
-                  className={cx(classes.cell, classes.header)}
-                >
-                  {col}
-                </TableCell>
-              ))}
+              {row.map(renderCell('header', i))}
             </TableRow>
           ))}
         </TableHead>
         <TableBody>
-          {data.map((row, i) => (
+          {compactData.map((row, i) => (
             // eslint-disable-next-line react/no-array-index-key
             <TableRow key={`data:${i}`} className={classes.row}>
-              {row.map((col, j) => (
-                // eslint-disable-next-line react/no-array-index-key
-                <TableCell key={`data:${i}:${j}`} className={classes.cell}>
-                  {col}
-                </TableCell>
-              ))}
+              {row.map(renderCell('data', i))}
             </TableRow>
           ))}
         </TableBody>
