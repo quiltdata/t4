@@ -5,7 +5,6 @@ import * as React from 'react';
 
 import * as AWS from 'utils/AWS';
 import AsyncResult from 'utils/AsyncResult';
-import * as BucketConfig from 'utils/BucketConfig';
 import * as Config from 'utils/Config';
 import Data from 'utils/Data';
 import * as NamedRoutes from 'utils/NamedRoutes';
@@ -161,21 +160,7 @@ const withGatewayEndpoint = (callback) => (
     {AsyncResult.case({
       Err: R.pipe(AsyncResult.Err, callback),
       _: callback,
-      Ok: (config) => (
-        <BucketConfig.WithCurrentBucketConfig>
-          {AsyncResult.case({
-            Err: R.pipe(AsyncResult.Err, callback),
-            _: callback,
-            Ok: R.pipe(
-              (bucket) =>
-                (bucket && bucket.apiGatewayEndpoint)
-                  || config.apiGatewayEndpoint,
-              AsyncResult.Ok,
-              callback,
-            ),
-          })}
-        </BucketConfig.WithCurrentBucketConfig>
-      ),
+      Ok: R.pipe(R.prop('apiGatewayEndpoint'), AsyncResult.Ok, callback),
     })}
   </Config.Inject>
 );
