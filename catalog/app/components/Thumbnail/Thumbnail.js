@@ -6,7 +6,6 @@ import CircularProgress from '@material-ui/core/CircularProgress';
 import Icon from '@material-ui/core/Icon';
 
 import * as AWS from 'utils/AWS';
-import { useCurrentBucketConfig } from 'utils/BucketConfig';
 import { useConfig } from 'utils/Config';
 import { withBoundary } from 'utils/ErrorBoundary';
 import { mkSearch } from 'utils/NamedRoutes';
@@ -35,9 +34,7 @@ const ThumbnailResource = Cache.createResource({
 });
 
 export const use = ({ handle, size }) => {
-  const cfg = useConfig();
-  const bucket = useCurrentBucketConfig() || {};
-  const api = bucket.apiGatewayEndpoint || cfg.apiGatewayEndpoint;
+  const api = useConfig().apiGatewayEndpoint;
   const sign = AWS.Signer.useS3Signer();
   return Cache.useData(ThumbnailResource, { api, sign, handle, size },
     { suspend: true });
