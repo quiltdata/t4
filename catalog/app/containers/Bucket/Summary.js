@@ -125,7 +125,7 @@ const SummaryItemFile = composeComponent('Bucket.Summary.ItemFile',
                     Object is too large to preview in browser
                   </Typography>
                   {withSignedUrl(handle, (url) => (
-                    <Button variant="outlined" href={url}>View raw</Button>
+                    <Button variant="outlined" href={url}>View in Browser</Button>
                   ))}
                 </React.Fragment>
               ),
@@ -136,7 +136,7 @@ const SummaryItemFile = composeComponent('Bucket.Summary.ItemFile',
                     Preview not available
                   </Typography>
                   {withSignedUrl(handle, (url) => (
-                    <Button variant="outlined" href={url}>View raw</Button>
+                    <Button variant="outlined" href={url}>View in Browser</Button>
                   ))}
                 </React.Fragment>
               ),

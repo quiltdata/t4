@@ -67,7 +67,7 @@ export default RT.composeComponent('Bucket.FilePreview',
                 Object is too large to preview in browser
               </Typography>
               {withSignedUrl(handle, (url) => (
-                <Button variant="outlined" href={url}>View raw</Button>
+                <Button variant="outlined" href={url}>View in Browser</Button>
               ))}
             </Message>
           ),
@@ -78,7 +78,7 @@ export default RT.composeComponent('Bucket.FilePreview',
                 Preview not available
               </Typography>
               {withSignedUrl(handle, (url) => (
-                <Button variant="outlined" href={url}>View raw</Button>
+                <Button variant="outlined" href={url}>View in Browser</Button>
               ))}
             </Message>
           ),
