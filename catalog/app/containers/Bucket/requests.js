@@ -66,6 +66,14 @@ export const objectVersions = ({ s3, bucket, path }) =>
       })),
     ));
 
+export const objectMeta = ({ s3, bucket, path, version }) =>
+  s3.headObject({ Bucket: bucket, Key: path, VersionId: version })
+    .promise()
+    .then(R.pipe(
+      R.path(['Metadata', 'helium']),
+      JSON.parse,
+    ));
+
 const isValidManifest = R.both(Array.isArray, R.all(R.is(String)));
 
 export const summarize = async ({ s3, handle }) => {
