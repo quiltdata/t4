@@ -75,7 +75,7 @@ b.delete_dir("foo/")
 
 You can search for individual objects using `search`.
 
-T4 supports content search:
+T4 supports unstructured search:
 
 ```bash
 $ python
@@ -83,10 +83,10 @@ $ python
 <<< ...all files containing the word "thor"...
 ```
 
-As well as metadata search:
+As well as structured search on metadata:
 
 ```bash
 $ python
->>> b.search("user_meta.name='thor'")
+>>> b.search("user_meta.name:'thor'")
 <<< ...all files annotated {'name': 'thor'}...
 ```
