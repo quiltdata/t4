@@ -10,7 +10,7 @@
 * [Distributing a Package](Walkthrough/Distributing a Package.md)
 * [Installing a Package](Walkthrough/Installing a Package.md)
 * [Reading from a Package](Walkthrough/Reading from a Package.md)
-* [Working with the Catalog](Working with the Catalog)
+* [Working with the Catalog](Walkthrough/Working with the Catalog)
 * [Working with a Bucket](Walkthrough/Working with a Bucket.md)
 
 ### Advanced Usage
