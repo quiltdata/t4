@@ -60,7 +60,7 @@ const defaultHandlers = [
       <Message headline="Access Denied">
         Seems like you don&apos;t have access to this bucket.
         <br />
-        <StyledLink href="https://github.com/quiltdata/t4/tree/master/deployment#permissions">
+        <StyledLink href="https://quiltdocs.gitbook.io/t4/walkthrough/working-with-the-catalog#brief-tour>
           Learn about access control in T4
         </StyledLink>.
       </Message>
