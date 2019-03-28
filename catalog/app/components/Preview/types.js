@@ -2,14 +2,14 @@ import tagged from 'utils/tagged';
 
 
 export const PreviewData = tagged([
+  'DataFrame', // { preview: string }
   'Image', // { handle: object }
   'Markdown', // { rendered: string }
-  'Vega', // { spec: Object }
-  'Parquet', // { preview: string }
   'Notebook', // { preview: string }
+  'Table', // { head: string[], tail: string[] }
   'Text', // { contents: string, lang: string }
   'Vcf', // { meta: string[], header: string[][], body: string[][] }
-  'Table', // { head: string[], tail: string[] }
+  'Vega', // { spec: Object }
 ]);
 
 export const PreviewError = tagged([
