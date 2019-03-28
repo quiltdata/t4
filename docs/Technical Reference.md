@@ -1,6 +1,6 @@
 This page provides a technical reference on certain advanced configuration options in T4.
 
-## Deploying the T4 Catalog on AWS
+## Deploying Quilt on AWS
 
 The following instructions use CloudFormation to deploy T4 services to your private AWS account.
 
