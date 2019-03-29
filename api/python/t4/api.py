@@ -15,7 +15,7 @@ from .data_transfer import (copy_file, get_bytes, put_bytes, delete_object, list
 from .formats import FormatRegistry
 from .packages import get_package_registry, Package
 from .session import get_registry_url, get_session
-from .util import (HeliumConfig, QuiltException, CONFIG_PATH,
+from .util import (T4Config, QuiltException, CONFIG_PATH,
                    CONFIG_TEMPLATE, fix_url, parse_file_url, parse_s3_url, read_yaml, validate_url,
                    write_yaml, yaml_has_comments, validate_package_name)
 
@@ -423,10 +423,15 @@ def _create_es():
 
     return es
 
-def search(query):
+def search(query, bucket=None):
     """
     Searches your bucket. query can contain plaintext, and can also contain clauses
     like $key:"$value" that search for exact matches on specific keys.
+
+    Args:
+        query: an elastic search query
+        bucket(None): federated bucket to search.  If `None`, the default
+            bucket for your catalog is used.
 
     Returns either the request object (in case of an error) or a list of objects with the following keys:
         key: key of the object
@@ -536,15 +541,14 @@ def config(*autoconfig_url, **config_values):
         >>> t4.config(navigator_url='http://example.com',
         ...           elastic_search_url='http://example.com/queries')
 
-    When setting config values, unrecognized values are rejected.  Acceptable
-    config values can be found in `t4.util.CONFIG_TEMPLATE`.
+    Default config values can be found in `t4.util.CONFIG_TEMPLATE`.
 
     Args:
         autoconfig_url: A (single) URL indicating a location to configure from
         **config_values: `key=value` pairs to set in the config
 
     Returns:
-        HeliumConfig: (an ordered Mapping)
+        T4Config: (an ordered Mapping)
     """
     if autoconfig_url and config_values:
         raise QuiltException("Expected either an auto-config URL or key=value pairs, but got both.")
@@ -584,13 +588,13 @@ def config(*autoconfig_url, **config_values):
             for key in set(config_template) - set(new_config):
                 new_config[key] = config_template[key]
             write_yaml(new_config, CONFIG_PATH, keep_backup=True)
-            return HeliumConfig(CONFIG_PATH, new_config)
+            return T4Config(CONFIG_PATH, new_config)
         # Use our config + their configured values, keeping our comments.
         else:
             for key, value in new_config.items():
                 config_template[key] = value
             write_yaml(config_template, CONFIG_PATH, keep_backup=True)
-            return HeliumConfig(CONFIG_PATH, config_template)
+            return T4Config(CONFIG_PATH, config_template)
     # No autoconfig URL given -- use local config
     if CONFIG_PATH.exists():
         local_config = read_yaml(CONFIG_PATH)
@@ -607,4 +611,4 @@ def config(*autoconfig_url, **config_values):
             local_config[key] = value
         write_yaml(local_config, CONFIG_PATH, keep_backup=True)
 
-    return HeliumConfig(CONFIG_PATH, local_config)
+    return T4Config(CONFIG_PATH, local_config)

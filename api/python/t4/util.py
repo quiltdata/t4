@@ -235,10 +235,10 @@ def validate_url(url):
 # user's usage in an interpreted environment like Jupyter, and keeping the displayed
 # information concise.  Given the limitations of the other options, making a class with
 # custom repr panned out to be the best (and shortest) option.
-class HeliumConfig(OrderedDict):
+class T4Config(OrderedDict):
     def __init__(self, filepath, *args, **kwargs):
         self.filepath = pathlib.Path(filepath)
-        super(HeliumConfig, self).__init__(*args, **kwargs)
+        super(T4Config, self).__init__(*args, **kwargs)
 
     def __repr__(self):
         return "<{} at {!r} {}>".format(type(self).__name__, str(self.filepath), json.dumps(self, indent=4))
