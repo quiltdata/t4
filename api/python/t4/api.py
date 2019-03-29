@@ -423,15 +423,10 @@ def _create_es():
 
     return es
 
-def search(query, bucket=None):
+def search(query):
     """
     Searches your bucket. query can contain plaintext, and can also contain clauses
     like $key:"$value" that search for exact matches on specific keys.
-
-    Args:
-        query: an elastic search query
-        bucket(None): federated bucket to search.  If `None`, the default
-            bucket for your catalog is used.
 
     Returns either the request object (in case of an error) or a list of objects with the following keys:
         key: key of the object
