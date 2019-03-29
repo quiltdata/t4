@@ -35,7 +35,7 @@ import { readableBytes } from 'utils/string';
 import withParsedQuery from 'utils/withParsedQuery';
 
 import BreadCrumbs, { Crumb } from './BreadCrumbs';
-import CodeButton from './CodeButton';
+import * as Code from './Code';
 import FilePreview from './FilePreview';
 import * as requests from './requests';
 import { withSignedUrl } from './utils';
@@ -48,13 +48,6 @@ const getCrumbs = ({ bucket, path, urls }) => R.chain(
   ],
   [{ label: bucket, path: '' }, ...getBreadCrumbs(up(path))],
 );
-
-const code = ({ bucket, path }) => dedent`
-  import t4
-  b = t4.Bucket("s3://${bucket}")
-  b.fetch("${path}", "./${basename(path)}")
-`;
-
 
 const VersionInfo = RT.composeComponent('Bucket.File.VersionInfo',
   RC.setPropTypes({
@@ -229,21 +222,19 @@ const Meta = RT.composeComponent('Bucket.File.Meta',
         fetch={requests.objectMeta}
         params={{ s3, bucket, path, version }}
       >
-        {R.pipe(
-          AsyncResult.case({
-            Ok: (meta) => !!meta && !R.isEmpty(meta) && (
-              <Card className={classes.root}>
-                <CardHeader title="Metadata" />
-                <CardContent>
-                  <div className={classes.meta}>
-                    {JSON.stringify(meta, null, 2)}
-                  </div>
-                </CardContent>
-              </Card>
-            ),
-            _: () => null,
-          }),
-        )}
+        {AsyncResult.case({
+          Ok: (meta) => !!meta && !R.isEmpty(meta) && (
+            <Card className={classes.root}>
+              <CardHeader title="Metadata" />
+              <CardContent>
+                <div className={classes.meta}>
+                  {JSON.stringify(meta, null, 2)}
+                </div>
+              </CardContent>
+            </Card>
+          ),
+          _: () => null,
+        })}
       </Data>
     );
   });
@@ -280,33 +271,39 @@ export default RT.composeComponent('Bucket.File',
     match: { params: { bucket, path } },
     location: { query: { version } },
     classes,
-  }) => (
-    <React.Fragment>
-      <NamedRoutes.Inject>
-        {({ urls }) => (
-          <BreadCrumbs
-            variant="subtitle1"
-            items={getCrumbs({ bucket, path, urls })}
-          />
-        )}
-      </NamedRoutes.Inject>
-      <div className={classes.topBar}>
-        <Typography variant="h6" className={classes.nameAndVersion}>
-          <span className={classes.basename} title={basename(path)}>
-            {basename(path)}
-          </span>
-          <span className={classes.at}> @ </span>
-          <VersionInfo bucket={bucket} path={path} version={version} />
-        </Typography>
-        <div className={classes.spacer} />
-        <CodeButton>{code({ bucket, path })}</CodeButton>
-        {withSignedUrl({ bucket, key: path, version }, (url) => (
-          <Button variant="outlined" href={url} className={classes.button}>
-            <ButtonIcon position="left">arrow_downward</ButtonIcon> Download
-          </Button>
-        ))}
-      </div>
-      <Meta bucket={bucket} path={path} version={version} />
-      <FilePreview handle={{ bucket, key: path, version }} />
-    </React.Fragment>
-  ));
+  }) => {
+    const { urls } = NamedRoutes.use();
+    const code = Code.use(dedent`
+      import t4
+      b = t4.Bucket("s3://${bucket}")
+      b.fetch("${path}", "./${basename(path)}")
+    `);
+
+    return (
+      <React.Fragment>
+        <BreadCrumbs
+          variant="subtitle1"
+          items={getCrumbs({ bucket, path, urls })}
+        />
+        <div className={classes.topBar}>
+          <Typography variant="h6" className={classes.nameAndVersion}>
+            <span className={classes.basename} title={basename(path)}>
+              {basename(path)}
+            </span>
+            <span className={classes.at}> @ </span>
+            <VersionInfo bucket={bucket} path={path} version={version} />
+          </Typography>
+          <div className={classes.spacer} />
+          {code.btn}
+          {withSignedUrl({ bucket, key: path, version }, (url) => (
+            <Button variant="outlined" href={url} className={classes.button}>
+              <ButtonIcon position="left">arrow_downward</ButtonIcon> Download
+            </Button>
+          ))}
+        </div>
+        {code.card}
+        <Meta bucket={bucket} path={path} version={version} />
+        <FilePreview handle={{ bucket, key: path, version }} />
+      </React.Fragment>
+    );
+  });

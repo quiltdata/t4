@@ -19,7 +19,7 @@ import {
 } from 'utils/s3paths';
 
 import BreadCrumbs, { Crumb } from './BreadCrumbs';
-import CodeButton from './CodeButton';
+import * as Code from './Code';
 import Listing, { ListingItem } from './Listing';
 import Message from './Message';
 import Summary from './Summary';
@@ -29,12 +29,6 @@ import * as requests from './requests';
 
 const HELP_LINK =
   'https://github.com/quiltdata/t4/blob/master/UserDocs.md#working-with-buckets';
-
-const code = ({ bucket, path }) => dedent`
-  import t4
-  b = t4.Bucket("s3://${bucket}")
-  b.fetch("${path}", "./")
-`;
 
 const getCrumbs = R.compose(R.intersperse(Crumb.Sep(' / ')),
   ({ bucket, path, urls }) =>
@@ -81,13 +75,21 @@ const formatListing = ({ urls }, r) => {
 export default ({ match: { params: { bucket, path = '' } } }) => {
   const { urls } = NamedRoutes.use();
   const s3 = AWS.S3.use();
+  const code = Code.use(dedent`
+    import t4
+    b = t4.Bucket("s3://${bucket}")
+    b.fetch("${path}", "./")
+  `);
+
   return (
     <React.Fragment>
       <Box display="flex" alignItems="flex-start" mb={2} mt={1}>
         <BreadCrumbs items={getCrumbs({ bucket, path, urls })} />
         <Box flexGrow={1} />
-        <CodeButton>{code({ bucket, path })}</CodeButton>
+        {code.btn}
       </Box>
+
+      {code.card}
 
       <Data fetch={requests.bucketListing} params={{ s3, bucket, path }}>
         {AsyncResult.case({

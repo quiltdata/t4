@@ -25,19 +25,13 @@ import {
 import tagged from 'utils/tagged';
 
 import BreadCrumbs, { Crumb } from './BreadCrumbs';
-import CodeButton from './CodeButton';
+import * as Code from './Code';
 import FilePreview from './FilePreview';
 import Listing, { ListingItem } from './Listing';
 import Summary from './Summary';
 import { displayError } from './errors';
 import * as requests from './requests';
 
-
-// TODO: handle revision / hash
-const code = ({ bucket, name }) => dedent`
-  import t4
-  p = t4.Package.browse("${name}", registry="s3://${bucket}")
-`;
 
 const TreeDisplay = tagged([
   'File', // S3Handle
@@ -175,62 +169,65 @@ export default RT.composeComponent('Bucket.PackageTree',
       textDecoration: 'none !important',
     },
   })),
-  ({ classes, match: { params: { bucket, name, revision, path = '' } } }) => (
-    <AWS.S3.Inject>
-      {(s3) => (
-        <Data
-          params={{ s3, bucket, name, revision }}
-          fetch={requests.fetchPackageTree}
-        >
-          {withComputedTree({ bucket, name, revision, path }, (result) => (
-            <React.Fragment>
-              <div className={classes.topBar}>
-                <Crumbs {...{ bucket, name, revision, path }} />
-                <div className={classes.spacer} />
-                <CodeButton>{code({ bucket, name })}</CodeButton>
-                {AsyncResult.case({
-                  Ok: TreeDisplay.case({
-                    // eslint-disable-next-line react/prop-types
-                    File: ({ key, version }) => (
-                      <AWS.Signer.Inject>
-                        {(signer) => (
-                          <Button
-                            variant="outlined"
-                            href={signer.getSignedS3URL({ bucket, key, version })}
-                            className={classes.button}
-                          >
-                            Download file
-                          </Button>
-                        )}
-                      </AWS.Signer.Inject>
-                    ),
-                    _: () => null,
-                  }),
-                  _: () => null,
-                }, result)}
-              </div>
+  ({ classes, match: { params: { bucket, name, revision, path = '' } } }) => {
+    const s3 = AWS.S3.use();
+    const { urls } = NamedRoutes.use();
+    // TODO: handle revision / hash
+    const code = Code.use(dedent`
+      import t4
+      p = t4.Package.browse("${name}", registry="s3://${bucket}")
+    `);
+
+    return (
+      <Data
+        params={{ s3, bucket, name, revision }}
+        fetch={requests.fetchPackageTree}
+      >
+        {withComputedTree({ bucket, name, revision, path }, (result) => (
+          <React.Fragment>
+            <div className={classes.topBar}>
+              <Crumbs {...{ bucket, name, revision, path }} />
+              <div className={classes.spacer} />
+              {code.btn}
               {AsyncResult.case({
                 Ok: TreeDisplay.case({
-                  File: (handle) => <FilePreview handle={handle} />,
-                  Dir: (dir) => (
-                    <React.Fragment>
-                      <NamedRoutes.Inject>
-                        {({ urls }) => (
-                          <Listing items={formatListing({ urls }, dir)} />
-                        )}
-                      </NamedRoutes.Inject>
-                      {/* TODO: use proper versions */}
-                      <Summary files={dir.files} />
-                    </React.Fragment>
+                  // eslint-disable-next-line react/prop-types
+                  File: ({ key, version }) => (
+                    <AWS.Signer.Inject>
+                      {(signer) => (
+                        <Button
+                          variant="outlined"
+                          href={signer.getSignedS3URL({ bucket, key, version })}
+                          className={classes.button}
+                        >
+                          Download file
+                        </Button>
+                      )}
+                    </AWS.Signer.Inject>
                   ),
-                  NotFound: ThrowNotFound,
+                  _: () => null,
                 }),
-                Err: displayError(),
-                _: () => <CircularProgress />,
+                _: () => null,
               }, result)}
-            </React.Fragment>
-          ))}
-        </Data>
-      )}
-    </AWS.S3.Inject>
-  ));
+            </div>
+            {code.card}
+            {AsyncResult.case({
+              Ok: TreeDisplay.case({
+                File: (handle) => <FilePreview handle={handle} />,
+                Dir: (dir) => (
+                  <React.Fragment>
+                    <Listing items={formatListing({ urls }, dir)} />
+                    {/* TODO: use proper versions */}
+                    <Summary files={dir.files} />
+                  </React.Fragment>
+                ),
+                NotFound: ThrowNotFound,
+              }),
+              Err: displayError(),
+              _: () => <CircularProgress />,
+            }, result)}
+          </React.Fragment>
+        ))}
+      </Data>
+    );
+  });
