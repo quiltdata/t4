@@ -7,16 +7,18 @@ import { withStyles } from '@material-ui/styles';
 import * as RT from 'utils/reactTools';
 
 
-const Parquet = RT.composeComponent('Preview.renderers.Parquet',
+const DataFrame = RT.composeComponent('Preview.renderers.DataFrame',
   RC.setPropTypes({
     children: PT.string,
     className: PT.string,
   }),
   withStyles(({ palette, spacing: { unit } }) => ({
     root: {
-      overflow: 'auto',
       padding: unit,
       width: '100%',
+    },
+    wrapper: {
+      overflow: 'auto',
 
       '& table.dataframe': {
         border: 'none',
@@ -29,6 +31,9 @@ const Parquet = RT.composeComponent('Preview.renderers.Parquet',
         '& th, & td': {
           border: 'none',
           fontSize: 'small',
+          height: 3 * unit,
+          paddingLeft: unit,
+          paddingRight: unit,
         },
 
         '& td': {
@@ -38,13 +43,14 @@ const Parquet = RT.composeComponent('Preview.renderers.Parquet',
     },
   })),
   ({ classes, children, className, ...props } = {}) => (
-    <div
-      className={cx(className, classes.root)}
-      // eslint-disable-next-line react/no-danger
-      dangerouslySetInnerHTML={{ __html: children }}
-      {...props}
-    />
+    <div className={cx(className, classes.root)} {...props}>
+      <div
+        className={classes.wrapper}
+        // eslint-disable-next-line react/no-danger
+        dangerouslySetInnerHTML={{ __html: children }}
+      />
+    </div>
   ));
 
 export default ({ preview }, props) =>
-  <Parquet {...props}>{preview}</Parquet>;
+  <DataFrame {...props}>{preview}</DataFrame>;

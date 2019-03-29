@@ -67,7 +67,7 @@ export default RT.composeComponent('Bucket.FilePreview',
                 Object is too large to preview in browser
               </Typography>
               {withSignedUrl(handle, (url) => (
-                <Button variant="outlined" href={url}>View raw</Button>
+                <Button variant="outlined" href={url}>View in Browser</Button>
               ))}
             </Message>
           ),
@@ -78,13 +78,21 @@ export default RT.composeComponent('Bucket.FilePreview',
                 Preview not available
               </Typography>
               {withSignedUrl(handle, (url) => (
-                <Button variant="outlined" href={url}>View raw</Button>
+                <Button variant="outlined" href={url}>View in Browser</Button>
               ))}
             </Message>
           ),
           DoesNotExist: () => (
             <Message>
               <Typography variant="body1">Object does not exist</Typography>
+            </Message>
+          ),
+          // eslint-disable-next-line react/prop-types
+          MalformedJson: ({ originalError: { message } }) => (
+            <Message>
+              <Typography variant="body1" gutterBottom>
+                Malformed JSON: {message}
+              </Typography>
             </Message>
           ),
           Unexpected: (_, { fetch }) => (

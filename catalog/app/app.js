@@ -130,6 +130,7 @@ const render = (messages) => {
   );
 };
 
+/*
 if (module.hot) {
   // Hot reloadable React components and translation json files
   // modules.hot.accept does not accept dynamic dependencies,
@@ -139,6 +140,7 @@ if (module.hot) {
     render(translationMessages);
   });
 }
+*/
 
 // Chunked polyfill for browsers without Intl support
 if (!window.Intl) {

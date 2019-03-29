@@ -10,7 +10,7 @@ import * as RT from 'utils/reactTools';
 const Text = RT.composeComponent('Preview.renderers.Text',
   RC.setPropTypes({
     className: PT.string,
-    children: PT.string,
+    children: PT.node,
   }),
   withStyles((t) => ({
     root: {
@@ -20,14 +20,20 @@ const Text = RT.composeComponent('Preview.renderers.Text',
       whiteSpace: 'pre',
     },
   })),
-  ({ classes, className, children, ...props }) => (
-    <div
-      className={cx(className, classes.root)}
-      // eslint-disable-next-line react/no-danger
-      dangerouslySetInnerHTML={{ __html: children }}
-      {...props}
-    />
+  ({ classes, className, ...props }) => (
+    <div className={cx(className, classes.root)} {...props} />
   ));
 
-export default ({ highlighted }, props) =>
-  <Text {...props}>{highlighted}</Text>;
+const html = (contents) =>
+  // eslint-disable-next-line react/no-danger
+  <div dangerouslySetInnerHTML={{ __html: contents }} />;
+
+const Skip = () => <div>&hellip;</div>;
+
+export default ({ highlighted: { head, tail } }, props) => (
+  <Text {...props}>
+    {html(head)}
+    {!!tail && <Skip />}
+    {!!tail && html(tail)}
+  </Text>
+);

@@ -6,7 +6,8 @@ import { PreviewData } from '../types';
 import * as utils from './utils';
 
 
-export const detect = R.pipe(utils.stripCompression, utils.extIs('.parquet'));
+export const detect = R.pipe(utils.stripCompression,
+  utils.extIn(['.xls', '.xlsx']));
 
-export const load = utils.previewFetcher('parquet', (json) =>
+export const load = utils.previewFetcher('excel', (json) =>
   AsyncResult.Ok(PreviewData.DataFrame({ preview: json.html })));

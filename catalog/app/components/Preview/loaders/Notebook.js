@@ -35,7 +35,7 @@ const renderFragment = (f) => {
 
 const renderMath = R.pipe(split, R.into('', R.map(renderFragment)));
 
-export const detect = utils.extIs('.ipynb');
+export const detect = R.pipe(utils.stripCompression, utils.extIs('.ipynb'));
 
 export const load = utils.previewFetcher('ipynb', (json) =>
   AsyncResult.Ok(PreviewData.Notebook({ preview: renderMath(json.html) })));

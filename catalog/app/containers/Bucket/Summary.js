@@ -14,6 +14,7 @@ import Typography from '@material-ui/core/Typography';
 import { withStyles } from '@material-ui/styles';
 
 import * as Preview from 'components/Preview';
+import Thumbnail from 'components/Thumbnail';
 import * as AWS from 'utils/AWS';
 import AsyncResult from 'utils/AsyncResult';
 import Data from 'utils/Data';
@@ -124,7 +125,7 @@ const SummaryItemFile = composeComponent('Bucket.Summary.ItemFile',
                     Object is too large to preview in browser
                   </Typography>
                   {withSignedUrl(handle, (url) => (
-                    <Button variant="outlined" href={url}>View raw</Button>
+                    <Button variant="outlined" href={url}>View in Browser</Button>
                   ))}
                 </React.Fragment>
               ),
@@ -135,12 +136,18 @@ const SummaryItemFile = composeComponent('Bucket.Summary.ItemFile',
                     Preview not available
                   </Typography>
                   {withSignedUrl(handle, (url) => (
-                    <Button variant="outlined" href={url}>View raw</Button>
+                    <Button variant="outlined" href={url}>View in Browser</Button>
                   ))}
                 </React.Fragment>
               ),
               DoesNotExist: () => (
                 <Typography variant="body1">Object does not exist</Typography>
+              ),
+              // eslint-disable-next-line react/prop-types
+              MalformedJson: ({ originalError: { message } }) => (
+                <Typography variant="body1" gutterBottom>
+                  Malformed JSON: {message}
+                </Typography>
               ),
               Unexpected: (_, { fetch }) => (
                 <React.Fragment>
@@ -179,7 +186,6 @@ const Thumbnails = composeComponent('Bucket.Summary.Thumbnails',
       display: 'block',
       marginLeft: 'auto',
       marginRight: 'auto',
-      maxHeight: 200,
       maxWidth: '100%',
     },
     filler: {
@@ -204,14 +210,12 @@ const Thumbnails = composeComponent('Bucket.Summary.Thumbnails',
                 to={urls.bucketFile(i.bucket, i.key, i.version)}
                 className={classes.link}
               >
-                {withSignedUrl(i, (url) => (
-                  <img
-                    className={classes.img}
-                    alt={basename(i.logicalKey || i.key)}
-                    title={basename(i.logicalKey || i.key)}
-                    src={url}
-                  />
-                ))}
+                <Thumbnail
+                  handle={i}
+                  className={classes.img}
+                  alt={basename(i.logicalKey || i.key)}
+                  title={basename(i.logicalKey || i.key)}
+                />
               </Link>
             ))}
             {R.times(

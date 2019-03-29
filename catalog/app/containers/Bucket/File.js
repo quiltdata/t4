@@ -8,6 +8,9 @@ import { FormattedRelative } from 'react-intl';
 import { Link } from 'react-router-dom';
 import * as RC from 'recompose';
 import Button from '@material-ui/core/Button';
+import Card from '@material-ui/core/Card';
+import CardContent from '@material-ui/core/CardContent';
+import CardHeader from '@material-ui/core/CardHeader';
 import CircularProgress from '@material-ui/core/CircularProgress';
 import Icon from '@material-ui/core/Icon';
 import IconButton from '@material-ui/core/IconButton';
@@ -197,6 +200,54 @@ const VersionInfo = RT.composeComponent('Bucket.File.VersionInfo',
     </React.Fragment>
   ));
 
+const Meta = RT.composeComponent('Bucket.File.Meta',
+  RC.setPropTypes({
+    bucket: PT.string.isRequired,
+    path: PT.string.isRequired,
+    version: PT.string,
+  }),
+  withStyles((t) => ({
+    root: {
+      marginBottom: t.spacing.unit * 2,
+    },
+    meta: {
+      fontFamily: t.typography.monospace.fontFamily,
+      fontSize: t.typography.body2.fontSize,
+      overflow: 'auto',
+      whiteSpace: 'pre',
+    },
+  })),
+  ({
+    classes,
+    bucket,
+    path,
+    version,
+  }) => {
+    const s3 = AWS.S3.use();
+    return (
+      <Data
+        fetch={requests.objectMeta}
+        params={{ s3, bucket, path, version }}
+      >
+        {R.pipe(
+          AsyncResult.case({
+            Ok: (meta) => !!meta && !R.isEmpty(meta) && (
+              <Card className={classes.root}>
+                <CardHeader title="Metadata" />
+                <CardContent>
+                  <div className={classes.meta}>
+                    {JSON.stringify(meta, null, 2)}
+                  </div>
+                </CardContent>
+              </Card>
+            ),
+            _: () => null,
+          }),
+        )}
+      </Data>
+    );
+  });
+
 export default RT.composeComponent('Bucket.File',
   withParsedQuery,
   withStyles(({ spacing: { unit }, palette }) => ({
@@ -255,6 +306,7 @@ export default RT.composeComponent('Bucket.File',
           </Button>
         ))}
       </div>
+      <Meta bucket={bucket} path={path} version={version} />
       <FilePreview handle={{ bucket, key: path, version }} />
     </React.Fragment>
   ));
