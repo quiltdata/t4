@@ -390,7 +390,7 @@ def list_packages(registry=None):
 
 
 ########################################
-# Search
+# Search (now just 'log')
 ########################################
 
 es_index = 'drive'
@@ -422,57 +422,6 @@ def _create_es():
     )
 
     return es
-
-def search(query):
-    """
-    Searches your bucket. query can contain plaintext, and can also contain clauses
-    like $key:"$value" that search for exact matches on specific keys.
-
-    Returns either the request object (in case of an error) or a list of objects with the following keys:
-        key: key of the object
-        version_id: version_id of object version
-        operation: Create or Delete
-        meta: metadata attached to object
-        size: size of object in bytes
-        text: indexed text of object
-        source: source document for object (what is actually stored in ElasticSeach)
-        time: timestamp for operation
-    """
-    es = _create_es()
-
-    payload = {'query': {'query_string': {
-        'default_field': 'content',
-        'query': query,
-        'quote_analyzer': 'keyword',
-        }}}
-
-    r = es.search(index=es_index, body=payload)
-
-    try:
-        results = []
-        for result in r['hits']['hits']:
-            key = result['_source']['key']
-            vid = result['_source']['version_id']
-            op = result['_source']['type']
-            meta = json.dumps(result['_source']['user_meta'])
-            size = str(result['_source']['size'])
-            text = result['_source']['text']
-
-            time = str(result['_source']['updated'])
-            results.append({
-                'key': key,
-                'version_id': vid,
-                'operation': op,
-                'meta': meta,
-                'size': size,
-                'text': text,
-                'source': result['_source'],
-                'time': time
-            })
-        results = list(sorted(results, key=lambda x: x['time'], reverse=True))
-        return results
-    except KeyError as e:
-        return r
 
 def _print_table(table, padding=2):
     cols_width = [max(len(word) for word in col) for col in zip(*table)]
