@@ -39,6 +39,7 @@ class Bucket(object):
         self._uri = 's3://{}/'.format(bucket)
         self._bucket = bucket
         self._search_endpoint = None
+        self._region = None
 
     def config(self, config_url=None):
         """
@@ -58,6 +59,7 @@ class Bucket(object):
         elif 'search_endpoint' in bucket_config:
             # old format
             self._search_endpoint = bucket_config['search_endpoint']
+        self._region = bucket_config.get('region')
 
     def search(self, query, limit=10):
         """
@@ -91,6 +93,9 @@ class Bucket(object):
         """
         if not self._search_endpoint:
             self.config()
+        if self._region:
+            return search(
+                query, self._search_endpoint, limit=limit, aws_region=self._region)
         return search(query, self._search_endpoint, limit=limit)
 
     def deserialize(self, key):

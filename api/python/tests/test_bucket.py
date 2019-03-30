@@ -268,4 +268,4 @@ class TestBucket(QuiltTestCase):
         b = Bucket('s3://t4-testing-fake')
         b.search('blah', limit=1)
 
-        search_mock.assert_called_once_with('blah', 'https://es-fake.endpoint', 1, 'us-meow')
+        search_mock.assert_called_once_with('blah', 'https://es-fake.endpoint', limit=1, aws_region='us-meow')
