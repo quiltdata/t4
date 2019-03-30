@@ -35,7 +35,7 @@ __Arguments__
 
 __Returns__
 
-`HeliumConfig`: (an ordered Mapping)
+`T4Config`: (an ordered Mapping)
 
 
 ## copy(src, dest)  {#copy}
