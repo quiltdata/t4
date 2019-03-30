@@ -59,7 +59,7 @@ default_remote_registry:
 # default filesystem target for the install operation
 default_install_location:
 
-# Quilt2 registry URL
+# Identity service URL
 registryUrl: https://quilt-t4-staging-registry.quiltdata.com
 """.format(BASE_PATH.as_uri())
 
@@ -151,7 +151,6 @@ def read_yaml(yaml_stream):
         raise QuiltException(str(error), original_error=error)
 
 
-# If we won't be using YAML for anything but config.yml, we can drop keep_backup and assume True.
 def write_yaml(data, yaml_path, keep_backup=False):
     """Write `data` to `yaml_path`
 
@@ -293,6 +292,7 @@ def get_package_registry(path=None):
     return path.rstrip('/') + '/.quilt'
 
 def load_config():
+    # For user-facing config, use api.config()
     if CONFIG_PATH.exists():
         local_config = read_yaml(CONFIG_PATH)
     else:

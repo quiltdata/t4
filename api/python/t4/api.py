@@ -519,7 +519,7 @@ def log(key, pprint=False):
     except KeyError as e:
         return r
 
-def config(*autoconfig_url, **config_values):
+def config(*catalog_url, **config_values):
     """Set or read the T4 configuration.
 
     To retrieve the current config, call directly, without arguments:
@@ -540,22 +540,22 @@ def config(*autoconfig_url, **config_values):
     config values can be found in `t4.util.CONFIG_TEMPLATE`.
 
     Args:
-        autoconfig_url: A (single) URL indicating a location to configure from
+        catalog_url: A (single) URL indicating a location to configure from
         **config_values: `key=value` pairs to set in the config
 
     Returns:
         HeliumConfig: (an ordered Mapping)
     """
-    if autoconfig_url and config_values:
+    if catalog_url and config_values:
         raise QuiltException("Expected either an auto-config URL or key=value pairs, but got both.")
-    # Total distinction of args and kwargs -- config(autoconfig_url='http://foo.com')
-    if autoconfig_url and len(autoconfig_url) > 1:
-        raise QuiltException("`autoconfig_url` cannot be used with other `config_values`.")
+    # Total distinction of args and kwargs -- config(catalog_url='http://foo.com')
+    if catalog_url and len(catalog_url) > 1:
+        raise QuiltException("`catalog_url` cannot be used with other `config_values`.")
 
-    if autoconfig_url:
+    if catalog_url:
         config_template = read_yaml(CONFIG_TEMPLATE)
-        autoconfig_url = autoconfig_url[0]
-        config_url = autoconfig_url.rstrip('/') + '/config.json'
+        catalog_url = catalog_url[0]
+        config_url = catalog_url.rstrip('/') + '/config.json'
 
         if config_url[:7] not in ('http://', 'https:/'):
             config_url = 'https://' + config_url
@@ -571,6 +571,9 @@ def config(*autoconfig_url, **config_values):
                 response=response
                 )
         new_config = read_yaml(response.text)  # handles JSON and YAML (YAML is a superset of JSON)
+
+        if not new_config.get('navigator_url'):
+            new_config['navigator_url'] = catalog_url
 
         for key, value in new_config.items():
             # No key validation, per current fast dev rate on config.json.
