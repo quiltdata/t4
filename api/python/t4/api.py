@@ -550,10 +550,10 @@ def config(*autoconfig_url, **config_values):
         raise QuiltException("Expected either an auto-config URL or key=value pairs, but got both.")
     # Total distinction of args and kwargs -- config(autoconfig_url='http://foo.com')
     if autoconfig_url and len(autoconfig_url) > 1:
-        raise QuiltException("Expected a single autoconfig URL argument, not multiple args.")
+        raise QuiltException("`autoconfig_url` cannot be used with other `config_values`.")
 
-    config_template = read_yaml(CONFIG_TEMPLATE)
     if autoconfig_url:
+        config_template = read_yaml(CONFIG_TEMPLATE)
         autoconfig_url = autoconfig_url[0]
         config_url = autoconfig_url.rstrip('/') + '/config.json'
 
@@ -591,13 +591,15 @@ def config(*autoconfig_url, **config_values):
                 config_template[key] = value
             write_yaml(config_template, CONFIG_PATH, keep_backup=True)
             return HeliumConfig(CONFIG_PATH, config_template)
+
     # No autoconfig URL given -- use local config
     if CONFIG_PATH.exists():
         local_config = read_yaml(CONFIG_PATH)
     else:
-        local_config = config_template
+        local_config = read_yaml(CONFIG_TEMPLATE)
 
     if config_values:
+        # User is setting config values
         for key, value in config_values.items():
             # No key validation, per current fast dev rate on config.json.
             # if key not in config_template:
@@ -605,6 +607,6 @@ def config(*autoconfig_url, **config_values):
             if value and key.endswith('_url'):
                 validate_url(value)
             local_config[key] = value
-        write_yaml(local_config, CONFIG_PATH, keep_backup=True)
+        write_yaml(local_config, CONFIG_PATH)
 
     return HeliumConfig(CONFIG_PATH, local_config)
