@@ -214,6 +214,9 @@ def list_packages(registry=None):
         """Display wrapper for list_packages"""
 
         def __init__(self, pkg_info):
+            # pkg_info is a list of pkg versions, but pkg_names needs to be a list of packages,
+            # so uniquify to packages by passing it into a set; but a set is not a valid iterator,
+            # so we must turn it back into a list afterwards.
             self.pkg_names = list(set(
                 info['pkg_name'].replace(':latest', '') for info in pkg_info
             ))
