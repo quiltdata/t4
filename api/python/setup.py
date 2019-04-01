@@ -62,7 +62,7 @@ setup(
         'packaging>=16.8',
         'pandas>=0.19.2',
         'pathlib2; python_version<="3.5"',  # stdlib backport
-        'pyarrow>=0.9.0',
+        'pyarrow>=0.9.0,<0.13.0',           # TODO: Remove the max version some day.
         'requests>=2.12.4',
         'ruamel.yaml<=0.15.70',
         'six>=1.10.0',
