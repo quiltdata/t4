@@ -194,31 +194,78 @@ class TestBucket(QuiltTestCase):
             bucket.put_dir('', path)
             copy_mock.assert_called_once_with(path.as_uri() + '/', 's3://test-bucket/')
 
-    @patch('t4.data_transfer.s3_client')
-    def test_remote_delete(self, s3_client):
+    def test_remote_delete(self):
+        self.s3_stubber.add_response(
+            method='head_object',
+            service_response={},
+            expected_params={
+                'Bucket': 'test-bucket',
+                'Key': 'file.json',
+            }
+        )
+        self.s3_stubber.add_response(
+            method='delete_object',
+            service_response={},
+            expected_params={
+                'Bucket': 'test-bucket',
+                'Key': 'file.json',
+            }
+        )
+
         bucket = Bucket('s3://test-bucket')
         bucket.delete('file.json')
-        call_kwargs = {'Bucket': 'test-bucket', 'Key': 'file.json'}
-        s3_client.head_object.assert_called_with(**call_kwargs)
-        s3_client.delete_object.assert_called_with(**call_kwargs)
 
         with pytest.raises(QuiltException):
             bucket.delete('s3://test-bucket/dir/')
 
 
-    @patch('t4.data_transfer.s3_client')
-    def test_remote_delete_dir(self, s3_client):
-        s3_client.list_objects_v2.return_value = {
-            'IsTruncated': False,
-            'Contents': [{'Key': 'a'}, {'Key': 'b'}],
-        }
+    def test_remote_delete_dir(self):
+        self.s3_stubber.add_response(
+            method='list_objects_v2',
+            service_response={
+                'IsTruncated': False,
+                'Contents': [{'Key': 'a'}, {'Key': 'b'}],
+            },
+            expected_params={
+                'Bucket': 'test-bucket',
+                'Prefix': 's3://test-bucket/dir/'
+            }
+        )
+        self.s3_stubber.add_response(
+            method='head_object',
+            service_response={},
+            expected_params={
+                'Bucket': 'test-bucket',
+                'Key': 'a'
+            }
+        )
+        self.s3_stubber.add_response(
+            method='delete_object',
+            service_response={},
+            expected_params={
+                'Bucket': 'test-bucket',
+                'Key': 'a'
+            }
+        )
+        self.s3_stubber.add_response(
+            method='head_object',
+            service_response={},
+            expected_params={
+                'Bucket': 'test-bucket',
+                'Key': 'b'
+            }
+        )
+        self.s3_stubber.add_response(
+            method='delete_object',
+            service_response={},
+            expected_params={
+                'Bucket': 'test-bucket',
+                'Key': 'b'
+            }
+        )
+
         bucket = Bucket('s3://test-bucket')
         bucket.delete_dir('s3://test-bucket/dir/')
-
-        a_kwargs = {'Bucket': 'test-bucket', 'Key': 'a'}
-        b_kwargs = {'Bucket': 'test-bucket', 'Key': 'b'}
-        s3_client.delete_object.assert_any_call(**a_kwargs)
-        s3_client.delete_object.assert_any_call(**b_kwargs)
 
         with pytest.raises(ValueError):
             bucket.delete_dir('s3://test-bucket/dir')
