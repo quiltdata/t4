@@ -439,7 +439,7 @@ class Package(object):
             pkg = pkg._children[key_fragment]
         return pkg
 
-    def fetch(self, dest):
+    def fetch(self, dest='./'):
         """
         Copy all descendants to `dest`. Descendants are written under their logical
         names _relative_ to self.

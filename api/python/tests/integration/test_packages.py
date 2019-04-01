@@ -402,6 +402,15 @@ def test_package_fetch():
     assert file_count == len(expected), \
         'fetch wrote {} files; expected: {}'.format(file_count, expected)
 
+
+def test_package_fetch_default_dest():
+    """Verify fetching a package to the default local destination."""
+    Package().set_dir('/', DATA_DIR / 'nested').fetch()
+    assert pathlib.Path('one.txt').exists()
+    assert pathlib.Path('sub/two.txt').exists()
+    assert pathlib.Path('sub/three.txt').exists()
+
+
 def test_fetch():
     """ Verify fetching a package entry. """
     pkg = (
@@ -425,6 +434,7 @@ def test_fetch():
 
 
 def test_fetch_default_dest(tmpdir):
+    """Verify fetching a package entry to a default destination."""
     with patch('t4.packages.copy_file') as copy_mock:
         (Package()
          .set('foo', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'))['foo']
