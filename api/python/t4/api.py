@@ -215,7 +215,7 @@ def list_packages(registry=None):
 
         def __init__(self, pkg_info):
             self.pkg_names = list(set(
-                [info['pkg_name'].replace(':latest', '') for info in pkg_info]
+                info['pkg_name'].replace(':latest', '') for info in pkg_info
             ))
             self._repr = self.create_str(pkg_info)
 
