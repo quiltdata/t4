@@ -214,7 +214,9 @@ def list_packages(registry=None):
         """Display wrapper for list_packages"""
 
         def __init__(self, pkg_info):
-            self.pkg_names = [info['pkg_name'].replace(':latest', '') for info in pkg_info]
+            self.pkg_names = list(set(
+                [info['pkg_name'].replace(':latest', '') for info in pkg_info]
+            ))
             self._repr = self.create_str(pkg_info)
 
         def __repr__(self):
@@ -311,19 +313,19 @@ def list_packages(registry=None):
 
         # go through package namespaces to get packages
         for pkg_namespace in pkg_namespaces:
-            pkg_names, _ = list_objects(
+            raw_pkg_names, _ = list_objects(
                 bucket_name,
                 pkg_namespace,
                 recursive=False
             )
-            pkg_names = [pkg_name['Prefix'] for pkg_name in pkg_names]
+            raw_pkg_names = [pkg_name['Prefix'] for pkg_name in raw_pkg_names]
 
             # go through packages to get package hash files
-            for pkg_name in pkg_names:
+            for pkg_name in raw_pkg_names:
                 pkg_hashes = []
                 pkg_sizes = []
                 pkg_ctimes = []
-                pkg_names = []
+                pkg_display_names = []
 
                 _, pkg_hashfiles = list_objects(
                     bucket_name,
@@ -353,27 +355,28 @@ def list_packages(registry=None):
 
                 # go through manifest files to get package info
                 for pkg_hash_path in pkg_hash_paths:
-                    name = pkg_name[len(bucket_registry_path):].strip('/')
+                    pkg_display_name = pkg_name[len(bucket_registry_path):].strip('/')
 
                     pkg_hash, _ = get_bytes('s3://' + bucket_name + '/' + pkg_hash_path)
                     pkg_hash = pkg_hash.decode()
 
                     if pkg_hash == latest_hash:
-                        pkg_name = name + ':latest'
-                    else:
-                        pkg_name = name
+                        pkg_display_name = pkg_display_name + ':latest'
 
-                    pkg_names.append(pkg_name)
                     pkg_hashes.append(pkg_hash)
+                    pkg_display_names.append(pkg_display_name)
 
                     pkg = Package.browse(
                         pkg_name, top_hash=pkg_hash, registry='s3://' + bucket_name
                     )
                     pkg_sizes.append(pkg.reduce(lambda tot, tup: tot + tup[1].size, default=0))
 
-                for top_hash, ctime, size in zip(pkg_hashes, pkg_ctimes, pkg_sizes):
+                for display_name, top_hash, ctime, size in zip(
+                        pkg_display_names, pkg_hashes, pkg_ctimes, pkg_sizes
+                ):
                     pkg_info.append(
-                        {'pkg_name': pkg_name, 'top_hash': top_hash, 'ctime': ctime, 'size': size}
+                        {'pkg_name': display_name, 'top_hash': top_hash, 'ctime': ctime, 
+                         'size': size}
                     )
 
     else:
