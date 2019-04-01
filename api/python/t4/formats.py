@@ -960,7 +960,7 @@ class ParquetFormatHandler(BaseFormatHandler):
         table = parquet.read_table(buf)
         try:
             obj = pa.Table.to_pandas(table)
-        except AssertionError:
+        except (AssertionError, KeyError):
             # Try again to convert the table after removing
             # the possibly buggy Pandas-specific metadata.
             meta = table.schema.metadata.copy()
