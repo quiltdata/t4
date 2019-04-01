@@ -366,6 +366,7 @@ class PackageTest(QuiltTestCase):
         assert pkg.get_meta() == "test_meta"
 
         pkg = Package()
+<<<<<<< HEAD
         pkg = pkg.set_dir('/','foo_dir/baz_dir/')
         # todo nested at set_dir site or relative to set_dir path.
         assert (bazdir / 'baz').resolve().as_uri() == pkg['baz'].physical_keys[0]
@@ -375,6 +376,205 @@ class PackageTest(QuiltTestCase):
             fd.write('foo\n')
             fd.write('bar')
 
+=======
+        pkg.build('Quilt/nice-name')
+
+        t4.Package.install('Quilt/nice-name', dest='./')
+        push_mock.assert_called_once_with(dest='./', name='Quilt/nice-name', registry=remote_registry)
+
+def test_package_fetch():
+    """ Package.fetch() on nested, relative keys """
+    package_ = Package().set_dir('/', DATA_DIR / 'nested')
+
+    out_dir = 'output'
+    package_.fetch(out_dir)
+
+    expected = {'one.txt': '1', 'two.txt': '2', 'three.txt': '3'}
+    file_count = 0
+    for dirpath, _, files in os.walk(out_dir):
+        for name in files:
+            file_count += 1
+            with open(os.path.join(dirpath, name)) as file_:
+                assert name in expected, 'unexpected file: {}'.format(file_)
+                contents = file_.read().strip()
+                assert contents == expected[name], \
+                    'unexpected contents in {}: {}'.format(name, contents)
+    assert file_count == len(expected), \
+        'fetch wrote {} files; expected: {}'.format(file_count, expected)
+
+def test_fetch():
+    """ Verify fetching a package entry. """
+    pkg = (
+        Package()
+        .set('foo', DATA_DIR / 'foo.txt', {'user_meta': 'blah'})
+        .set('bar', DATA_DIR / 'foo.txt', {'user_meta': 'blah'})
+    )
+    pkg['foo'].meta['target'] = 'unicode'
+    pkg['bar'].meta['target'] = 'unicode'
+
+    with open(DATA_DIR / 'foo.txt') as fd:
+        assert fd.read().replace('\n', '') == '123'
+    # Copy foo.text to bar.txt
+    pkg['foo'].fetch('data/bar.txt')
+    with open('data/bar.txt') as fd:
+        assert fd.read().replace('\n', '') == '123'
+
+    # Raise an error if you copy to yourself.
+    with pytest.raises(shutil.SameFileError):
+        pkg['foo'].fetch(DATA_DIR / 'foo.txt')
+
+
+def test_fetch_default_dest(tmpdir):
+    with patch('t4.packages.copy_file') as copy_mock:
+        (Package()
+         .set('foo', os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'))['foo']
+         .fetch())
+        filepath = fix_url(os.path.join(os.path.dirname(__file__), 'data', 'foo.txt'))
+        copy_mock.assert_called_once_with(filepath, ANY, ANY)
+
+
+def test_load_into_t4(tmpdir):
+    """ Verify loading local manifest and data into S3. """
+    with patch('t4.packages.put_bytes') as bytes_mock, \
+         patch('t4.data_transfer._upload_file') as file_mock, \
+         patch('t4.packages.get_from_config') as config_mock:
+        file_mock.return_value = 'foo.txt'
+        config_mock.return_value = 's3://my_test_bucket'
+        new_pkg = Package()
+        # Create a dummy file to add to the package.
+        contents = 'blah'
+        test_file = Path('bar')
+        test_file.write_text(contents)
+        new_pkg = new_pkg.set('foo', test_file)
+        new_pkg.push('Quilt/package', 's3://my_test_bucket/')
+
+        # Manifest copied
+        top_hash = new_pkg.top_hash()
+        bytes_mock.assert_any_call(top_hash.encode(), 's3://my_test_bucket/.quilt/named_packages/Quilt/package/latest')
+        bytes_mock.assert_any_call(ANY, 's3://my_test_bucket/.quilt/packages/' + top_hash)
+
+        # Data copied
+        file_mock.assert_called_once_with(ANY, len(contents), str(test_file.resolve()), 'my_test_bucket', 'Quilt/package/foo', {})
+
+def test_local_push():
+    """ Verify loading local manifest and data into S3. """
+    with patch('t4.packages.put_bytes') as bytes_mock, \
+         patch('t4.data_transfer._copy_local_file') as file_mock, \
+         patch('t4.packages.get_from_config') as config_mock:
+        file_mock.return_value = 'foo.txt'
+        config_mock.return_value = 'package_contents'
+        new_pkg = Package()
+        contents = 'blah'
+        test_file = Path('bar')
+        test_file.write_text(contents)
+        new_pkg = new_pkg.set('foo', test_file)
+        new_pkg.push('Quilt/package', 'package_contents')
+
+        push_uri = Path('package_contents').resolve().as_uri()
+
+        # Manifest copied
+        top_hash = new_pkg.top_hash()
+        bytes_mock.assert_any_call(top_hash.encode(), push_uri + '/.quilt/named_packages/Quilt/package/latest')
+        bytes_mock.assert_any_call(ANY, push_uri + '/.quilt/packages/' + top_hash)
+
+        # Data copied
+        file_mock.assert_called_once_with(ANY, len(contents), str(test_file.resolve()), str(Path('package_contents/Quilt/package/foo').resolve()), {})
+
+
+def test_package_deserialize():
+    """ Verify loading data from a local file. """
+    pkg = (
+        Package()
+        .set('foo', DATA_DIR / 'foo.txt', {'user_meta_foo': 'blah'})
+        .set('bar', DATA_DIR / 'foo.unrecognized.ext')
+        .set('baz', DATA_DIR / 'foo.txt')
+    )
+    pkg.build()
+
+    pkg['foo'].meta['target'] = 'unicode'
+    assert pkg['foo'].deserialize() == '123\n'
+    assert pkg['baz'].deserialize() == '123\n'
+
+    with pytest.raises(QuiltException):
+        pkg['bar'].deserialize()
+
+def test_local_set_dir():
+    """ Verify building a package from a local directory. """
+    pkg = Package()
+
+    # Create some nested example files that contain their names.
+    foodir = pathlib.Path("foo_dir")
+    bazdir = pathlib.Path(foodir, "baz_dir")
+    bazdir.mkdir(parents=True, exist_ok=True)
+    with open('bar', 'w') as fd:
+        fd.write(fd.name)
+    with open('foo', 'w') as fd:
+        fd.write(fd.name)
+    with open(bazdir / 'baz', 'w') as fd:
+        fd.write(fd.name)
+    with open(foodir / 'bar', 'w') as fd:
+        fd.write(fd.name)
+
+    pkg = pkg.set_dir("/", ".", meta="test_meta")
+
+    assert pathlib.Path('foo').resolve().as_uri() == pkg['foo'].physical_keys[0]
+    assert pathlib.Path('bar').resolve().as_uri() == pkg['bar'].physical_keys[0]
+    assert (bazdir / 'baz').resolve().as_uri() == pkg['foo_dir/baz_dir/baz'].physical_keys[0]
+    assert (foodir / 'bar').resolve().as_uri() == pkg['foo_dir/bar'].physical_keys[0]
+    assert pkg.get_meta() == "test_meta"
+
+    pkg = Package()
+    pkg = pkg.set_dir('/','foo_dir/baz_dir/')
+    # todo nested at set_dir site or relative to set_dir path.
+    assert (bazdir / 'baz').resolve().as_uri() == pkg['baz'].physical_keys[0]
+
+    pkg = Package()
+    pkg = pkg.set_dir('my_keys', 'foo_dir/baz_dir/')
+    # todo nested at set_dir site or relative to set_dir path.
+    assert (bazdir / 'baz').resolve().as_uri() == pkg['my_keys/baz'].physical_keys[0]
+
+    # Verify ignoring files in the presence of a dot-quiltignore
+    with open('.quiltignore', 'w') as fd:
+        fd.write('foo\n')
+        fd.write('bar')
+
+    pkg = Package()
+    pkg = pkg.set_dir("/", ".")
+    assert 'foo_dir' in pkg.keys()
+    assert 'foo' not in pkg.keys() and 'bar' not in pkg.keys()
+
+    with open('.quiltignore', 'w') as fd:
+        fd.write('foo_dir')
+
+    pkg = Package()
+    pkg = pkg.set_dir("/", ".")
+    assert 'foo_dir' not in pkg.keys()
+
+    with open('.quiltignore', 'w') as fd:
+        fd.write('foo_dir\n')
+        fd.write('foo_dir/baz_dir')
+
+    pkg = Package()
+    pkg = pkg.set_dir("/", ".")
+    assert 'foo_dir/baz_dir' not in pkg.keys() and 'foo_dir' not in pkg.keys()
+
+    pkg = pkg.set_dir("new_dir", ".", meta="new_test_meta")
+
+    assert pathlib.Path('foo').resolve().as_uri() == pkg['new_dir/foo'].physical_keys[0]
+    assert pathlib.Path('bar').resolve().as_uri() == pkg['new_dir/bar'].physical_keys[0]
+    assert pkg['new_dir'].get_meta() == "new_test_meta"
+
+    # verify set_dir logical key shortcut
+    pkg = Package()
+    pkg.set_dir("/")
+    assert pathlib.Path('foo').resolve().as_uri() == pkg['foo'].physical_keys[0]
+    assert pathlib.Path('bar').resolve().as_uri() == pkg['bar'].physical_keys[0]
+
+
+def test_s3_set_dir():
+    """ Verify building a package from an S3 directory. """
+    with patch('t4.packages.list_object_versions') as list_object_versions_mock:
+>>>>>>> Tweak test.
         pkg = Package()
         pkg = pkg.set_dir("/", ".")
         assert 'foo_dir' in pkg.keys()
