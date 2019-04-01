@@ -9,9 +9,9 @@ import {
 import { reduxForm, Field, SubmissionError } from 'redux-form/immutable';
 
 import * as NamedRoutes from 'utils/NamedRoutes';
+import * as Sentry from 'utils/Sentry';
 import Link from 'utils/StyledLink';
 import defer from 'utils/defer';
-import { captureError } from 'utils/errorReporting';
 import { composeComponent } from 'utils/reactTools';
 import validate, * as validators from 'utils/validators';
 
@@ -26,8 +26,7 @@ const Container = Layout.mkLayout(<FM {...msg.passChangeHeading} />);
 export default composeComponent('Auth.PassChange',
   // TODO: what to show if the user is authenticated
   // connect(createStructuredSelector({ authenticated })),
-  // TODO: inject captureError
-  // withErrorReporting(),
+  Sentry.inject(),
   withStateHandlers({
     done: false,
   }, {
@@ -35,7 +34,7 @@ export default composeComponent('Auth.PassChange',
   }),
   reduxForm({
     form: 'Auth.PassChange',
-    onSubmit: async (values, dispatch, { setDone, match }) => {
+    onSubmit: async (values, dispatch, { setDone, match, sentry }) => {
       try {
         const { link } = match.params;
         const { password } = values.toJS();
@@ -50,7 +49,7 @@ export default composeComponent('Auth.PassChange',
         if (e instanceof errors.InvalidPassword) {
           throw new SubmissionError({ password: 'invalid' });
         }
-        captureError(e);
+        sentry.captureException(e);
         throw new SubmissionError({ _error: 'unexpected' });
       }
     },

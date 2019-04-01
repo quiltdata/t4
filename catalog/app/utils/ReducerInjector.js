@@ -85,9 +85,7 @@ export const useReducer = (mountpoint, reducer, { remount = true } = {}) => {
 
   if (shouldInject) injector.inject(mountpoint, reducer);
 
-  React.useEffect(() => () => {
-    injector.eject(mountpoint);
-  }, [mountpoint]);
+  // keep reducers injected to avoid redux warnings
 };
 /**
  * Component that injects a given reducer into the store on mount.

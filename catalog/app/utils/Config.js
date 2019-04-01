@@ -171,8 +171,8 @@ export const Provider = RT.composeComponent('Config.Provider',
     <Ctx.Provider value={path}>{children}</Ctx.Provider>
   ));
 
-export const useConfig = () =>
-  Cache.use().get(ConfigResource, React.useContext(Ctx));
+export const useConfig = ({ suspend = true } = {}) =>
+  Cache.useData(ConfigResource, React.useContext(Ctx), { suspend });
 
 export const useFederations = () =>
   Cache.use().get(FederationsResource, useConfig().federations);
