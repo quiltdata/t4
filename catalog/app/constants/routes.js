@@ -10,6 +10,11 @@ export default {
     url: () => '/',
   },
 
+  activate: {
+    path: '/activate/:link',
+    url: ({ registryUrl, token }) => `${registryUrl}/${token}`,
+  },
+
   // auth
   signIn: {
     path: '/signin',
