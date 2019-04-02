@@ -366,17 +366,6 @@ class PackageTest(QuiltTestCase):
         assert pkg.get_meta() == "test_meta"
 
         pkg = Package()
-<<<<<<< HEAD
-        pkg = pkg.set_dir('/','foo_dir/baz_dir/')
-        # todo nested at set_dir site or relative to set_dir path.
-        assert (bazdir / 'baz').resolve().as_uri() == pkg['baz'].physical_keys[0]
-
-        # Verify ignoring files in the presence of a dot-quiltignore
-        with open('.quiltignore', 'w') as fd:
-            fd.write('foo\n')
-            fd.write('bar')
-
-=======
         pkg.build('Quilt/nice-name')
 
         t4.Package.install('Quilt/nice-name', dest='./')
@@ -584,7 +573,6 @@ def test_local_set_dir():
 def test_s3_set_dir():
     """ Verify building a package from an S3 directory. """
     with patch('t4.packages.list_object_versions') as list_object_versions_mock:
->>>>>>> Tweak test.
         pkg = Package()
         pkg = pkg.set_dir("/", ".")
         assert 'foo_dir' in pkg.keys()
