@@ -366,10 +366,51 @@ class PackageTest(QuiltTestCase):
         assert pkg.get_meta() == "test_meta"
 
         pkg = Package()
-        pkg.build('Quilt/nice-name')
+        pkg = pkg.set_dir('/','foo_dir/baz_dir/')
+        # todo nested at set_dir site or relative to set_dir path.
+        assert (bazdir / 'baz').resolve().as_uri() == pkg['baz'].physical_keys[0]
 
-        t4.Package.install('Quilt/nice-name', dest='./')
-        push_mock.assert_called_once_with(dest='./', name='Quilt/nice-name', registry=remote_registry)
+        pkg = Package()
+        pkg = pkg.set_dir('my_keys', 'foo_dir/baz_dir/')
+        # todo nested at set_dir site or relative to set_dir path.
+        assert (bazdir / 'baz').resolve().as_uri() == pkg['my_keys/baz'].physical_keys[0]
+
+        # Verify ignoring files in the presence of a dot-quiltignore
+        with open('.quiltignore', 'w') as fd:
+            fd.write('foo\n')
+            fd.write('bar')
+
+        pkg = Package()
+        pkg = pkg.set_dir("/", ".")
+        assert 'foo_dir' in pkg.keys()
+        assert 'foo' not in pkg.keys() and 'bar' not in pkg.keys()
+
+        with open('.quiltignore', 'w') as fd:
+            fd.write('foo_dir')
+
+        pkg = Package()
+        pkg = pkg.set_dir("/", ".")
+        assert 'foo_dir' not in pkg.keys()
+
+        with open('.quiltignore', 'w') as fd:
+            fd.write('foo_dir\n')
+            fd.write('foo_dir/baz_dir')
+
+        pkg = Package()
+        pkg = pkg.set_dir("/", ".")
+        assert 'foo_dir/baz_dir' not in pkg.keys() and 'foo_dir' not in pkg.keys()
+
+        pkg = pkg.set_dir("new_dir", ".", meta="new_test_meta")
+
+        assert pathlib.Path('foo').resolve().as_uri() == pkg['new_dir/foo'].physical_keys[0]
+        assert pathlib.Path('bar').resolve().as_uri() == pkg['new_dir/bar'].physical_keys[0]
+        assert pkg['new_dir'].get_meta() == "new_test_meta"
+
+        # verify set_dir logical key shortcut
+        pkg = Package()
+        pkg.set_dir("/")
+        assert pathlib.Path('foo').resolve().as_uri() == pkg['foo'].physical_keys[0]
+        assert pathlib.Path('bar').resolve().as_uri() == pkg['bar'].physical_keys[0]
 
 def test_package_fetch():
     """ Package.fetch() on nested, relative keys """
@@ -568,42 +609,6 @@ def test_local_set_dir():
     pkg.set_dir("/")
     assert pathlib.Path('foo').resolve().as_uri() == pkg['foo'].physical_keys[0]
     assert pathlib.Path('bar').resolve().as_uri() == pkg['bar'].physical_keys[0]
-
-
-def test_s3_set_dir():
-    """ Verify building a package from an S3 directory. """
-    with patch('t4.packages.list_object_versions') as list_object_versions_mock:
-        pkg = Package()
-        pkg = pkg.set_dir("/", ".")
-        assert 'foo_dir' in pkg.keys()
-        assert 'foo' not in pkg.keys() and 'bar' not in pkg.keys()
-
-        with open('.quiltignore', 'w') as fd:
-            fd.write('foo_dir')
-
-        pkg = Package()
-        pkg = pkg.set_dir("/", ".")
-        assert 'foo_dir' not in pkg.keys()
-
-        with open('.quiltignore', 'w') as fd:
-            fd.write('foo_dir\n')
-            fd.write('foo_dir/baz_dir')
-
-        pkg = Package()
-        pkg = pkg.set_dir("/", ".")
-        assert 'foo_dir/baz_dir' not in pkg.keys() and 'foo_dir' not in pkg.keys()
-
-        pkg = pkg.set_dir("new_dir", ".", meta="new_test_meta")
-
-        assert pathlib.Path('foo').resolve().as_uri() == pkg['new_dir/foo'].physical_keys[0]
-        assert pathlib.Path('bar').resolve().as_uri() == pkg['new_dir/bar'].physical_keys[0]
-        assert pkg['new_dir'].get_meta() == "new_test_meta"
-
-        # verify set_dir logical key shortcut
-        pkg = Package()
-        pkg.set_dir("/")
-        assert pathlib.Path('foo').resolve().as_uri() == pkg['foo'].physical_keys[0]
-        assert pathlib.Path('bar').resolve().as_uri() == pkg['bar'].physical_keys[0]
 
 
     def test_s3_set_dir(self):
