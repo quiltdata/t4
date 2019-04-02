@@ -81,7 +81,7 @@ Next, you need to create a `config.json` and `federation.json` file in the `cata
          "icon":"placeholder icon here",
          "description":"placeholder description here",
          "searchEndpoint":"$SEARCH_ENDPOINT",
-         "apiGatewayEndpoint": "$PREVIEW_ENDPOINT"
+         "apiGatewayEndpoint": "$PREVIEW_ENDPOINT",
          "region":"us-east-1"
       }
    ]
