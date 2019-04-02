@@ -32,20 +32,6 @@ Install the current T4 client from `master`:
 $ pip install git+https://github.com/quiltdata/t4.git#subdirectory=api/python
 ```
 
-## Catalog (Local)
-
-The Javascript catalog is a single-page, static application.
-You can build it as follows:
-
-```bash
-$ cd catalog
-$ npm start
-```
-
-The static assets, including webpack chunks, are written to `/static`.
-
-For more advanced deployment scripts, see [`deploy_navigator.sh`](../deployment/deploy_navigator.sh).
-
 ## Catalog (on AWS)
 
 For instructions on installing the T4 Catalog in AWS see the first section in the [Technical Reference](./Technical Reference.md).
