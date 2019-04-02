@@ -2,6 +2,7 @@ import * as R from 'ramda';
 import * as React from 'react';
 import { Switch, Route, Redirect } from 'react-router-dom';
 
+import AbsRedirect from 'components/Redirect';
 import Admin from 'containers/Admin';
 import * as Auth from 'containers/Auth';
 import Bucket from 'containers/Bucket';
@@ -20,6 +21,13 @@ const requireAdmin = Auth.requireAuth({
   authorizedSelector: Auth.selectors.isAdmin,
 });
 
+// eslint-disable-next-line react/prop-types
+const Activate = ({ match: { params: { token } } }) => {
+  const { registryUrl } = Config.useConfig();
+  const { urls } = NamedRoutes.use();
+  return <AbsRedirect url={urls.activate({ registryUrl, token })} />;
+};
+
 export default () => {
   const cfg = Config.useConfig();
   const protect = React.useMemo(
@@ -33,6 +41,8 @@ export default () => {
     <CatchNotFound id={`${l.pathname}${l.search}${l.hash}`}>
       <Switch>
         <Route path={paths.home} component={protect(HomePage)} exact />
+
+        <Route path={paths.activate} component={Activate} exact />
 
         <Route path={paths.signIn} component={Auth.SignIn} exact />
         <Route path="/login" component={redirectTo(urls.signIn())} exact />
