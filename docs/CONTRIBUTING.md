@@ -77,7 +77,7 @@ To build a static code bundle, as would be necessary in order to serve the catal
 $ npm run build
 ```
 
-To run the catalog in developer mode locally:
+To run the catalog in developer mode:
 
 ```bash
 $ cp config.json.example static/config.json
