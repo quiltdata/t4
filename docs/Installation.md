@@ -34,4 +34,4 @@ $ pip install git+https://github.com/quiltdata/t4.git#subdirectory=api/python
 
 ## Catalog (on AWS)
 
-For instructions on installing the T4 Catalog in AWS see the first section in the [Technical Reference](./Technical Reference.md).
+For instructions on installing the T4 Catalog in AWS see the first section in the [Technical Reference](./Technical%20Reference.md).
