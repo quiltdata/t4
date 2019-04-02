@@ -439,193 +439,8 @@ class PackageTest(QuiltTestCase):
             assert pkg['bar']['a.txt'].physical_keys[0] == 's3://bucket/foo/a.txt?versionId=xyz'
             assert pkg['bar']['x']['y.txt'].physical_keys[0] == 's3://bucket/foo/x/y.txt'
 
+            list_object_versions_mock.assert_called_with('bucket', 'foo/')
 
-def test_list_local_packages():
-    """Verify that list returns packages in the appdirs directory."""
-    temp_local_registry = Path('test_registry').resolve().as_uri()
-    with patch('t4.packages.get_package_registry', lambda path: temp_local_registry), \
-         patch('t4.api.get_package_registry', lambda path: temp_local_registry):
-        # Build a new package into the local registry.
-        Package().build("Quilt/Foo")
-        Package().build("Quilt/Bar")
-        Package().build("Quilt/Test")
-
-        # Verify packages are returned.
-        pkgs = t4.list_packages()
-        assert len(pkgs) == 3
-        assert "Quilt/Foo" in pkgs
-        assert "Quilt/Bar" in pkgs
-
-        # Verify package repr is as expected.
-        pkgs_repr = str(pkgs)
-        assert 'Quilt/Test:latest' in pkgs_repr
-        assert 'Quilt/Foo:latest' in pkgs_repr
-        assert 'Quilt/Bar:latest' in pkgs_repr
-
-        # Test unnamed packages are not added.
-        Package().build()
-        pkgs = t4.list_packages()
-        assert len(pkgs) == 3
-
-        # Verify manifest is registered by hash when local path given
-        pkgs = t4.list_packages("/")
-        assert "Quilt/Foo" in pkgs
-        assert "Quilt/Bar" in pkgs
-
-def test_set_package_entry():
-    """ Set the physical key for a PackageEntry"""
-    pkg = (
-        Package()
-        .set('foo', DATA_DIR / 'foo.txt', {'user_meta': 'blah'})
-        .set('bar', DATA_DIR / 'foo.txt', {'user_meta': 'blah'})
-    )
-    pkg['foo'].meta['target'] = 'unicode'
-    pkg['bar'].meta['target'] = 'unicode'
-
-    # Build a dummy file to add to the map.
-    with open('bar.txt', "w") as fd:
-        fd.write('test_file_content_string')
-        test_file = Path(fd.name)
-    pkg['bar'].set('bar.txt')
-
-    assert test_file.resolve().as_uri() == pkg['bar'].physical_keys[0]
-
-    # Test shortcut codepath
-    pkg = Package().set('bar.txt')
-    assert test_file.resolve().as_uri() == pkg['bar.txt'].physical_keys[0]
-
-def test_tophash_changes():
-    test_file = Path('test.txt')
-    test_file.write_text('asdf', 'utf-8')
-
-    pkg = Package()
-    th1 = pkg.top_hash()
-    pkg.set('asdf', test_file)
-    pkg.build()
-    th2 = pkg.top_hash()
-    assert th1 != th2
-
-    test_file.write_text('jkl', 'utf-8')
-    pkg.set('jkl', test_file)
-    pkg.build()
-    th3 = pkg.top_hash()
-    assert th1 != th3
-    assert th2 != th3
-
-    pkg.delete('jkl')
-    th4 = pkg.top_hash()
-    assert th2 == th4
-
-def test_keys():
-    pkg = Package()
-    assert not pkg.keys()
-
-    pkg.set('asdf', LOCAL_MANIFEST)
-    assert set(pkg.keys()) == {'asdf'}
-
-    pkg.set('jkl;', REMOTE_MANIFEST)
-    assert set(pkg.keys()) == {'asdf', 'jkl;'}
-
-    pkg.delete('asdf')
-    assert set(pkg.keys()) == {'jkl;'}
-
-
-def test_iter():
-    pkg = Package()
-    assert not pkg
-
-    pkg.set('asdf', LOCAL_MANIFEST)
-    assert list(pkg) == ['asdf']
-
-    pkg.set('jkl;', REMOTE_MANIFEST)
-    assert set(pkg) == {'asdf', 'jkl;'}
-
-def test_invalid_set_key():
-    """Verify an exception when setting a key with a path object."""
-    pkg = Package()
-    with pytest.raises(TypeError):
-        pkg.set('asdf/jkl', 123)
-
-def test_brackets():
-    pkg = Package()
-    pkg.set('asdf/jkl', LOCAL_MANIFEST)
-    pkg.set('asdf/qwer', LOCAL_MANIFEST)
-    pkg.set('qwer/asdf', LOCAL_MANIFEST)
-    assert set(pkg.keys()) == {'asdf', 'qwer'}
-
-    pkg2 = pkg['asdf']
-    assert set(pkg2.keys()) == {'jkl', 'qwer'}
-
-    assert pkg['asdf']['qwer'].get() == LOCAL_MANIFEST.as_uri()
-
-    assert pkg['asdf']['qwer'] == pkg['asdf/qwer'] == pkg[('asdf', 'qwer')]
-    assert pkg[[]] == pkg
-
-    pkg = (
-        Package()
-        .set('foo', DATA_DIR / 'foo.txt', {'foo': 'blah'})
-    )
-    pkg['foo'].meta['target'] = 'unicode'
-
-    pkg.build()
-
-    assert pkg['foo'].deserialize() == '123\n'
-    assert pkg['foo']() == '123\n'
-
-    with pytest.raises(KeyError):
-        pkg['baz']
-
-    with pytest.raises(TypeError):
-        pkg[b'asdf']
-
-    with pytest.raises(TypeError):
-        pkg[0]
-
-
-def test_list_remote_packages():
-    """Verify that listing remote packages works as expected."""
-    def pseudo_list_objects(bucket, prefix, recursive):
-        if prefix == '.quilt/named_packages/':
-            return ([{'Prefix': '.quilt/named_packages/foo/'}], [])
-        elif prefix == '.quilt/named_packages/foo/':
-            return ([{'Prefix': '.quilt/named_packages/foo/bar/'}], [])
-        elif prefix == '.quilt/named_packages/foo/bar/':
-            import datetime
-            return (
-                [], [
-                    {'Key': '.quilt/named_packages/foo/bar/1549931300',
-                     'LastModified': datetime.datetime.now() - datetime.timedelta(seconds=30)},
-                    {'Key': '.quilt/named_packages/foo/bar/1549931634',
-                     'LastModified': datetime.datetime.now()},
-                    {'Key': '.quilt/named_packages/foo/bar/latest',
-                     'LastModified': datetime.datetime.now()}]
-            )
-        else:
-            raise ValueError
-
-    def pseudo_get_bytes(src):
-        if src.endswith('foo/bar/latest') or src.endswith('foo/bar/1549931634'):
-            return (b'100', None)
-        elif src.endswith('foo/bar/1549931300'):
-            return (b'90', None)
-        else:
-            raise ValueError
-
-    with patch('t4.api.list_objects', side_effect=pseudo_list_objects), \
-        patch('t4.api.get_bytes', side_effect=pseudo_get_bytes), \
-        patch('t4.Package.browse', return_value=Package()):
-        pkgs = t4.list_packages('s3://my_test_bucket/')
-
-        assert len(pkgs) == 1
-        assert list(pkgs) == ['foo/bar']
-
-        expected = (
-            'PACKAGE                    \tTOPHASH     \tCREATED     \tSIZE        \t\n'
-            'foo/bar:latest             \t100            \tnow            \t0 Bytes\t\n'
-            'foo/bar                    \t90             \t30 seconds ago \t0 Bytes\t\n'
-        )
-        assert str(pkgs) == expected
-                
 
     def test_package_entry_meta(self):
         pkg = (
@@ -789,8 +604,7 @@ def test_list_remote_packages():
             pkg[0]
 
     def test_list_remote_packages(self):
-        # with patch('t4.api.list_objects',
-        #            return_value=([{'Prefix': 'foo'},{'Prefix': 'bar'}],[])) as mock:
+        """Verify that listing remote packages works as expected."""
         def pseudo_list_objects(bucket, prefix, recursive):
             if prefix == '.quilt/named_packages/':
                 return ([{'Prefix': '.quilt/named_packages/foo/'}], [])
@@ -800,16 +614,26 @@ def test_list_remote_packages():
                 import datetime
                 return (
                     [], [
+                        {'Key': '.quilt/named_packages/foo/bar/1549931300',
+                         'LastModified': datetime.datetime.now() - datetime.timedelta(seconds=30)},
                         {'Key': '.quilt/named_packages/foo/bar/1549931634',
-                        'LastModified': datetime.datetime.now()},
+                         'LastModified': datetime.datetime.now()},
                         {'Key': '.quilt/named_packages/foo/bar/latest',
-                        'LastModified': datetime.datetime.now()}]
+                         'LastModified': datetime.datetime.now()}]
                 )
             else:
                 raise ValueError
 
+        def pseudo_get_bytes(src):
+            if src.endswith('foo/bar/latest') or src.endswith('foo/bar/1549931634'):
+                return (b'100', None)
+            elif src.endswith('foo/bar/1549931300'):
+                return (b'90', None)
+            else:
+                raise ValueError
+
         with patch('t4.api.list_objects', side_effect=pseudo_list_objects), \
-            patch('t4.api.get_bytes', return_value=(b'100', None)), \
+            patch('t4.api.get_bytes', side_effect=pseudo_get_bytes), \
             patch('t4.Package.browse', return_value=Package()):
             pkgs = t4.list_packages('s3://my_test_bucket/')
 
@@ -819,6 +643,7 @@ def test_list_remote_packages():
             expected = (
                 'PACKAGE                    \tTOPHASH     \tCREATED     \tSIZE        \t\n'
                 'foo/bar:latest             \t100            \tnow            \t0 Bytes\t\n'
+                'foo/bar                    \t90             \t30 seconds ago \t0 Bytes\t\n'
             )
             assert str(pkgs) == expected
 
