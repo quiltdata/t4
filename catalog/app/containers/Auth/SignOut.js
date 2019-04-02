@@ -21,15 +21,20 @@ const selector = createStructuredSelector({
   waiting: selectors.waiting,
 });
 
-export default composeComponent('Auth.SignOut', () => {
+export const useSignOut = () => {
   const sentry = Sentry.use();
-  const cfg = Config.useConfig();
   const dispatch = reduxHook.useDispatch();
-  const doSignOut = React.useCallback(() => {
+  return React.useCallback(() => {
     const result = defer();
     dispatch(signOut(result.resolver));
     result.promise.catch(sentry.captureException);
+    return result.promise;
   }, [dispatch]);
+};
+
+export default composeComponent('Auth.SignOut', () => {
+  const cfg = Config.useConfig();
+  const doSignOut = useSignOut();
   const { waiting, authenticated } = reduxHook.useMappedState(selector);
   return (
     <React.Fragment>
