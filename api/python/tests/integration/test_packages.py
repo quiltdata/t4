@@ -620,8 +620,7 @@ class PackageTest(QuiltTestCase):
             pkg[0]
 
     def test_list_remote_packages(self):
-        # with patch('t4.api.list_objects',
-        #            return_value=([{'Prefix': 'foo'},{'Prefix': 'bar'}],[])) as mock:
+        """Verify that listing remote packages works as expected."""
         def pseudo_list_objects(bucket, prefix, recursive):
             if prefix == '.quilt/named_packages/':
                 return ([{'Prefix': '.quilt/named_packages/foo/'}], [])
@@ -631,16 +630,26 @@ class PackageTest(QuiltTestCase):
                 import datetime
                 return (
                     [], [
+                        {'Key': '.quilt/named_packages/foo/bar/1549931300',
+                         'LastModified': datetime.datetime.now() - datetime.timedelta(seconds=30)},
                         {'Key': '.quilt/named_packages/foo/bar/1549931634',
-                        'LastModified': datetime.datetime.now()},
+                         'LastModified': datetime.datetime.now()},
                         {'Key': '.quilt/named_packages/foo/bar/latest',
-                        'LastModified': datetime.datetime.now()}]
+                         'LastModified': datetime.datetime.now()}]
                 )
             else:
                 raise ValueError
 
+        def pseudo_get_bytes(src):
+            if src.endswith('foo/bar/latest') or src.endswith('foo/bar/1549931634'):
+                return (b'100', None)
+            elif src.endswith('foo/bar/1549931300'):
+                return (b'90', None)
+            else:
+                raise ValueError
+
         with patch('t4.api.list_objects', side_effect=pseudo_list_objects), \
-            patch('t4.api.get_bytes', return_value=(b'100', None)), \
+            patch('t4.api.get_bytes', side_effect=pseudo_get_bytes), \
             patch('t4.Package.browse', return_value=Package()):
             pkgs = t4.list_packages('s3://my_test_bucket/')
 
@@ -650,6 +659,7 @@ class PackageTest(QuiltTestCase):
             expected = (
                 'PACKAGE                    \tTOPHASH     \tCREATED     \tSIZE        \t\n'
                 'foo/bar:latest             \t100            \tnow            \t0 Bytes\t\n'
+                'foo/bar                    \t90             \t30 seconds ago \t0 Bytes\t\n'
             )
             assert str(pkgs) == expected
 
