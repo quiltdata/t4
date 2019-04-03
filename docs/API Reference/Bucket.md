@@ -90,7 +90,7 @@ __Arguments__
 * __meta(dict)__:  optional user-provided metadata to store
 
 
-## Bucket.put\_file(self, key, path)  {#Bucket.put\_file}
+## Bucket.put\_file(self, key, path, meta=None)  {#Bucket.put\_file}
 
 Stores file at path to key in bucket.
 
@@ -98,6 +98,9 @@ __Arguments__
 
 * __key(str)__:  key in bucket to store file at
 * __path(str)__:  string representing local path to file
+Optional args:
+    meta(dict): T4 metadata to attach to file
+        Must be less than 2KiB serialized
 
 __Returns__
 

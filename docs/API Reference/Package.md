@@ -65,7 +65,7 @@ PackageEntry if prefix matches a logical_key exactly
 otherwise Package
 
 
-## Package.fetch(self, dest)  {#Package.fetch}
+## Package.fetch(self, dest='./')  {#Package.fetch}
 
 Copy all descendants to `dest`. Descendants are written under their logical
 names _relative_ to self.
@@ -109,7 +109,7 @@ json decode error
 invalid package exception
 
 
-## Package.set\_dir(self, lkey, path, meta=None)  {#Package.set\_dir}
+## Package.set\_dir(self, lkey, path=None, meta=None)  {#Package.set\_dir}
 
 Adds all files from `path` to the package.
 
@@ -121,6 +121,7 @@ __Arguments__
 * __lkey(string)__:  prefix to add to every logical key,
     use '/' for the root of the package.
 * __path(string)__:  path to scan for files to add to package.
+    If None, lkey will be substituted in as the path.
 * __meta(dict)__:  user level metadata dict to attach to lkey directory entry.
 
 __Returns__
@@ -195,34 +196,16 @@ fail to create file
 fail to finish write
 
 
-## Package.update(self, new\_keys\_dict, meta=None, prefix=None)  {#Package.update}
-
-Updates the package with the keys and values in `new_keys_dict`.
-
-If a metadata dict is provided, it is attached to and overwrites
-metadata for all entries in `new_keys_dict`.
-
-__Arguments__
-
-* __new_dict(dict)__:  dict of logical keys to update.
-* __meta(dict)__:  metadata dict to attach to every input entry.
-* __prefix(string)__:  a prefix string to prepend to every logical key.
-
-__Returns__
-
-self
-
-
-
-## Package.set(self, logical\_key, entry, meta=None)  {#Package.set}
+## Package.set(self, logical\_key, entry=None, meta=None)  {#Package.set}
 
 Returns self with the object at logical_key set to entry.
 
 __Arguments__
 
 * __logical_key(string)__:  logical key to update
-* __entry(PackageEntry OR string)__:  new entry to place at logical_key in the package
-    if entry is a string, it is treated as a URL, and an entry is created based on it
+* __entry(PackageEntry OR string)__:  new entry to place at logical_key in the package.
+    If entry is a string, it is treated as a URL, and an entry is created based on it.
+    If entry is None, the logical key string will be substituted as the entry value.
 * __meta(dict)__:  user level metadata dict to attach to entry
 
 __Returns__
