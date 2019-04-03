@@ -435,9 +435,9 @@ class PackageTest(QuiltTestCase):
             pkg = Package()
 
             list_object_versions_mock.return_value = ([
-                dict(Key='foo/a.txt', VersionId='xyz', IsLatest=True),
-                dict(Key='foo/x/y.txt', VersionId='null', IsLatest=True),
-                dict(Key='foo/z.txt', VersionId='123', IsLatest=False),
+                dict(Key='foo/a.txt', VersionId='xyz', IsLatest=True, Size=10),
+                dict(Key='foo/x/y.txt', VersionId='null', IsLatest=True, Size=10),
+                dict(Key='foo/z.txt', VersionId='123', IsLatest=False, Size=10),
             ], [])
 
             pkg.set_dir('', 's3://bucket/foo/', meta='test_meta')
@@ -445,6 +445,7 @@ class PackageTest(QuiltTestCase):
             assert pkg['a.txt'].physical_keys[0] == 's3://bucket/foo/a.txt?versionId=xyz'
             assert pkg['x']['y.txt'].physical_keys[0] == 's3://bucket/foo/x/y.txt'
             assert pkg.get_meta() == "test_meta"
+            assert pkg['x']['y.txt'].size is not None  # GH368
 
             list_object_versions_mock.assert_called_with('bucket', 'foo/')
 
@@ -454,6 +455,7 @@ class PackageTest(QuiltTestCase):
 
             assert pkg['bar']['a.txt'].physical_keys[0] == 's3://bucket/foo/a.txt?versionId=xyz'
             assert pkg['bar']['x']['y.txt'].physical_keys[0] == 's3://bucket/foo/x/y.txt'
+            assert pkg['bar']['a.txt'].size is not None  # GH368
 
             list_object_versions_mock.assert_called_with('bucket', 'foo/')
 

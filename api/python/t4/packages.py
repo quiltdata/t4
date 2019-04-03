@@ -600,8 +600,7 @@ class Package(object):
                 if not obj['IsLatest']:
                     continue
                 obj_url = make_s3_url(src_bucket, obj['Key'], obj.get('VersionId'))
-                size, _, _ = get_size_and_meta(obj_url)
-                entry = PackageEntry([obj_url], size, None, None)
+                entry = PackageEntry([obj_url], obj['Size'], None, None)
                 logical_key = obj['Key'][len(src_key):]
                 # TODO: Warn if overwritting a logical key?
                 root.set(logical_key, entry)
