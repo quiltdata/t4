@@ -609,7 +609,7 @@ class Package(object):
 
         return self
 
-    def get(self, logical_key):
+    def get(self, logical_key=None):
         """
         Gets object from logical_key and returns its physical path.
         Equivalent to self[logical_key].get().
@@ -624,10 +624,50 @@ class Package(object):
             KeyError: when logical_key is not present in the package
             ValueError: if the logical_key points to a Package rather than PackageEntry.
         """
-        obj = self[logical_key]
-        if not isinstance(obj, PackageEntry):
-            raise ValueError("Key does point to a PackageEntry")
-        return obj.get()
+        if logical_key:
+            obj = self[logical_key]
+            if not isinstance(obj, PackageEntry):
+                raise ValueError("Key does point to a PackageEntry")
+            return obj.get()
+        else:
+            # a package has a logical root directory if all of its children are rooted at the
+            # same directory or object path. in other words, the following things must match:
+            # * the URL scheme of every physical key is the same
+            # * the root path to each
+            first_lkey, first_entry = next(self.walk())
+            first_pkey = first_entry.physical_keys[0]
+            hypothesized_scheme = urlparse(first_pkey).scheme
+
+            # ensure that the first entry has a logically consistent physical and logical key
+            if not first_pkey.endswith(first_lkey):
+                raise QuiltException(
+                    "This package contains entries whose logical and physical keys are "
+                    "inconsistent."
+                )
+            hypothesized_root_path = first_pkey[:first_pkey.rfind(first_lkey)]
+
+            # every subsequent entry will be checked to ensure that its logical key is rooted
+            # at the same physical key as the first entry
+            for lkey, entry in self.walk():
+                pkey = entry.physical_keys[0]
+                scheme = urlparse(pkey).scheme
+                root_path = pkey[:pkey.rfind(lkey)]
+
+                if scheme != hypothesized_scheme:
+                    raise QuiltException(
+                        "This package contains a mixture of local and remote entries."
+                    )
+                elif not pkey.endswith(lkey):
+                    raise QuiltException(
+                        "This package contains entries whose logical and physical keys are "
+                        "inconsistent."
+                    )
+                elif root_path != hypothesized_root_path:
+                    raise QuiltException(
+                        "This package contains entries rooted at different physical directories."
+                    )
+
+            return hypothesized_root_path
 
     def get_meta(self):
         """
