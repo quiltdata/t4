@@ -1,5 +1,3 @@
-Once you have a package definition you can work with it using the package API.
-
 The examples in this section use the following mock package:
 
 ```python
@@ -34,13 +32,19 @@ To download a subset of files from a package directory to a `dest`, use `fetch`:
 
 ```python
 # download a subfolder
-p["commodities"].fetch("./")
+p["commodities"].fetch()
 
 # download a single file
-p["commodities"]["gold.csv"].fetch("gold.csv")
+p["commodities"]["gold.csv"].fetch()
 
 # download everything
-p.fetch("trade-info/")
+p.fetch()
+```
+
+`fetch` will default to downloading the files to the current directory, but you can also specify an alternative path:
+
+```python
+p["commodities"]["gold.csv"].fetch("./data/trade/gold.csv")
 ```
 
 ## Downloading package data into memory
@@ -61,17 +65,27 @@ $ python
 <<< {'gold': 'au', 'silver': 'ag'}
 ```
 
-The deserializer should accept a byte stream.
+The deserializer should accept a byte stream as input.
 
-## Reading package metadata
+## Getting entry locations
 
-Use `get_meta` to load metadata:
+You can get the file or object path of an individual entry using `get`:
+
+```python
+p["commodities"]["gold.csv"].get()
+
+# returns /path/to/workdir/commodities/gold.csv
+```
+
+## Getting metadata
+
+Entries, folders, and the package itself may all have associated metadata, which you can use `get_meta` to retrieve:
 
 ```python
 # get entry metadata
 p["commodities"]["gold.csv"].get_meta()
 
-# get folder metadata
+# get directory metadata
 p["commodities"].get_meta()
 
 # get package metadata
