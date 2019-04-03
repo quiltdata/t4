@@ -1,33 +1,52 @@
-import get from 'lodash/fp/get';
-import React from 'react';
+import * as R from 'ramda';
+import * as React from 'react';
 import { FormattedMessage as FM } from 'react-intl';
+import { connect } from 'react-redux';
 import {
   branch,
   renderComponent,
   withStateHandlers,
 } from 'recompose';
+import { createStructuredSelector } from 'reselect';
 import { reduxForm, Field, SubmissionError } from 'redux-form/immutable';
 
+import Working from 'components/Working';
 import * as NamedRoutes from 'utils/NamedRoutes';
+import * as Sentry from 'utils/Sentry';
 import Link from 'utils/StyledLink';
 import defer from 'utils/defer';
-import { captureError } from 'utils/errorReporting';
 import { composeComponent } from 'utils/reactTools';
 import validate, * as validators from 'utils/validators';
 
+import * as Layout from './Layout';
+import { useSignOut } from './SignOut';
 import { changePassword } from './actions';
 import * as errors from './errors';
 import msg from './messages';
-import * as Layout from './Layout';
+import * as selectors from './selectors';
 
 
 const Container = Layout.mkLayout(<FM {...msg.passChangeHeading} />);
 
 export default composeComponent('Auth.PassChange',
-  // TODO: what to show if the user is authenticated
-  // connect(createStructuredSelector({ authenticated })),
-  // TODO: inject captureError
-  // withErrorReporting(),
+  connect(createStructuredSelector({
+    authenticated: selectors.authenticated,
+    waiting: selectors.waiting,
+  })),
+  branch(R.prop('authenticated'), renderComponent(({ waiting }) => {
+    const doSignOut = useSignOut();
+    React.useEffect(() => {
+      if (!waiting) doSignOut();
+    }, [waiting]);
+    return (
+      <Container>
+        <Working style={{ textAlign: 'center' }}>
+          <FM {...msg.signOutWaiting} />
+        </Working>
+      </Container>
+    );
+  })),
+  Sentry.inject(),
   withStateHandlers({
     done: false,
   }, {
@@ -35,7 +54,7 @@ export default composeComponent('Auth.PassChange',
   }),
   reduxForm({
     form: 'Auth.PassChange',
-    onSubmit: async (values, dispatch, { setDone, match }) => {
+    onSubmit: async (values, dispatch, { setDone, match, sentry }) => {
       try {
         const { link } = match.params;
         const { password } = values.toJS();
@@ -50,12 +69,12 @@ export default composeComponent('Auth.PassChange',
         if (e instanceof errors.InvalidPassword) {
           throw new SubmissionError({ password: 'invalid' });
         }
-        captureError(e);
+        sentry.captureException(e);
         throw new SubmissionError({ _error: 'unexpected' });
       }
     },
   }),
-  branch(get('done'), renderComponent(() => {
+  branch(R.prop('done'), renderComponent(() => {
     const { urls } = NamedRoutes.use();
     return (
       <Container>

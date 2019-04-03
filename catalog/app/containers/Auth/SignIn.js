@@ -9,9 +9,9 @@ import { createStructuredSelector } from 'reselect';
 
 import * as Config from 'utils/Config';
 import * as NamedRoutes from 'utils/NamedRoutes';
+import * as Sentry from 'utils/Sentry';
 import Link from 'utils/StyledLink';
 import defer from 'utils/defer';
-import { captureError } from 'utils/errorReporting';
 import { composeComponent } from 'utils/reactTools';
 import * as validators from 'utils/validators';
 import withParsedQuery from 'utils/withParsedQuery';
@@ -29,9 +29,10 @@ export default composeComponent('Auth.SignIn',
   connect(createStructuredSelector({
     authenticated: selectors.authenticated,
   })),
+  Sentry.inject(),
   reduxForm({
     form: 'Auth.SignIn',
-    onSubmit: async (values, dispatch) => {
+    onSubmit: async (values, dispatch, { sentry }) => {
       const result = defer();
       dispatch(signIn(values.toJS(), result.resolver));
       try {
@@ -40,7 +41,7 @@ export default composeComponent('Auth.SignIn',
         if (e instanceof errors.InvalidCredentials) {
           throw new SubmissionError({ _error: 'invalidCredentials' });
         }
-        captureError(e);
+        sentry.captureException(e);
         throw new SubmissionError({ _error: 'unexpected' });
       }
     },

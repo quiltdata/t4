@@ -13,8 +13,8 @@ const Faint = styled('h1')({
   opacity: 0.6,
 });
 
-const Working = ({ children }) => (
-  <Faint>
+const Working = ({ children, ...props }) => (
+  <Faint {...props}>
     <Spinner />
     {children}
   </Faint>
