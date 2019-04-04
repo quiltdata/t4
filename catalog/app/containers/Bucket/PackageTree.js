@@ -25,7 +25,7 @@ import {
 import tagged from 'utils/tagged';
 
 import BreadCrumbs, { Crumb } from './BreadCrumbs';
-import * as Code from './Code';
+import Code from './Code';
 import FilePreview from './FilePreview';
 import Listing, { ListingItem } from './Listing';
 import Summary from './Summary';
@@ -173,10 +173,10 @@ export default RT.composeComponent('Bucket.PackageTree',
     const s3 = AWS.S3.use();
     const { urls } = NamedRoutes.use();
     // TODO: handle revision / hash
-    const code = Code.use(dedent`
+    const code = dedent`
       import t4
       p = t4.Package.browse("${name}", registry="s3://${bucket}")
-    `);
+    `;
 
     return (
       <Data
@@ -188,7 +188,6 @@ export default RT.composeComponent('Bucket.PackageTree',
             <div className={classes.topBar}>
               <Crumbs {...{ bucket, name, revision, path }} />
               <div className={classes.spacer} />
-              {code.btn}
               {AsyncResult.case({
                 Ok: TreeDisplay.case({
                   // eslint-disable-next-line react/prop-types
@@ -210,7 +209,7 @@ export default RT.composeComponent('Bucket.PackageTree',
                 _: () => null,
               }, result)}
             </div>
-            {code.card}
+            <Code>{code}</Code>
             {AsyncResult.case({
               Ok: TreeDisplay.case({
                 File: (handle) => <FilePreview handle={handle} />,

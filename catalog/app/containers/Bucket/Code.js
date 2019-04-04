@@ -1,41 +1,62 @@
 import * as React from 'react';
-import Button from '@material-ui/core/Button';
-import Card from '@material-ui/core/Card';
+import ExpansionPanel from '@material-ui/core/ExpansionPanel';
+import ExpansionPanelDetails from '@material-ui/core/ExpansionPanelDetails';
+import ExpansionPanelSummary from '@material-ui/core/ExpansionPanelSummary';
+import Icon from '@material-ui/core/Icon';
+import Typography from '@material-ui/core/Typography';
 import { makeStyles } from '@material-ui/styles';
 
 import ButtonIcon from 'components/ButtonIcon';
 
 
 const useStyles = makeStyles((t) => ({
-  card: {
+  root: {
     marginBottom: t.spacing.unit * 2,
   },
   code: {
     fontFamily: t.typography.monospace.fontFamily,
     fontSize: t.typography.body2.fontSize,
     overflow: 'auto',
-    padding: t.spacing.unit * 2,
     whiteSpace: 'pre',
+  },
+  summaryExpanded: {
+  },
+  summaryRoot: {
+    '&$summaryExpanded': {
+      minHeight: 48,
+    },
+  },
+  summaryContent: {
+    '&$summaryExpanded': {
+      margin: [[12, 0]],
+    },
+  },
+  heading: {
+    display: 'flex',
   },
 }));
 
-export const use = (code) => {
+// eslint-disable-next-line react/prop-types
+export default ({ children }) => {
   const classes = useStyles();
-  const [visible, setVisible] = React.useState(true);
-  const toggle = React.useCallback(() => setVisible((v) => !v), []);
 
-  const card = visible && (
-    <Card className={classes.card}>
-      <div className={classes.code}>{code}</div>
-    </Card>
+  return (
+    <ExpansionPanel className={classes.root} defaultExpanded>
+      <ExpansionPanelSummary
+        expandIcon={<Icon>expand_more</Icon>}
+        classes={{
+          expanded: classes.summaryExpanded,
+          root: classes.summaryRoot,
+          content: classes.summaryContent,
+        }}
+      >
+        <Typography variant="button" className={classes.heading}>
+          <ButtonIcon>code</ButtonIcon>Code
+        </Typography>
+      </ExpansionPanelSummary>
+      <ExpansionPanelDetails>
+        <div className={classes.code}>{children}</div>
+      </ExpansionPanelDetails>
+    </ExpansionPanel>
   );
-
-  const btn = (
-    <Button variant="outlined" onClick={toggle}>
-      <ButtonIcon position="left">code</ButtonIcon>
-      {' '}{visible ? 'Hide' : 'Show'}&nbsp;code
-    </Button>
-  );
-
-  return { card, btn };
 };

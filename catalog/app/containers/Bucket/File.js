@@ -35,7 +35,7 @@ import { readableBytes } from 'utils/string';
 import withParsedQuery from 'utils/withParsedQuery';
 
 import BreadCrumbs, { Crumb } from './BreadCrumbs';
-import * as Code from './Code';
+import Code from './Code';
 import FilePreview from './FilePreview';
 import * as requests from './requests';
 import { withSignedUrl } from './utils';
@@ -273,11 +273,11 @@ export default RT.composeComponent('Bucket.File',
     classes,
   }) => {
     const { urls } = NamedRoutes.use();
-    const code = Code.use(dedent`
+    const code = dedent`
       import t4
       b = t4.Bucket("s3://${bucket}")
       b.fetch("${path}", "./${basename(path)}")
-    `);
+    `;
 
     return (
       <React.Fragment>
@@ -294,14 +294,13 @@ export default RT.composeComponent('Bucket.File',
             <VersionInfo bucket={bucket} path={path} version={version} />
           </Typography>
           <div className={classes.spacer} />
-          {code.btn}
           {withSignedUrl({ bucket, key: path, version }, (url) => (
             <Button variant="outlined" href={url} className={classes.button}>
               <ButtonIcon position="left">arrow_downward</ButtonIcon> Download
             </Button>
           ))}
         </div>
-        {code.card}
+        <Code>{code}</Code>
         <Meta bucket={bucket} path={path} version={version} />
         <FilePreview handle={{ bucket, key: path, version }} />
       </React.Fragment>
