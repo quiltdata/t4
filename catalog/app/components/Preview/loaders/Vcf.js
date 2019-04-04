@@ -12,6 +12,6 @@ export const detect = R.pipe(utils.stripCompression,
 export const load = utils.previewFetcher('vcf', ({ info: { data: d } }) =>
   AsyncResult.Ok(PreviewData.Vcf({
     meta: d.meta,
-    header: d.header.map((row) => row.split('\t')),
-    data: d.data.map((row) => row.split('\t')),
+    header: d.header,
+    data: d.data,
   })));
