@@ -3,7 +3,7 @@
 from importlib.machinery import ModuleSpec
 import sys
 
-from t4.util import BASE_PATH
+from t4.util import get_from_config
 from t4 import list_packages, Package
 
 
@@ -29,6 +29,7 @@ class DataPackageImporter:
         Module executor.
         """
         name_parts = module.__name__.split('.')
+        registry = get_from_config('default_local_registry')
 
         if module.__name__ == 't4.data':
             # __path__ must be set even if the package is virtual. Since __path__ will be
@@ -44,7 +45,7 @@ class DataPackageImporter:
             for pkg in list_packages():
                 pkg_user, pkg_name = pkg.split('/')
                 if pkg_user == namespace:
-                    module.__dict__[pkg_name] = Package.browse(pkg)
+                    module.__dict__[pkg_name] = Package.browse(pkg, registry=registry)
 
             module.__path__ = MODULE_PATH
             return module
