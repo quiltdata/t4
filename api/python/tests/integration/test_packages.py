@@ -996,3 +996,30 @@ class PackageTest(QuiltTestCase):
             pkg.set('foo', './')
         with pytest.raises(QuiltException):
             pkg.set('foo', os.path.dirname(__file__))
+
+
+    def test_default_package_get_local(self):
+        foodir = pathlib.Path("foo_dir")
+        bazdir = pathlib.Path("baz_dir")
+        foodir.mkdir(parents=True, exist_ok=True)
+        bazdir.mkdir(parents=True, exist_ok=True)
+        with open('bar', 'w') as fd:
+            fd.write(fd.name)
+        with open('foo', 'w') as fd:
+            fd.write(fd.name)
+        with open(bazdir / 'baz', 'w') as fd:
+            fd.write(fd.name)
+        with open(foodir / 'bar', 'w') as fd:
+            fd.write(fd.name)
+
+        currdir = 'file://' + pathlib.Path('.').absolute().as_posix() + '/'
+
+        # consistent local case
+        pkg = t4.Package().set_dir("/", "./")
+        assert pkg.get() == currdir
+
+        # package with at least one inconsistent path
+        pkg = t4.Package().set_dir("/", "./")
+        pkg.set('badpath', 'bar')
+        with pytest.raises(QuiltException):
+            pkg.get()
