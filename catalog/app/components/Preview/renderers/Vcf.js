@@ -21,6 +21,7 @@ const useStyles = makeStyles((t) => ({
   },
   cell: {
     border: 'none',
+    whiteSpace: 'nowrap',
 
     '&, &:last-child': {
       paddingLeft: t.spacing.unit * 2,
@@ -44,7 +45,7 @@ const useStyles = makeStyles((t) => ({
 const Vcf = ({ meta, header, data }) => {
   const classes = useStyles();
 
-  const renderCell = (type, i) => (col, j) => (
+  const renderCell = (type, i = '') => (col, j) => (
     <TableCell
       // eslint-disable-next-line react/no-array-index-key
       key={`${type}:${i}:${j}`}
@@ -69,12 +70,9 @@ const Vcf = ({ meta, header, data }) => {
               </TableCell>
             </TableRow>
           ))}
-          {header.map((row, i) => (
-            // eslint-disable-next-line react/no-array-index-key
-            <TableRow key={`header:${i}`} className={classes.row}>
-              {row.map(renderCell('header', i))}
-            </TableRow>
-          ))}
+          <TableRow className={classes.row}>
+            {header.map(renderCell('header'))}
+          </TableRow>
         </TableHead>
         <TableBody>
           {data.map((row, i) => (
