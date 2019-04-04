@@ -11,7 +11,7 @@ export default {
   },
 
   activate: {
-    path: '/activate/:link',
+    path: '/activate/:token',
     url: ({ registryUrl, token }) => `${registryUrl}/activate/${token}`,
   },
 
