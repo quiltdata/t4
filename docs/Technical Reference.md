@@ -1,65 +1,77 @@
 This page provides a technical reference on certain advanced configuration options in T4.
 
-## Deploying Quilt on AWS
+## Deploy a private Quilt instance on AWS
 
-The following instructions use CloudFormation to deploy T4 services to your private AWS account.
+The following instructions use AWS CloudFormation to deploy a private Quilt instance
+in your AWS account.
 
-1. Ensure you have sufficient permissions to proceed. The `AdministratorAccess` policy is sufficient.
-2. Create, or ensure you have already created, an [AWS TLS Certificate](https://aws.amazon.com/certificate-manager/) which maps to the public domain name you want your catalog to use. For example, if you want your catalog to be publicly accessible from `t4.foo.com`, you will need to have a certificate for `t4.foo.com` or `*.foo.com` registered in your account.
+Quilt is a data collaboration platform. A Quilt _instance_ is a private hub that
+runs in your virtual private cloud (VPC).
+Each instance consists of a password-protected web catalog on your domain,
+back end services, a secure server to manage user identities, and a Python API.
 
-   An AWS certificate is an Amazon-issued HTTPS certificate, created via the [AWS Certificate Manager service](https://aws.amazon.com/certificate-manager/), and it's a necessity because it enables HTTPS access to your catalog. If you have not created one, [step through the flow for creating one now](https://docs.aws.amazon.com/acm/latest/userguide/gs-acm-request-public.html). If you already have a certificate for your website, but it's not an AWS-issued certificate, see the instructions on [importing an external certificate into AWS](https://docs.aws.amazon.com/acm/latest/userguide/import-certificate.html).
+### Pre-requisites
 
-3. Go to `Services > CloudFormation > Create stack` in your AWS Console.
+1. **An AWS account**
 
-    ![](./imgs/start.png)
+1. **The Quilt CloudFormation Template**. You may obtain and run the template
+on [AWS Marketplace](https://aws.amazon.com/marketplace).
+Or you may email [contact@quiltdata.io](mailto:contact@quiltdata.io)
+to purchase a license.
 
-4. Click "Upload a template to Amazon S3" and select the `t4-deployment.yaml` file provided to you by Quilt. Click Next.
+1. **IAM Permissions** to run the CloudFormation template.
+The `AdministratorAccess` policy is sufficient. (Quilt creates and manages a VPC,
+containers, S3 buckets, a database, and more.) If you wish to create a service
+role for the installation, visit
+`IAM > Roles > Create Role > AWS service > CloudFormation` in the AWS console.
 
-5. You should now be at the stack parameters screen. This is where you will fill out of all of the configurable details of your Quilt T4 instance. These are, in order:
+1. The **ability to create DNS entries**, such as CNAME and TXT records,
+for your company's domain.
 
-    * **Stack name**&mdash;CloudFormation will deploy your T4 catalog instance and all of its associated services as a "stack" with this name. This name is currently only used for administering your resources; it will not be seen by end users.
-    * **DefaultSender**&mdash;You can invite other users to T4 via emails from this address. This field is in the form `NAME <ADDRESS>`, where `NAME` is to name is the associated with the email (e.g. `Aleksey`) and `ADDRESS` is the email address that the email will actually be sent from. The name must be alphanumeric, and the address must be a valid email address. For example, `Aleksey <admin@quiltdata.com>`.
-  
-      Note that the email address must be one that your SMTP server, configured in the next section, has access to.
+1. **An SSL/TLS certificate in the us-east-1 region** to secure the domain where
+your users will access your Quilt instance. For example,
+to make your Quilt catalog available at `https://quilt.mycompany.com`,
+you require a certificate for `*.mycompany.com` in the [AWS Certificate Manager](https://aws.amazon.com/certificate-manager/).
+You may either [create a new certificate](https://docs.aws.amazon.com/acm/latest/userguide/gs-acm-request-public.html), or
+[import an existing certificate](https://docs.aws.amazon.com/acm/latest/userguide/import-certificate.html).
 
-    * **SmtpHost**, **SmtpPassword**, **SmtpUsername**&mdash;Log-in information for an SMTP mail server. This server will be used to send user invite emails from your `DefaultSendeer` address. If do not have one, you may set one up via [Amazon SES](https://aws.amazon.com/ses/).
-    * **AdminUsername**, **AdminEmail**, **AdminPassword**&mdash;This is the account login for the initial catalog administrator account. Only admins can configure catalog permissions. The initial admin account can promote other accounts to admin. Note that `AdminPassword` must be at least 8 characters long.
-    * **BucketTitle**, **BucketIcon**, **BucketDescription**&mdash;A bucket title and description, and a URL pointing to a (preferably square) image (in any reasonable image format) that will be used as the bucket logo. These fields are exposed to users in the catalog selection dropdown menu:
-    ![](./imgs/buckets_dropdown.png)
+1. **An SSL/TLS certificate in the same region as your Quilt instance**, for
+the elastic load balancer of the Quilt server. See the above pre-requisite for details.
 
-      > These values can be updated after-the-fact, but not using AWS CloudFormation. Instead, see the instructions in the section "Federations and bucket config".
+### CloudFormation stack creation
 
-    * **CertificateArn**&mdash;The [ARN](https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html) associated with the HTTP certificate you will use for HTTPS access to the catalog. See step 4 for instructions on getting one.
-    * **QuiltWebHost**&mdash;The URL that your catalog will be served out of. Must pattern match the AWS certificate you provide to the `CertificateARN` field. For example, an AWS certificate for `*.foo.com` allows for `t4.foo.com` or `catalog.foo.com` as your `QuiltWebHost`, but not `t4.notfoo.com`.
-    * **DBPassword**&mdash;The auth database password. This database will not be publicly accessible, but you may need to accesss it directly in unusual circumstances. This value must be at least 64 characters in length (use `uuidgen | sha256sum`).
-    * **SecretKey**&mdash;Used for session authorization. This value must be at least 64 characters in length (use `uuidgen | sha256sum`).
-    * **ProductCode**&mdash;This is a Quilt-set fields with autogenerated values that can be safely ignored.
-    * **QuiltBucketName**&mdash;Name of the S3 bucket that this catalog instance will be based out of. This should be the same S3 bucket that you configured for access authorization in step 2.
-    * **ConfigBucketName**&mdash;Name of a new S3 bucket that will be created automatically by the stack. This bucket will be used to store certain configuration files associated with your catalog instance. The bucket name must be globally unique, e.g. it cannot point to a bucket that already exists (even if that bucket is in your account).
+1. If you are using AWS Marketplace, skip this step. Otherwise, go to
+`Services > CloudFormation` in the AWS Console. Select the desired region in
+the upper right. Click `Create stack`, then upload your template file.
+Click `Next`.
 
-      We recommend a bucket name ending in `-config`, to make it more obvious that this bucket is configuration-only.
-    * **CreateDefaultRoles**&mdash;Whether or not to create default roles, which will be used as part of the invite flow for inviting new users to T4. If set to "False", you will need to do additional configuration before you can invite new users to T4. You should probably leave this set to "True".
+    ![](./imgs/create-stack.png)
 
-6. Click Next.
-7. On the Options screen that follows, go to the "Termination Protection" section in "Advanced" and click "Enable".
+1. You can now specify stack details in the form of CloudFormation
+_parameters_. Refer to the descriptions displayed above each
+text box for further details. Once you have completed this page, click `Next`.
+
+    ![](./imgs/stack-details.png)
+
+1. On the Options screen that follows, go to the "Termination Protection" section in "Advanced" and click "Enable".
 
     ![](./imgs/term_protect.png)
 
     This protects the stack deployment pipeline from accidental deletion. Click Next.
 
-8. On the confirmation screen, check the box asking you to acknowledge that CloudFormation may create IAM roles, then click Create.
+1. On the confirmation screen, check the box asking you to acknowledge that CloudFormation may create IAM roles, then click Create.
 
     ![](./imgs/finish.png)
 
     Click Create.
 
-9. CloudFormation typically takes around 30 minutes to spin up your stack. Once that is done, you should see `CREATE_COMPLETE` as the Status for your CloudFormation stack.
+1. CloudFormation typically takes around 30 minutes to spin up your stack. Once that is done, you should see `CREATE_COMPLETE` as the Status for your CloudFormation stack.
 
     ![](./imgs/outputs.png)
 
-10. Select the stack and open the Outputs tab. These should be three values there. They are `CloudFrontDomain`, `LoadBalancerDNSName`, and `RegistryHost`. These values still need to be mapped to user-facing URLs via DNS.
+1. Select the stack and open the Outputs tab. These should be three values there. They are `CloudFrontDomain`, `LoadBalancerDNSName`, and `RegistryHost`. These values still need to be mapped to user-facing URLs via DNS.
 
-11. Go to your DNS service (if you are using AWS, this is [Route 53](https://aws.amazon.com/route53/)). Create two `CNAME` records: one mapping your catalog URL (`QuiltWebHost`) to the `CloudFrontDomain`, and one mapping your auth service URL (`RegistryHost`) to the `LoadBalancerDNSName`.
+1. Go to your DNS service (if you are using AWS, this is [Route 53](https://aws.amazon.com/route53/)). Create two `CNAME` records: one mapping your catalog URL (`QuiltWebHost`) to the `CloudFrontDomain`, and one mapping your auth service URL (`RegistryHost`) to the `LoadBalancerDNSName`.
 
 If all went well, your catalog should now be available and accessible.
 
