@@ -300,7 +300,7 @@ def list_packages(registry=None):
                 pkg_ctimes.append(pkg_hash_path.stat().st_ctime)
 
                 pkg = Package.browse(name, registry='local', top_hash=pkg_hash)
-                pkg_sizes.append(pkg.reduce(lambda tot, tup: tot + tup[1].size, default=0))
+                pkg_sizes.append(sum(pkg.map(lambda _, entry: entry.size)))
 
             for top_hash, ctime, size in zip(pkg_hashes, pkg_ctimes, pkg_sizes):
                 pkg_info.append(
@@ -372,7 +372,7 @@ def list_packages(registry=None):
                     pkg = Package.browse(
                         pkg_name, top_hash=pkg_hash, registry='s3://' + bucket_name
                     )
-                    pkg_sizes.append(pkg.reduce(lambda tot, tup: tot + tup[1].size, default=0))
+                    pkg_sizes.append(sum(pkg.map(lambda _, entry: entry.size)))
 
                 for display_name, top_hash, ctime, size in zip(
                         pkg_display_names, pkg_hashes, pkg_ctimes, pkg_sizes

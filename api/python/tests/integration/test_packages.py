@@ -951,27 +951,6 @@ class PackageTest(QuiltTestCase):
         assert list(p_copy) == ['a'] and list(p_copy['a']) == ['df']
 
 
-    def test_reduce(self):
-        pkg = Package()
-        pkg.set('as/df', LOCAL_MANIFEST)
-        pkg.set('as/qw', LOCAL_MANIFEST)
-        assert pkg.reduce(lambda a, b: a) == ('as/df', pkg['as/df'])
-        assert pkg.reduce(lambda a, b: b) == ('as/qw', pkg['as/qw'])
-        assert list(pkg.reduce(lambda a, b: a + [b], [])) == [
-            ('as/df', pkg['as/df']),
-            ('as/qw', pkg['as/qw'])
-        ]
-
-        pkg['as'].set_meta({'foo': 'bar'})
-        assert pkg.reduce(lambda a, b: b, include_directories=True) ==\
-            ('as/qw', pkg['as/qw'])
-        assert list(pkg.reduce(lambda a, b: a + [b], [], include_directories=True)) == [
-            ('as/', pkg['as']),
-            ('as/df', pkg['as/df']),
-            ('as/qw', pkg['as/qw'])
-        ]
-
-
     def test_import(self):
         with patch('t4.Package.browse') as browse_mock, \
             patch('t4.imports.list_packages') as list_packages_mock:
