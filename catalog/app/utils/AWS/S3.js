@@ -8,7 +8,11 @@ import * as Config from './Config';
 import * as Credentials from './Credentials';
 
 
-const Ctx = React.createContext();
+const DEFAULT_OPTS = {
+  signatureVersion: 'v4',
+};
+
+const Ctx = React.createContext(DEFAULT_OPTS);
 
 export const Provider = RT.composeComponent('AWS.S3.Provider',
   ({ children, ...props }) => {
