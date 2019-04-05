@@ -659,7 +659,7 @@ class PackageTest(QuiltTestCase):
             assert list(pkgs) == ['foo/bar']
 
             expected = (
-                'PACKAGE                    \tTOPHASH     \tCREATED     \tSIZE        \t\n'
+                'PACKAGE                    \tTOP HASH    \tCREATED     \tSIZE        \t\n'
                 'foo/bar:latest             \t100            \tnow            \t0 Bytes\t\n'
                 'foo/bar                    \t90             \t30 seconds ago \t0 Bytes\t\n'
             )
