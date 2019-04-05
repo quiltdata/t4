@@ -7,8 +7,8 @@ import { createStructuredSelector } from 'reselect';
 import Lifecycle from 'components/Lifecycle';
 import Working from 'components/Working';
 import * as Config from 'utils/Config';
+import * as Sentry from 'utils/Sentry';
 import defer from 'utils/defer';
-import { captureError } from 'utils/errorReporting';
 import { composeComponent } from 'utils/reactTools';
 
 import { signOut } from './actions';
@@ -21,14 +21,20 @@ const selector = createStructuredSelector({
   waiting: selectors.waiting,
 });
 
-export default composeComponent('Auth.SignOut', () => {
-  const cfg = Config.useConfig();
+export const useSignOut = () => {
+  const sentry = Sentry.use();
   const dispatch = reduxHook.useDispatch();
-  const doSignOut = React.useCallback(() => {
+  return React.useCallback(() => {
     const result = defer();
     dispatch(signOut(result.resolver));
-    result.promise.catch(captureError);
+    result.promise.catch(sentry('captureException'));
+    return result.promise;
   }, [dispatch]);
+};
+
+export default composeComponent('Auth.SignOut', () => {
+  const cfg = Config.useConfig();
+  const doSignOut = useSignOut();
   const { waiting, authenticated } = reduxHook.useMappedState(selector);
   return (
     <React.Fragment>

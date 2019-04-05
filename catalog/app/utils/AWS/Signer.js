@@ -22,6 +22,7 @@ export const useRequestSigner = () => {
 };
 
 export const useS3Signer = ({ urlExpiration = DEFAULT_URL_EXPIRATION } = {}) => {
+  Credentials.use().suspend();
   const s3 = S3.use();
   return React.useCallback(
     ({ bucket, key, version }) =>

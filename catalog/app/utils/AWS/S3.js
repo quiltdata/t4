@@ -5,6 +5,7 @@ import * as RT from 'utils/reactTools';
 import useMemoEq from 'utils/useMemoEq';
 
 import * as Config from './Config';
+import * as Credentials from './Credentials';
 
 
 const Ctx = React.createContext();
@@ -15,6 +16,7 @@ export const Provider = RT.composeComponent('AWS.S3.Provider',
 
 export const use = () => {
   const config = Config.use();
+  Credentials.use().suspend();
   const props = React.useContext(Ctx);
   // TODO: use cache?
   return useMemoEq({ ...config, ...props }, (cfg) => new S3(cfg));

@@ -12,9 +12,9 @@ import Button from '@material-ui/core/Button';
 import { styled } from '@material-ui/styles';
 
 import Working from 'components/Working';
+import * as Sentry from 'utils/Sentry';
 import copyToClipboard from 'utils/clipboard';
 import defer from 'utils/defer';
-import { captureError } from 'utils/errorReporting';
 import { composeComponent } from 'utils/reactTools';
 
 import { getCode } from './actions';
@@ -40,6 +40,7 @@ export default composeComponent('Auth.Code',
       copyToClipboard(result);
     },
   }),
+  Sentry.inject(),
   lifecycle({
     componentWillMount() {
       const result = defer();
@@ -47,7 +48,7 @@ export default composeComponent('Auth.Code',
       result.promise
         .then(this.props.setResult)
         .catch((e) => {
-          captureError(e);
+          this.props.sentry('captureException', e);
           this.props.setResult(e);
         });
     },

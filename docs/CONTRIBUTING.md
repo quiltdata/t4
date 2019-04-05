@@ -51,6 +51,8 @@ When your branch is ready, you may run `tox` or `detox` to test a new install. T
 
 ## Local catalog development
 
+Note that, at the current time, it is only possible to run a local catalog if you already have a catalog deployed to AWS, because the catalog relies on certain services (namely, AWS Lambda and the AWS Elasticsearch Service) which cannot be run locally.
+
 ### Environment
 
 Use `npm` to install the catalog (`t4-navigator`) dependencies locally:
@@ -67,6 +69,49 @@ To fix this, point `npm` to a Python 2 path on your machine. For example on macO
 ```bash
 $ npm config set python /usr/bin/python
 $ npm install
+```
+
+Next, you need to create a `config.json` and `federation.json` file in the `catalog/static` subdirectory. For `federation.json` use the following template:
+
+```json
+{
+   "buckets": [{
+         "name":"quilt-example",
+         "title":"Title here",
+         "icon":"placeholder icon here",
+         "description":"placeholder description here",
+         "searchEndpoint":"$SEARCH_ENDPOINT",
+         "apiGatewayEndpoint": "$PREVIEW_ENDPOINT",
+         "region":"us-east-1"
+      }
+   ]
+}
+```
+
+For `config.json` use the following template:
+
+```json
+{
+   "federations": [
+      "/federation.json"
+   ],
+   "suggestedBuckets": [
+   ],
+   "apiGatewayEndpoint": "$PREVIEW_ENDPOINT",
+   "sentryDSN": "",
+   "alwaysRequiresAuth": false,
+   "defaultBucket": "t4-staging",
+   "disableSignUp": true,
+   "guestCredentials": {
+      "accessKeyId": "$ACCESS_KEY_ID",
+      "secretAccessKey": "$SECRET_ACCESS_KEY"
+   },
+   "intercomAppId": "",
+   "mixpanelToken": "",
+   "registryUrl": "$REGISTRY_ENDPOINT",
+   "signInRedirect": "/",
+   "signOutRedirect": "/"
+}
 ```
 
 ### Build

@@ -2,12 +2,14 @@ import tagged from 'utils/tagged';
 
 
 export const PreviewData = tagged([
-  'Image', // { url: string }
+  'DataFrame', // { preview: string }
+  'Image', // { handle: object }
   'Markdown', // { rendered: string }
-  'Vega', // { spec: Object }
-  'Parquet', // { preview: string }
   'Notebook', // { preview: string }
+  'Table', // { head: string[], tail: string[] }
   'Text', // { contents: string, lang: string }
+  'Vcf', // { meta: string[], header: string[][], body: string[][] }
+  'Vega', // { spec: Object }
 ]);
 
 export const PreviewError = tagged([
@@ -15,4 +17,5 @@ export const PreviewError = tagged([
   'Unsupported', // { handle }
   'DoesNotExist', // { handle }
   'Unexpected', // { handle, originalError: any }
+  'MalformedJson', // { handle, originalError: SyntaxError }
 ]);

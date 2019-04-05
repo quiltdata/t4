@@ -9,9 +9,9 @@ import {
 import { reduxForm, Field, SubmissionError } from 'redux-form/immutable';
 
 import * as NamedRoutes from 'utils/NamedRoutes';
+import * as Sentry from 'utils/Sentry';
 import Link from 'utils/StyledLink';
 import defer from 'utils/defer';
-import { captureError } from 'utils/errorReporting';
 import { composeComponent } from 'utils/reactTools';
 import validate, * as validators from 'utils/validators';
 
@@ -30,9 +30,10 @@ export default composeComponent('Auth.SignUp',
   }, {
     setDone: () => () => ({ done: true }),
   }),
+  Sentry.inject(),
   reduxForm({
     form: 'Auth.SignUp',
-    onSubmit: async (values, dispatch, { setDone }) => {
+    onSubmit: async (values, dispatch, { setDone, sentry }) => {
       try {
         const result = defer();
         dispatch(signUp(values.remove('passwordCheck').toJS(), result.resolver));
@@ -57,7 +58,7 @@ export default composeComponent('Auth.SignUp',
         if (e instanceof errors.SMTPError) {
           throw new SubmissionError({ _error: 'smtp' });
         }
-        captureError(e);
+        sentry('captureException', e);
         throw new SubmissionError({ _error: 'unexpected' });
       }
     },
