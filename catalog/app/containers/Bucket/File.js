@@ -7,9 +7,9 @@ import * as React from 'react';
 import { FormattedRelative } from 'react-intl';
 import { Link } from 'react-router-dom';
 import * as RC from 'recompose';
+import { unstable_Box as Box } from '@material-ui/core/Box';
 import Button from '@material-ui/core/Button';
 import Card from '@material-ui/core/Card';
-import CardContent from '@material-ui/core/CardContent';
 import CardHeader from '@material-ui/core/CardHeader';
 import CircularProgress from '@material-ui/core/CircularProgress';
 import Icon from '@material-ui/core/Icon';
@@ -21,6 +21,7 @@ import ListItemSecondaryAction from '@material-ui/core/ListItemSecondaryAction';
 import ListItemText from '@material-ui/core/ListItemText';
 import Popover from '@material-ui/core/Popover';
 import Typography from '@material-ui/core/Typography';
+import * as colors from '@material-ui/core/colors';
 import { withStyles } from '@material-ui/styles';
 
 import ButtonIcon from 'components/ButtonIcon';
@@ -208,12 +209,16 @@ const Meta = RT.composeComponent('Bucket.File.Meta',
   }),
   withStyles((t) => ({
     root: {
-      marginBottom: t.spacing.unit * 2,
+      marginTop: t.spacing.unit * 2,
     },
     meta: {
+      background: colors.lightBlue[50],
+      border: [[1, 'solid', colors.lightBlue[400]]],
+      borderRadius: t.shape.borderRadius,
       fontFamily: t.typography.monospace.fontFamily,
       fontSize: t.typography.body2.fontSize,
       overflow: 'auto',
+      padding: t.spacing.unit,
       whiteSpace: 'pre',
     },
   })),
@@ -234,11 +239,11 @@ const Meta = RT.composeComponent('Bucket.File.Meta',
             Ok: (meta) => !!meta && !R.isEmpty(meta) && (
               <Card className={classes.root}>
                 <CardHeader title="Metadata" />
-                <CardContent>
+                <Box px={2} pb={2}>
                   <div className={classes.meta}>
                     {JSON.stringify(meta, null, 2)}
                   </div>
-                </CardContent>
+                </Box>
               </Card>
             ),
             _: () => null,
@@ -306,7 +311,7 @@ export default RT.composeComponent('Bucket.File',
           </Button>
         ))}
       </div>
-      <Meta bucket={bucket} path={path} version={version} />
       <FilePreview handle={{ bucket, key: path, version }} />
+      <Meta bucket={bucket} path={path} version={version} />
     </React.Fragment>
   ));
