@@ -9,8 +9,11 @@ import { makeStyles } from '@material-ui/styles';
 
 const useStyles = makeStyles((t) => ({
   root: {
-    overflow: 'auto',
     padding: t.spacing.unit * 1.5,
+    width: '100%',
+  },
+  wrapper: {
+    overflow: 'auto',
   },
   row: {
     height: t.spacing.unit * 3,
@@ -21,6 +24,7 @@ const useStyles = makeStyles((t) => ({
   },
   cell: {
     border: 'none',
+    whiteSpace: 'nowrap',
 
     '&, &:last-child': {
       paddingLeft: t.spacing.unit,
@@ -38,42 +42,44 @@ const Table = ({ head, tail, className, ...props }) => {
 
   return (
     <div className={cx(className, classes.root)} {...props}>
-      <MuiTable>
-        <TableBody>
-          {head.map((row, i) => (
-            // eslint-disable-next-line react/no-array-index-key
-            <TableRow key={`head:${i}`} className={classes.row}>
-              {row.map((col, j) => (
-                // eslint-disable-next-line react/no-array-index-key
-                <TableCell key={`head:${i}:${j}`} className={classes.cell}>
-                  {col}
+      <div className={classes.wrapper}>
+        <MuiTable>
+          <TableBody>
+            {head.map((row, i) => (
+              // eslint-disable-next-line react/no-array-index-key
+              <TableRow key={`head:${i}`} className={classes.row}>
+                {row.map((col, j) => (
+                  // eslint-disable-next-line react/no-array-index-key
+                  <TableCell key={`head:${i}:${j}`} className={classes.cell}>
+                    {col}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
+            {!!tail.length && (
+              <TableRow key="skip" className={classes.row}>
+                <TableCell
+                  colSpan={head[0].length}
+                  className={cx(classes.cell, classes.skip)}
+                >
+                  &hellip; rows skipped &hellip;
                 </TableCell>
-              ))}
-            </TableRow>
-          ))}
-          {!!tail.length && (
-            <TableRow key="skip" className={classes.row}>
-              <TableCell
-                colSpan={head[0].length}
-                className={cx(classes.cell, classes.skip)}
-              >
-                &hellip; rows skipped &hellip;
-              </TableCell>
-            </TableRow>
-          )}
-          {tail.map((row, i) => (
-            // eslint-disable-next-line react/no-array-index-key
-            <TableRow key={`tail:${i}`} className={classes.row}>
-              {row.map((col, j) => (
-                // eslint-disable-next-line react/no-array-index-key
-                <TableCell key={`tail:${i}:${j}`} className={classes.cell}>
-                  {col}
-                </TableCell>
-              ))}
-            </TableRow>
-          ))}
-        </TableBody>
-      </MuiTable>
+              </TableRow>
+            )}
+            {tail.map((row, i) => (
+              // eslint-disable-next-line react/no-array-index-key
+              <TableRow key={`tail:${i}`} className={classes.row}>
+                {row.map((col, j) => (
+                  // eslint-disable-next-line react/no-array-index-key
+                  <TableCell key={`tail:${i}:${j}`} className={classes.cell}>
+                    {col}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
+          </TableBody>
+        </MuiTable>
+      </div>
     </div>
   );
 };
