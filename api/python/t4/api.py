@@ -421,17 +421,19 @@ def config(*catalog_url, **config_values):
     if catalog_url and len(catalog_url) > 1:
         raise QuiltException("`catalog_url` cannot be used with other `config_values`.")
 
+    # Use given catalog's config to replace local configuration
     if catalog_url:
         config_template = read_yaml(CONFIG_TEMPLATE)
-        catalog_url = catalog_url[0]
-        config_url = catalog_url.rstrip('/') + '/config.json'
 
-        if config_url[:7] not in ('http://', 'https:/'):
-            config_url = 'https://' + config_url
+        # Clean up and validate catalog url
+        catalog_url = catalog_url[0].rstrip('/')
+        if catalog_url[:7] not in ('http://', 'https:/'):
+            catalog_url = 'https://' + catalog_url
+        validate_url(catalog_url)
 
-        validate_url(config_url)
+        # Get the new config
+        config_url = catalog_url + '/config.json'
 
-        # TODO: handle http basic auth via URL if using https (https://user:pass@hostname/path)
         response = requests.get(config_url)
         if not response.ok:
             message = "An HTTP Error ({code}) occurred: {reason}"
@@ -439,46 +441,31 @@ def config(*catalog_url, **config_values):
                 message.format(code=response.status_code, reason=response.reason),
                 response=response
                 )
-        new_config = read_yaml(response.text)  # handles JSON and YAML (YAML is a superset of JSON)
+        # T4Config may perform some validation and value scrubbing.
+        new_config = T4Config('', response.json())
 
+        # 'navigator_url' needs to be renamed, the term is outdated.
         if not new_config.get('navigator_url'):
             new_config['navigator_url'] = catalog_url
 
+        # Use our template + their configured values, keeping our comments.
         for key, value in new_config.items():
-            # No key validation, per current fast dev rate on config.json.
-            # if key not in config_template:
-            #     raise QuiltException("Unrecognized configuration key from {}: {}".format(config_url, key))
-            if value and key.endswith('_url'):
-                validate_url(value)
-        # Use their config + our defaults, keeping their comments
-        if yaml_has_comments(new_config):
-            # add defaults for keys missing from their config
-            for key in set(config_template) - set(new_config):
-                new_config[key] = config_template[key]
-            write_yaml(new_config, CONFIG_PATH, keep_backup=True)
-            return T4Config(CONFIG_PATH, new_config)
-        # Use our config + their configured values, keeping our comments.
-        else:
-            for key, value in new_config.items():
-                config_template[key] = value
-            write_yaml(config_template, CONFIG_PATH, keep_backup=True)
-            return T4Config(CONFIG_PATH, config_template)
+            config_template[key] = value
+        write_yaml(config_template, CONFIG_PATH, keep_backup=True)
+        return T4Config(CONFIG_PATH, config_template)
 
-    # No autoconfig URL given -- use local config
+    # Use local configuration (or defaults)
     if CONFIG_PATH.exists():
         local_config = read_yaml(CONFIG_PATH)
     else:
         local_config = read_yaml(CONFIG_TEMPLATE)
 
+    # Write to config if needed
     if config_values:
-        # User is setting config values
+        config_values = T4Config('', config_values)  # Does some validation/scrubbing
         for key, value in config_values.items():
-            # No key validation, per current fast dev rate on config.json.
-            # if key not in config_template:
-            #     raise QuiltException("Unrecognized configuration key: {}".format(key))
-            if value and key.endswith('_url'):
-                validate_url(value)
             local_config[key] = value
         write_yaml(local_config, CONFIG_PATH)
 
+    # Return current config
     return T4Config(CONFIG_PATH, local_config)

@@ -239,6 +239,22 @@ class T4Config(OrderedDict):
         self.filepath = pathlib.Path(filepath)
         super(T4Config, self).__init__(*args, **kwargs)
 
+    def __setitem__(self, key, value):
+        # Per chat in #engineering 4-5-19, strip navigator_url of trailing slash.
+        # Ideally, we should do that kind of thing in one cohesive spot.
+        # This is a good spot.
+        if key == 'navigator_url' and value:
+            if not isinstance(value, str):
+                raise ValueError("Expected a string for config key {!r}, but got {!r}"
+                                 .format(key, value))
+            value = value.strip().rstrip('/')
+        # Similar activity, moved from api.config() to here.
+        if isinstance(key, str) and key.endswith('_url'):
+            if value:
+                validate_url(value)
+        super().__setitem__(key, value)
+
+    # TODO: Make an _html_repr_ for nicer Notebook display
     def __repr__(self):
         return "<{} at {!r} {}>".format(type(self).__name__, str(self.filepath), json.dumps(self, indent=4))
 
