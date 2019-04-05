@@ -13,6 +13,7 @@ export const detect = R.pipe(utils.stripCompression,
 export const load = utils.previewFetcher('txt', ({ info: { data } }, { handle }) => {
   const opts = {
     delimiter: utils.stripCompression(handle.key).endsWith('tsv') ? '\t' : ',',
+    skip_lines_with_error: true,
   };
   const head = parse(data.head.join('\n'), opts);
   const tail = data.tail.length ? parse(data.tail.join('\n'), opts) : [];
