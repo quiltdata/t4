@@ -250,7 +250,7 @@ def list_packages(registry=None):
                 pkg_name_display_width = 27
 
             out = (f"{self._fmt_str('PACKAGE', pkg_name_display_width)}\t"
-                   f"{self._fmt_str('TOPHASH', 12)}\t"
+                   f"{self._fmt_str('TOP HASH', 12)}\t"
                    f"{self._fmt_str('CREATED', 12)}\t"
                    f"{self._fmt_str('SIZE', 12)}\t"
                    f"\n")
