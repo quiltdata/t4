@@ -8,7 +8,7 @@ export const PreviewData = tagged([
   'Notebook', // { preview: string }
   'Table', // { head: string[], tail: string[] }
   'Text', // { contents: string, lang: string }
-  'Vcf', // { meta: string[], header: string[][], body: string[][] }
+  'Vcf', // { meta: string[], header: string[], body: string[][], variants: string[] }
   'Vega', // { spec: Object }
 ]);
 
