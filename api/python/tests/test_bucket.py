@@ -250,7 +250,7 @@ class TestBucket(QuiltTestCase):
 
     # further testing in test_search.py
     @patch('t4.bucket.search')
-    def test_search_no_config(self, search_mock):
+    def test_search_bucket(self, search_mock):
         content = {
             'federations': ['/federation.json'],
         }
