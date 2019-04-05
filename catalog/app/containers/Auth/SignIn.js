@@ -41,7 +41,7 @@ export default composeComponent('Auth.SignIn',
         if (e instanceof errors.InvalidCredentials) {
           throw new SubmissionError({ _error: 'invalidCredentials' });
         }
-        sentry.captureException(e);
+        sentry('captureException', e);
         throw new SubmissionError({ _error: 'unexpected' });
       }
     },

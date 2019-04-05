@@ -48,7 +48,7 @@ export default composeComponent('Auth.Code',
       result.promise
         .then(this.props.setResult)
         .catch((e) => {
-          this.props.sentry.captureException(e);
+          this.props.sentry('captureException', e);
           this.props.setResult(e);
         });
     },

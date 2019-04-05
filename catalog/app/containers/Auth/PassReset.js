@@ -45,7 +45,7 @@ export default composeComponent('Auth.PassReset',
         if (e instanceof errors.SMTPError) {
           throw new SubmissionError({ _error: 'smtp' });
         }
-        sentry.captureException(e);
+        sentry('captureException', e);
         throw new SubmissionError({ _error: 'unexpected' });
       }
     },
