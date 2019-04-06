@@ -48,8 +48,8 @@ class Bucket(object):
         if not config_url:
             navigator_url = get_from_config('navigator_url')
             if not navigator_url:
-                raise QuiltException(
-                    "Must set t4.config('<catalog_url>'), or set navigator_url directly (see t4.config docstring)")
+                raise QuiltException("Must set `t4.config(navigator_url)`, where `navigator_url` is the URL "
+                                     "of your catalog homepage.")
 
             navigator_url.rstrip('/') # remove trailing / if present
             config_url = navigator_url + '/config.json'
