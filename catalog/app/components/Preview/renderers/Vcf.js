@@ -12,7 +12,6 @@ import { makeStyles } from '@material-ui/styles';
 
 const useStyles = makeStyles((t) => ({
   root: {
-    padding: t.spacing.unit * 1.5,
     width: '100%',
   },
   tableWrapper: {

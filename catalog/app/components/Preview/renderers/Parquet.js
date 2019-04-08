@@ -3,10 +3,16 @@ import PT from 'prop-types';
 import * as R from 'ramda';
 import * as React from 'react';
 import * as RC from 'recompose';
-import { withStyles } from '@material-ui/styles';
+import { styled, withStyles } from '@material-ui/styles';
 
+
+import JsonDisplay from 'components/JsonDisplay';
 import * as RT from 'utils/reactTools';
 
+
+const Mono = styled('span')(({ theme: t }) => ({
+  fontFamily: t.typography.monospace.fontFamily,
+}));
 
 const Parquet = RT.composeComponent('Preview.renderers.Parquet',
   RC.setPropTypes({
@@ -21,9 +27,8 @@ const Parquet = RT.composeComponent('Preview.renderers.Parquet',
     serializedSize: PT.number,
     shape: PT.object, // { rows, columns }
   }),
-  withStyles(({ palette, spacing: { unit }, typography }) => ({
+  withStyles(({ palette, spacing: { unit } }) => ({
     root: {
-      padding: unit,
       width: '100%',
     },
     meta: {
@@ -31,9 +36,7 @@ const Parquet = RT.composeComponent('Preview.renderers.Parquet',
     metaName: {
       paddingRight: unit,
       textAlign: 'left',
-    },
-    metaValue: {
-      fontFamily: typography.monospace,
+      verticalAlign: 'top',
     },
     dataframe: {
       overflow: 'auto',
@@ -74,34 +77,25 @@ const Parquet = RT.composeComponent('Preview.renderers.Parquet',
     shape,
     ...props
   }) => {
-    // TODO: meta styling, json expansion
     const renderMeta = (name, value, render = R.identity) => !!value && (
       <tr>
         <th className={classes.metaName}>{name}</th>
-        <td className={classes.metaValue}>{render(value)}</td>
+        <td>{render(value)}</td>
       </tr>
     );
-
-    /*
-    const renderJson = (json) => (
-      <div>{JSON.stringify(json)}</div>
-    );
-    */
 
     return (
       <div className={cx(className, classes.root)} {...props}>
         <table className={classes.meta}>
           <tbody>
-            {renderMeta('Created by:', createdBy)}
-            {renderMeta('Format version:', formatVersion)}
+            {renderMeta('Created by:', createdBy, (c) => <Mono>{c}</Mono>)}
+            {renderMeta('Format version:', formatVersion, (v) => <Mono>{v}</Mono>)}
             {renderMeta('# row groups:', numRowGroups)}
             {renderMeta('Serialized size:', serializedSize)}
             {renderMeta('Shape:', shape, ({ rows, columns }) =>
               <span>{rows} rows &times; {columns} columns</span>)}
-            {/*
-            {renderMeta('Metadata:', metadata, renderJson)}
-            {renderMeta('Schema:', schema, renderJson)}
-            */}
+            {renderMeta('Metadata:', metadata, (m) => <JsonDisplay value={m} />)}
+            {renderMeta('Schema:', schema, (s) => <JsonDisplay value={s} />)}
           </tbody>
         </table>
         <div
