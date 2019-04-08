@@ -1010,7 +1010,3 @@ class PackageTest(QuiltTestCase):
             pkg.set('foo', './')
         with pytest.raises(QuiltException):
             pkg.set('foo', os.path.dirname(__file__))
-
-
-    def test_fetch_mutations(self):
-        pkg = Package()
