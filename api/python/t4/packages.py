@@ -226,6 +226,12 @@ class PackageEntry(object):
         dest = fix_url(dest)
         copy_file(physical_key, dest, self.meta)
 
+        # reroot package physical keys after the copy operation succeeds
+        self.physical_keys = [dest] + self.physical_keys[1:]
+
+        return self
+
+
     def __call__(self, func=None, **kwargs):
         """
         Shorthand for self.deserialize()
@@ -452,14 +458,22 @@ class Package(object):
         """
         nice_dest = fix_url(dest).rstrip('/')
         file_list = []
-        
+        new_physical_keys = []
+
         for logical_key, entry in self.walk():
             logical_key = quote(logical_key)
             physical_key = _to_singleton(entry.physical_keys)
             new_physical_key = f'{nice_dest}/{logical_key}'
+            new_physical_keys.append(new_physical_key)
             file_list.append((physical_key, new_physical_key, entry.size, entry.meta))
 
         copy_file_list(file_list)
+
+        # reroot package physical keys after the copy operation succeeds
+        for (_, entry), new_physical_key in zip(self.walk(), new_physical_keys):
+            entry.physical_keys = [new_physical_key] + entry.physical_keys[1:]
+
+        return self
 
     def keys(self):
         """

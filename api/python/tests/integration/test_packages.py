@@ -254,6 +254,12 @@ class PackageTest(QuiltTestCase):
         assert file_count == len(expected), \
             'fetch wrote {} files; expected: {}'.format(file_count, expected)
 
+        # test that package re-rooting works as expected
+        out_dir_abs_path = f'file://{pathlib.Path(out_dir).absolute().as_posix()}'
+        assert all(
+            entry.physical_keys[0].startswith(out_dir_abs_path) for _, entry in package_.walk()
+        )
+
     def test_package_fetch_default_dest(self):
         """Verify fetching a package to the default local destination."""
         Package().set_dir('/', DATA_DIR / 'nested').fetch()
@@ -280,7 +286,13 @@ class PackageTest(QuiltTestCase):
 
         # Raise an error if you copy to yourself.
         with pytest.raises(shutil.SameFileError):
-            pkg['foo'].fetch(DATA_DIR / 'foo.txt')
+            pkg.set('foo', DATA_DIR / 'foo.txt')['foo'].fetch(DATA_DIR / 'foo.txt')
+
+        # The key gets re-rooted correctly.
+        pkg = t4.Package().set('foo', DATA_DIR / 'foo.txt')
+        pkg['foo'].fetch('bar.txt')
+        out_abs_path = f'file://{pathlib.Path(".").absolute().as_posix()}/bar.txt'
+        assert pkg['foo'].physical_keys[0] == out_abs_path
 
     def test_fetch_default_dest(tmpdir):
         """Verify fetching a package entry to a default destination."""
@@ -998,3 +1010,7 @@ class PackageTest(QuiltTestCase):
             pkg.set('foo', './')
         with pytest.raises(QuiltException):
             pkg.set('foo', os.path.dirname(__file__))
+
+
+    def test_fetch_mutations(self):
+        pkg = Package()
