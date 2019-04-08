@@ -18,9 +18,10 @@ from boto3.s3.transfer import TransferConfig
 from six import BytesIO, binary_type, text_type
 from urllib.parse import quote, unquote
 
-# catch the TqdmExperimentalWarning
 import warnings
-with warnings.simplefilter('ignore'):
+with warnings.catch_warnings():
+    # suppress the TqdmExperimentalWarning returned by tqdm.autonotebook
+    warnings.simplefilter("ignore")
     try:
         from tqdm.autonotebook import tqdm
     except ImportError:
