@@ -19,9 +19,10 @@ from six import BytesIO, binary_type, text_type
 from urllib.parse import quote, unquote
 
 import warnings
+from tqdm import TqdmExperimentalWarning
 with warnings.catch_warnings():
     # suppress the TqdmExperimentalWarning returned by tqdm.autonotebook
-    warnings.simplefilter("ignore")
+    warnings.simplefilter("ignore", TqdmExperimentalWarning)
     try:
         from tqdm.autonotebook import tqdm
     except ImportError:
