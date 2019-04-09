@@ -77,8 +77,7 @@ def search(query, search_endpoint, limit, aws_region='us-east-1'):
     payload = {'query': {'query_string': {
         'default_field': 'content',
         'query': query,
-        'quote_analyzer': 'keyword',
-        }}}
+    }}}
 
     if limit:
         payload['size'] = limit
@@ -113,3 +112,7 @@ def search(query, search_endpoint, limit, aws_region='us-east-1'):
                                     "bad query or a misconfigured search service.")
         setattr(exception, 'raw_response', raw_response)
         raise exception
+
+def get_mappings(es_client):
+    raw_response = es_client.indices.get_mapping(index='drive')
+    return raw_response
