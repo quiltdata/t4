@@ -187,7 +187,14 @@ def _download_file(callback, src_bucket, src_key, src_version, dest_path, overri
             fd.write(chunk)
             callback(len(chunk))
 
-    xattr.setxattr(dest_path, HELIUM_XATTR, json.dumps(meta).encode('utf-8'))
+    try:
+        xattr.setxattr(dest_path, HELIUM_XATTR, json.dumps(meta).encode('utf-8'))
+    except OSError:
+        # this indicates that the destination path is on an OS that doesn't support xattrs
+        # if this is the case, raise a warning and leave xattrs blank
+        warnings.warn(
+            f'Could not write file xattrs for destination {dest_path}.'
+        )
 
     return pathlib.Path(dest_path).as_uri()
 
