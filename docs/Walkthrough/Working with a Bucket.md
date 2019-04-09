@@ -90,7 +90,7 @@ $ python
 <<< ...all files containing the word "thor"...
 ```
 
-As well as structured search on metadata:
+As well as structured search on metadata (note that this feature is experimental):
 
 ```bash
 $ python
