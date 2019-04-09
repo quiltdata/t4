@@ -193,7 +193,7 @@ def _download_file(callback, src_bucket, src_key, src_version, dest_path, overri
         # this indicates that the destination path is on an OS that doesn't support xattrs
         # if this is the case, raise a warning and leave xattrs blank
         warnings.warn(
-            f'Could not write file xattrs for destination "{dest_path!r}".'
+            f'Could not write file xattrs for destination {dest_path!r}.'
         )
 
     return pathlib.Path(dest_path).as_uri()
