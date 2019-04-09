@@ -1,59 +1,48 @@
 import { boundMethod } from 'autobind-decorator';
-import cx from 'classnames';
 import PT from 'prop-types';
 import * as React from 'react';
-import * as RC from 'recompose';
-import { withStyles } from '@material-ui/styles';
 import embed from 'vega-embed';
 
-import * as RT from 'utils/reactTools';
 
-
-const Vega = RT.composeComponent('Preview.renderers.Vega',
-  withStyles((t) => ({
-    root: {
-      padding: t.spacing.unit * 1.5,
-    },
-  })),
-  RC.setPropTypes({
+class Vega extends React.Component {
+  static propTypes = {
     spec: PT.object.isRequired,
-  }),
-  class extends React.Component {
-    constructor() {
-      super();
-      this.state = { el: null };
-    }
+  }
 
-    componentDidMount() {
-      this.embed();
-    }
+  constructor() {
+    super();
+    this.state = { el: null };
+  }
 
-    componentDidUpdate(prevProps, prevState) {
-      if (
-        prevState.el !== this.state.el
-        || prevProps.spec !== this.props.spec
-      ) this.embed();
-    }
+  componentDidMount() {
+    this.embed();
+  }
 
-    @boundMethod
-    setEl(el) {
-      this.setState({ el });
-    }
+  componentDidUpdate(prevProps, prevState) {
+    if (
+      prevState.el !== this.state.el
+      || prevProps.spec !== this.props.spec
+    ) this.embed();
+  }
 
-    embed() {
-      if (this.state.el) embed(this.state.el, this.props.spec, { actions: false });
-    }
+  @boundMethod
+  setEl(el) {
+    this.setState({ el });
+  }
 
-    render() {
-      const { spec, classes, className, ...props } = this.props;
-      return (
-        <div
-          ref={this.setEl}
-          className={cx(className, classes.root)}
-          {...props}
-        />
-      );
-    }
-  });
+  embed() {
+    if (this.state.el) embed(this.state.el, this.props.spec, { actions: false });
+  }
+
+  render() {
+    const { spec, ...props } = this.props;
+    return (
+      <div
+        ref={this.setEl}
+        {...props}
+      />
+    );
+  }
+}
 
 export default ({ spec }, props) => <Vega spec={spec} {...props} />;

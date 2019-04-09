@@ -10,7 +10,6 @@ import { makeStyles } from '@material-ui/styles';
 const useStyles = makeStyles((t) => ({
   root: {
     overflow: 'auto',
-    padding: t.spacing.unit * 1.5,
   },
   row: {
     height: t.spacing.unit * 3,

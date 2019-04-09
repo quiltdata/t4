@@ -14,7 +14,6 @@ const DataFrame = RT.composeComponent('Preview.renderers.DataFrame',
   }),
   withStyles(({ palette, spacing: { unit } }) => ({
     root: {
-      padding: unit,
       width: '100%',
     },
     wrapper: {

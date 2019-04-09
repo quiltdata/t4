@@ -16,7 +16,6 @@ const Text = RT.composeComponent('Preview.renderers.Text',
     root: {
       fontFamily: t.typography.monospace.fontFamily,
       overflow: 'auto',
-      padding: t.spacing.unit * 1.5,
       whiteSpace: 'pre',
     },
   })),
