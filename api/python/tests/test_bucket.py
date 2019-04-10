@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 from botocore.stub import Stubber
 import pandas as pd
 import pytest
+import responses
 
 from t4 import Bucket, data_transfer, config
 from t4.util import QuiltException
@@ -293,3 +294,25 @@ class TestBucket(QuiltTestCase):
         b.config('https://bar.foo/config.json')
         assert not config_mock.called
         bucket_config_mock.assert_called_once_with('test-bucket', 'https://bar.foo/config.json')
+
+    # further testing in test_search.py
+    @patch('t4.bucket.search')
+    def test_search_bucket(self, search_mock):
+        content = {
+            'federations': ['/federation.json'],
+        }
+        federations = {
+            "buckets": [
+                {
+                    "name": "t4-testing-fake",
+                    "searchEndpoint": "https://es-fake.endpoint",
+                    "region": "us-meow"
+                },
+            ]
+        }
+        self.requests_mock.add(responses.GET, 'https://foo.bar/config.json', json=content, status=200)
+        self.requests_mock.add(responses.GET, 'https://foo.bar/federation.json', json=federations, status=200)
+        b = Bucket('s3://t4-testing-fake')
+        b.search('blah', limit=1)
+
+        search_mock.assert_called_once_with('blah', 'https://es-fake.endpoint', limit=1, aws_region='us-meow')

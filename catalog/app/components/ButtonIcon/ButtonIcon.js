@@ -12,10 +12,6 @@ export default RT.composeComponent('ButtonIcon',
     position: PT.oneOf(['left', 'right']),
   }),
   withStyles(({ spacing: { unit } }) => ({
-    root: {
-      height: 21,
-      lineHeight: '21px',
-    },
     left: {
       marginRight: unit,
     },
@@ -25,6 +21,6 @@ export default RT.composeComponent('ButtonIcon',
   })),
   RC.mapProps(({ classes, className, position = 'left', ...props }) => ({
     ...props,
-    className: cx(className, classes.root, classes[position]),
+    className: cx(className, classes[position]),
   })),
   Icon);

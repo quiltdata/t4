@@ -28,6 +28,7 @@ import BreadCrumbs, { Crumb } from './BreadCrumbs';
 import CodeButton from './CodeButton';
 import FilePreview from './FilePreview';
 import Listing, { ListingItem } from './Listing';
+import Section from './Section';
 import Summary from './Summary';
 import { displayError } from './errors';
 import * as requests from './requests';
@@ -211,7 +212,15 @@ export default RT.composeComponent('Bucket.PackageTree',
               </div>
               {AsyncResult.case({
                 Ok: TreeDisplay.case({
-                  File: (handle) => <FilePreview handle={handle} />,
+                  File: (handle) => (
+                    <Section
+                      icon="remove_red_eye"
+                      heading="Contents"
+                      expandable={false}
+                    >
+                      <FilePreview handle={handle} />
+                    </Section>
+                  ),
                   Dir: (dir) => (
                     <React.Fragment>
                       <NamedRoutes.Inject>

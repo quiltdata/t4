@@ -27,7 +27,7 @@ export const useSignOut = () => {
   return React.useCallback(() => {
     const result = defer();
     dispatch(signOut(result.resolver));
-    result.promise.catch(sentry.captureException);
+    result.promise.catch(sentry('captureException'));
     return result.promise;
   }, [dispatch]);
 };

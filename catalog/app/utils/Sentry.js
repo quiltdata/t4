@@ -16,8 +16,8 @@ const dummy = async (method, args) => {
 export const Provider = ({ children }) => {
   const sentryRef = React.useRef(Promise.resolve(dummy));
   const sentry = React.useCallback(
-    (method, ...args) =>
-      sentryRef.current.then((call) => call(method, ...args)),
+    R.curryN(2, (method, ...args) =>
+      sentryRef.current.then((call) => call(method, ...args))),
     [],
   );
   return <Ctx.Provider value={{ sentry, sentryRef }}>{children}</Ctx.Provider>;

@@ -167,29 +167,48 @@ Note the comma after the object. Your trust relationship should now look somethi
 
 You can now configure a Quilt Role with this role (using the Catalog's admin panel, or `t4.admin.create_role`).
 
-## Configuring search file types
+## Bucket search
 
-This section describes how to configure what types of files are indexed and searchable in the catalog.
+### Custom file indexing
 
-To modify which file types are searchable, populate a `.quilt/config.json` file in your S3 bucket. Note that this file does not exist by default. The contents of the file shoud be something like this:
+This section describes how to configure which files are searchable in the catalog.
+
+By default, Quilt uses the following configuraiton:
 
 ```json
 {
-    "ipynb": true,
-    "json": true,
-    "md": true
+    "to_index": [
+        ".ipynb",
+        ".json",
+        ".md",
+        ".rmd"
+    ]
 }
 ```
 
-To change which file types are searchable, push a new JSON fragment like this one to the `.quilt/config.json` path in the bucket.
+To customize which file types are indexed, add a `.quilt/config.json` file to your S3 bucket. `.quilt/config.json` is referenced every time a new object lands in the parent bucket. For example, if you wished to index all `.txt` files (in addition the Quilt defaults), you'd upload the following to `.quilt/config.json`:
+```json
+{
+    "to_index": [
+        ".ipynb",
+        ".json",
+        ".md",
+        ".rmd",
+        ".txt"
+    ]
+}
+```
+It is highly recommended that you continue to index all of the default files, so that users can get the most out of search. center/elasticsearch-scale-up/).
 
-> There are currently some important limitations with search:
->
-> * Queries containing the tilde (~), forward slash (/), back slash, and angle bracket ({, }, (, ), [, ]) must be quoted. For example search for `'~foo'`, not `~foo`.
-> * The search index will only pick up objects written to S3 _after_ T4 was enabled on that bucket.
-> * Files over 10 MB in size may cause search to fail.
+### Search limitations
+* Queries containing the tilde (~), forward slash (/), back slash, and angle bracket ({, }, (, ), [, ]) must be quoted. For example search for `'~foo'`, not `~foo`.
+* The search index will only pick up objects written to S3 _after_ T4 was enabled on that bucket.
+* Files over 10 MB in size may cause search to fail.
+* Indexing large or numerous files may require you to [scale up your search domain](https://aws.amazon.com/premiumsupport/knowledge-
 
-## Making your search endpoint publicly accessible
+### Advanced: publicly accessible search endpoint
+
+By default, Quilt bucket search is only available to authorized Quilt users and is scoped to a single S3 bucket. Search users can see extensive metadata on the objects in your Quilt bucket. Therefore _be cautious when modifying search permissions_.
 
 This section describes how to make your search endpoint available to anyone with valid AWS credentials.
 
