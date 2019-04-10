@@ -163,11 +163,11 @@ By default, Quilt uses the following configuraiton:
 
 ```json
 {
-    'to_index': [
-        '.ipynb',
-        '.json',
-        '.md',
-        '.rmd',
+    "to_index": [
+        ".ipynb",
+        ".json",
+        ".md",
+        ".rmd"
     ]
 }
 ```
@@ -175,12 +175,12 @@ By default, Quilt uses the following configuraiton:
 To customize which file types are indexed, add a `.quilt/config.json` file to your S3 bucket. `.quilt/config.json` is referenced every time a new object lands in the parent bucket. For example, if you wished to index all `.txt` files (in addition the Quilt defaults), you'd upload the following to `.quilt/config.json`:
 ```json
 {
-    'to_index': [
-        '.ipynb',
-        '.json',
-        '.md',
-        '.rmd',
-        '.txt',
+    "to_index": [
+        ".ipynb",
+        ".json",
+        ".md",
+        ".rmd",
+        ".txt"
     ]
 }
 ```
