@@ -155,7 +155,9 @@ Note the comma after the object. Your trust relationship should now look somethi
 
 You can now configure a Quilt Role with this role (using the Catalog's admin panel, or `t4.admin.create_role`).
 
-## Customizing file types for bucket search
+## Bucket search
+
+### Custom file indexing
 
 This section describes how to configure which files are searchable in the catalog.
 
@@ -184,16 +186,17 @@ To customize which file types are indexed, add a `.quilt/config.json` file to yo
     ]
 }
 ```
-It is highly recommended that you continue to index all of the default files, so that users can get the most out of search. _Indexing large or numerous files_ may require you to [scale up your search domain](https://aws.amazon.com/premiumsupport/knowledge-center/elasticsearch-scale-up/).
+It is highly recommended that you continue to index all of the default files, so that users can get the most out of search. center/elasticsearch-scale-up/).
 
+### Search limitations
+* Queries containing the tilde (~), forward slash (/), back slash, and angle bracket ({, }, (, ), [, ]) must be quoted. For example search for `'~foo'`, not `~foo`.
+* The search index will only pick up objects written to S3 _after_ T4 was enabled on that bucket.
+* Files over 10 MB in size may cause search to fail.
+* Indexing large or numerous files may require you to [scale up your search domain](https://aws.amazon.com/premiumsupport/knowledge-
 
-> There are currently some important limitations with search:
->
-> * Queries containing the tilde (~), forward slash (/), back slash, and angle bracket ({, }, (, ), [, ]) must be quoted. For example search for `'~foo'`, not `~foo`.
-> * The search index will only pick up objects written to S3 _after_ T4 was enabled on that bucket.
-> * Files over 10 MB in size may cause search to fail.
+### Advanced: publicly accessible search endpoint
 
-## Making your search endpoint publicly accessible
+By default, Quilt bucket search is private and scoped to a single S3 bucket. Only authorized Quilt users may search. Search users can see extensive metadata on the objectsin your Quilt bucket. _Be cauitious when modifying search permissions_. 
 
 This section describes how to make your search endpoint available to anyone with valid AWS credentials.
 
