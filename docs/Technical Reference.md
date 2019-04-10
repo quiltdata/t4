@@ -196,7 +196,7 @@ It is highly recommended that you continue to index all of the default files, so
 
 ### Advanced: publicly accessible search endpoint
 
-By default, Quilt bucket search is private and scoped to a single S3 bucket. Only authorized Quilt users may search. Search users can see extensive metadata on the objectsin your Quilt bucket. _Be cauitious when modifying search permissions_. 
+By default, Quilt bucket search is only available to authorized Quilt users and is scoped to a single S3 bucket. Search users can see extensive metadata on the objectsin your Quilt bucket. Therefore _be cautious when modifying search permissions_.
 
 This section describes how to make your search endpoint available to anyone with valid AWS credentials.
 
