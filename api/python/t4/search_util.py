@@ -77,8 +77,7 @@ def search(query, search_endpoint, limit, aws_region='us-east-1'):
     payload = {'query': {'query_string': {
         'default_field': 'content',
         'query': query,
-        'quote_analyzer': 'keyword',
-        }}}
+    }}}
 
     if limit:
         payload['size'] = limit
