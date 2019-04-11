@@ -10,8 +10,8 @@ export const detect = R.pipe(utils.stripCompression,
   utils.extIs('.vcf'));
 
 export const load = utils.previewFetcher('vcf', R.pipe(
-  R.path(['info', 'data']),
-  R.pick(['meta', 'header', 'data']),
+  ({ info: { data: { meta, header, data }, metadata: { variants } } }) =>
+    ({ meta, header, data, variants }),
   PreviewData.Vcf,
   AsyncResult.Ok,
 ));

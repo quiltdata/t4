@@ -255,7 +255,6 @@ export const search = async ({ es, query }) => {
         query: {
           query_string: {
             default_field: 'content',
-            quote_analyzer: 'keyword',
             query,
           },
         },
