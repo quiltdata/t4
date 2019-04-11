@@ -38,40 +38,56 @@ You may either [create a new certificate](https://docs.aws.amazon.com/acm/latest
 1. **An SSL/TLS certificate in the same region as your Quilt instance**, for
 the elastic load balancer of the Quilt server. See the above pre-requisite for details.
 
+1. **An S3 Bucket** for your team data. This may be a new or existing bucket.
+
+
 ### CloudFormation stack creation
 
 1. If you are using AWS Marketplace, skip this step. Otherwise, go to
 `Services > CloudFormation` in the AWS Console. Select the desired region in
-the upper right. Click `Create stack`, then upload your template file.
-Click `Next`.
+the upper right. Click Create stack, then upload your template file.
+Click Next.
 
     ![](./imgs/create-stack.png)
 
 1. You can now specify stack details in the form of CloudFormation
 _parameters_. Refer to the descriptions displayed above each
-text box for further details. Once you have completed this page, click `Next`.
+text box for further details. Once you have completed this page, click Next.
 
     ![](./imgs/stack-details.png)
 
-1. On the Options screen that follows, go to the "Termination Protection" section in "Advanced" and click "Enable".
+1. On the Options screen that follows, go to the Advacned > Termination Protection and click Enable.
 
     ![](./imgs/term_protect.png)
 
-    This protects the stack deployment pipeline from accidental deletion. Click Next.
+    This protects the stack from accidental deletion. Click Next.
 
 1. On the confirmation screen, check the box asking you to acknowledge that CloudFormation may create IAM roles, then click Create.
 
     ![](./imgs/finish.png)
 
-    Click Create.
+1. CloudFormation takes about 30 minutes to create the resources
+for your stack. You may monitor progress under the Events tab.
+Once the stack is complete, you will see `CREATE_COMPLETE` as the Status for
+your CloudFormation stack.
 
-1. CloudFormation typically takes around 30 minutes to spin up your stack. Once that is done, you should see `CREATE_COMPLETE` as the Status for your CloudFormation stack.
+    ![](./imgs/events.png)
+
+1.  To complete the installation, open the Outputs tab.
 
     ![](./imgs/outputs.png)
 
-1. Select the stack and open the Outputs tab. These should be three values there. They are `CloudFrontDomain`, `LoadBalancerDNSName`, and `RegistryHost`. These values still need to be mapped to user-facing URLs via DNS.
+    1. In a separate browser window, open the DNS settings for your domain.
+    Create the following two `CNAME` records:
 
-1. Go to your DNS service (if you are using AWS, this is [Route 53](https://aws.amazon.com/route53/)). Create two `CNAME` records: one mapping your catalog URL (`QuiltWebHost`) to the `CloudFrontDomain`, and one mapping your auth service URL (`RegistryHost`) to the `LoadBalancerDNSName`.
+    | Name | Value |
+    |------|-------|
+    | 
+    
+
+(if you are using AWS, this is [Route 53](https://aws.amazon.com/route53/)). Create two `CNAME` records: one mapping your catalog URL (`QuiltWebHost`) to the `CloudFrontDomain`, and one mapping your auth service URL (`RegistryHost`) to the `LoadBalancerDNSName`.
+    ate two `CNAME` records:
+    
 
 If all went well, your catalog should now be available and accessible.
 
