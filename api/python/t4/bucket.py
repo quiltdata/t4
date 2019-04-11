@@ -14,7 +14,7 @@ from .data_transfer import (copy_file, copy_object, delete_object, get_bytes,
                             get_size_and_meta, list_object_versions,
                             list_objects, put_bytes, select)
 from .formats import FormatRegistry
-from .search_util import search
+from .search_util import get_raw_mapping, search
 from .util import QuiltException, find_bucket_config, fix_url, get_from_config, parse_s3_url
 
 
@@ -60,7 +60,12 @@ class Bucket(object):
         elif 'search_endpoint' in bucket_config:
             # old format
             self._search_endpoint = bucket_config['search_endpoint']
-        self._region = bucket_config.get('region')
+        # TODO: we can maybe get this from searchEndpoint or apiGatewayEndpoint
+        self._region = bucket_config.get('region', 'us-east-1')
+
+    def get_mappings(self):
+        self.config()
+        return get_raw_mapping(self._search_endpoint, self._region)
 
     def search(self, query, limit=10):
         """
