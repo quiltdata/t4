@@ -1,3 +1,4 @@
+import cx from 'classnames';
 import * as React from 'react';
 import ExpansionPanel from '@material-ui/core/ExpansionPanel';
 import ExpansionPanelDetails from '@material-ui/core/ExpansionPanelDetails';
@@ -25,16 +26,34 @@ const useStyles = makeStyles({
   heading: {
     display: 'flex',
   },
+  gutterBottom: {
+    marginBottom: 16,
+  },
+  gutterTop: {
+    marginTop: 16,
+  },
 });
 
-// eslint-disable-next-line react/prop-types
-export default ({ icon, heading, defaultExpanded, children, expandable = true }) => {
+/* eslint-disable react/prop-types */
+export default ({
+  icon,
+  heading,
+  defaultExpanded,
+  expandable = true,
+  gutterBottom = false,
+  gutterTop = false,
+  children,
+}) => {
   const classes = useStyles();
 
   return (
     <ExpansionPanel
       defaultExpanded={defaultExpanded}
       expanded={expandable ? undefined : true}
+      className={cx({
+        [classes.gutterBottom]: gutterBottom,
+        [classes.gutterTop]: gutterTop,
+      })}
     >
       <ExpansionPanelSummary
         expandIcon={expandable && <Icon>expand_more</Icon>}

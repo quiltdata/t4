@@ -33,6 +33,7 @@ import { getBreadCrumbs, up } from 'utils/s3paths';
 import { readableBytes } from 'utils/string';
 
 import BreadCrumbs, { Crumb } from './BreadCrumbs';
+import Code from './Code';
 import FilePreview from './FilePreview';
 import Section from './Section';
 import * as requests from './requests';
@@ -211,13 +212,6 @@ const Annotations = ({ bucket, path, version }) => {
     </Data>
   );
 };
-
-const Code = styled('div')(({ theme: t }) => ({
-  fontFamily: t.typography.monospace.fontFamily,
-  fontSize: t.typography.body2.fontSize,
-  overflow: 'auto',
-  whiteSpace: 'pre',
-}));
 
 const useStyles = makeStyles(({ spacing: { unit }, palette }) => ({
   topBar: {
