@@ -1,16 +1,17 @@
-This page provides a technical reference on certain advanced configuration options in T4.
-
 ## Deploy a private Quilt instance on AWS
-
-The following instructions use AWS CloudFormation to deploy a private Quilt instance
-in your AWS account.
 
 Quilt is a data collaboration platform. A Quilt _instance_ is a private hub that
 runs in your virtual private cloud (VPC).
 Each instance consists of a password-protected web catalog on your domain,
-back end services, a secure server to manage user identities, and a Python API.
+backend services, a secure server to manage user identities, and a Python API.
 
-### Pre-requisites
+The following instructions use AWS CloudFormation to deploy a private Quilt instance
+in your AWS account.
+
+
+## Before you install Quilt
+
+You will need the following:
 
 1. **An AWS account**
 
@@ -38,17 +39,17 @@ The following service role is equivalent to `AdministratorAccess`:
     }
     ```
 
-1. The **ability to create DNS entries**, such as CNAME and TXT records,
+1. The **ability to create DNS entries**, such as CNAME records,
 for your company's domain.
 
-1. **An SSL/TLS certificate in the us-east-1 region** to secure the domain where
+1. **An SSL certificate in the us-east-1 region** to secure the domain where
 your users will access your Quilt instance. For example,
 to make your Quilt catalog available at `https://quilt.mycompany.com`,
 you require a certificate for `*.mycompany.com` in the [AWS Certificate Manager](https://aws.amazon.com/certificate-manager/).
 You may either [create a new certificate](https://docs.aws.amazon.com/acm/latest/userguide/gs-acm-request-public.html), or
 [import an existing certificate](https://docs.aws.amazon.com/acm/latest/userguide/import-certificate.html).
 
-1. **An SSL/TLS certificate in the same region as your Quilt instance**, for
+1. **An SSL certificate in the same region as your Quilt instance**, for
 the elastic load balancer of the Quilt server. See the above pre-requisite for details.
 
 1. **An S3 Bucket** for your team data. This may be a new or existing bucket.
@@ -108,13 +109,19 @@ your CloudFormation stack.
 1. Quilt is now up and running. You can click on the _QuiltWebHost_ value
 in Outputs and log in with your administrator password to invite users.
 
+You may stop here ;)
+
+____________________
+
 ## Known limitations
 
 * Supports a single bucket
 * Search is only enabled for *new objects* added to the bucket after Quilt is installed.
 
-
 ## Advanced configuration
+
+The default Quilt settings are adequate for most use cases. The following section
+covers advanced customization options.
 
 ### Bucket search
 
@@ -150,12 +157,13 @@ To customize which file types are indexed, add a `.quilt/config.json` file to yo
 It is highly recommended that you continue to index all of the default files, so that users can get the most out of search. center/elasticsearch-scale-up/).
 
 #### Search limitations
+
 * Queries containing the tilde (~), forward slash (/), back slash, and angle bracket ({, }, (, ), [, ]) must be quoted. For example search for `'~foo'`, not `~foo`.
 * The search index will only pick up objects written to S3 _after_ T4 was enabled on that bucket.
 * Files over 10 MB in size may cause search to fail.
 * Indexing large or numerous files may require you to [scale up your search domain](https://aws.amazon.com/premiumsupport/knowledge-
 
-#### Advanced: publicly accessible search endpoint
+#### Publicly accessible search
 
 By default, Quilt bucket search is only available to authorized Quilt users and is scoped to a single S3 bucket. Search users can see extensive metadata on the objects in your Quilt bucket. Therefore _be cautious when modifying search permissions_.
 
