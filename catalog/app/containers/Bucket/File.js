@@ -279,7 +279,7 @@ export default ({ match: { params: { bucket, path } }, location }) => {
           </Button>
         ))}
       </div>
-      <Section icon="code" heading="Code" defaultExpanded>
+      <Section icon="code" heading="Code">
         <Code>{code}</Code>
       </Section>
       <Section icon="remove_red_eye" heading="Contents" defaultExpanded>
