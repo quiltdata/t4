@@ -125,7 +125,7 @@ class Bucket(object):
         """
         return self.deserialize(key)
 
-    def put(self, key, obj, user_meta=None):
+    def put(self, key, obj, user_meta={}):
         """
         Stores `obj` at key in bucket, optionally with user-provided metadata.
 
@@ -135,7 +135,7 @@ class Bucket(object):
             user_meta(dict): optional user-provided metadata to store
         """
         dest = self._uri + key
-        all_meta = dict(user_meta=user_meta or {})
+        all_meta = dict(user_meta=user_meta)
         data, format_meta = FormatRegistry.serialize(obj, all_meta)
         all_meta.update(format_meta)
         put_bytes(data, dest, all_meta)
