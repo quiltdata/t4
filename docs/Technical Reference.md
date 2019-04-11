@@ -20,10 +20,23 @@ Or you may email [contact@quiltdata.io](mailto:contact@quiltdata.io)
 to purchase a license.
 
 1. **IAM Permissions** to run the CloudFormation template.
-The `AdministratorAccess` policy is sufficient. (Quilt creates and manages a VPC,
-containers, S3 buckets, a database, and more.) If you wish to create a service
-role for the installation, visit
+The `AdministratorAccess` policy is sufficient. (Quilt creates and manages a
+VPC, containers, S3 buckets, a database, and more.)
+If you wish to create a service role for the installation, visit
 `IAM > Roles > Create Role > AWS service > CloudFormation` in the AWS console.
+The following service role is equivalent to `AdministratorAccess`:
+    ```json
+    {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": "*",
+                "Resource": "*"
+            }
+        ]
+    }
+    ```
 
 1. The **ability to create DNS entries**, such as CNAME and TXT records,
 for your company's domain.
@@ -39,7 +52,14 @@ You may either [create a new certificate](https://docs.aws.amazon.com/acm/latest
 the elastic load balancer of the Quilt server. See the above pre-requisite for details.
 
 1. **An S3 Bucket** for your team data. This may be a new or existing bucket.
-
+The bucket should not have any notifications
+(S3 Console > Bucket > Properties > Events).
+Quilt will need to install its own notifications.
+Installing Quilt will modify the following Bucket characteristics:
+    * Permissions > CORS configuration (will be modified for secure web access)
+    * Properties > Versioning (will be enabled)
+    * Properties > Object-level logging (will be enabled)
+    * Properties > Events (will add one notification)
 
 ### CloudFormation stack creation
 
@@ -73,32 +93,102 @@ your CloudFormation stack.
 
     ![](./imgs/events.png)
 
-1.  To complete the installation, open the Outputs tab.
+1.  To finish the installation, open the Outputs tab.
 
     ![](./imgs/outputs.png)
 
     1. In a separate browser window, open the DNS settings for your domain.
-    Create the following two `CNAME` records:
+    Create the following two `CNAME` records, based on your stack Outputs:
 
-    | Name | Value |
-    |------|-------|
-    | 
-    
+        | Name | Value |
+        |------|-------|
+        | _QuiltWebHost_  | _CloudfrontDomain_ | 
+        | _RegistryHostName_  | _LoadBalancerDNSName_ | 
 
-(if you are using AWS, this is [Route 53](https://aws.amazon.com/route53/)). Create two `CNAME` records: one mapping your catalog URL (`QuiltWebHost`) to the `CloudFrontDomain`, and one mapping your auth service URL (`RegistryHost`) to the `LoadBalancerDNSName`.
-    ate two `CNAME` records:
-    
-
-If all went well, your catalog should now be available and accessible.
+1. Quilt is now up and running. You can click on the _QuiltWebHost_ value
+in Outputs and log in with your administrator password to invite users.
 
 ## Known limitations
 
-Some known limitations of the catalog are:
+* Supports a single bucket
+* Search is only enabled for *new objects* added to the bucket after Quilt is installed.
 
-* Supports only one bucket
-* Search is only enabled for *new objects* uploaded through the T4 Python API
 
-## Federations and bucket config
+## Advanced configuration
+
+### Bucket search
+
+#### Custom file indexing
+
+This section describes how to configure which files are searchable in the catalog.
+
+By default, Quilt uses the following configuraiton:
+
+```json
+{
+    "to_index": [
+        ".ipynb",
+        ".json",
+        ".md",
+        ".rmd"
+    ]
+}
+```
+
+To customize which file types are indexed, add a `.quilt/config.json` file to your S3 bucket. `.quilt/config.json` is referenced every time a new object lands in the parent bucket. For example, if you wished to index all `.txt` files (in addition the Quilt defaults), you'd upload the following to `.quilt/config.json`:
+```json
+{
+    "to_index": [
+        ".ipynb",
+        ".json",
+        ".md",
+        ".rmd",
+        ".txt"
+    ]
+}
+```
+It is highly recommended that you continue to index all of the default files, so that users can get the most out of search. center/elasticsearch-scale-up/).
+
+#### Search limitations
+* Queries containing the tilde (~), forward slash (/), back slash, and angle bracket ({, }, (, ), [, ]) must be quoted. For example search for `'~foo'`, not `~foo`.
+* The search index will only pick up objects written to S3 _after_ T4 was enabled on that bucket.
+* Files over 10 MB in size may cause search to fail.
+* Indexing large or numerous files may require you to [scale up your search domain](https://aws.amazon.com/premiumsupport/knowledge-
+
+#### Advanced: publicly accessible search endpoint
+
+By default, Quilt bucket search is only available to authorized Quilt users and is scoped to a single S3 bucket. Search users can see extensive metadata on the objects in your Quilt bucket. Therefore _be cautious when modifying search permissions_.
+
+This section describes how to make your search endpoint available to anyone with valid AWS credentials.
+
+Go to your AWS Console. Under the `Services` dropdown at the top of the screen, choose `Elasticsearch Service`. Select the domain corresponding to your T4 stack.
+
+Note the value of the `Domain ARN` for your search domain.
+
+In the row of buttons at the top of the pane, select `Modify Access Policy`. Add two statements to the Statement array:
+
+```json
+{
+  "Effect": "Allow",
+    "Principal": {
+      "AWS": "*"
+    },
+    "Action": "es:ESHttpGet",
+    "Resource": "$YOUR_SEARCH_DOMAIN_ARN/*"
+},
+{
+  "Effect": "Allow",
+  "Principal": {
+    "AWS": "*"
+  },
+  "Action": "es:ESHttpPost",
+  "Resource": "$YOUR_SEARCH_DOMAIN_ARN/drive/_doc/_search*"
+}
+```
+
+Select `Submit` and your search domain should now be open to the public.
+
+### Federations and bucket config
 
 In this section we will discuss how you can configure your catalog instance using _federations_ and _bucket config_.
 
@@ -134,7 +224,7 @@ A **bucket config**, meanwhile, is a JSON object that describes metadata associa
 
 A bucket config can be included inline in a federation, or it can be a standalone JSON file that is linked from a federation.
 
-## Preparing an AWS Role for use with T4
+### Preparing an AWS Role for use with T4
 
 These instructions document how to set up an existing role for use with T4. If the role you want to use doesn't exist yet, create it now.
 
@@ -182,75 +272,3 @@ Note the comma after the object. Your trust relationship should now look somethi
 ```
 
 You can now configure a Quilt Role with this role (using the Catalog's admin panel, or `t4.admin.create_role`).
-
-## Bucket search
-
-### Custom file indexing
-
-This section describes how to configure which files are searchable in the catalog.
-
-By default, Quilt uses the following configuraiton:
-
-```json
-{
-    "to_index": [
-        ".ipynb",
-        ".json",
-        ".md",
-        ".rmd"
-    ]
-}
-```
-
-To customize which file types are indexed, add a `.quilt/config.json` file to your S3 bucket. `.quilt/config.json` is referenced every time a new object lands in the parent bucket. For example, if you wished to index all `.txt` files (in addition the Quilt defaults), you'd upload the following to `.quilt/config.json`:
-```json
-{
-    "to_index": [
-        ".ipynb",
-        ".json",
-        ".md",
-        ".rmd",
-        ".txt"
-    ]
-}
-```
-It is highly recommended that you continue to index all of the default files, so that users can get the most out of search. center/elasticsearch-scale-up/).
-
-### Search limitations
-* Queries containing the tilde (~), forward slash (/), back slash, and angle bracket ({, }, (, ), [, ]) must be quoted. For example search for `'~foo'`, not `~foo`.
-* The search index will only pick up objects written to S3 _after_ T4 was enabled on that bucket.
-* Files over 10 MB in size may cause search to fail.
-* Indexing large or numerous files may require you to [scale up your search domain](https://aws.amazon.com/premiumsupport/knowledge-
-
-### Advanced: publicly accessible search endpoint
-
-By default, Quilt bucket search is only available to authorized Quilt users and is scoped to a single S3 bucket. Search users can see extensive metadata on the objects in your Quilt bucket. Therefore _be cautious when modifying search permissions_.
-
-This section describes how to make your search endpoint available to anyone with valid AWS credentials.
-
-Go to your AWS Console. Under the `Services` dropdown at the top of the screen, choose `Elasticsearch Service`. Select the domain corresponding to your T4 stack.
-
-Note the value of the `Domain ARN` for your search domain.
-
-In the row of buttons at the top of the pane, select `Modify Access Policy`. Add two statements to the Statement array:
-
-```json
-{
-  "Effect": "Allow",
-    "Principal": {
-      "AWS": "*"
-    },
-    "Action": "es:ESHttpGet",
-    "Resource": "$YOUR_SEARCH_DOMAIN_ARN/*"
-},
-{
-  "Effect": "Allow",
-  "Principal": {
-    "AWS": "*"
-  },
-  "Action": "es:ESHttpPost",
-  "Resource": "$YOUR_SEARCH_DOMAIN_ARN/drive/_doc/_search*"
-}
-```
-
-Select `Submit` and your search domain should now be open to the public.
