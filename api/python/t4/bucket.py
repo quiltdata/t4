@@ -63,9 +63,18 @@ class Bucket(object):
         # TODO: we can maybe get this from searchEndpoint or apiGatewayEndpoint
         self._region = bucket_config.get('region', 'us-east-1')
 
-    def get_mappings(self):
+    def _get_mappings(self):
         self.config()
         return get_raw_mapping(self._search_endpoint, self._region)
+
+    def _check_against_mappings(self, meta):
+        """
+        Checks provided meta agasint search mappings.
+        """
+        self.config()
+        check_against_mappings(search_endpoint=self._search_endpoint,
+                               aws_region=self._region,
+                               meta=meta)
 
     def search(self, query, limit=10):
         """
@@ -143,6 +152,7 @@ class Bucket(object):
         all_meta = dict(user_meta=meta or {})
         data, format_meta = FormatRegistry.serialize(obj, all_meta)
         all_meta.update(format_meta)
+        self._check_against_mappings(all_meta)
         put_bytes(data, dest, all_meta)
 
     def put_file(self, key, path, meta=None):
@@ -164,6 +174,7 @@ class Bucket(object):
             * if copy fails
         """
         dest = self._uri + key
+        self._check_against_mappings(meta or {})
         copy_file(fix_url(path), dest, meta)
 
     def put_dir(self, key, directory):

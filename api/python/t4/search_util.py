@@ -155,6 +155,7 @@ def unpack_mappings(mappings, field):
 
     return properties[last]['type']
 
+MAPPING_ERROR_STRING = '{} provided but search schema expects a {} at field {}'
 def check_against_mappings(*, search_endpoint, aws_region, meta):
     """
     Checks to see whether uploading an object with `meta` will result in an indexer failure.
@@ -169,34 +170,36 @@ def check_against_mappings(*, search_endpoint, aws_region, meta):
         if isinstance(meta_fragment, dict):
             mapping_type = unpack_mappings(mappings, current)
             if mapping_type != 'object':
-                raise QuiltException('Dict provided but search schema expects a {}'
-                                     .format(mapping_type))
+                raise QuiltException(MAPPING_ERROR_STRING.format(
+                                     'Dict', mapping_type, '.'.join(current)))
             for key in meta_fragment.keys():
                 check_mapping_rec(current + [key], meta_fragment[key])
         elif isinstance(meta_fragment, int):
             mapping_type = unpack_mappings(mappings, current)
             if mapping_type not in ['long', 'float', 'double']:
-                raise QuiltException('Number provided when search schema expects a {}'
-                                     .format(mapping_type))
+                raise QuiltException(MAPPING_ERROR_STRING.format(
+                                     'Number', mapping_type, '.'.join(current)))
         elif isinstance(meta_fragment, float):
             mapping_type = unpack_mappings(mappings, current)
             if mapping_type not in ['long', 'float']:
-                raise QuiltException('Float provided when search schema expects a {}'
-                                     .format(mapping_type))
+                raise QuiltException(MAPPING_ERROR_STRING.format(
+                                     'Float', mapping_type, '.'.join(current)))
         elif isinstance(meta_fragment, str):
             mapping_type = unpack_mappings(mappings, current)
             if mapping_type == 'long':
                 try:
                     float(meta_fragment)
                 except ValueError:
-                    raise QuiltException('Search schema requires a number for field {}'
-                                         .format('.'.join(current)))
+                    raise QuiltException(MAPPING_ERROR_STRING.format(
+                                         'String', mapping_type, '.'.join(current)))
             elif mapping_type == 'date':
                 # TODO: check if item is really a date
                 pass
             elif mapping_type in ['keyword', 'text']:
                 pass
             else:
-                raise QuiltException('Metadata does not match search schema')
+                raise QuiltException(MAPPING_ERROR_STRING.format(
+                                     'String', mapping_type, '.'.join(current)))
 
-    check_mapping_rec([], transformed)
+    for key in transformed.keys():
+        check_mapping_rec([key], transformed[key])
