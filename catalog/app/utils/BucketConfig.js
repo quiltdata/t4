@@ -1,6 +1,5 @@
 import * as React from 'react';
 
-import AsyncResult from 'utils/AsyncResult';
 import * as Config from 'utils/Config';
 import * as NamedRoutes from 'utils/NamedRoutes';
 import { useRoute } from 'utils/router';
@@ -25,10 +24,3 @@ export const useCurrentBucketConfig = () => {
   const buckets = useBucketConfigs();
   return bucket && (buckets[bucket] || { name: bucket });
 };
-
-// compatibility
-export const WithCurrentBucket = ({ children }) =>
-  children(useCurrentBucket());
-
-export const WithCurrentBucketConfig = ({ children }) =>
-  children(AsyncResult.Ok(useCurrentBucketConfig()));
