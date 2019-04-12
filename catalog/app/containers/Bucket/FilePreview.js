@@ -52,7 +52,7 @@ export default ({ handle }) => Preview.load(handle, AsyncResult.case({
     Unsupported: () => (
       <Message>
         {withSignedUrl(handle, (url) => (
-          <Button variant="outlined" href={url}>View in Browser</Button>
+          <Button variant="outlined" href={url}>Download and view in Browser</Button>
         ))}
       </Message>
     ),
