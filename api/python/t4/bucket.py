@@ -4,11 +4,8 @@ bucket.py
 Contains the Bucket class, which provides several useful functions
     over an s3 bucket.
 """
-import json
 import pathlib
 from urllib.parse import urlparse
-
-import requests
 
 from .data_transfer import (copy_file, copy_object, delete_object, get_bytes,
                             get_size_and_meta, list_object_versions,
@@ -68,6 +65,9 @@ class Bucket(object):
         return get_raw_mapping(self._search_endpoint, self._region)
 
     def get_user_meta_mappings(self):
+        """
+        Returns the current search mappings for user metadata from the search endpoint.
+        """
         unpacked_mappings = self._get_mappings()['drive']['mappings']['_doc']['properties']
         def transform_mappings(mappings):
             if 'properties' in mappings:
@@ -75,15 +75,6 @@ class Bucket(object):
                 return {key: transform_mappings(mappings[key]) for key in mappings.keys()}
             return mappings['type']
         return transform_mappings(unpacked_mappings['user_meta'])
-
-    def _check_against_mappings(self, meta):
-        """
-        Checks provided meta agasint search mappings.
-        """
-        self.config()
-        check_against_mappings(search_endpoint=self._search_endpoint,
-                               aws_region=self._region,
-                               meta=meta)
 
     def search(self, query, limit=10):
         """
@@ -161,7 +152,6 @@ class Bucket(object):
         all_meta = dict(user_meta=meta or {})
         data, format_meta = FormatRegistry.serialize(obj, all_meta)
         all_meta.update(format_meta)
-        self._check_against_mappings(all_meta)
         put_bytes(data, dest, all_meta)
 
     def put_file(self, key, path, meta=None):
@@ -183,7 +173,6 @@ class Bucket(object):
             * if copy fails
         """
         dest = self._uri + key
-        self._check_against_mappings(meta or {})
         copy_file(fix_url(path), dest, meta)
 
     def put_dir(self, key, directory):
