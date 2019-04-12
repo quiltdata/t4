@@ -25,7 +25,6 @@ export const PreviewData = tagged([
   'Markdown', // { rendered: string }
   'Notebook', // { preview: string }
   'Parquet', // { preview: string, ...ParquetMeta }
-  'Table', // { head: string[], tail: string[] }
   'Text', // { contents: string, lang: string }
   'Vcf', // { meta: string[], header: string[], body: string[][], variants: string[] }
   'Vega', // { spec: Object }

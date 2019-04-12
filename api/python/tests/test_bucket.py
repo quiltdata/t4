@@ -175,9 +175,12 @@ class TestBucket(QuiltTestCase):
 
             copy_mock.reset_mock()
             test_meta = {'asdf': 'jkl;'}
-            bucket.put_file(key='README.md', path='./README', meta=test_meta)
+            expected_meta = {
+                'user_meta': test_meta
+            }
+            bucket.put_file(key='README.md', path='./README', user_meta=test_meta)
             (src, dest, meta) = copy_mock.call_args_list[0][0]
-            assert meta == test_meta
+            assert meta == expected_meta
 
     def test_bucket_put_dir(self):
         path = pathlib.Path(__file__).parent / 'data'
