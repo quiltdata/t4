@@ -135,8 +135,9 @@ class Bucket(object):
             meta(dict): optional user-provided metadata to store
         """
         dest = self._uri + key
+        ext = pathlib.PurePosixPath(key).suffix
         all_meta = dict(user_meta=meta or {})
-        data, format_meta = FormatRegistry.serialize(obj, all_meta)
+        data, format_meta = FormatRegistry.serialize(obj, all_meta, ext)
         all_meta.update(format_meta)
         put_bytes(data, dest, all_meta)
 
