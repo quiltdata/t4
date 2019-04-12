@@ -134,10 +134,13 @@ class Bucket(object):
             obj(serializable): serializable object to store at key
             user_meta(dict): optional user-provided metadata to store
         """
+        user_meta = user_meta or {}  # replace mutable param
         dest = self._uri + key
-        all_meta = dict(user_meta=dict(user_meta))
         ext = pathlib.PurePosixPath(key).suffix
-
+        all_meta = {
+            'user_meta': user_meta,
+        }
+        
         data, format_meta = FormatRegistry.serialize(obj, all_meta, ext)
         all_meta.update(format_meta)
 
@@ -161,9 +164,10 @@ class Bucket(object):
             * if no file exists at path
             * if copy fails
         """
+        user_meta = user_meta or {}  # replace mutable param
         dest = self._uri + key
         meta = {
-            'user_meta': dict(user_meta),
+            'user_meta': user_meta,
         }
         copy_file(fix_url(path), dest, meta)
 
