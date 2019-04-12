@@ -164,3 +164,36 @@ def test_formats_search_fail_notfound():
     for args in bad_kwargs:
         with pytest.raises(QuiltException):
             FormatRegistry.search(**args)
+
+
+def test_formats_search_order():
+    # String is nice and easy to work with for this test
+    utf8_meta = {'format': {'name': 'utf-8'}}
+    unicode_meta = {'format': {'name': 'unicode'}}  # just compat with older 'unicode'
+    json_meta = {'format': {'name': 'json'}}
+
+    # pd.DataFrame can be serialized to a few formats.
+    utf8_handler = FormatRegistry.search(obj_type=str, meta=utf8_meta)[0]
+    unicode_handler = FormatRegistry.search(obj_type=str, meta=unicode_meta)[0]
+    json_handler = FormatRegistry.search(obj_type=str, meta=json_meta)[0]
+
+    # FormatRegistry.search(), all other things being equal,
+    # should return the most-recently-registered format first.
+    utf8_handler.register()
+    assert FormatRegistry.search(obj_type=str)[0] is utf8_handler
+    unicode_handler.register()
+    assert FormatRegistry.search(obj_type=str)[0] is unicode_handler
+    json_handler.register()
+    assert FormatRegistry.search(obj_type=str)[0] is json_handler
+    utf8_handler.register()
+    assert FormatRegistry.search(obj_type=str)[0] is utf8_handler
+
+    # FormatRegistry.search() should not *exclude* by extension, because
+    # users could make files like "data.monday" or whatever.
+    # However, it should *prioritize* by extension.
+    #
+    # From the above section, utf8_handler is formats[0].
+    formats = FormatRegistry.search(obj_type=str, ext='.json')
+    assert utf8_handler in formats
+    assert unicode_handler in formats
+    assert formats[0] is json_handler
