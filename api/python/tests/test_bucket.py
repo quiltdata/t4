@@ -319,3 +319,23 @@ class TestBucket(QuiltTestCase):
         b.search('blah', limit=1)
 
         search_mock.assert_called_once_with('blah', 'https://es-fake.endpoint', limit=1, aws_region='us-meow')
+
+    @patch('t4.bucket.put_bytes')
+    def test_bucket_put_ext(self, put_bytes):
+        # This just ensures the bucket is calling serialize() correctly.
+        obj = 'just a string..'
+        b = Bucket('s3://t4-testing-fake')
+        b.put('foo.json', obj)
+
+        assert put_bytes.called
+        assert len(put_bytes.call_args_list) == 1
+
+        args, kwargs = put_bytes.call_args
+        # avoid args[n] call if put_bytes was called w/kwarg arguments
+        data = kwargs['data'] if 'data' in kwargs else args[0]
+        dest = kwargs['dest'] if 'dest' in kwargs else args[1]
+        meta = kwargs['meta'] if 'meta' in kwargs else args[2]
+
+        assert json.loads(data) == obj
+        assert dest == 's3://t4-testing-fake/foo.json'
+        assert meta.get('format', {}).get('name') == 'json'
