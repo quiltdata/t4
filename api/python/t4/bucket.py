@@ -67,6 +67,15 @@ class Bucket(object):
         self.config()
         return get_raw_mapping(self._search_endpoint, self._region)
 
+    def get_user_meta_mappings(self):
+        unpacked_mappings = self._get_mappings()['drive']['mappings']['_doc']['properties']
+        def transform_mappings(mappings):
+            if 'properties' in mappings:
+                mappings = mappings['properties']
+                return {key: transform_mappings(mappings[key]) for key in mappings.keys()}
+            return mappings['type']
+        return transform_mappings(unpacked_mappings['user_meta'])
+
     def _check_against_mappings(self, meta):
         """
         Checks provided meta agasint search mappings.
