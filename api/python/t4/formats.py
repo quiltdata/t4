@@ -932,7 +932,7 @@ class ParquetFormatHandler(BaseFormatHandler):
         'compression': 'snappy_columns',
     }
 
-    def handles_typ(self, typ):
+    def handles_type(self, typ):
         # don't load pyarrow or pandas unless we actually have to use them..
         if 'pandas' not in sys.modules:
             return False
