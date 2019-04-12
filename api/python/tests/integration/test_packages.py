@@ -239,7 +239,7 @@ class PackageTest(QuiltTestCase):
         package_ = Package().set_dir('/', DATA_DIR / 'nested')
 
         out_dir = 'output'
-        package_.fetch(out_dir)
+        new_package_ = package_.fetch(out_dir)
 
         expected = {'one.txt': '1', 'two.txt': '2', 'three.txt': '3'}
         file_count = 0
@@ -257,7 +257,7 @@ class PackageTest(QuiltTestCase):
         # test that package re-rooting works as expected
         out_dir_abs_path = f'file://{pathlib.Path(out_dir).absolute().as_posix()}'
         assert all(
-            entry.physical_keys[0].startswith(out_dir_abs_path) for _, entry in package_.walk()
+            entry.physical_keys[0].startswith(out_dir_abs_path) for _, entry in new_package_.walk()
         )
 
     def test_package_fetch_default_dest(self):
@@ -290,9 +290,9 @@ class PackageTest(QuiltTestCase):
 
         # The key gets re-rooted correctly.
         pkg = t4.Package().set('foo', DATA_DIR / 'foo.txt')
-        pkg['foo'].fetch('bar.txt')
+        new_pkg_entry = pkg['foo'].fetch('bar.txt')
         out_abs_path = f'file://{pathlib.Path(".").absolute().as_posix()}/bar.txt'
-        assert pkg['foo'].physical_keys[0] == out_abs_path
+        assert new_pkg_entry.physical_keys[0] == out_abs_path
 
     def test_fetch_default_dest(tmpdir):
         """Verify fetching a package entry to a default destination."""

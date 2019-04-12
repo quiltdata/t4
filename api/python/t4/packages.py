@@ -226,10 +226,11 @@ class PackageEntry(object):
         dest = fix_url(dest)
         copy_file(physical_key, dest, self.meta)
 
-        # reroot package physical keys after the copy operation succeeds
-        self.physical_keys = [dest] + self.physical_keys[1:]
-
-        return self
+        # return a package reroot package physical keys after the copy operation succeeds
+        # see GH#388 for context
+        entry = self._clone()
+        entry.physical_keys = [dest] + entry.physical_keys[1:]
+        return entry
 
 
     def __call__(self, func=None, **kwargs):
@@ -469,11 +470,14 @@ class Package(object):
 
         copy_file_list(file_list)
 
-        # reroot package physical keys after the copy operation succeeds
-        for (_, entry), new_physical_key in zip(self.walk(), new_physical_keys):
-            entry.physical_keys = [new_physical_key] + entry.physical_keys[1:]
+        # return a package reroot package physical keys after the copy operation succeeds
+        # see GH#388 for context
+        pkg = Package()
+        for (logical_key, entry), physical_key in zip(self.walk(), new_physical_keys):
+            pkg.set(logical_key, physical_key)
+            pkg[logical_key].physical_keys += entry.physical_keys  # retain old pkeys
 
-        return self
+        return pkg
 
     def keys(self):
         """
