@@ -134,14 +134,35 @@ class FormatRegistry:
             ext: The filename extension for the data
                 If given, then if other methods fail or are not specified,
                 the handler(s) for the extension `ext` will be returned.
+                If other methods do not fail, any handlers that support the
+                specified extension will be moved to the front of the result
+                list.
 
         Returns:
             list: Formats in order of preference (latest-added first)
+
+        Raises:
+            QuiltException: if no matching formats are found
         """
-        # we want to retain order.
+        # Reasons to use lists and not sets:
+        # * we want to retain order, so recently added formats take precedence
+        # * at this scale, lists are faster than sets
         meta_fmts = cls.for_meta(meta)
         typ_fmts = cls.for_type(obj_type)
+        ext_fmts = cls.for_ext(ext)
         fmt_name = cls._get_name_from_meta(meta)
+
+        def bump_ext_fmts(fmts):
+            """return a new list from fmts, shifting those in ext_fmts to the start"""
+            results = []
+            unmatched = []
+            for fmt in fmts:
+                if fmt in ext_fmts:
+                    results.append(fmt)
+                else:
+                    unmatched.append(fmt)
+            results.extend(unmatched)
+            return results
 
         # Most critical param is obj_type -- hard fail if given, but not matched.
         if obj_type is not None:
@@ -151,13 +172,13 @@ class FormatRegistry:
                 # a format was specified by metadata
                 typ_meta_fmts = [fmt for fmt in typ_fmts if fmt in meta_fmts]
                 if typ_meta_fmts:
-                    return typ_meta_fmts
+                    return bump_ext_fmts(typ_meta_fmts)
                 raise QuiltException(
                     "Metadata requires the {!r} format for type {!r}, but no registered handler can do that"
                     .format(fmt_name, obj_type)
                 )
             # matched by type alone
-            return typ_fmts
+            return bump_ext_fmts(typ_fmts)
 
         # Look up by metadata
         if fmt_name:
@@ -167,15 +188,14 @@ class FormatRegistry:
                     "Metadata requires the {!r} format, but no handler is registered for it"
                     .format(fmt_name)
                 )
-            return meta_fmts
+            return bump_ext_fmts(meta_fmts)
 
         # Fall back to using extension
         # Extension is a second-class citizen here to prevent a file's extension from
         # interfering with match in a situation where the format or object type has been
         # explicitly specified.
-        ext_fmts = cls.for_ext(ext)
         if not ext_fmts:
-            raise QuiltException("No serialization metadata, and guessing by extension failed.")
+            raise QuiltException("No object type or metadata specified, and guessing by extension failed.")
         return ext_fmts
 
     @classmethod
@@ -219,11 +239,10 @@ class FormatRegistry:
             meta: Used to search for format handlers
             ext: Used to search for format handlers
             as_type: Used to filter format found handlers
-            check_only:
             **format_opts:
 
         Returns:
-
+            Deserialized object (type depends on deserializer)
         """
         if as_type:
             # Get handlers for meta and ext first.  obj_type is too strict to use here.
@@ -429,6 +448,7 @@ class BaseFormatHandler(ABC):
         Args:
             bytes_obj: bytes to deserialize
             meta: object metadata, may contain deserialization prefs
+            ext: filename extension, if any
             **format_opts: Format options retained in metadata.  These are
                 needed for some poorly-specified formats, like CSV.  If
                 used in serialization, they are retained and used for
