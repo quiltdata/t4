@@ -125,7 +125,7 @@ class Bucket(object):
         """
         return self.deserialize(key)
 
-    def put(self, key, obj, user_meta={}):
+    def put(self, key, obj, user_meta=None):
         """
         Stores `obj` at key in bucket, optionally with user-provided metadata.
 
@@ -134,13 +134,16 @@ class Bucket(object):
             obj(serializable): serializable object to store at key
             user_meta(dict): optional user-provided metadata to store
         """
+        user_meta = user_meta or {}
         dest = self._uri + key
-        all_meta = dict(user_meta=user_meta)
+        all_meta = {
+            'user_meta': user_meta
+        }
         data, format_meta = FormatRegistry.serialize(obj, all_meta)
         all_meta.update(format_meta)
         put_bytes(data, dest, all_meta)
 
-    def put_file(self, key, path, user_meta={}):
+    def put_file(self, key, path, user_meta=None):
         """
         Stores file at path to key in bucket.
 
@@ -158,6 +161,7 @@ class Bucket(object):
             * if no file exists at path
             * if copy fails
         """
+        user_meta = user_meta or {}
         dest = self._uri + key
         meta = {
             'user_meta': user_meta
