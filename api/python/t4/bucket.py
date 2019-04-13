@@ -11,7 +11,7 @@ from .data_transfer import (copy_file, copy_object, delete_object, get_bytes,
                             get_size_and_meta, list_object_versions,
                             list_objects, put_bytes, select)
 from .formats import FormatRegistry
-from .search_util import get_raw_mapping, search
+from .search_util import get_raw_mapping_unpacked, search
 from .util import QuiltException, find_bucket_config, fix_url, get_from_config, parse_s3_url
 
 
@@ -62,13 +62,13 @@ class Bucket(object):
 
     def _get_mappings(self):
         self.config()
-        return get_raw_mapping(self._search_endpoint, self._region)
+        return get_raw_mapping_unpacked(self._search_endpoint, self._region)
 
     def get_user_meta_mappings(self):
         """
         Returns the current search mappings for user metadata from the search endpoint.
         """
-        unpacked_mappings = self._get_mappings()['drive']['mappings']['_doc']['properties']
+        unpacked_mappings = self._get_mappings()
         def transform_mappings(mappings):
             if 'properties' in mappings:
                 mappings = mappings['properties']
