@@ -229,6 +229,7 @@ class PackageEntry(object):
         # return a package reroot package physical keys after the copy operation succeeds
         # see GH#388 for context
         entry = self._clone()
+        entry.physical_keys = [dest]
         return entry
 
 
