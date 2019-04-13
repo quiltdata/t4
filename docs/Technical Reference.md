@@ -52,6 +52,8 @@ You may either [create a new certificate](https://docs.aws.amazon.com/acm/latest
 1. **An SSL certificate in the same region as your Quilt instance**, for
 the elastic load balancer of the Quilt server. See the above pre-requisite for details.
 
+1. For maximum security, Quilt requires **a region that supports [AWS Fargate](https://aws.amazon.com/about-aws/global-infrastructure/regional-product-services/)**. As of this writing, all U.S. regions support Fargate.
+
 1. **An S3 Bucket** for your team data. This may be a new or existing bucket.
 The bucket should not have any notifications
 (S3 Console > Bucket > Properties > Events).
