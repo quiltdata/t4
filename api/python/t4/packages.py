@@ -229,7 +229,6 @@ class PackageEntry(object):
         # return a package reroot package physical keys after the copy operation succeeds
         # see GH#388 for context
         entry = self._clone()
-        entry.physical_keys = [dest] + entry.physical_keys[1:]
         return entry
 
 
@@ -475,7 +474,6 @@ class Package(object):
         pkg = Package()
         for (logical_key, entry), physical_key in zip(self.walk(), new_physical_keys):
             pkg.set(logical_key, physical_key)
-            pkg[logical_key].physical_keys += entry.physical_keys  # retain old pkeys
 
         return pkg
 
