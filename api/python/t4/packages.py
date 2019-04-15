@@ -647,10 +647,14 @@ class Package(object):
         if not entries:
             return
 
-        physical_keys = (entry.physical_keys[0] for entry in entries)
-        sizes = (entry.size for entry in entries)
-        total_size = sum(entry.size for entry in entries)
-        results = calculate_sha256(physical_keys, sizes, total_size)
+        physical_keys = []
+        sizes = []
+        for entry in entries:
+            physical_keys.append(entry.physical_keys[0])
+            sizes.append(entry.size)
+
+        total_size = sum(sizes)
+        results = calculate_sha256(physical_keys, sizes)
 
         for entry, obj_hash in zip(entries, results):
             entry.hash = dict(type='SHA256', value=obj_hash)

@@ -8,6 +8,7 @@ import platform
 import shutil
 from threading import Lock
 from urllib.parse import urlparse
+import os
 
 from botocore import UNSIGNED
 from botocore.client import Config
@@ -605,7 +606,8 @@ def get_size_and_meta(src):
         raise NotImplementedError
     return size, meta, version
 
-def calculate_sha256(src_list, sizes, total_size):
+def calculate_sha256(src_list, sizes):
+    total_size = sum(sizes)
     lock = Lock()
 
     with tqdm(desc="Hashing", total=total_size, unit='B', unit_scale=True) as progress:
