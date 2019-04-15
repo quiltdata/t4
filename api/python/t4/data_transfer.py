@@ -617,7 +617,15 @@ def calculate_sha256(src_list, sizes):
                 path = pathlib.Path(parse_file_url(src_url))
 
                 with open(path, 'rb') as fd:
-                    current_file_size = pathlib.Path(path).stat().st_size
+                    while True:
+                        chunk = fd.read(1024)
+                        if not chunk:
+                            break
+                        hash_obj.update(chunk)
+                        with lock:
+                            progress.update(len(chunk))
+
+                    current_file_size = fd.tell()
                     if current_file_size != size:
                         old_size = humanize.naturalsize(size)
                         new_size = humanize.naturalsize(current_file_size)
@@ -629,13 +637,6 @@ def calculate_sha256(src_list, sizes):
                             f"avoided if possible."
                         )
 
-                    while True:
-                        chunk = fd.read(1024)
-                        if not chunk:
-                            break
-                        hash_obj.update(chunk)
-                        with lock:
-                            progress.update(len(chunk))
             elif src_url.scheme == 's3':
                 src_bucket, src_path, src_version_id = parse_s3_url(src_url)
                 params = dict(Bucket=src_bucket, Key=src_path)
