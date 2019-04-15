@@ -10,7 +10,7 @@ import './installStyles';
 // Import all the third party stuff
 import * as React from 'react';
 import ReactDOM from 'react-dom';
-import createHistory from 'history/createBrowserHistory';
+import { createBrowserHistory as createHistory } from 'history';
 import 'sanitize.css/sanitize.css';
 //  Need to bypass CSS modules used by standard loader
 //  See https://github.com/react-boilerplate/react-boilerplate/issues/238#issuecomment-222080327
@@ -42,12 +42,10 @@ import { nest, composeComponent } from 'utils/reactTools';
 import RouterProvider, { LOCATION_CHANGE, selectLocation } from 'utils/router';
 import mkStorage from 'utils/storage';
 import Tracking from 'utils/tracking';
-// Load the favicon, the manifest.json file and the .htaccess file
+// Load the icons
 /* eslint-disable import/no-unresolved, import/extensions */
 import '!file-loader?name=[name].[ext]!./favicon.ico';
-import '!file-loader?name=[name].[ext]!./manifest.json';
 import '!file-loader?name=[name].[ext]!./quilt-og.png';
-import 'file-loader?name=[name].[ext]!./.htaccess';
 /* eslint-enable import/no-unresolved, import/extensions */
 // Import i18n messages
 import { translationMessages } from './i18n';

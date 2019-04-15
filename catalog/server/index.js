@@ -24,20 +24,19 @@ const prettyHost = customHost || 'localhost';
 const port = argv.port || process.env.PORT || 3000;
 
 // Start your app.
-app.listen(port, host, (err) => {
+app.listen(port, host, async (err) => {
   if (err) {
     return logger.error(err.message);
   }
 
   // Connect to ngrok in dev mode
   if (ngrok) {
-    ngrok.connect(port, (innerErr, url) => {
-      if (innerErr) {
-        return logger.error(innerErr);
-      }
-
+    try {
+      const url = await ngrok.connect(port);
       logger.appStarted(port, prettyHost, url);
-    });
+    } catch (e) {
+      return logger.error(e);
+    }
   } else {
     logger.appStarted(port, prettyHost);
   }

@@ -3,20 +3,26 @@
  *
  * This will setup the i18n language files and locale data for your app.
  *
+ *   IMPORTANT: This file is used by the internal build
+ *   script `extract-intl`, and must use CommonJS module syntax
+ *   You CANNOT use import/export in this file.
  */
-import { addLocaleData } from 'react-intl';
-import enLocaleData from 'react-intl/locale-data/en';
+const { addLocaleData } = require('react-intl');
+const enLocaleData = require('react-intl/locale-data/en');
 
-import { DEFAULT_LOCALE } from './containers/App/constants'; // eslint-disable-line
-import enTranslationMessages from './translations/en.json';
-
-export const appLocales = [
-  'en',
-];
+const enTranslationMessages = require('./translations/en.json');
 
 addLocaleData(enLocaleData);
 
-export const formatTranslationMessages = (locale, messages) => {
+const DEFAULT_LOCALE = 'en';
+exports.DEFAULT_LOCALE = DEFAULT_LOCALE;
+
+const appLocales = [
+  'en',
+];
+exports.appLocales = appLocales;
+
+const formatTranslationMessages = (locale, messages) => {
   const defaultFormattedMessages = locale !== DEFAULT_LOCALE
     ? formatTranslationMessages(DEFAULT_LOCALE, enTranslationMessages)
     : {};
@@ -28,7 +34,9 @@ export const formatTranslationMessages = (locale, messages) => {
     return Object.assign(formattedMessages, { [key]: message });
   }, {});
 };
+exports.formatTranslationMessages = formatTranslationMessages;
 
-export const translationMessages = {
+const translationMessages = {
   en: formatTranslationMessages('en', enTranslationMessages),
 };
+exports.translationMessages = translationMessages;

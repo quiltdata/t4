@@ -6,6 +6,7 @@ const path = require('path');
 const fs = require('fs');
 const glob = require('glob');
 const webpack = require('webpack');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const AddAssetHtmlPlugin = require('add-asset-html-webpack-plugin');
 const CircularDependencyPlugin = require('circular-dependency-plugin');
@@ -13,6 +14,10 @@ const logger = require('../../server/logger');
 const { dllPlugin } = require(path.resolve(process.cwd(), 'package.json'));
 
 const plugins = [
+  new CopyWebpackPlugin([{
+    from: 'static-dev',
+  }]),
+
   new webpack.HotModuleReplacementPlugin(), // Tell webpack we want hot reloading
   new webpack.NoEmitOnErrorsPlugin(),
   new HtmlWebpackPlugin({
@@ -35,6 +40,8 @@ if (dllPlugin) {
 }
 
 module.exports = require('./webpack.base.babel')({
+  mode: 'development',
+
   // Add hot reloading in development
   entry: [
     'eventsource-polyfill', // Necessary for hot reloading with IE
@@ -46,6 +53,10 @@ module.exports = require('./webpack.base.babel')({
   output: {
     filename: '[name].js',
     chunkFilename: '[name].chunk.js',
+  },
+
+  optimization: {
+    minimize: false,
   },
 
   // Add development plugins
@@ -65,27 +76,19 @@ module.exports = require('./webpack.base.babel')({
  * third party dependencies.
  *
  * If there is a dllPlugin key on the project's package.json, the
- * Webpack DLL Plugin will be used.  Otherwise the CommonsChunkPlugin
- * will be used.
+ * Webpack DLL Plugin will be used.
  *
  */
 function dependencyHandlers() {
   // Don't do anything during the DLL Build step
-  if (process.env.BUILDING_DLL) { return []; }
+  if (process.env.BUILDING_DLL) return [];
 
-  // If the package.json does not have a dllPlugin property, use the CommonsChunkPlugin
-  if (!dllPlugin) {
-    return [
-      new webpack.optimize.CommonsChunkPlugin({
-        name: 'vendor',
-        children: true,
-        minChunks: 2,
-        async: true,
-      }),
-    ];
-  }
+  // Don't do anything if package.json does not have a dllPlugin property
+  // Code splitting now included by default in Webpack 4
+  if (!dllPlugin) return [];
 
-  const dllPath = path.resolve(process.cwd(), dllPlugin.path || 'node_modules/react-boilerplate-dlls');
+  const dllPath = path.resolve(process.cwd(),
+    dllPlugin.path || 'node_modules/react-boilerplate-dlls');
 
   /**
    * If DLLs aren't explicitly defined, we assume all production dependencies listed in package.json

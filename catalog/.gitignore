@@ -12,7 +12,3 @@ npm-debug.log
 # Quilt deployment
 .firebaserc
 firebase.json
-
-# Local config
-static/**/config.json
-static/**/federation.json
