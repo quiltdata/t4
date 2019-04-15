@@ -496,6 +496,9 @@ class PackageTest(QuiltTestCase):
             assert "Quilt/Foo" in pkgs
             assert "Quilt/Bar" in pkgs
 
+            # Verify 'local' keyword works as expected.
+            assert list(pkgs) == list(t4.list_packages('local'))
+
             # Verify package repr is as expected.
             pkgs_repr = str(pkgs)
             assert 'Quilt/Test:latest' in pkgs_repr

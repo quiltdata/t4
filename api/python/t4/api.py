@@ -266,7 +266,11 @@ def list_packages(registry=None):
                         f"{self._fmt_str(size_str, 15).rstrip(' ')}\t\n")
             return out
 
-    base_registry = get_package_registry(fix_url(registry) if registry else None)
+    if registry is None or registry == 'local':
+        base_registry = get_package_registry(None)
+    else:
+        base_registry = get_package_registry(fix_url(registry))
+
     named_packages = base_registry + '/named_packages'
 
     pkg_info = []
