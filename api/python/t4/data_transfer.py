@@ -24,6 +24,7 @@ with warnings.catch_warnings():
     from tqdm.autonotebook import tqdm
 
 import jsonlines
+import humanize
 
 from .util import QuiltException, make_s3_url, parse_file_url, parse_s3_url
 from . import xattr
@@ -604,16 +605,29 @@ def get_size_and_meta(src):
         raise NotImplementedError
     return size, meta, version
 
-def calculate_sha256(src_list, total_size):
+def calculate_sha256(src_list, sizes, total_size):
     lock = Lock()
 
     with tqdm(desc="Hashing", total=total_size, unit='B', unit_scale=True) as progress:
-        def _process_url(src):
+        def _process_url(src, size):
             src_url = urlparse(src)
             hash_obj = hashlib.sha256()
             if src_url.scheme == 'file':
                 path = pathlib.Path(parse_file_url(src_url))
+
                 with open(path, 'rb') as fd:
+                    current_file_size = os.stat(fd).st_size
+                    if current_file_size != size:
+                        old_size = humanize.naturalsize(size)
+                        new_size = humanize.naturalsize(current_file_size)
+                        warnings.warn(
+                            f"Expected the package entry at {src!r} to be {old_size} in size, but "
+                            f"found an object which is {new_size} instead. This indicates that "
+                            f"the content of the file changed in between when you included this "
+                            f" entry in the package (via set or set_dir) and now. This should be "
+                            f"avoided if possible."
+                        )
+
                     while True:
                         chunk = fd.read(1024)
                         if not chunk:
@@ -637,7 +651,7 @@ def calculate_sha256(src_list, total_size):
             return hash_obj.hexdigest()
 
         with ThreadPoolExecutor() as executor:
-            results = executor.map(_process_url, src_list)
+            results = executor.map(_process_url, src_list, sizes)
 
     return results
 
