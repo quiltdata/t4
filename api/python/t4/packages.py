@@ -653,7 +653,6 @@ class Package(object):
             physical_keys.append(entry.physical_keys[0])
             sizes.append(entry.size)
 
-        total_size = sum(sizes)
         results = calculate_sha256(physical_keys, sizes)
 
         for entry, obj_hash in zip(entries, results):
