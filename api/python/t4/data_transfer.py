@@ -606,6 +606,8 @@ def get_size_and_meta(src):
     return size, meta, version
 
 def calculate_sha256(src_list, sizes):
+    assert len(src_list) == len(sizes)
+
     total_size = sum(sizes)
     lock = Lock()
 
@@ -627,14 +629,12 @@ def calculate_sha256(src_list, sizes):
 
                     current_file_size = fd.tell()
                     if current_file_size != size:
-                        old_size = humanize.naturalsize(size)
-                        new_size = humanize.naturalsize(current_file_size)
                         warnings.warn(
-                            f"Expected the package entry at {src!r} to be {old_size} in size, but "
-                            f"found an object which is {new_size} instead. This indicates that "
-                            f"the content of the file changed in between when you included this "
-                            f" entry in the package (via set or set_dir) and now. This should be "
-                            f"avoided if possible."
+                            f"Expected the package entry at {src!r} to be {size} B in size, but "
+                            f"found an object which is {current_file_size} B instead. This "
+                            f"indicates that the content of the file changed in between when you "
+                            f"included this  entry in the package (via set or set_dir) and now. "
+                            f"This should be avoided if possible."
                         )
 
             elif src_url.scheme == 's3':
