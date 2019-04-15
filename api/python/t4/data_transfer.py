@@ -618,7 +618,7 @@ def calculate_sha256(src_list, sizes):
                 path = pathlib.Path(parse_file_url(src_url))
 
                 with open(path, 'rb') as fd:
-                    current_file_size = os.stat(fd).st_size
+                    current_file_size = pathlib.Path(path).stat().st_size
                     if current_file_size != size:
                         old_size = humanize.naturalsize(size)
                         new_size = humanize.naturalsize(current_file_size)
