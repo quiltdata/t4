@@ -24,7 +24,6 @@ with warnings.catch_warnings():
     from tqdm.autonotebook import tqdm
 
 import jsonlines
-import humanize
 
 from .util import QuiltException, make_s3_url, parse_file_url, parse_s3_url
 from . import xattr
