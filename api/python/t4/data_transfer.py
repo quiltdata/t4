@@ -634,11 +634,11 @@ def calculate_sha256(src_list, sizes, total_size):
                     old_size = humanize.naturalsize(size)
                     new_size = humanize.naturalsize(current_obj_size)
                     warnings.warn(
-                        f"Expected the package entry at {src!r} to be {old_size} large, but "
+                        f"Expected the package entry at {src!r} to be {old_size} in size, but "
                         f"found an object which is {new_size} instead. This indicates that the "
-                        f"content of the content of the file changed in between when you "
-                        f"included this entry in the package (via set or set_dir) and now. This "
-                        f"should be avoided if possible."
+                        f"content of the file changed in between when you included this entry "
+                        f"in the package (via set or set_dir) and now. This should be avoided "
+                        f"if possible."
                     )
 
                 body = resp['Body']
