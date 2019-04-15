@@ -24,6 +24,7 @@ with warnings.catch_warnings():
     from tqdm.autonotebook import tqdm
 
 import jsonlines
+import humanize
 
 from .util import QuiltException, make_s3_url, parse_file_url, parse_s3_url
 from . import xattr
@@ -604,11 +605,11 @@ def get_size_and_meta(src):
         raise NotImplementedError
     return size, meta, version
 
-def calculate_sha256(src_list, total_size):
+def calculate_sha256(src_list, sizes, total_size):
     lock = Lock()
 
     with tqdm(desc="Hashing", total=total_size, unit='B', unit_scale=True) as progress:
-        def _process_url(src):
+        def _process_url(src, size):
             src_url = urlparse(src)
             hash_obj = hashlib.sha256()
             if src_url.scheme == 'file':
@@ -627,6 +628,19 @@ def calculate_sha256(src_list, total_size):
                 if src_version_id is not None:
                     params.update(dict(VersionId=src_version_id))
                 resp = s3_client.get_object(**params)
+                
+                current_obj_size = resp['ContentLength']
+                if current_obj_size != size:
+                    old_size = humanize.naturalsize(size)
+                    new_size = humanize.naturalsize(current_obj_size)
+                    warnings.warn(
+                        f"Expected the package entry at {src!r} to be {old_size} large, but "
+                        f"found an object which is {new_size} instead. This indicates that the "
+                        f"content of the content of the file changed in between when you "
+                        f"included this entry in the package (via set or set_dir) and now. This "
+                        f"should be avoided if possible."
+                    )
+
                 body = resp['Body']
                 for chunk in body:
                     hash_obj.update(chunk)
@@ -637,7 +651,7 @@ def calculate_sha256(src_list, total_size):
             return hash_obj.hexdigest()
 
         with ThreadPoolExecutor() as executor:
-            results = executor.map(_process_url, src_list)
+            results = executor.map(_process_url, src_list, sizes)
 
     return results
 
