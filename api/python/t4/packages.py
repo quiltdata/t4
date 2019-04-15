@@ -460,22 +460,24 @@ class Package(object):
         nice_dest = fix_url(dest).rstrip('/')
         file_list = []
         new_physical_keys = []
+        pkg = Package()
 
         for logical_key, entry in self.walk():
             logical_key = quote(logical_key)
             physical_key = _to_singleton(entry.physical_keys)
             new_physical_key = f'{nice_dest}/{logical_key}'
+
             new_physical_keys.append(new_physical_key)
             file_list.append((physical_key, new_physical_key, entry.size, entry.meta))
 
+            # return a package reroot package physical keys after the copy operation succeeds
+            # see GH#388 for context
+            new_entry = entry._clone()
+            new_entry.physical_keys = [new_physical_key]
+            pkg.set(logical_key, new_entry)
+
         copy_file_list(file_list)
-
-        # return a package reroot package physical keys after the copy operation succeeds
-        # see GH#388 for context
-        pkg = Package()
-        for (logical_key, entry), physical_key in zip(self.walk(), new_physical_keys):
-            pkg.set(logical_key, physical_key)
-
+        
         return pkg
 
     def keys(self):
