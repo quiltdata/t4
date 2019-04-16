@@ -459,13 +459,11 @@ class Package(object):
         """
         nice_dest = fix_url(dest).rstrip('/')
         file_list = []
-        new_physical_keys = []
         pkg = Package()
 
         for logical_key, entry in self.walk():
-            logical_key = quote(logical_key)
             physical_key = _to_singleton(entry.physical_keys)
-            new_physical_key = f'{nice_dest}/{logical_key}'
+            new_physical_key = f'{nice_dest}/{quote(logical_key)}'
 
             new_physical_keys.append(new_physical_key)
             file_list.append((physical_key, new_physical_key, entry.size, entry.meta))
