@@ -61,7 +61,8 @@ class Bucket(object):
         self._region = bucket_config.get('region', 'us-east-1')
 
     def _get_mappings(self):
-        self.config()
+        if not self._search_endpoint:
+            self.config()
         return get_raw_mapping_unpacked(self._search_endpoint, self._region)
 
     def get_user_meta_mappings(self):

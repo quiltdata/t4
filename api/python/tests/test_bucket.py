@@ -316,3 +316,37 @@ class TestBucket(QuiltTestCase):
         b.search('blah', limit=1)
 
         search_mock.assert_called_once_with('blah', 'https://es-fake.endpoint', limit=1, aws_region='us-meow')
+
+    @patch('t4.bucket.get_raw_mapping_unpacked')
+    def test_bucket_mappings(self, get_raw_mapping_unpacked):
+        get_raw_mapping_unpacked.return_value = {
+            'user_meta': {
+                'properties': {
+                    'foo': {
+                        'type': 'text'
+                    },
+                    'bar': {
+                        'type': 'long'
+                    },
+                    'baz': {
+                        'properties': {
+                            'asdf': {
+                                'type': 'keyword'
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        b = Bucket('s3://t4-testing-fake')
+        b._search_endpoint = 'https://foo.bar/search'
+        b._region = 'us-east-1'
+        result = b.get_user_meta_mappings()
+        assert result == {
+            'foo': 'text',
+            'bar': 'long',
+            'baz': {
+                'asdf': 'keyword'
+            }
+        }
+        get_raw_mapping_unpacked.assert_called_once_with('https://foo.bar/search', 'us-east-1')
