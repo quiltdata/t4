@@ -1,7 +1,6 @@
 /* app.js - application entry point */
 // Needed for redux-saga es6 generator support
-import 'babel-polyfill';
-import 'whatwg-fetch';
+import '@babel/polyfill';
 
 // TODO: remove after mui v4 release
 import './installStyles';

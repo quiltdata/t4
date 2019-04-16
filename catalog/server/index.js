@@ -23,6 +23,13 @@ const prettyHost = customHost || 'localhost';
 
 const port = argv.port || process.env.PORT || 3000;
 
+// use the gzipped bundle
+app.get('*.js', (req, res, next) => {
+  req.url = req.url + '.gz'; // eslint-disable-line
+  res.set('Content-Encoding', 'gzip');
+  next();
+});
+
 // Start your app.
 app.listen(port, host, async (err) => {
   if (err) {
