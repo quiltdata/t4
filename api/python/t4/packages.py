@@ -465,7 +465,6 @@ class Package(object):
             physical_key = _to_singleton(entry.physical_keys)
             new_physical_key = f'{nice_dest}/{quote(logical_key)}'
 
-            new_physical_keys.append(new_physical_key)
             file_list.append((physical_key, new_physical_key, entry.size, entry.meta))
 
             # return a package reroot package physical keys after the copy operation succeeds
