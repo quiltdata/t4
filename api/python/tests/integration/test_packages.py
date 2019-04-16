@@ -511,6 +511,11 @@ class PackageTest(QuiltTestCase):
             # Verify 'local' keyword works as expected.
             assert list(pkgs) == list(t4.list_packages('local'))
 
+            # Verify specifying a local path explicitly works as expected.
+            assert list(pkgs) == list(t4.list_packages(
+                pathlib.Path(temp_local_registry).parent.as_posix()
+            ))
+
             # Verify package repr is as expected.
             pkgs_repr = str(pkgs)
             assert 'Quilt/Test:latest' in pkgs_repr
