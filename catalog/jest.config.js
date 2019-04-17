@@ -21,13 +21,15 @@ module.exports = {
     '.*\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$':
       '<rootDir>/internals/mocks/image.js',
   },
-  setupTestFrameworkScriptFile: '<rootDir>/internals/testing/test-bundler.js',
+  setupFilesAfterEnv: [
+    '<rootDir>/internals/testing/test-bundler.js',
+    'react-testing-library/cleanup-after-each',
+  ],
   setupFiles: [
     'raf/polyfill',
     'jest-localstorage-mock',
-    '<rootDir>/internals/testing/enzyme-setup.js',
   ],
   testRegex: ".*\\.(test|spec)\\.js$",
   testURL: "https://quilt-test",
-  snapshotSerializers: ['enzyme-to-json/serializer'],
+  snapshotSerializers: [],
 };

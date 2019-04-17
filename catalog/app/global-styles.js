@@ -11,6 +11,7 @@ injectGlobal`
     text-rendering: optimizeLegibility;
     height: 100%;
     width: 100%;
+    word-break: normal;
   }
 
   body {
