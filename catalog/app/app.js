@@ -19,14 +19,16 @@ import { ThemeProvider } from '@material-ui/styles';
 import Error from 'components/Error';
 import * as Intercom from 'components/Intercom';
 import Layout from 'components/Layout';
+import Placeholder from 'components/Placeholder';
 import App from 'containers/App';
-import Placeholder from 'containers/App/Placeholder';
 import LanguageProvider from 'containers/LanguageProvider';
 import * as Auth from 'containers/Auth';
 import * as Notifications from 'containers/Notifications';
 import routes from 'constants/routes';
 import * as style from 'constants/style';
-import * as AWS from 'utils/AWS';
+import * as AWSCredentials from 'utils/AWS/Credentials';
+import * as AWSConfig from 'utils/AWS/Config';
+import * as AWSSigner from 'utils/AWS/Signer';
 import * as APIConnector from 'utils/APIConnector';
 import * as Config from 'utils/Config';
 import * as Data from 'utils/Data';
@@ -124,9 +126,9 @@ const render = (messages) => {
         locationSelector: selectLocation,
         userSelector: Auth.selectors.username,
       }],
-      AWS.Credentials.Provider,
-      AWS.Config.Provider,
-      AWS.Signer.Provider,
+      AWSCredentials.Provider,
+      AWSConfig.Provider,
+      AWSSigner.Provider,
       Notifications.WithNotifications,
       ErrorBoundary,
       App,

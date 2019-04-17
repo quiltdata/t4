@@ -9,20 +9,23 @@ import Tabs from '@material-ui/core/Tabs';
 import { withStyles } from '@material-ui/core/styles';
 
 import Layout from 'components/Layout';
+import Placeholder from 'components/Placeholder';
 import { ThrowNotFound } from 'containers/NotFoundPage';
-import * as AWS from 'utils/AWS';
+import * as S3 from 'utils/AWS/S3';
 import { useCurrentBucketConfig } from 'utils/BucketConfig';
 import * as NamedRoutes from 'utils/NamedRoutes';
 import * as RT from 'utils/reactTools';
 
-import Dir from './Dir';
-import File from './File';
-import Overview from './Overview';
-import PackageDetail from './PackageDetail';
-import PackageList from './PackageList';
-import PackageTree from './PackageTree';
-import Search from './Search';
 
+const mkLazy = (load) => RT.loadable(load, { fallback: () => <Placeholder /> });
+
+const Dir = mkLazy(() => import('./Dir'));
+const File = mkLazy(() => import('./File'));
+const Overview = mkLazy(() => import('./Overview'));
+const PackageDetail = mkLazy(() => import('./PackageDetail'));
+const PackageList = mkLazy(() => import('./PackageList'));
+const PackageTree = mkLazy(() => import('./PackageTree'));
+const Search = mkLazy(() => import('./Search'));
 
 const match = (cases) => (pathname) => {
   // eslint-disable-next-line no-restricted-syntax
@@ -114,7 +117,7 @@ export default ({ location, match: { params: { bucket } } }) => {
   const bucketCfg = useCurrentBucketConfig();
   const s3Props = bucketCfg && bucketCfg.region && { region: bucketCfg.region };
   return (
-    <AWS.S3.Provider {...s3Props}>
+    <S3.Provider {...s3Props}>
       <BucketLayout
         bucket={bucket}
         section={getBucketSection(paths)(location.pathname)}
@@ -161,6 +164,6 @@ export default ({ location, match: { params: { bucket } } }) => {
           />
         </Switch>
       </BucketLayout>
-    </AWS.S3.Provider>
+    </S3.Provider>
   );
 };

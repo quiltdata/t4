@@ -1,9 +1,10 @@
+// TODO: rm lodash
 import initial from 'lodash/initial';
 import last from 'lodash/last';
 import omit from 'lodash/omit';
 import pick from 'lodash/pick';
 import * as R from 'ramda';
-import React, { createElement, Fragment } from 'react';
+import * as React from 'react';
 import {
   compose,
   hoistStatics,
@@ -31,7 +32,7 @@ import {
  * const res2 = <Component cls="hey">sup</Component>;
  */
 const createFactory = hoistStatics((Component) =>
-  (props) => createElement(Component, props));
+  (props) => React.createElement(Component, props));
 
 /**
  * React Higher-Order Component: given a react component as an argument,
@@ -153,7 +154,7 @@ export const restoreProps = ({ key = DEFAULT_SAVED_PROPS_KEY, keep = [] } = {}) 
  * Component that simply renders its children.
  */
 export const RenderChildren = composeComponent('RenderChildren',
-  ({ children }) => <Fragment>{children}</Fragment>);
+  ({ children }) => <>{children}</>);
 
 /**
  * Render nested components.
@@ -264,3 +265,21 @@ export const extractProp = (prop, fn) =>
  */
 export const withSuspense = (fallback, opts) =>
   wrap(React.Suspense, (props) => ({ fallback: fallback(props), ...opts }));
+
+/**
+ * Create a lazy component.
+ *
+ * @param {function} importFunc
+ *   Function that imports the component, e.g. `() => import('Component')`.
+ *
+ * @param {object} options
+ *   All the options except for `fallback` are passed directly to Suspense.
+ *
+ * @param {function} options.fallback
+ *   Function for rendering fallback UI given props passed to the component.
+ *   Result is passed to Suspense as `fallback` prop
+ *   Renders `null` by default.
+ *
+ */
+export const loadable = (importFunc, { fallback = () => null, ...opts }) =>
+  withSuspense(fallback, opts)(React.lazy(importFunc));
