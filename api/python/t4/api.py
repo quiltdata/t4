@@ -267,25 +267,26 @@ def list_packages(registry=None):
             return out
 
     if registry is None or registry == 'local':
-        base_registry = get_package_registry(None)
+        registry = get_package_registry(None)
     else:
-        base_registry = get_package_registry(fix_url(registry))
-
-    named_packages = base_registry + '/named_packages'
+        registry = get_package_registry(fix_url(registry))
+    # the get_package_registry path includes '/.quilt', which Package.browse does not expect
+    registry = registry[:registry.rindex('.quilt')]
+    named_packages_urlparse = urlparse(registry + '.quilt/named_packages')
+    registry_scheme = named_packages_urlparse.scheme
 
     pkg_info = []
 
-    registry_url = urlparse(named_packages)
-    if registry_url.scheme == 'file':
-        registry_dir = pathlib.Path(parse_file_url(registry_url))
+    if registry_scheme == 'file':
+        named_packages_dir = pathlib.Path(parse_file_url(named_packages_urlparse))
 
-        for named_path in registry_dir.glob('*/*'):
-            name = named_path.relative_to(registry_dir).as_posix()
+        for named_path in named_packages_dir.glob('*/*'):
+            pkg_name = named_path.relative_to(named_packages_dir).as_posix()
 
             pkg_hashes = []
             pkg_sizes = []
             pkg_ctimes = []
-            pkg_name = name
+            pkg_display_names = []
 
             with open(named_path / 'latest', 'r') as latest_hash_file:
                 latest_hash = latest_hash_file.read()
@@ -299,20 +300,26 @@ def list_packages(registry=None):
                     pkg_hashes.append(pkg_hash)
 
                 if pkg_hash == latest_hash:
-                    pkg_name = f'{pkg_name}:latest'
+                    pkg_display_name = f'{pkg_name}:latest'
+                else:
+                    pkg_display_name = pkg_name
 
+                pkg = Package.browse(pkg_name, registry=registry, top_hash=pkg_hash)
+
+                pkg_sizes.append(pkg.reduce(lambda tot, tup: tot + tup[1].size, default=0))
+                pkg_display_names.append(pkg_display_name)
                 pkg_ctimes.append(pkg_hash_path.stat().st_ctime)
 
-                pkg = Package.browse(name, registry='local', top_hash=pkg_hash)
-                pkg_sizes.append(pkg.reduce(lambda tot, tup: tot + tup[1].size, default=0))
-
-            for top_hash, ctime, size in zip(pkg_hashes, pkg_ctimes, pkg_sizes):
+            for pkg_display_name, top_hash, ctime, size in zip(
+                    pkg_display_names, pkg_hashes, pkg_ctimes, pkg_sizes
+            ):
                 pkg_info.append(
-                    {'pkg_name': pkg_name, 'top_hash': top_hash, 'ctime': ctime, 'size': size}
+                    {'pkg_name': pkg_display_name, 'top_hash': top_hash,
+                     'ctime': ctime, 'size': size}
                 )
 
-    elif registry_url.scheme == 's3':
-        bucket_name, bucket_registry_path, _ = parse_s3_url(registry_url)
+    elif registry_scheme == 's3':
+        bucket_name, bucket_registry_path, _ = parse_s3_url(named_packages_urlparse)
         bucket_registry_path = bucket_registry_path + '/'
 
         pkg_namespaces, _ = list_objects(bucket_name, bucket_registry_path, recursive=False)
@@ -382,7 +389,7 @@ def list_packages(registry=None):
                         pkg_display_names, pkg_hashes, pkg_ctimes, pkg_sizes
                 ):
                     pkg_info.append(
-                        {'pkg_name': display_name, 'top_hash': top_hash, 'ctime': ctime, 
+                        {'pkg_name': display_name, 'top_hash': top_hash, 'ctime': ctime,
                          'size': size}
                     )
 
