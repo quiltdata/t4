@@ -137,7 +137,6 @@ By default, Quilt uses the following configuraiton:
 {
     "to_index": [
         ".ipynb",
-        ".json",
         ".md",
         ".rmd"
     ]
@@ -149,7 +148,6 @@ To customize which file types are indexed, add a `.quilt/config.json` file to yo
 {
     "to_index": [
         ".ipynb",
-        ".json",
         ".md",
         ".rmd",
         ".txt"
