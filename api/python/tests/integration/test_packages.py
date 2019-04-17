@@ -5,7 +5,7 @@ from pathlib import Path
 import shutil
 
 import jsonlines
-from mock import patch, call, ANY
+from unittest.mock import patch, call, ANY
 import pytest
 
 import t4

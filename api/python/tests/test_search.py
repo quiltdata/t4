@@ -1,6 +1,5 @@
 import json
-from mock import patch
-from unittest.mock import MagicMock
+from unittest.mock import patch, MagicMock
 
 from t4 import Bucket
 
