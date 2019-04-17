@@ -494,7 +494,7 @@ class PackageTest(QuiltTestCase):
 
     def test_list_local_packages(self):
         """Verify that list returns packages in the appdirs directory."""
-        temp_local_registry = Path('test_registry').resolve().as_uri()
+        temp_local_registry = Path('test_registry').resolve().as_uri() + '/.quilt'
         with patch('t4.packages.get_package_registry', lambda path: temp_local_registry), \
             patch('t4.api.get_package_registry', lambda path: temp_local_registry):
             # Build a new package into the local registry.

@@ -266,24 +266,22 @@ def list_packages(registry=None):
                         f"{self._fmt_str(size_str, 15).rstrip(' ')}\t\n")
             return out
 
-    # get_package_registry may include '/.quilt', which Package.browse does not expect
     if registry is None or registry == 'local':
-        package_registry = None
+        registry = get_package_registry(None)
     else:
-        package_registry = fix_url(registry)
-
-    base_registry = get_package_registry(package_registry)
-    registry = base_registry.rstrip('.quilt/')
-    named_packages_path = urlparse(base_registry + '/named_packages')
-    registry_scheme = named_packages_path.scheme
+        registry = get_package_registry(fix_url(registry))
+    # the get_package_registry path includes '/.quilt', which Package.browse does not expect
+    registry = registry[:registry.rindex('.quilt')]
+    named_packages_urlparse = urlparse(registry + '.quilt/named_packages')
+    registry_scheme = named_packages_urlparse.scheme
 
     pkg_info = []
 
     if registry_scheme == 'file':
-        registry_dir = pathlib.Path(parse_file_url(named_packages_path))
+        named_packages_dir = pathlib.Path(parse_file_url(named_packages_urlparse))
 
-        for named_path in registry_dir.glob('*/*'):
-            pkg_name = named_path.relative_to(registry_dir).as_posix()
+        for named_path in named_packages_dir.glob('*/*'):
+            pkg_name = named_path.relative_to(named_packages_dir).as_posix()
 
             pkg_hashes = []
             pkg_sizes = []
@@ -306,11 +304,11 @@ def list_packages(registry=None):
                 else:
                     pkg_display_name = pkg_name
 
-                pkg_ctimes.append(pkg_hash_path.stat().st_ctime)
-
                 pkg = Package.browse(pkg_name, registry=registry, top_hash=pkg_hash)
+
                 pkg_sizes.append(pkg.reduce(lambda tot, tup: tot + tup[1].size, default=0))
                 pkg_display_names.append(pkg_display_name)
+                pkg_ctimes.append(pkg_hash_path.stat().st_ctime)
 
             for pkg_display_name, top_hash, ctime, size in zip(
                     pkg_display_names, pkg_hashes, pkg_ctimes, pkg_sizes
@@ -321,7 +319,7 @@ def list_packages(registry=None):
                 )
 
     elif registry_scheme == 's3':
-        bucket_name, bucket_registry_path, _ = parse_s3_url(named_packages_path)
+        bucket_name, bucket_registry_path, _ = parse_s3_url(named_packages_urlparse)
         bucket_registry_path = bucket_registry_path + '/'
 
         pkg_namespaces, _ = list_objects(bucket_name, bucket_registry_path, recursive=False)
@@ -391,7 +389,7 @@ def list_packages(registry=None):
                         pkg_display_names, pkg_hashes, pkg_ctimes, pkg_sizes
                 ):
                     pkg_info.append(
-                        {'pkg_name': display_name, 'top_hash': top_hash, 'ctime': ctime, 
+                        {'pkg_name': display_name, 'top_hash': top_hash, 'ctime': ctime,
                          'size': size}
                     )
 
