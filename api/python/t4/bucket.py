@@ -65,7 +65,7 @@ class Bucket(object):
             self.config()
         return get_raw_mapping_unpacked(self._search_endpoint, self._region)
 
-    def get_user_meta_mappings(self):
+    def get_user_meta_schema(self):
         """
         Returns the current search mappings for user metadata from the search endpoint.
         """
