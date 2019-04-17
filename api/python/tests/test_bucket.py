@@ -341,7 +341,7 @@ class TestBucket(QuiltTestCase):
         b = Bucket('s3://t4-testing-fake')
         b._search_endpoint = 'https://foo.bar/search'
         b._region = 'us-east-1'
-        result = b.get_user_meta_mappings()
+        result = b.get_user_meta_schema()
         assert result == {
             'foo': 'text',
             'bar': 'long',
