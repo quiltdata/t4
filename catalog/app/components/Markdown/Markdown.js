@@ -1,5 +1,5 @@
 import cx from 'classnames';
-import * as createDOMPurify from 'dompurify';
+import createDOMPurify from 'dompurify';
 import hljs from 'highlight.js';
 import memoize from 'lodash/memoize';
 import PT from 'prop-types';
