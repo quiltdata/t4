@@ -69,12 +69,15 @@ The deserializer should accept a byte stream as input.
 
 ## Getting entry locations
 
-You can get the file or object path of an individual entry using `get`:
+You can get the path to a package entry or directory using `get`:
 
 ```python
 p["commodities"]["gold.csv"].get()
 
 # returns /path/to/workdir/commodities/gold.csv
+
+p.get()
+# returns /Users/aleksey/Dekstop/trades/ or similar
 ```
 
 ## Getting metadata

@@ -15,12 +15,8 @@ You will need the following:
 
 1. **An AWS account**
 
-1. **The Quilt CloudFormation Template**. You may obtain and run the template
-on [AWS Marketplace](https://aws.amazon.com/marketplace).
-Or you may email [contact@quiltdata.io](mailto:contact@quiltdata.io)
-to purchase a license.
-
-1. **IAM Permissions** to run the CloudFormation template.
+1. **IAM Permissions** to run the CloudFormation template (or Add products in
+Service Catalog).
 The `AdministratorAccess` policy is sufficient. (Quilt creates and manages a
 VPC, containers, S3 buckets, a database, and more.)
 If you wish to create a service role for the installation, visit
@@ -50,7 +46,9 @@ You may either [create a new certificate](https://docs.aws.amazon.com/acm/latest
 [import an existing certificate](https://docs.aws.amazon.com/acm/latest/userguide/import-certificate.html).
 
 1. **An SSL certificate in the same region as your Quilt instance**, for
-the elastic load balancer of the Quilt server. See the above pre-requisite for details.
+the elastic load balancer of the Quilt server. See the above for details.
+
+1. For maximum security, Quilt requires **a region that supports [AWS Fargate](https://aws.amazon.com/about-aws/global-infrastructure/regional-product-services/)**. As of this writing, all U.S. regions support Fargate.
 
 1. **An S3 Bucket** for your team data. This may be a new or existing bucket.
 The bucket should not have any notifications
@@ -61,45 +59,74 @@ Installing Quilt will modify the following Bucket characteristics:
     * Properties > Versioning (will be enabled)
     * Properties > Object-level logging (will be enabled)
     * Properties > Events (will add one notification)
+    
+1. If you are not using AWS Marketplace, you require **a license key**.
+Email [contact@quiltdata.io](mailto:contact@quiltdata.io), with the subodomain that you wish to access Quilt on
+(e.g. https://quilt.example.com) to obtain a license key.
 
-### CloudFormation stack creation
+### AWS Service Catalog
 
-1. If you are using AWS Marketplace, skip this step. Otherwise, go to
-`Services > CloudFormation` in the AWS Console. Select the desired region in
-the upper right. Click Create stack, then upload your template file.
-Click Next.
+1. Email [contact@quiltdata.io](mailto:contact@quiltdata.io)
+with your AWS account ID to request access to Quilt through the 
+AWS Service Catalog.
 
-    ![](./imgs/create-stack.png)
+1. Click the service catalog link that you received from Quilt. Arrive at the Service Catalog.
+Click IMPORT, lower right.
 
-1. You can now specify stack details in the form of CloudFormation
+    ![](./imgs/import.png)
+
+1. Navigate to Admin > Portfolios list > Imported Portfolios. Click Quilt Enterprise.
+
+    ![](./imgs/portfolio.png)
+
+1. On the Portfolio details page, click ADD USER, GROUP OR ROLE. Add any users,
+**including yourself**, whom you would like to be able to install Quilt.
+
+    ![](./imgs/portfolio-users.png)
+
+1. Click Products list, upper left. Click the menu to the left of Quilt CloudFormation
+Template. Click Launch product. (In the future, use the same menu to upgrade
+Quilt when a new version is released.)
+
+    ![](./imgs/products-list.png)
+
+1. Continue to the [CloudFormation](#CloudFormation) section.
+Note: the following screenshots may differ slightly fromm what
+you see in Service Catalog.
+
+### CloudFormation
+
+1. Specify stack details in the form of a stack _name_ and CloudFormation
 _parameters_. Refer to the descriptions displayed above each
-text box for further details. Once you have completed this page, click Next.
+text box for further details. Service Catalog users require a license key. See
+[Before you install Quilt](#before-you-install-quilt) for how to obtain a license key.
 
     ![](./imgs/stack-details.png)
 
-1. On the Options screen that follows, go to the Advacned > Termination Protection and click Enable.
+1. Serivce Catalog users, skip this step. On the Options screen that follows, go to the Advanced > Termination Protection and click Enable.
 
     ![](./imgs/term_protect.png)
 
     This protects the stack from accidental deletion. Click Next.
 
-1. On the confirmation screen, check the box asking you to acknowledge that CloudFormation may create IAM roles, then click Create.
+1. Serivce Catalog users, skip this step. Check the box asking you to acknowledge that CloudFormation may create IAM roles, then click Create.
 
     ![](./imgs/finish.png)
 
 1. CloudFormation takes about 30 minutes to create the resources
-for your stack. You may monitor progress under the Events tab.
+for your stack. You may monitor progress under Events.
 Once the stack is complete, you will see `CREATE_COMPLETE` as the Status for
 your CloudFormation stack.
 
     ![](./imgs/events.png)
 
-1.  To finish the installation, open the Outputs tab.
+1.  To finish the installation, you will want to view the stack Outputs.
 
     ![](./imgs/outputs.png)
 
     1. In a separate browser window, open the DNS settings for your domain.
-    Create the following two `CNAME` records, based on your stack Outputs:
+    Create the following two `CNAME` records. **Replace italics** with the
+    corresponding stack Outputs.
 
         | Name | Value |
         |------|-------|
@@ -135,7 +162,6 @@ By default, Quilt uses the following configuraiton:
 {
     "to_index": [
         ".ipynb",
-        ".json",
         ".md",
         ".rmd"
     ]
@@ -147,7 +173,6 @@ To customize which file types are indexed, add a `.quilt/config.json` file to yo
 {
     "to_index": [
         ".ipynb",
-        ".json",
         ".md",
         ".rmd",
         ".txt"
