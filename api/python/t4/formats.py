@@ -147,53 +147,39 @@ class FormatRegistry:
         # Reasons to use lists and not sets:
         # * we want to retain order, so recently added formats take precedence
         # * at this scale, lists are faster than sets
-        meta_fmts = cls.for_meta(meta)
-        typ_fmts = cls.for_type(obj_type)
-        ext_fmts = cls.for_ext(ext)
+        typ_fmts = cls.for_type(obj_type)  # required if present
+        meta_fmts = cls.for_meta(meta)     # required if present
+        ext_fmts = cls.for_ext(ext)        # preferred if present, but not required
+
         fmt_name = cls._get_name_from_meta(meta)
 
-        def bump_ext_fmts(fmts):
-            """return a new list from fmts, shifting those in ext_fmts to the start"""
-            results = []
-            unmatched = []
-            for fmt in fmts:
-                if fmt in ext_fmts:
-                    results.append(fmt)
-                else:
-                    unmatched.append(fmt)
-            results.extend(unmatched)
-            return results
-
-        # Most critical param is obj_type -- hard fail if given, but not matched.
+        # lookup by object type -- required to match if given
         if obj_type is not None:
-            if not typ_fmts:
+            results = typ_fmts
+            if not results:
                 raise QuiltException("No format handler for type {!r}".format(obj_type))
-            if fmt_name:
-                # a format was specified by metadata
-                typ_meta_fmts = [fmt for fmt in typ_fmts if fmt in meta_fmts]
-                if typ_meta_fmts:
-                    return bump_ext_fmts(typ_meta_fmts)
-                raise QuiltException(
-                    "Metadata requires the {!r} format for type {!r}, but no registered handler can do that"
-                    .format(fmt_name, obj_type)
-                )
-            # matched by type alone
-            return bump_ext_fmts(typ_fmts)
 
-        # Look up by metadata
+            # limit by metadata - required to match, if present
+            if fmt_name:
+                results = [fmt for fmt in typ_fmts if fmt in meta_fmts]
+                if not results:
+                    raise QuiltException(
+                        f"Metadata requires format {fmt_name!r} for specified type {obj_type!r}, "
+                        "but no registered handler can fulfill both conditions."
+                    )
+            # stable sort -- if any formats match on extension, sort to front
+            return sorted(results, key=lambda fmt: fmt not in ext_fmts)
+
+        # lookup by metadata - required to match, if present
         if fmt_name:
-            # a format was specified by metadata
             if not meta_fmts:
                 raise QuiltException(
-                    "Metadata requires the {!r} format, but no handler is registered for it"
-                    .format(fmt_name)
+                    f"Metadata requires the {fmt_name} format, but no handler is registered for it"
                 )
-            return bump_ext_fmts(meta_fmts)
+            # stable sort -- if any formats match on extension, sort to front
+            return sorted(meta_fmts, key=lambda fmt: fmt not in ext_fmts)
 
-        # Fall back to using extension
-        # Extension is a second-class citizen here to prevent a file's extension from
-        # interfering with match in a situation where the format or object type has been
-        # explicitly specified.
+        # Fall back to extension matches.
         if not ext_fmts:
             raise QuiltException("No object type or metadata specified, and guessing by extension failed.")
         return ext_fmts
