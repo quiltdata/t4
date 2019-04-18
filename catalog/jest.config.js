@@ -25,11 +25,8 @@ module.exports = {
     '<rootDir>/internals/testing/test-bundler.js',
     'react-testing-library/cleanup-after-each',
   ],
-  setupFiles: [
-    'raf/polyfill',
-    'jest-localstorage-mock',
-  ],
-  testRegex: ".*\\.(test|spec)\\.js$",
-  testURL: "https://quilt-test",
+  setupFiles: ['raf/polyfill', 'jest-localstorage-mock'],
+  testRegex: '.*\\.(test|spec)\\.js$',
+  testURL: 'https://quilt-test',
   snapshotSerializers: [],
-};
+}

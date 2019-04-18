@@ -25,10 +25,7 @@ module.exports = {
       ],
     },
     test: {
-      plugins: [
-        '@babel/plugin-transform-modules-commonjs',
-        'dynamic-import-node',
-      ],
+      plugins: ['@babel/plugin-transform-modules-commonjs', 'dynamic-import-node'],
     },
   },
-};
+}

@@ -1,7 +1,7 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require('fs')
+const path = require('path')
 
-const prettierOptions = require('./.prettierrc');
+const prettierOptions = require('./.prettierrc')
 
 module.exports = {
   parser: 'babel-eslint',
@@ -84,4 +84,4 @@ module.exports = {
       },
     },
   },
-};
+}
