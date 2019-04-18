@@ -178,7 +178,7 @@ class TestBucket(QuiltTestCase):
             expected_meta = {
                 'user_meta': test_meta
             }
-            bucket.put_file(key='README.md', path='./README', user_meta=test_meta)
+            bucket.put_file(key='README.md', path='./README', meta=test_meta)
             (src, dest, meta) = copy_mock.call_args_list[0][0]
             assert meta == expected_meta
 

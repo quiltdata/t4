@@ -125,16 +125,16 @@ class Bucket(object):
         """
         return self.deserialize(key)
 
-    def put(self, key, obj, user_meta=None):
+    def put(self, key, obj, meta=None):
         """
         Stores `obj` at key in bucket, optionally with user-provided metadata.
 
         Args:
             key(str): key in bucket to put object to
             obj(serializable): serializable object to store at key
-            user_meta(dict): optional user-provided metadata to store
+            meta(dict): optional user-provided metadata to store
         """
-        user_meta = user_meta or {}
+        user_meta = meta or {}
         dest = self._uri + key
         all_meta = {
             'user_meta': user_meta
@@ -143,7 +143,7 @@ class Bucket(object):
         all_meta.update(format_meta)
         put_bytes(data, dest, all_meta)
 
-    def put_file(self, key, path, user_meta=None):
+    def put_file(self, key, path, meta=None):
         """
         Stores file at path to key in bucket.
 
@@ -151,7 +151,7 @@ class Bucket(object):
             key(str): key in bucket to store file at
             path(str): string representing local path to file
         Optional args:
-            user_meta(dict): T4 metadata to attach to file
+            meta(dict): T4 metadata to attach to file
                 Must be less than 2KiB serialized
 
         Returns:
@@ -161,12 +161,12 @@ class Bucket(object):
             * if no file exists at path
             * if copy fails
         """
-        user_meta = user_meta or {}
+        user_meta = meta or {}
         dest = self._uri + key
-        meta = {
+        all_meta = {
             'user_meta': user_meta
         }
-        copy_file(fix_url(path), dest, meta)
+        copy_file(fix_url(path), dest, all_meta)
 
     def put_dir(self, key, directory):
         """
