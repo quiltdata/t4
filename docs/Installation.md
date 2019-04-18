@@ -1,13 +1,10 @@
 # Installation
 
-T4 has two components:
+Quilt has two user-facing components:
+* A Python client
+* A web catalog
 
-* The T4 Python client package
-* The T4 web catalog
-
-If you have an already-provisioned catalog, only the Python package is needed.
-
-## T4 client
+## Python client
 
 Python 3.6 is required.
 
@@ -32,6 +29,6 @@ Install the current T4 client from `master`:
 $ pip install git+https://github.com/quiltdata/t4.git#subdirectory=api/python
 ```
 
-## Catalog (on AWS)
+## Web catalog and backend services (on AWS)
 
-For instructions on installing the T4 Catalog in AWS see the first section in the [Technical Reference](./Technical%20Reference.md).
+See [Technical Reference](./Technical%20Reference.md) for installation instructions.
