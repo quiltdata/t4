@@ -63,10 +63,11 @@ Installing Quilt will modify the following Bucket characteristics:
 ### AWS Service Catalog
 
 1. Email [contact@quiltdata.io](mailto:contact@quiltdata.io)
-to with your AWS account ID to request access to Quilt through the 
+with your AWS account ID to request access to Quilt through the 
 AWS Service Catalog.
 
-1. Click the service catalog link from the email. Click Import.
+1. Click the service catalog link from the email. Arrive at the Service Catalog.
+Click IMPORT, lower right.
 
     ![](./imgs/import.png)
 
@@ -79,14 +80,13 @@ AWS Service Catalog.
 
     ![](./imgs/portfolio-users.png)
 
-1. Click Products list. Click the menu to the left of Quilt CloudFormation
+1. Click Products list, upper left. Click the menu to the left of Quilt CloudFormation
 Template. Click Launch product. (In the future, use the same menu to upgrade
 Quilt when a new version is released.)
 
     ![](./imgs/products-list.png)
 
 1. Continue to the [CloudFormation](#CloudFormation) section.
-
 
 ### CloudFormation
 
