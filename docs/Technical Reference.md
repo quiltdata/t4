@@ -15,12 +15,8 @@ You will need the following:
 
 1. **An AWS account**
 
-1. **The Quilt CloudFormation Template**. You may obtain and run the template
-on [AWS Marketplace](https://aws.amazon.com/marketplace).
-Or you may email [contact@quiltdata.io](mailto:contact@quiltdata.io)
-to purchase a license.
-
-1. **IAM Permissions** to run the CloudFormation template.
+1. **IAM Permissions** to run the CloudFormation template (or Add products in
+Service Catalog).
 The `AdministratorAccess` policy is sufficient. (Quilt creates and manages a
 VPC, containers, S3 buckets, a database, and more.)
 If you wish to create a service role for the installation, visit
@@ -64,12 +60,40 @@ Installing Quilt will modify the following Bucket characteristics:
     * Properties > Object-level logging (will be enabled)
     * Properties > Events (will add one notification)
 
-### CloudFormation stack creation
+### AWS Service Catalog
 
-1. If you are using AWS Marketplace, skip this step. Otherwise, go to
-`Services > CloudFormation` in the AWS Console. Select the desired region in
-the upper right. Click Create stack, then upload your template file.
-Click Next.
+1. Email [contact@quiltdata.io](mailto:contact@quiltdata.io)
+to with your AWS account ID to request access to Quilt through the 
+AWS Service Catalog.
+
+1. Click the service catalog link from the email. Click Import.
+
+    ![](./imgs/import.png)
+
+1. Navigate to Admin > Portfolios list > Imported Portfolios. Click Quilt Enterprise.
+
+    ![](./imgs/portfolio.png)
+
+1. On the Portfolio details page, click ADD USER, GROUP OR ROLE. Add any users,
+**including yourself**, whom you would like to be able to install Quilt.
+
+    ![](./imgs/portfolio-users.png)
+
+1. Click Products list. Click the menu to the left of Quilt CloudFormation
+Template. Click Launch product. (In the future, use the same menu to upgrade
+Quilt when a new version is released.)
+
+    ![](./imgs/products-list.png)
+
+1. Continue to the [CloudFormation](#CloudFormation) section.
+
+
+### CloudFormation
+
+1. If you are using AWS Marketplace, or AWS Service Catalog,
+skip this step. Otherwise, go to Services > CloudFormation in the AWS Console.
+Select the desired region in the upper right. Click Create stack, then upload
+your template file. Click Next.
 
     ![](./imgs/create-stack.png)
 
@@ -79,7 +103,7 @@ text box for further details. Once you have completed this page, click Next.
 
     ![](./imgs/stack-details.png)
 
-1. On the Options screen that follows, go to the Advacned > Termination Protection and click Enable.
+1. On the Options screen that follows, go to the Advanced > Termination Protection and click Enable.
 
     ![](./imgs/term_protect.png)
 
