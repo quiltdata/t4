@@ -120,7 +120,8 @@ your CloudFormation stack.
     ![](./imgs/outputs.png)
 
     1. In a separate browser window, open the DNS settings for your domain.
-    Create the following two `CNAME` records, based on your stack Outputs:
+    Create the following two `CNAME` records. **Replace italics** with the
+    corresponding stack Outputs.
 
         | Name | Value |
         |------|-------|
