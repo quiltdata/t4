@@ -136,11 +136,14 @@ class Bucket(object):
         """
         user_meta = meta or {}
         dest = self._uri + key
+        ext = pathlib.PurePosixPath(key).suffix
         all_meta = {
-            'user_meta': user_meta
+            'user_meta': user_meta,
         }
-        data, format_meta = FormatRegistry.serialize(obj, all_meta)
+        
+        data, format_meta = FormatRegistry.serialize(obj, all_meta, ext)
         all_meta.update(format_meta)
+
         put_bytes(data, dest, all_meta)
 
     def put_file(self, key, path, meta=None):
@@ -164,7 +167,7 @@ class Bucket(object):
         user_meta = meta or {}
         dest = self._uri + key
         all_meta = {
-            'user_meta': user_meta
+            'user_meta': user_meta,
         }
         copy_file(fix_url(path), dest, all_meta)
 

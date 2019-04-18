@@ -121,8 +121,15 @@ class FormatRegistry:
         """Get a handler or handlers meeting the specified requirements
 
         Preference:
-            Args are checked, in order, for matches.  All matching formats
-            are returned, most-recently added handlers first in the list.
+            Registered handlers are filtered by `obj_type`, then by `meta`,
+            then sorted by `ext`.  If any of these aren't given, that action
+            is skipped.
+
+            If only `ext` is given, it will be used as a fallback, and only
+            handlers that can handle that extension will be returned.
+
+            All other factors being equal, latest-added handlers have
+            preference over earlier handlers.
 
         Args:
             obj_type: type of object to convert from/to
@@ -134,48 +141,54 @@ class FormatRegistry:
             ext: The filename extension for the data
                 If given, then if other methods fail or are not specified,
                 the handler(s) for the extension `ext` will be returned.
+                If other methods do not fail, any handlers that support the
+                specified extension will be moved to the front of the result
+                list.
 
         Returns:
-            list: Formats in order of preference (latest-added first)
+            list: Matching formats
+
+        Raises:
+            QuiltException: Reason no matching formats were found
         """
-        # we want to retain order.
-        meta_fmts = cls.for_meta(meta)
-        typ_fmts = cls.for_type(obj_type)
+        # Reasons to use lists and not sets:
+        # * we want to retain order, so recently added formats take precedence
+        # * at this scale, lists are faster than sets
+        typ_fmts = cls.for_type(obj_type)  # required if present
+        meta_fmts = cls.for_meta(meta)     # required if present
+        ext_fmts = cls.for_ext(ext)        # preferred if present, but not required
+
         fmt_name = cls._get_name_from_meta(meta)
 
-        # Most critical param is obj_type -- hard fail if given, but not matched.
+        # lookup by object type -- required to match if given
         if obj_type is not None:
-            if not typ_fmts:
+            results = typ_fmts
+            if not results:
                 raise QuiltException("No format handler for type {!r}".format(obj_type))
-            if fmt_name:
-                # a format was specified by metadata
-                typ_meta_fmts = [fmt for fmt in typ_fmts if fmt in meta_fmts]
-                if typ_meta_fmts:
-                    return typ_meta_fmts
-                raise QuiltException(
-                    "Metadata requires the {!r} format for type {!r}, but no registered handler can do that"
-                    .format(fmt_name, obj_type)
-                )
-            # matched by type alone
-            return typ_fmts
 
-        # Look up by metadata
+            # limit by metadata - required to match, if present
+            if fmt_name:
+                results = [fmt for fmt in typ_fmts if fmt in meta_fmts]
+                if not results:
+                    raise QuiltException(
+                        f"Metadata requires format {fmt_name!r} for specified type {obj_type!r}, "
+                        "but no registered handler can fulfill both conditions."
+                    )
+            # stable sort -- if any formats match on extension, sort to front
+            return sorted(results, key=lambda fmt: fmt not in ext_fmts)
+
+        # lookup by metadata - required to match, if present
         if fmt_name:
-            # a format was specified by metadata
             if not meta_fmts:
                 raise QuiltException(
-                    "Metadata requires the {!r} format, but no handler is registered for it"
-                    .format(fmt_name)
+                    f"Metadata requires the {fmt_name} format, but no handler is registered for it"
                 )
-            return meta_fmts
+            # stable sort -- if any formats match on extension, sort to front
+            return sorted(meta_fmts, key=lambda fmt: fmt not in ext_fmts)
 
-        # Fall back to using extension
-        # Extension is a second-class citizen here to prevent a file's extension from
-        # interfering with match in a situation where the format or object type has been
-        # explicitly specified.
-        ext_fmts = cls.for_ext(ext)
+        # Fall back to extension matches.
         if not ext_fmts:
-            raise QuiltException("No serialization metadata, and guessing by extension failed.")
+            raise QuiltException("No object type or metadata specified, and guessing by extension failed.")
         return ext_fmts
 
     @classmethod
@@ -219,11 +232,10 @@ class FormatRegistry:
             meta: Used to search for format handlers
             ext: Used to search for format handlers
             as_type: Used to filter format found handlers
-            check_only:
             **format_opts:
 
         Returns:
-
+            Deserialized object (type depends on deserializer)
         """
         if as_type:
             # Get handlers for meta and ext first.  obj_type is too strict to use here.
@@ -429,6 +441,7 @@ class BaseFormatHandler(ABC):
         Args:
             bytes_obj: bytes to deserialize
             meta: object metadata, may contain deserialization prefs
+            ext: filename extension, if any
             **format_opts: Format options retained in metadata.  These are
                 needed for some poorly-specified formats, like CSV.  If
                 used in serialization, they are retained and used for
@@ -848,7 +861,7 @@ class CSVPandasFormatHandler(BaseFormatHandler):
         def writelines(self, lines):
             # function scope import, but this is a bug workaround for pandas.
             from codecs import iterencode
-            encoded_lines = iterencode(lines)
+            encoded_lines = iterencode(lines, self.encoding)
             self.bytes_filelike.writelines(encoded_lines)
 
 
@@ -907,12 +920,12 @@ class ParquetFormatHandler(BaseFormatHandler):
     """
     name = 'parquet'
     handled_extensions = ['parquet']
-    opts = ('compression')
+    opts = ('compression',)
     defaults = {
         'compression': 'snappy_columns',
     }
 
-    def handles_typ(self, typ):
+    def handles_type(self, typ):
         # don't load pyarrow or pandas unless we actually have to use them..
         if 'pandas' not in sys.modules:
             return False

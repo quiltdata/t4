@@ -198,13 +198,13 @@ class PackageEntry(object):
 
         pkey_ext = pathlib.PurePosixPath(unquote(urlparse(physical_key).path)).suffix
 
-        # Verify format can be handled before checking hash..
-        FormatRegistry.deserialize(data, self.meta, pkey_ext, check_only=True, **format_opts)
+        # Verify format can be handled before checking hash.  Raises if none found.
+        formats = FormatRegistry.search(None, self.meta, pkey_ext)
 
         # Verify hash before deserializing..
         self._verify_hash(data)
 
-        return FormatRegistry.deserialize(data, self.meta, pkey_ext, **format_opts)
+        return formats[0].deserialize(data, self.meta, pkey_ext, **format_opts)
 
     def fetch(self, dest=None):
         """
