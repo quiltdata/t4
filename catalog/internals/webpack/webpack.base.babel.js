@@ -2,18 +2,20 @@
  * COMMON WEBPACK CONFIGURATION
  */
 
-const path = require('path');
-const webpack = require('webpack');
-const CopyWebpackPlugin = require('copy-webpack-plugin');
-
+const path = require('path')
+const webpack = require('webpack')
+const CopyWebpackPlugin = require('copy-webpack-plugin')
 
 module.exports = (options) => ({
   mode: options.mode,
   entry: options.entry,
-  output: Object.assign({ // Compile into js/build.js
+  output: {
+    // Compile into js/build.js
     path: path.resolve(process.cwd(), 'build'),
     publicPath: '/',
-  }, options.output), // Merge with env dependent settings
+    // Merge with env dependent settings
+    ...options.output,
+  },
   optimization: options.optimization,
   module: {
     rules: [
@@ -110,9 +112,11 @@ module.exports = (options) => ({
     ],
   },
   plugins: options.plugins.concat([
-    new CopyWebpackPlugin([{
-      from: 'static',
-    }]),
+    new CopyWebpackPlugin([
+      {
+        from: 'static',
+      },
+    ]),
 
     // Always expose NODE_ENV to webpack, in order to use `process.env.NODE_ENV`
     // inside your code for any environment checks; Terser will automatically
@@ -123,19 +127,10 @@ module.exports = (options) => ({
   ]),
   resolve: {
     modules: ['app', 'node_modules'],
-    extensions: [
-      '.js',
-      '.jsx',
-      '.react.js',
-    ],
-    mainFields: [
-      'module',
-      'browser',
-      'jsnext:main',
-      'main',
-    ],
+    extensions: ['.js', '.jsx', '.react.js'],
+    mainFields: ['module', 'browser', 'jsnext:main', 'main'],
   },
   devtool: options.devtool,
   target: 'web', // Make web variables accessible to webpack, e.g. window
   performance: options.performance || {},
-});
+})

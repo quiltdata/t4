@@ -1,10 +1,9 @@
 // Important modules this config uses
-const path = require('path');
-const HtmlWebpackPlugin = require('html-webpack-plugin');
-const { HashedModuleIdsPlugin } = require('webpack');
-const TerserPlugin = require('terser-webpack-plugin');
-const CompressionPlugin = require('compression-webpack-plugin');
-
+const path = require('path')
+const HtmlWebpackPlugin = require('html-webpack-plugin')
+const { HashedModuleIdsPlugin } = require('webpack')
+const TerserPlugin = require('terser-webpack-plugin')
+const CompressionPlugin = require('compression-webpack-plugin')
 
 module.exports = require('./webpack.base.babel')({
   mode: 'production',
@@ -54,9 +53,10 @@ module.exports = require('./webpack.base.babel')({
         vendor: {
           test: /[\\/]node_modules[\\/]/,
           name: (module) => {
-            const packageName =
-              module.context.match(/[\\/]node_modules[\\/](.*?)([\\/]|$)/)[1];
-            return `npm.${packageName.replace('@', '')}`;
+            const packageName = module.context.match(
+              /[\\/]node_modules[\\/](.*?)([\\/]|$)/,
+            )[1]
+            return `npm.${packageName.replace('@', '')}`
           },
         },
       },
@@ -99,7 +99,6 @@ module.exports = require('./webpack.base.babel')({
   devtool: 'source-map',
 
   performance: {
-    assetFilter: (assetFilename) =>
-      !(/(\.map$)|(^(main\.|favicon\.))/.test(assetFilename)),
+    assetFilter: (assetFilename) => !/(\.map$)|(^(main\.|favicon\.))/.test(assetFilename),
   },
-});
+})

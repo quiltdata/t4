@@ -2,12 +2,11 @@
  * DEVELOPMENT WEBPACK CONFIGURATION
  */
 
-const path = require('path');
-const webpack = require('webpack');
-const CopyWebpackPlugin = require('copy-webpack-plugin');
-const HtmlWebpackPlugin = require('html-webpack-plugin');
-const CircularDependencyPlugin = require('circular-dependency-plugin');
-
+const path = require('path')
+const webpack = require('webpack')
+const CopyWebpackPlugin = require('copy-webpack-plugin')
+const HtmlWebpackPlugin = require('html-webpack-plugin')
+const CircularDependencyPlugin = require('circular-dependency-plugin')
 
 module.exports = require('./webpack.base.babel')({
   mode: 'development',
@@ -33,9 +32,11 @@ module.exports = require('./webpack.base.babel')({
 
   // Add development plugins
   plugins: [
-    new CopyWebpackPlugin([{
-      from: 'static-dev',
-    }]),
+    new CopyWebpackPlugin([
+      {
+        from: 'static-dev',
+      },
+    ]),
 
     new webpack.HotModuleReplacementPlugin(), // Tell webpack we want hot reloading
     new webpack.NoEmitOnErrorsPlugin(),
@@ -49,7 +50,6 @@ module.exports = require('./webpack.base.babel')({
     }),
   ],
 
-
   // Emit a source map for easier debugging
   // See https://webpack.js.org/configuration/devtool/#devtool
   devtool: 'eval-source-map',
@@ -57,4 +57,4 @@ module.exports = require('./webpack.base.babel')({
   performance: {
     hints: false,
   },
-});
+})
