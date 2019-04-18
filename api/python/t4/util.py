@@ -59,7 +59,7 @@ default_remote_registry:
 # default filesystem target for the install operation
 default_install_location:
 
-# Quilt2 registry URL
+# Identity service URL
 registryUrl: https://quilt-t4-staging-registry.quiltdata.com
 """.format(BASE_PATH.as_uri())
 
@@ -151,7 +151,6 @@ def read_yaml(yaml_stream):
         raise QuiltException(str(error), original_error=error)
 
 
-# If we won't be using YAML for anything but config.yml, we can drop keep_backup and assume True.
 def write_yaml(data, yaml_path, keep_backup=False):
     """Write `data` to `yaml_path`
 
@@ -235,11 +234,27 @@ def validate_url(url):
 # user's usage in an interpreted environment like Jupyter, and keeping the displayed
 # information concise.  Given the limitations of the other options, making a class with
 # custom repr panned out to be the best (and shortest) option.
-class HeliumConfig(OrderedDict):
+class T4Config(OrderedDict):
     def __init__(self, filepath, *args, **kwargs):
         self.filepath = pathlib.Path(filepath)
-        super(HeliumConfig, self).__init__(*args, **kwargs)
+        super(T4Config, self).__init__(*args, **kwargs)
 
+    def __setitem__(self, key, value):
+        # Per chat in #engineering 4-5-19, strip navigator_url of trailing slash.
+        # Ideally, we should do that kind of thing in one cohesive spot.
+        # This is a good spot.
+        if key == 'navigator_url' and value:
+            if not isinstance(value, str):
+                raise ValueError("Expected a string for config key {!r}, but got {!r}"
+                                 .format(key, value))
+            value = value.strip().rstrip('/')
+        # Similar activity, moved from api.config() to here.
+        if isinstance(key, str) and key.endswith('_url'):
+            if value:
+                validate_url(value)
+        super().__setitem__(key, value)
+
+    # TODO: Make an _html_repr_ for nicer Notebook display
     def __repr__(self):
         return "<{} at {!r} {}>".format(type(self).__name__, str(self.filepath), json.dumps(self, indent=4))
 
@@ -293,6 +308,7 @@ def get_package_registry(path=None):
     return path.rstrip('/') + '/.quilt'
 
 def load_config():
+    # For user-facing config, use api.config()
     if CONFIG_PATH.exists():
         local_config = read_yaml(CONFIG_PATH)
     else:

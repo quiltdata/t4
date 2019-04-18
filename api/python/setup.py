@@ -4,7 +4,7 @@ import sys
 from setuptools import setup, find_packages
 from setuptools.command.install import install
 
-VERSION = "0.0.10"
+VERSION = "0.1.1"
 
 def readme():
     readme_short = """
@@ -68,12 +68,12 @@ setup(
         'six>=1.10.0',
         'tqdm>=4.26.0',
         'xattr>=0.9.6; platform_system!="Windows"',
-        'humanize'
+        'humanize',
+        'ipywidgets>=0.6.0'                 # required by tqdm.autonotebook
     ],
     extras_require={
         'tests': [
             'codecov',
-            'mock',   # XXX correct syntax for extras_require?
             'pytest',
             'pytest-cov',
             'responses',

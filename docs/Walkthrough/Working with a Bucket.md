@@ -75,6 +75,13 @@ b.delete_dir("foo/")
 
 You can search for individual objects using `search`.
 
+Note that this feature is currently only supported for buckets backed by a T4 catalog instance. Before performing a search you must first configure a connection to that instance using `t4.config`.
+
+```python
+# for example
+t4.config(navigator_url="https://alpha.quiltdata.com")
+```
+
 T4 supports unstructured search:
 
 ```bash
@@ -83,7 +90,7 @@ $ python
 <<< ...all files containing the word "thor"...
 ```
 
-As well as structured search on metadata:
+As well as structured search on metadata (note that this feature is experimental):
 
 ```bash
 $ python

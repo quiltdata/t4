@@ -2,7 +2,7 @@ import cx from 'classnames';
 import PT from 'prop-types';
 import * as React from 'react';
 import * as RC from 'recompose';
-import { withStyles } from '@material-ui/styles';
+import { unstable_Box as Box } from '@material-ui/core/Box';
 
 import 'katex/dist/katex.css';
 
@@ -14,15 +14,10 @@ const Notebook = RT.composeComponent('Preview.renderers.Notebook',
     children: PT.string,
     className: PT.string,
   }),
-  withStyles(({ spacing: { unit } }) => ({
-    root: {
-      padding: unit,
-      width: '100%',
-    },
-  })),
-  ({ classes, children, className, ...props } = {}) => (
-    <div
-      className={cx(className, classes.root, 'ipynb-preview')}
+  ({ children, className, ...props } = {}) => (
+    <Box
+      width="100%"
+      className={cx(className, 'ipynb-preview')}
       // eslint-disable-next-line react/no-danger
       dangerouslySetInnerHTML={{ __html: children }}
       {...props}

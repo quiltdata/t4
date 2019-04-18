@@ -39,6 +39,7 @@ class Bucket(object):
         self._uri = 's3://{}/'.format(bucket)
         self._bucket = bucket
         self._search_endpoint = None
+        self._region = None
 
     def config(self, config_url=None):
         """
@@ -47,7 +48,8 @@ class Bucket(object):
         if not config_url:
             navigator_url = get_from_config('navigator_url')
             if not navigator_url:
-                raise QuiltException("Must t4.config(navigator_url=...) or specify config_url")
+                raise QuiltException("Must set `t4.config(navigator_url)`, where `navigator_url` is the URL "
+                                     "of your catalog homepage.")
 
             navigator_url.rstrip('/') # remove trailing / if present
             config_url = navigator_url + '/config.json'
@@ -58,6 +60,7 @@ class Bucket(object):
         elif 'search_endpoint' in bucket_config:
             # old format
             self._search_endpoint = bucket_config['search_endpoint']
+        self._region = bucket_config.get('region')
 
     def search(self, query, limit=10):
         """
@@ -91,6 +94,9 @@ class Bucket(object):
         """
         if not self._search_endpoint:
             self.config()
+        if self._region:
+            return search(
+                query, self._search_endpoint, limit=limit, aws_region=self._region)
         return search(query, self._search_endpoint, limit=limit)
 
     def deserialize(self, key):
@@ -128,8 +134,11 @@ class Bucket(object):
             obj(serializable): serializable object to store at key
             meta(dict): optional user-provided metadata to store
         """
+        user_meta = meta or {}
         dest = self._uri + key
-        all_meta = dict(user_meta=meta or {})
+        all_meta = {
+            'user_meta': user_meta
+        }
         data, format_meta = FormatRegistry.serialize(obj, all_meta)
         all_meta.update(format_meta)
         put_bytes(data, dest, all_meta)
@@ -152,8 +161,12 @@ class Bucket(object):
             * if no file exists at path
             * if copy fails
         """
+        user_meta = meta or {}
         dest = self._uri + key
-        copy_file(fix_url(path), dest, meta)
+        all_meta = {
+            'user_meta': user_meta
+        }
+        copy_file(fix_url(path), dest, all_meta)
 
     def put_dir(self, key, directory):
         """

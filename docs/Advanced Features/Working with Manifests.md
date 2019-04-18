@@ -51,5 +51,5 @@ In almost all cases you should be using registries, `build`, and `push` to handl
 import t4
 p = t4.Package()
 p.dump("example.jsonl")  # write to file
-p.load("example.jsonl")  # read from file
+p.load(open("example.jsonl", "r"))  # read from file
 ```

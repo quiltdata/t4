@@ -50,7 +50,7 @@ const fetch = utils.gatedS3Request(utils.objectGetter(
   }
 ));
 
-export const detect = utils.extIs('.md');
+export const detect = utils.extIn(['.md', '.rmd']);
 
 export const load = (handle, callback) =>
   utils.withSigner((signer) =>

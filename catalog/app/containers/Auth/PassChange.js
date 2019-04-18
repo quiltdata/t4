@@ -69,7 +69,7 @@ export default composeComponent('Auth.PassChange',
         if (e instanceof errors.InvalidPassword) {
           throw new SubmissionError({ password: 'invalid' });
         }
-        sentry.captureException(e);
+        sentry('captureException', e);
         throw new SubmissionError({ _error: 'unexpected' });
       }
     },

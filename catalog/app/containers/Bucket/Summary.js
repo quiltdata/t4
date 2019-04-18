@@ -6,6 +6,7 @@ import * as React from 'react';
 import { Link } from 'react-router-dom';
 import * as RC from 'recompose';
 import Button from '@material-ui/core/Button';
+import { unstable_Box as Box } from '@material-ui/core/Box';
 import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
 import CardHeader from '@material-ui/core/CardHeader';
@@ -77,14 +78,7 @@ const SummaryItemFile = composeComponent('Bucket.Summary.ItemFile',
     handle: PT.object.isRequired,
     name: PT.string,
   }),
-  withStyles(() => ({
-    previewContents: {
-      marginLeft: 'auto',
-      marginRight: 'auto',
-      padding: 0,
-    },
-  })),
-  ({ classes, handle, name }) => (
+  ({ handle, name }) => (
     <NamedRoutes.Inject>
       {({ urls }) => (
         <SummaryItem
@@ -114,8 +108,7 @@ const SummaryItemFile = composeComponent('Bucket.Summary.ItemFile',
                   <Button variant="outlined" onClick={fetch}>Retry</Button>
                 </React.Fragment>
               ),
-              Ok: (data) =>
-                Preview.render(data, { className: classes.previewContents }),
+              Ok: (data) => <Box mx="auto">{Preview.render(data)}</Box>,
             }),
             Err: Preview.PreviewError.case({
               // eslint-disable-next-line react/prop-types

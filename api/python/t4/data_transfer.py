@@ -187,7 +187,16 @@ def _download_file(callback, src_bucket, src_key, src_version, dest_path, overri
             fd.write(chunk)
             callback(len(chunk))
 
-    xattr.setxattr(dest_path, HELIUM_XATTR, json.dumps(meta).encode('utf-8'))
+    try:
+        xattr.setxattr(dest_path, HELIUM_XATTR, json.dumps(meta).encode('utf-8'))
+    except OSError:
+        # this indicates that the destination path is on an OS that doesn't support xattrs
+        # if this is the case, raise a warning and leave xattrs blank
+        warnings.warn(
+            f"Unable to write file metadata to xattrs for destination {dest_path!r} - operation "
+            f"not permitted or supported by the OS. Your OS either doesn't support extended "
+            f"file attributes in this directory, or has them disabled."
+        )
 
     return pathlib.Path(dest_path).as_uri()
 
@@ -595,15 +604,19 @@ def get_size_and_meta(src):
         raise NotImplementedError
     return size, meta, version
 
-def calculate_sha256(src_list, total_size):
+def calculate_sha256(src_list, sizes):
+    assert len(src_list) == len(sizes)
+
+    total_size = sum(sizes)
     lock = Lock()
 
     with tqdm(desc="Hashing", total=total_size, unit='B', unit_scale=True) as progress:
-        def _process_url(src):
+        def _process_url(src, size):
             src_url = urlparse(src)
             hash_obj = hashlib.sha256()
             if src_url.scheme == 'file':
                 path = pathlib.Path(parse_file_url(src_url))
+
                 with open(path, 'rb') as fd:
                     while True:
                         chunk = fd.read(1024)
@@ -612,6 +625,17 @@ def calculate_sha256(src_list, total_size):
                         hash_obj.update(chunk)
                         with lock:
                             progress.update(len(chunk))
+
+                    current_file_size = fd.tell()
+                    if current_file_size != size:
+                        warnings.warn(
+                            f"Expected the package entry at {src!r} to be {size} B in size, but "
+                            f"found an object which is {current_file_size} B instead. This "
+                            f"indicates that the content of the file changed in between when you "
+                            f"included this  entry in the package (via set or set_dir) and now. "
+                            f"This should be avoided if possible."
+                        )
+
             elif src_url.scheme == 's3':
                 src_bucket, src_path, src_version_id = parse_s3_url(src_url)
                 params = dict(Bucket=src_bucket, Key=src_path)
@@ -628,7 +652,7 @@ def calculate_sha256(src_list, total_size):
             return hash_obj.hexdigest()
 
         with ThreadPoolExecutor() as executor:
-            results = executor.map(_process_url, src_list)
+            results = executor.map(_process_url, src_list, sizes)
 
     return results
 

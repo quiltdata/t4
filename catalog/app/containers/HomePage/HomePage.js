@@ -18,7 +18,7 @@ export default () => {
         <React.Fragment>
           <Feature
             header="Collaborate in S3"
-            tagline="Search, visualize, and version with the Quilt Data Catalog"
+            tagline="Search, visualize, and version data with Quilt"
           />
           <Box
             color="common.white"
