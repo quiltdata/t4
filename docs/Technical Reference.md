@@ -46,7 +46,7 @@ You may either [create a new certificate](https://docs.aws.amazon.com/acm/latest
 [import an existing certificate](https://docs.aws.amazon.com/acm/latest/userguide/import-certificate.html).
 
 1. **An SSL certificate in the same region as your Quilt instance**, for
-the elastic load balancer of the Quilt server. See the above pre-requisite for details.
+the elastic load balancer of the Quilt server. See the above for details.
 
 1. For maximum security, Quilt requires **a region that supports [AWS Fargate](https://aws.amazon.com/about-aws/global-infrastructure/regional-product-services/)**. As of this writing, all U.S. regions support Fargate.
 
@@ -99,7 +99,7 @@ you see in Service Catalog.
 1. Specify stack details in the form of a stack _name_ and CloudFormation
 _parameters_. Refer to the descriptions displayed above each
 text box for further details. Service Catalog users require a license key. See
-[Before you install Quilt](#Before_you_install_Quilt) for how to obtain a license key.
+[Before you install Quilt](#before-you-install-quilt) for how to obtain a license key.
 
     ![](./imgs/stack-details.png)
 
