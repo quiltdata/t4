@@ -66,7 +66,7 @@ Installing Quilt will modify the following Bucket characteristics:
 with your AWS account ID to request access to Quilt through the 
 AWS Service Catalog.
 
-1. Click the service catalog link from the email. Arrive at the Service Catalog.
+1. Click the service catalog link that you received from Quilt. Arrive at the Service Catalog.
 Click IMPORT, lower right.
 
     ![](./imgs/import.png)
