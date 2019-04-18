@@ -861,7 +861,7 @@ class CSVPandasFormatHandler(BaseFormatHandler):
         def writelines(self, lines):
             # function scope import, but this is a bug workaround for pandas.
             from codecs import iterencode
-            encoded_lines = iterencode(lines)
+            encoded_lines = iterencode(lines, self.encoding)
             self.bytes_filelike.writelines(encoded_lines)
 
 
@@ -920,7 +920,7 @@ class ParquetFormatHandler(BaseFormatHandler):
     """
     name = 'parquet'
     handled_extensions = ['parquet']
-    opts = ('compression')
+    opts = ('compression',)
     defaults = {
         'compression': 'snappy_columns',
     }
