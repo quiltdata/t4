@@ -87,40 +87,35 @@ Quilt when a new version is released.)
     ![](./imgs/products-list.png)
 
 1. Continue to the [CloudFormation](#CloudFormation) section.
+Note: the following screenshots may differ slightly fromm what
+you see in Service Catalog.
 
 ### CloudFormation
 
-1. If you are using AWS Marketplace, or AWS Service Catalog,
-skip this step. Otherwise, go to Services > CloudFormation in the AWS Console.
-Select the desired region in the upper right. Click Create stack, then upload
-your template file. Click Next.
-
-    ![](./imgs/create-stack.png)
-
-1. You can now specify stack details in the form of CloudFormation
+1. Specify stack details in the form of a stack _name_ and CloudFormation
 _parameters_. Refer to the descriptions displayed above each
-text box for further details. Once you have completed this page, click Next.
+text box for further details.
 
     ![](./imgs/stack-details.png)
 
-1. On the Options screen that follows, go to the Advanced > Termination Protection and click Enable.
+1. Serivce Catalog users, skip this step. On the Options screen that follows, go to the Advanced > Termination Protection and click Enable.
 
     ![](./imgs/term_protect.png)
 
     This protects the stack from accidental deletion. Click Next.
 
-1. On the confirmation screen, check the box asking you to acknowledge that CloudFormation may create IAM roles, then click Create.
+1. Serivce Catalog users, skip this step. Check the box asking you to acknowledge that CloudFormation may create IAM roles, then click Create.
 
     ![](./imgs/finish.png)
 
 1. CloudFormation takes about 30 minutes to create the resources
-for your stack. You may monitor progress under the Events tab.
+for your stack. You may monitor progress under Events.
 Once the stack is complete, you will see `CREATE_COMPLETE` as the Status for
 your CloudFormation stack.
 
     ![](./imgs/events.png)
 
-1.  To finish the installation, open the Outputs tab.
+1.  To finish the installation, you will want to view the stack Outputs.
 
     ![](./imgs/outputs.png)
 
