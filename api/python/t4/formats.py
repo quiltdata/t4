@@ -68,6 +68,7 @@ Format metadata has the following form:
 
 # Python imports
 from abc import ABC, abstractmethod
+from collections import Mapping
 import copy
 import csv
 import io
@@ -83,11 +84,9 @@ from .util import QuiltException
 
 
 # Constants
-NOT_SET = type(
-    'NOT_SET',
-    (object,),
-    {'__doc__': """A unique indicator of disuse when `None` is a valid value"""}
-)()
+NOT_SET = type('NOT_SET', (object,), {'__doc__':
+    """A unique indicator of disuse when `None` is a valid value"""
+    })()
 
 
 # Code
@@ -189,8 +188,7 @@ class FormatRegistry:
 
         # Fall back to extension matches.
         if not ext_fmts:
-            raise QuiltException(
-                "No object type or metadata specified, and guessing by extension failed.")
+            raise QuiltException("No object type or metadata specified, and guessing by extension failed.")
         return ext_fmts
 
     @classmethod
@@ -307,7 +305,6 @@ class FormatRegistry:
 
     @classmethod
     def for_meta(cls, meta):
-        """Match a format handler based on metadata"""
         name = cls._get_name_from_meta(meta)
         return cls.for_format(name)
 
@@ -322,11 +319,11 @@ class BaseFormatHandler(ABC):
 
     def __init__(self, name=None, handled_extensions=tuple(), handled_types=tuple()):
         """Common initialization for BaseFormat subclasses
-
+        
         Subclasses implement the `serialize()` and `deserialize()` methods,
         which are passed the object/bytes to handle, as well as metadata and
         runtime kwargs.
-
+        
         Subclasses *may* implement custom `handles_ext`, `handles_type` methods
         if there is a scenario which requires it (such as lazy load of a large
         module).
@@ -338,10 +335,10 @@ class BaseFormatHandler(ABC):
         which can potentially cause security issues should be avoided
         altogether.  `cls.opts` are useful to handle quirks in poorly-defined
         formats, such as CSV, TSV, and similar.
-
+        
         Args:
             name(str): Name of new format.  Use existing name if your
-                format is compatible with existing formats, if practicable.
+                format is compatible with existing formats, if practicable.  
                 I.e., two different CSV format handlers should both use 'csv'.
 
             handled_extensions(iterable(str)): filename extensions that can be
@@ -352,7 +349,7 @@ class BaseFormatHandler(ABC):
         """
         self.name = name if name else self.name
         if not self.name:
-            raise TypeError(f"No `name` attribute has been defined for {type(self).__name__!r}")
+            raise TypeError("No `name` attribute has been defined for {!r}".format(type(self).__name__))
 
         # add user extensions if given
         self.handled_extensions = set(ext.lstrip('.').lower() for ext in self.handled_extensions)
@@ -373,10 +370,10 @@ class BaseFormatHandler(ABC):
         return ext.lstrip('.').lower() in self.handled_extensions
 
     def handles_type(self, typ):
-        """Check if this format can serialize an object of the given type
+        """Check if this format can serialize a given object.
 
         Args:
-            typ: type to check
+            obj: object to check
 
         Returns:
             bool
@@ -422,7 +419,6 @@ class BaseFormatHandler(ABC):
         Args:
             obj: object to serialize
             meta: metadata to update
-            ext: filename extension, if any
             **format_opts: Format options retained in metadata.  These are
                 needed for some poorly-specified formats, like CSV.  If
                 used in serialization, they are retained and used for
@@ -532,9 +528,8 @@ class GenericFormatHandler(BaseFormatHandler):
 
         Args:
             bytes_obj(bytes): bytes to deserialize
-            meta(dict): ignored when deserializing GenericFormat formats
-            ext: ignored when deserializing GenericFormat formats
-            **format_opts: passed directly to deserializer
+            meta(dict): ignored for GenericFormat formats
+            **kwargs: passed directly to deserializer
         """
         return self._deserializer(bytes_obj)
 
@@ -660,15 +655,15 @@ class CSVPandasFormatHandler(BaseFormatHandler):
     name = 'csv'
     handled_extensions = ['csv', 'tsv', 'ssv']
     opts = ('doublequote', 'encoding', 'escapechar', 'fieldsep', 'header_names', 'index_names',
-            'index_names_are_keys', 'linesep', 'na_values', 'quotechar', 'quoting', 'skip_spaces',
-            'use_header', 'use_index')
+            'index_names_are_keys', 'linesep', 'na_values', 'quotechar', 'quoting', 'skip_spaces', 'use_header',
+            'use_index')
     # defaults shouldn't be added to metadata, just used directly.
     defaults = {
         'encoding': 'utf-8',
         'index_names_are_keys': False,
-        'na_values': [
-            '', '#N/A', '#N/A N/A', '#NA', '-1.#IND', '-1.#QNAN', '-NaN', '-nan',
-            '1.#IND', '1.#QNAN', 'N/A', 'NA', 'NULL', 'NaN', 'n/a', 'nan', 'null'],
+        'na_values': ['', '#N/A', '#N/A N/A', '#NA',
+            '-1.#IND', '-1.#QNAN', '-NaN', '-nan', '1.#IND', '1.#QNAN',
+            'N/A', 'NA', 'NULL', 'NaN', 'n/a', 'nan', 'null'],
         'use_header': True,
         'use_index': False,
     }
@@ -683,23 +678,22 @@ class CSVPandasFormatHandler(BaseFormatHandler):
 
         return super().handles_type(typ)
 
-    @staticmethod
-    def _quoting_opt_to_python(value):
+    def _quoting_opt_to_python(self, value):
         if isinstance(value, int):
             return value
-        if isinstance(value, str):
+        elif isinstance(value, str):
             value = value.strip().lower()
-            quoting_map = {
+            map = {
                 'all': csv.QUOTE_ALL,
                 'minimal': csv.QUOTE_MINIMAL,
                 'none': csv.QUOTE_NONE,
                 'nonnumeric': csv.QUOTE_NONNUMERIC
             }
-            return quoting_map.get(value, NOT_SET)
+            return map.get(value, NOT_SET)
         warnings.warn("Unrecognized value for 'quoting' option: {!r} (ignored)".format(value))
         return NOT_SET
 
-    def _get_ser_kwargs(self, opts):
+    def get_ser_kwargs(self, opts):
         opts = copy.deepcopy(opts)
         result_kwargs = {}
 
@@ -737,6 +731,7 @@ class CSVPandasFormatHandler(BaseFormatHandler):
 
         return result_kwargs
 
+
     def serialize(self, obj, meta=None, ext=None, **format_opts):
         opts = self.get_opts(meta, format_opts)
 
@@ -759,13 +754,13 @@ class CSVPandasFormatHandler(BaseFormatHandler):
                 raise QuiltException(
                     "Format option 'index_names_are_keys' is set, but 'index_names' not given."
                 )
-            if not len(opts['index_names']) == len(obj.index.names):
+            elif not len(opts['index_names']) == len(obj.index.names):
                 raise ValueError(
                     "{} entries in `index_names`, but the DataFrame to be serialized has {} indexes"
                     .format(len(opts['index_names']), len(obj.index.names))
                 )
 
-        kwargs = self._get_ser_kwargs(opts_with_defaults)
+        kwargs = self.get_ser_kwargs(opts_with_defaults)
         buf = io.BytesIO()
 
         # pandas bug workaround -- see _WriteEncodingWrapper definition
@@ -866,7 +861,7 @@ class CSVPandasFormatHandler(BaseFormatHandler):
         def writelines(self, lines):
             # function scope import, but this is a bug workaround for pandas.
             from codecs import iterencode
-            encoded_lines = iterencode(lines, encoding=self.encoding)
+            encoded_lines = iterencode(lines)
             self.bytes_filelike.writelines(encoded_lines)
 
 
@@ -925,7 +920,7 @@ class ParquetFormatHandler(BaseFormatHandler):
     """
     name = 'parquet'
     handled_extensions = ['parquet']
-    opts = ('compression',)
+    opts = ('compression')
     defaults = {
         'compression': 'snappy_columns',
     }
@@ -969,6 +964,7 @@ class ParquetFormatHandler(BaseFormatHandler):
 
         return buf.getvalue(), self._update_meta(meta, additions=opts_with_defaults)
 
+
     def deserialize(self, bytes_obj, meta=None, ext=None, **format_opts):
         import pyarrow as pa
         from pyarrow import parquet
@@ -985,7 +981,6 @@ class ParquetFormatHandler(BaseFormatHandler):
             newtable = table.replace_schema_metadata(meta)
             obj = newtable.to_pandas()
         return obj
-
 
 # compat -- also handle 'pyarrow' in meta['target'] and meta['format']['name'].
 ParquetFormatHandler('pyarrow').register()
