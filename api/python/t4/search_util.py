@@ -7,6 +7,7 @@ import json
 from urllib.parse import urlparse
 
 from aws_requests_auth.boto_utils import BotoAWSRequestsAuth
+from aws_requests_auth.aws_auth import AWSRequestsAuth
 from elasticsearch import Elasticsearch, RequestsHttpConnection
 
 from .session import get_credentials
@@ -26,10 +27,12 @@ def _create_es(search_endpoint, aws_region):
         # use registry-provided credentials
         creds = credentials.get_frozen_credentials()
         auth = AWSRequestsAuth(aws_access_key=creds.access_key,
-                               aws_secret_key=creds.secret_key,
+                               aws_secret_access_key=creds.secret_key,
                                aws_host=es_url.hostname,
                                aws_region=aws_region,
-                               aws_service='es')
+                               aws_service='es',
+                               aws_token=creds.token,
+                               )
     else:
         auth = BotoAWSRequestsAuth(aws_host=es_url.hostname,
                                    aws_region=aws_region,
@@ -74,8 +77,7 @@ def search(query, search_endpoint, limit, aws_region='us-east-1'):
     payload = {'query': {'query_string': {
         'default_field': 'content',
         'query': query,
-        'quote_analyzer': 'keyword',
-        }}}
+    }}}
 
     if limit:
         payload['size'] = limit

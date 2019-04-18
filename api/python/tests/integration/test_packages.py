@@ -5,7 +5,7 @@ from pathlib import Path
 import shutil
 
 import jsonlines
-from mock import patch, call, ANY
+from unittest.mock import patch, call, ANY
 import pytest
 
 import t4
@@ -239,7 +239,7 @@ class PackageTest(QuiltTestCase):
         package_ = Package().set_dir('/', DATA_DIR / 'nested')
 
         out_dir = 'output'
-        package_.fetch(out_dir)
+        new_package_ = package_.fetch(out_dir)
 
         expected = {'one.txt': '1', 'two.txt': '2', 'three.txt': '3'}
         file_count = 0
@@ -253,6 +253,12 @@ class PackageTest(QuiltTestCase):
                         'unexpected contents in {}: {}'.format(name, contents)
         assert file_count == len(expected), \
             'fetch wrote {} files; expected: {}'.format(file_count, expected)
+
+        # test that package re-rooting works as expected
+        out_dir_abs_path = f'file://{pathlib.Path(out_dir).absolute().as_posix()}'
+        assert all(
+            entry.physical_keys[0].startswith(out_dir_abs_path) for _, entry in new_package_.walk()
+        )
 
     def test_package_fetch_default_dest(self):
         """Verify fetching a package to the default local destination."""
@@ -280,7 +286,13 @@ class PackageTest(QuiltTestCase):
 
         # Raise an error if you copy to yourself.
         with pytest.raises(shutil.SameFileError):
-            pkg['foo'].fetch(DATA_DIR / 'foo.txt')
+            pkg.set('foo', DATA_DIR / 'foo.txt')['foo'].fetch(DATA_DIR / 'foo.txt')
+
+        # The key gets re-rooted correctly.
+        pkg = t4.Package().set('foo', DATA_DIR / 'foo.txt')
+        new_pkg_entry = pkg['foo'].fetch('bar.txt')
+        out_abs_path = f'file://{pathlib.Path(".").absolute().as_posix()}/bar.txt'
+        assert new_pkg_entry.physical_keys[0] == out_abs_path
 
     def test_fetch_default_dest(tmpdir):
         """Verify fetching a package entry to a default destination."""
@@ -482,7 +494,7 @@ class PackageTest(QuiltTestCase):
 
     def test_list_local_packages(self):
         """Verify that list returns packages in the appdirs directory."""
-        temp_local_registry = Path('test_registry').resolve().as_uri()
+        temp_local_registry = Path('test_registry').resolve().as_uri() + '/.quilt'
         with patch('t4.packages.get_package_registry', lambda path: temp_local_registry), \
             patch('t4.api.get_package_registry', lambda path: temp_local_registry):
             # Build a new package into the local registry.
@@ -495,6 +507,14 @@ class PackageTest(QuiltTestCase):
             assert len(pkgs) == 3
             assert "Quilt/Foo" in pkgs
             assert "Quilt/Bar" in pkgs
+
+            # Verify 'local' keyword works as expected.
+            assert list(pkgs) == list(t4.list_packages('local'))
+
+            # Verify specifying a local path explicitly works as expected.
+            assert list(pkgs) == list(t4.list_packages(
+                pathlib.Path(temp_local_registry).parent.as_posix()
+            ))
 
             # Verify package repr is as expected.
             pkgs_repr = str(pkgs)
@@ -659,7 +679,7 @@ class PackageTest(QuiltTestCase):
             assert list(pkgs) == ['foo/bar']
 
             expected = (
-                'PACKAGE                    \tTOPHASH     \tCREATED     \tSIZE        \t\n'
+                'PACKAGE                    \tTOP HASH    \tCREATED     \tSIZE        \t\n'
                 'foo/bar:latest             \t100            \tnow            \t0 Bytes\t\n'
                 'foo/bar                    \t90             \t30 seconds ago \t0 Bytes\t\n'
             )
@@ -959,7 +979,9 @@ class PackageTest(QuiltTestCase):
 
             from t4.data.foo import bar
             assert isinstance(bar, Package)
-            browse_mock.assert_has_calls([call('foo/baz'), call('foo/bar')], any_order=True)
+            browse_mock.assert_has_calls(
+                [call('foo/baz', registry=ANY), call('foo/bar', registry=ANY)], any_order=True
+            )
 
             from t4.data import foo
             assert hasattr(foo, 'bar') and hasattr(foo, 'baz')

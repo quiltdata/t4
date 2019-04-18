@@ -12,12 +12,8 @@ generate:
     # might just want to specify "__all__" in t4.__init__ and use 't4+' on the
     # line above this comment.  Specified explicitly for this example.
     - t4.config
-    - t4.copy
     - t4.delete_package
-    - t4.get
     - t4.list_packages
-    - t4.put
-    - t4.search
 # Uncomment the following two lines in include these classes directly in api.md
 #    - Bucket+
 #    - Package+

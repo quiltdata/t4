@@ -253,6 +253,7 @@ const PreviewBox = RT.composeComponent('Bucket.Search.PreviewBox',
       marginTop: unit,
       minHeight: unit * 15,
       overflow: 'hidden',
+      padding: unit * 2,
       position: 'relative',
 
       '& img': {

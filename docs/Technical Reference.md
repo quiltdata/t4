@@ -1,76 +1,227 @@
-This page provides a technical reference on certain advanced configuration options in T4.
+## Deploy a private Quilt instance on AWS
 
-## Deploying Quilt on AWS
+Quilt is a data collaboration platform. A Quilt _instance_ is a private hub that
+runs in your virtual private cloud (VPC).
+Each instance consists of a password-protected web catalog on your domain,
+backend services, a secure server to manage user identities, and a Python API.
 
-The following instructions use CloudFormation to deploy T4 services to your private AWS account.
+The following instructions use AWS CloudFormation to deploy a private Quilt instance
+in your AWS account.
 
-1. Ensure you have sufficient permissions to proceed. The `AdministratorAccess` policy is sufficient.
-2. Create, or ensure you have already created, an [AWS TLS Certificate](https://aws.amazon.com/certificate-manager/) which maps to the public domain name you want your catalog to use. For example, if you want your catalog to be publicly accessible from `t4.foo.com`, you will need to have a certificate for `t4.foo.com` or `*.foo.com` registered in your account.
 
-   An AWS certificate is an Amazon-issued HTTPS certificate, created via the [AWS Certificate Manager service](https://aws.amazon.com/certificate-manager/), and it's a necessity because it enables HTTPS access to your catalog. If you have not created one, [step through the flow for creating one now](https://docs.aws.amazon.com/acm/latest/userguide/gs-acm-request-public.html). If you already have a certificate for your website, but it's not an AWS-issued certificate, see the instructions on [importing an external certificate into AWS](https://docs.aws.amazon.com/acm/latest/userguide/import-certificate.html).
+## Before you install Quilt
 
-3. Go to `Services > CloudFormation > Create stack` in your AWS Console.
+You will need the following:
 
-    ![](./imgs/start.png)
+1. **An AWS account**
 
-4. Click "Upload a template to Amazon S3" and select the `t4-deployment.yaml` file provided to you by Quilt. Click Next.
+1. **IAM Permissions** to run the CloudFormation template (or Add products in
+Service Catalog).
+The `AdministratorAccess` policy is sufficient. (Quilt creates and manages a
+VPC, containers, S3 buckets, a database, and more.)
+If you wish to create a service role for the installation, visit
+`IAM > Roles > Create Role > AWS service > CloudFormation` in the AWS console.
+The following service role is equivalent to `AdministratorAccess`:
+    ```json
+    {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": "*",
+                "Resource": "*"
+            }
+        ]
+    }
+    ```
 
-5. You should now be at the stack parameters screen. This is where you will fill out of all of the configurable details of your Quilt T4 instance. These are, in order:
+1. The **ability to create DNS entries**, such as CNAME records,
+for your company's domain.
 
-    * **Stack name**&mdash;CloudFormation will deploy your T4 catalog instance and all of its associated services as a "stack" with this name. This name is currently only used for administering your resources; it will not be seen by end users.
-    * **DefaultSender**&mdash;You can invite other users to T4 via emails from this address. This field is in the form `NAME <ADDRESS>`, where `NAME` is to name is the associated with the email (e.g. `Aleksey`) and `ADDRESS` is the email address that the email will actually be sent from. The name must be alphanumeric, and the address must be a valid email address. For example, `Aleksey <admin@quiltdata.com>`.
-  
-      Note that the email address must be one that your SMTP server, configured in the next section, has access to.
+1. **An SSL certificate in the us-east-1 region** to secure the domain where
+your users will access your Quilt instance. For example,
+to make your Quilt catalog available at `https://quilt.mycompany.com`,
+you require a certificate for `*.mycompany.com` in the [AWS Certificate Manager](https://aws.amazon.com/certificate-manager/).
+You may either [create a new certificate](https://docs.aws.amazon.com/acm/latest/userguide/gs-acm-request-public.html), or
+[import an existing certificate](https://docs.aws.amazon.com/acm/latest/userguide/import-certificate.html).
 
-    * **SmtpHost**, **SmtpPassword**, **SmtpUsername**&mdash;Log-in information for an SMTP mail server. This server will be used to send user invite emails from your `DefaultSendeer` address. If do not have one, you may set one up via [Amazon SES](https://aws.amazon.com/ses/).
-    * **AdminUsername**, **AdminEmail**, **AdminPassword**&mdash;This is the account login for the initial catalog administrator account. Only admins can configure catalog permissions. The initial admin account can promote other accounts to admin. Note that `AdminPassword` must be at least 8 characters long.
-    * **BucketTitle**, **BucketIcon**, **BucketDescription**&mdash;A bucket title and description, and a URL pointing to a (preferably square) image (in any reasonable image format) that will be used as the bucket logo. These fields are exposed to users in the catalog selection dropdown menu:
-    ![](./imgs/buckets_dropdown.png)
+1. **An SSL certificate in the same region as your Quilt instance**, for
+the elastic load balancer of the Quilt server. See the above for details.
 
-      > These values can be updated after-the-fact, but not using AWS CloudFormation. Instead, see the instructions in the section "Federations and bucket config".
+1. For maximum security, Quilt requires **a region that supports [AWS Fargate](https://aws.amazon.com/about-aws/global-infrastructure/regional-product-services/)**. As of this writing, all U.S. regions support Fargate.
 
-    * **CertificateArn**&mdash;The [ARN](https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html) associated with the HTTP certificate you will use for HTTPS access to the catalog. See step 4 for instructions on getting one.
-    * **QuiltWebHost**&mdash;The URL that your catalog will be served out of. Must pattern match the AWS certificate you provide to the `CertificateARN` field. For example, an AWS certificate for `*.foo.com` allows for `t4.foo.com` or `catalog.foo.com` as your `QuiltWebHost`, but not `t4.notfoo.com`.
-    * **DBPassword**&mdash;The auth database password. This database will not be publicly accessible, but you may need to accesss it directly in unusual circumstances. This value must be at least 64 characters in length (use `uuidgen | sha256sum`).
-    * **SecretKey**&mdash;Used for session authorization. This value must be at least 64 characters in length (use `uuidgen | sha256sum`).
-    * **ProductCode**&mdash;This is a Quilt-set fields with autogenerated values that can be safely ignored.
-    * **QuiltBucketName**&mdash;Name of the S3 bucket that this catalog instance will be based out of. This should be the same S3 bucket that you configured for access authorization in step 2.
-    * **ConfigBucketName**&mdash;Name of a new S3 bucket that will be created automatically by the stack. This bucket will be used to store certain configuration files associated with your catalog instance. The bucket name must be globally unique, e.g. it cannot point to a bucket that already exists (even if that bucket is in your account).
+1. **An S3 Bucket** for your team data. This may be a new or existing bucket.
+The bucket should not have any notifications
+(S3 Console > Bucket > Properties > Events).
+Quilt will need to install its own notifications.
+Installing Quilt will modify the following Bucket characteristics:
+    * Permissions > CORS configuration (will be modified for secure web access)
+    * Properties > Versioning (will be enabled)
+    * Properties > Object-level logging (will be enabled)
+    * Properties > Events (will add one notification)
+    
+1. If you are not using AWS Marketplace, you require **a license key**.
+Email [contact@quiltdata.io](mailto:contact@quiltdata.io), with the subodomain that you wish to access Quilt on
+(e.g. https://quilt.example.com) to obtain a license key.
 
-      We recommend a bucket name ending in `-config`, to make it more obvious that this bucket is configuration-only.
-    * **CreateDefaultRoles**&mdash;Whether or not to create default roles, which will be used as part of the invite flow for inviting new users to T4. If set to "False", you will need to do additional configuration before you can invite new users to T4. You should probably leave this set to "True".
+### AWS Service Catalog
 
-6. Click Next.
-7. On the Options screen that follows, go to the "Termination Protection" section in "Advanced" and click "Enable".
+1. Email [contact@quiltdata.io](mailto:contact@quiltdata.io)
+with your AWS account ID to request access to Quilt through the 
+AWS Service Catalog.
+
+1. Click the service catalog link that you received from Quilt. Arrive at the Service Catalog.
+Click IMPORT, lower right.
+
+    ![](./imgs/import.png)
+
+1. Navigate to Admin > Portfolios list > Imported Portfolios. Click Quilt Enterprise.
+
+    ![](./imgs/portfolio.png)
+
+1. On the Portfolio details page, click ADD USER, GROUP OR ROLE. Add any users,
+**including yourself**, whom you would like to be able to install Quilt.
+
+    ![](./imgs/portfolio-users.png)
+
+1. Click Products list, upper left. Click the menu to the left of Quilt CloudFormation
+Template. Click Launch product. (In the future, use the same menu to upgrade
+Quilt when a new version is released.)
+
+    ![](./imgs/products-list.png)
+
+1. Continue to the [CloudFormation](#CloudFormation) section.
+Note: the following screenshots may differ slightly fromm what
+you see in Service Catalog.
+
+### CloudFormation
+
+1. Specify stack details in the form of a stack _name_ and CloudFormation
+_parameters_. Refer to the descriptions displayed above each
+text box for further details. Service Catalog users require a license key. See
+[Before you install Quilt](#before-you-install-quilt) for how to obtain a license key.
+
+    ![](./imgs/stack-details.png)
+
+1. Serivce Catalog users, skip this step. On the Options screen that follows, go to the Advanced > Termination Protection and click Enable.
 
     ![](./imgs/term_protect.png)
 
-    This protects the stack deployment pipeline from accidental deletion. Click Next.
+    This protects the stack from accidental deletion. Click Next.
 
-8. On the confirmation screen, check the box asking you to acknowledge that CloudFormation may create IAM roles, then click Create.
+1. Serivce Catalog users, skip this step. Check the box asking you to acknowledge that CloudFormation may create IAM roles, then click Create.
 
     ![](./imgs/finish.png)
 
-    Click Create.
+1. CloudFormation takes about 30 minutes to create the resources
+for your stack. You may monitor progress under Events.
+Once the stack is complete, you will see `CREATE_COMPLETE` as the Status for
+your CloudFormation stack.
 
-9. CloudFormation typically takes around 30 minutes to spin up your stack. Once that is done, you should see `CREATE_COMPLETE` as the Status for your CloudFormation stack.
+    ![](./imgs/events.png)
+
+1.  To finish the installation, you will want to view the stack Outputs.
 
     ![](./imgs/outputs.png)
 
-10. Select the stack and open the Outputs tab. These should be three values there. They are `CloudFrontDomain`, `LoadBalancerDNSName`, and `RegistryHost`. These values still need to be mapped to user-facing URLs via DNS.
+    1. In a separate browser window, open the DNS settings for your domain.
+    Create the following two `CNAME` records. **Replace italics** with the
+    corresponding stack Outputs.
 
-11. Go to your DNS service (if you are using AWS, this is [Route 53](https://aws.amazon.com/route53/)). Create two `CNAME` records: one mapping your catalog URL (`QuiltWebHost`) to the `CloudFrontDomain`, and one mapping your auth service URL (`RegistryHost`) to the `LoadBalancerDNSName`.
+        | Name | Value |
+        |------|-------|
+        | _QuiltWebHost_  | _CloudfrontDomain_ | 
+        | _RegistryHostName_  | _LoadBalancerDNSName_ | 
 
-If all went well, your catalog should now be available and accessible.
+1. Quilt is now up and running. You can click on the _QuiltWebHost_ value
+in Outputs and log in with your administrator password to invite users.
+
+You may stop here ;)
+
+____________________
 
 ## Known limitations
 
-Some known limitations of the catalog are:
+* Supports a single bucket
+* Search is only enabled for *new objects* added to the bucket after Quilt is installed.
 
-* Supports only one bucket
-* Search is only enabled for *new objects* uploaded through the T4 Python API
+## Advanced configuration
 
-## Federations and bucket config
+The default Quilt settings are adequate for most use cases. The following section
+covers advanced customization options.
+
+### Bucket search
+
+#### Custom file indexing
+
+This section describes how to configure which files are searchable in the catalog.
+
+By default, Quilt uses the following configuraiton:
+
+```json
+{
+    "to_index": [
+        ".ipynb",
+        ".md",
+        ".rmd"
+    ]
+}
+```
+
+To customize which file types are indexed, add a `.quilt/config.json` file to your S3 bucket. `.quilt/config.json` is referenced every time a new object lands in the parent bucket. For example, if you wished to index all `.txt` files (in addition the Quilt defaults), you'd upload the following to `.quilt/config.json`:
+```json
+{
+    "to_index": [
+        ".ipynb",
+        ".md",
+        ".rmd",
+        ".txt"
+    ]
+}
+```
+It is highly recommended that you continue to index all of the default files, so that users can get the most out of search. center/elasticsearch-scale-up/).
+
+#### Search limitations
+
+* Queries containing the tilde (~), forward slash (/), back slash, and angle bracket ({, }, (, ), [, ]) must be quoted. For example search for `'~foo'`, not `~foo`.
+* The search index will only pick up objects written to S3 _after_ T4 was enabled on that bucket.
+* Files over 10 MB in size may cause search to fail.
+* Indexing large or numerous files may require you to [scale up your search domain](https://aws.amazon.com/premiumsupport/knowledge-
+
+#### Publicly accessible search
+
+By default, Quilt bucket search is only available to authorized Quilt users and is scoped to a single S3 bucket. Search users can see extensive metadata on the objects in your Quilt bucket. Therefore _be cautious when modifying search permissions_.
+
+This section describes how to make your search endpoint available to anyone with valid AWS credentials.
+
+Go to your AWS Console. Under the `Services` dropdown at the top of the screen, choose `Elasticsearch Service`. Select the domain corresponding to your T4 stack.
+
+Note the value of the `Domain ARN` for your search domain.
+
+In the row of buttons at the top of the pane, select `Modify Access Policy`. Add two statements to the Statement array:
+
+```json
+{
+  "Effect": "Allow",
+    "Principal": {
+      "AWS": "*"
+    },
+    "Action": "es:ESHttpGet",
+    "Resource": "$YOUR_SEARCH_DOMAIN_ARN/*"
+},
+{
+  "Effect": "Allow",
+  "Principal": {
+    "AWS": "*"
+  },
+  "Action": "es:ESHttpPost",
+  "Resource": "$YOUR_SEARCH_DOMAIN_ARN/drive/_doc/_search*"
+}
+```
+
+Select `Submit` and your search domain should now be open to the public.
+
+### Federations and bucket config
 
 In this section we will discuss how you can configure your catalog instance using _federations_ and _bucket config_.
 
@@ -106,7 +257,7 @@ A **bucket config**, meanwhile, is a JSON object that describes metadata associa
 
 A bucket config can be included inline in a federation, or it can be a standalone JSON file that is linked from a federation.
 
-## Preparing an AWS Role for use with T4
+### Preparing an AWS Role for use with T4
 
 These instructions document how to set up an existing role for use with T4. If the role you want to use doesn't exist yet, create it now.
 
@@ -154,56 +305,3 @@ Note the comma after the object. Your trust relationship should now look somethi
 ```
 
 You can now configure a Quilt Role with this role (using the Catalog's admin panel, or `t4.admin.create_role`).
-
-## Configuring search file types
-
-This section describes how to configure what types of files are indexed and searchable in the catalog.
-
-To modify which file types are searchable, populate a `.quilt/config.json` file in your S3 bucket. Note that this file does not exist by default. The contents of the file shoud be something like this:
-
-```json
-{
-    "ipynb": true,
-    "json": true,
-    "md": true
-}
-```
-
-To change which file types are searchable, push a new JSON fragment like this one to the `.quilt/config.json` path in the bucket.
-
-> There are currently some important limitations with search:
->
-> * Queries containing the tilde (~), forward slash (/), back slash, and angle bracket ({, }, (, ), [, ]) must be quoted. For example search for `'~foo'`, not `~foo`.
-> * The search index will only pick up objects written to S3 _after_ T4 was enabled on that bucket.
-> * Files over 10 MB in size may cause search to fail.
-
-## Making your search endpoint publicly accessible
-
-This section describes how to make your search endpoint available to anyone with valid AWS credentials.
-
-Go to your AWS Console. Under the `Services` dropdown at the top of the screen, choose `Elasticsearch Service`. Select the domain corresponding to your T4 stack.
-
-Note the value of the `Domain ARN` for your search domain.
-
-In the row of buttons at the top of the pane, select `Modify Access Policy`. Add two statements to the Statement array:
-
-```json
-{
-  "Effect": "Allow",
-    "Principal": {
-      "AWS": "*"
-    },
-    "Action": "es:ESHttpGet",
-    "Resource": "$YOUR_SEARCH_DOMAIN_ARN/*"
-},
-{
-  "Effect": "Allow",
-  "Principal": {
-    "AWS": "*"
-  },
-  "Action": "es:ESHttpPost",
-  "Resource": "$YOUR_SEARCH_DOMAIN_ARN/drive/_doc/_search*"
-}
-```
-
-Select `Submit` and your search domain should now be open to the public.

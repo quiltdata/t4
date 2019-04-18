@@ -15,7 +15,7 @@ from .data_transfer import (copy_file, get_bytes, put_bytes, delete_object, list
 from .formats import FormatRegistry
 from .packages import get_package_registry, Package
 from .session import get_registry_url, get_session
-from .util import (HeliumConfig, QuiltException, CONFIG_PATH,
+from .util import (T4Config, QuiltException, CONFIG_PATH,
                    CONFIG_TEMPLATE, fix_url, parse_file_url, parse_s3_url, read_yaml, validate_url,
                    write_yaml, yaml_has_comments, validate_package_name)
 
@@ -250,7 +250,7 @@ def list_packages(registry=None):
                 pkg_name_display_width = 27
 
             out = (f"{self._fmt_str('PACKAGE', pkg_name_display_width)}\t"
-                   f"{self._fmt_str('TOPHASH', 12)}\t"
+                   f"{self._fmt_str('TOP HASH', 12)}\t"
                    f"{self._fmt_str('CREATED', 12)}\t"
                    f"{self._fmt_str('SIZE', 12)}\t"
                    f"\n")
@@ -266,22 +266,27 @@ def list_packages(registry=None):
                         f"{self._fmt_str(size_str, 15).rstrip(' ')}\t\n")
             return out
 
-    base_registry = get_package_registry(fix_url(registry) if registry else None)
-    named_packages = base_registry + '/named_packages'
+    if registry is None or registry == 'local':
+        registry = get_package_registry(None)
+    else:
+        registry = get_package_registry(fix_url(registry))
+    # the get_package_registry path includes '/.quilt', which Package.browse does not expect
+    registry = registry[:registry.rindex('.quilt')]
+    named_packages_urlparse = urlparse(registry + '.quilt/named_packages')
+    registry_scheme = named_packages_urlparse.scheme
 
     pkg_info = []
 
-    registry_url = urlparse(named_packages)
-    if registry_url.scheme == 'file':
-        registry_dir = pathlib.Path(parse_file_url(registry_url))
+    if registry_scheme == 'file':
+        named_packages_dir = pathlib.Path(parse_file_url(named_packages_urlparse))
 
-        for named_path in registry_dir.glob('*/*'):
-            name = named_path.relative_to(registry_dir).as_posix()
+        for named_path in named_packages_dir.glob('*/*'):
+            pkg_name = named_path.relative_to(named_packages_dir).as_posix()
 
             pkg_hashes = []
             pkg_sizes = []
             pkg_ctimes = []
-            pkg_name = name
+            pkg_display_names = []
 
             with open(named_path / 'latest', 'r') as latest_hash_file:
                 latest_hash = latest_hash_file.read()
@@ -295,20 +300,25 @@ def list_packages(registry=None):
                     pkg_hashes.append(pkg_hash)
 
                 if pkg_hash == latest_hash:
-                    pkg_name = f'{pkg_name}:latest'
+                    pkg_display_name = f'{pkg_name}:latest'
+                else:
+                    pkg_display_name = pkg_name
 
+                pkg = Package.browse(pkg_name, registry=registry, top_hash=pkg_hash)
+                pkg_sizes.append(sum(pkg.map(lambda _, entry: entry.size)))
+                pkg_display_names.append(pkg_display_name)
                 pkg_ctimes.append(pkg_hash_path.stat().st_ctime)
 
-                pkg = Package.browse(name, registry='local', top_hash=pkg_hash)
-                pkg_sizes.append(sum(pkg.map(lambda _, entry: entry.size)))
-
-            for top_hash, ctime, size in zip(pkg_hashes, pkg_ctimes, pkg_sizes):
+            for pkg_display_name, top_hash, ctime, size in zip(
+                    pkg_display_names, pkg_hashes, pkg_ctimes, pkg_sizes
+            ):
                 pkg_info.append(
-                    {'pkg_name': pkg_name, 'top_hash': top_hash, 'ctime': ctime, 'size': size}
+                    {'pkg_name': pkg_display_name, 'top_hash': top_hash,
+                     'ctime': ctime, 'size': size}
                 )
 
-    elif registry_url.scheme == 's3':
-        bucket_name, bucket_registry_path, _ = parse_s3_url(registry_url)
+    elif registry_scheme == 's3':
+        bucket_name, bucket_registry_path, _ = parse_s3_url(named_packages_urlparse)
         bucket_registry_path = bucket_registry_path + '/'
 
         pkg_namespaces, _ = list_objects(bucket_name, bucket_registry_path, recursive=False)
@@ -378,7 +388,7 @@ def list_packages(registry=None):
                         pkg_display_names, pkg_hashes, pkg_ctimes, pkg_sizes
                 ):
                     pkg_info.append(
-                        {'pkg_name': display_name, 'top_hash': top_hash, 'ctime': ctime, 
+                        {'pkg_name': display_name, 'top_hash': top_hash, 'ctime': ctime,
                          'size': size}
                     )
 
@@ -395,137 +405,7 @@ def list_packages(registry=None):
     return PackageList(pkg_info)
 
 
-########################################
-# Search
-########################################
-
-es_index = 'drive'
-
-def _create_es():
-    config_obj = config()
-    es_url = config_obj.get('elastic_search_url', None)
-    if es_url is None:
-        raise QuiltException('No configured elastic_search_url. '
-                              'Please use he.config')
-    es_url = urllib.parse.urlparse(es_url)
-
-    aws_region = config_obj.get('region')
-    if aws_region is None:
-        raise QuiltException('No configured region. '
-                              'Please use he.config')
-
-    auth = BotoAWSRequestsAuth(aws_host=es_url.hostname,
-                               aws_region=aws_region,
-                               aws_service='es')
-    port = es_url.port or (443 if es_url.scheme == 'https' else 80)
-
-    es = Elasticsearch(
-        hosts=[{'host': es_url.hostname, 'port': port}],
-        http_auth=auth,
-        use_ssl=True,
-        verify_certs=True,
-        connection_class=RequestsHttpConnection
-    )
-
-    return es
-
-def search(query):
-    """
-    Searches your bucket. query can contain plaintext, and can also contain clauses
-    like $key:"$value" that search for exact matches on specific keys.
-
-    Returns either the request object (in case of an error) or a list of objects with the following keys:
-        key: key of the object
-        version_id: version_id of object version
-        operation: Create or Delete
-        meta: metadata attached to object
-        size: size of object in bytes
-        text: indexed text of object
-        source: source document for object (what is actually stored in ElasticSeach)
-        time: timestamp for operation
-    """
-    es = _create_es()
-
-    payload = {'query': {'query_string': {
-        'default_field': 'content',
-        'query': query,
-        'quote_analyzer': 'keyword',
-        }}}
-
-    r = es.search(index=es_index, body=payload)
-
-    try:
-        results = []
-        for result in r['hits']['hits']:
-            key = result['_source']['key']
-            vid = result['_source']['version_id']
-            op = result['_source']['type']
-            meta = json.dumps(result['_source']['user_meta'])
-            size = str(result['_source']['size'])
-            text = result['_source']['text']
-
-            time = str(result['_source']['updated'])
-            results.append({
-                'key': key,
-                'version_id': vid,
-                'operation': op,
-                'meta': meta,
-                'size': size,
-                'text': text,
-                'source': result['_source'],
-                'time': time
-            })
-        results = list(sorted(results, key=lambda x: x['time'], reverse=True))
-        return results
-    except KeyError as e:
-        return r
-
-def _print_table(table, padding=2):
-    cols_width = [max(len(word) for word in col) for col in zip(*table)]
-    for row in table:
-        print((" " * padding).join(word.ljust(width) for word, width in zip(row, cols_width)))
-
-def log(key, pprint=False):
-    es = _create_es()
-
-    payload = {'query': {'constant_score': {'filter': {'term': {
-        'key': key
-    }}}}}
-
-    r = es.search(index=es_index, body=payload)
-
-    try:
-        table = []
-        for result in r['hits']['hits']:
-            if result['_source']['key'] != key:
-                continue
-            vid = result['_source']['version_id']
-            op = result['_source']['type']
-            meta = json.dumps(result['_source']['user_meta'])
-            size = str(result['_source']['size'])
-            text = result['_source'].get('text', '')
-
-            time = str(result['_source']['updated'])
-            table.append({
-                'version_id': vid,
-                'operation': op,
-                'meta': meta,
-                'size': size,
-                'text': text,
-                'time': time
-            })
-        table = list(sorted(table, key=lambda x: x['time'], reverse=True))
-        if pprint:
-            ptable = [('Date', 'Version ID', 'Operation', 'Size', 'Meta')]
-            for t in table:
-                ptable.append((t['time'], t['version_id'], t['operation'],
-                               t['size'], t['meta']))
-            _print_table(ptable)
-        return table
-    except KeyError as e:
-        return r
-
-def config(*autoconfig_url, **config_values):
+def config(*catalog_url, **config_values):
     """Set or read the T4 configuration.
 
     To retrieve the current config, call directly, without arguments:
@@ -542,33 +422,34 @@ def config(*autoconfig_url, **config_values):
         >>> t4.config(navigator_url='http://example.com',
         ...           elastic_search_url='http://example.com/queries')
 
-    When setting config values, unrecognized values are rejected.  Acceptable
-    config values can be found in `t4.util.CONFIG_TEMPLATE`.
+    Default config values can be found in `t4.util.CONFIG_TEMPLATE`.
 
     Args:
-        autoconfig_url: A (single) URL indicating a location to configure from
+        catalog_url: A (single) URL indicating a location to configure from
         **config_values: `key=value` pairs to set in the config
 
     Returns:
-        HeliumConfig: (an ordered Mapping)
+        T4Config: (an ordered Mapping)
     """
-    if autoconfig_url and config_values:
+    if catalog_url and config_values:
         raise QuiltException("Expected either an auto-config URL or key=value pairs, but got both.")
-    # Total distinction of args and kwargs -- config(autoconfig_url='http://foo.com')
-    if autoconfig_url and len(autoconfig_url) > 1:
-        raise QuiltException("Expected a single autoconfig URL argument, not multiple args.")
+    # Total distinction of args and kwargs -- config(catalog_url='http://foo.com')
+    if catalog_url and len(catalog_url) > 1:
+        raise QuiltException("`catalog_url` cannot be used with other `config_values`.")
 
-    config_template = read_yaml(CONFIG_TEMPLATE)
-    if autoconfig_url:
-        autoconfig_url = autoconfig_url[0]
-        config_url = autoconfig_url.rstrip('/') + '/config.json'
+    # Use given catalog's config to replace local configuration
+    if catalog_url:
+        config_template = read_yaml(CONFIG_TEMPLATE)
 
-        if config_url[:7] not in ('http://', 'https:/'):
-            config_url = 'https://' + config_url
+        # Clean up and validate catalog url
+        catalog_url = catalog_url[0].rstrip('/')
+        if catalog_url[:7] not in ('http://', 'https:/'):
+            catalog_url = 'https://' + catalog_url
+        validate_url(catalog_url)
 
-        validate_url(config_url)
+        # Get the new config
+        config_url = catalog_url + '/config.json'
 
-        # TODO: handle http basic auth via URL if using https (https://user:pass@hostname/path)
         response = requests.get(config_url)
         if not response.ok:
             message = "An HTTP Error ({code}) occurred: {reason}"
@@ -576,41 +457,31 @@ def config(*autoconfig_url, **config_values):
                 message.format(code=response.status_code, reason=response.reason),
                 response=response
                 )
-        new_config = read_yaml(response.text)  # handles JSON and YAML (YAML is a superset of JSON)
+        # T4Config may perform some validation and value scrubbing.
+        new_config = T4Config('', response.json())
 
+        # 'navigator_url' needs to be renamed, the term is outdated.
+        if not new_config.get('navigator_url'):
+            new_config['navigator_url'] = catalog_url
+
+        # Use our template + their configured values, keeping our comments.
         for key, value in new_config.items():
-            # No key validation, per current fast dev rate on config.json.
-            # if key not in config_template:
-            #     raise QuiltException("Unrecognized configuration key from {}: {}".format(config_url, key))
-            if value and key.endswith('_url'):
-                validate_url(value)
-        # Use their config + our defaults, keeping their comments
-        if yaml_has_comments(new_config):
-            # add defaults for keys missing from their config
-            for key in set(config_template) - set(new_config):
-                new_config[key] = config_template[key]
-            write_yaml(new_config, CONFIG_PATH, keep_backup=True)
-            return HeliumConfig(CONFIG_PATH, new_config)
-        # Use our config + their configured values, keeping our comments.
-        else:
-            for key, value in new_config.items():
-                config_template[key] = value
-            write_yaml(config_template, CONFIG_PATH, keep_backup=True)
-            return HeliumConfig(CONFIG_PATH, config_template)
-    # No autoconfig URL given -- use local config
+            config_template[key] = value
+        write_yaml(config_template, CONFIG_PATH, keep_backup=True)
+        return T4Config(CONFIG_PATH, config_template)
+
+    # Use local configuration (or defaults)
     if CONFIG_PATH.exists():
         local_config = read_yaml(CONFIG_PATH)
     else:
-        local_config = config_template
+        local_config = read_yaml(CONFIG_TEMPLATE)
 
+    # Write to config if needed
     if config_values:
+        config_values = T4Config('', config_values)  # Does some validation/scrubbing
         for key, value in config_values.items():
-            # No key validation, per current fast dev rate on config.json.
-            # if key not in config_template:
-            #     raise QuiltException("Unrecognized configuration key: {}".format(key))
-            if value and key.endswith('_url'):
-                validate_url(value)
             local_config[key] = value
-        write_yaml(local_config, CONFIG_PATH, keep_backup=True)
+        write_yaml(local_config, CONFIG_PATH)
 
-    return HeliumConfig(CONFIG_PATH, local_config)
+    # Return current config
+    return T4Config(CONFIG_PATH, local_config)

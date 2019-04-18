@@ -3,9 +3,10 @@ import deburr from 'lodash/deburr';
 import PT from 'prop-types';
 import * as R from 'ramda';
 import * as React from 'react';
-import { connect } from 'react-redux';
 import * as RC from 'recompose';
+import * as reduxHook from 'redux-react-hook';
 import CircularProgress from '@material-ui/core/CircularProgress';
+import Divider from '@material-ui/core/Divider';
 import Input from '@material-ui/core/Input';
 import InputAdornment from '@material-ui/core/InputAdornment';
 import ListItemText from '@material-ui/core/ListItemText';
@@ -13,19 +14,17 @@ import MenuItem from '@material-ui/core/MenuItem';
 import MenuList from '@material-ui/core/MenuList';
 import Paper from '@material-ui/core/Paper';
 import Popper from '@material-ui/core/Popper';
-import { ThemeProvider, withStyles } from '@material-ui/styles';
+import { ThemeProvider, makeStyles, withStyles } from '@material-ui/styles';
 
 import * as style from 'constants/style';
 import * as BucketConfig from 'utils/BucketConfig';
+import * as Config from 'utils/Config';
 import Delay from 'utils/Delay';
 import * as NamedRoutes from 'utils/NamedRoutes';
-import Link from 'utils/StyledLink';
-import * as Wait from 'utils/Wait';
 import * as RT from 'utils/reactTools';
 
 
-const LINK_INSTALLATION = 'https://github.com/quiltdata/t4/blob/master/docs/Installation.md#aws-t4-instance-via-cloudformation';
-
+const DIVIDER = '<DIVIDER>';
 
 const NavInput = RT.composeComponent('NavBar.BucketSelect.NavInput',
   RT.wrap(ThemeProvider, () => ({ theme: style.themeInverted })),
@@ -48,63 +47,95 @@ const normalizeBucket = R.pipe(
   R.replace(/[^a-z0-9-.]/g, '-'),
 );
 
-const getCycled = (getter) => (arr, val, offset) => {
+const getCycled = (getter = R.identity) => (arr, val, offset) => {
   const index = arr.findIndex(R.pipe(getter, R.equals(val))) + offset;
   const cycledIndex = ((index + 1 + arr.length + 1) % (arr.length + 1)) - 1;
   return getter(arr[cycledIndex]);
 };
 
-const getBucketCycled = getCycled(R.prop('name'));
+const getBucketCycled = getCycled();
 
-const State = RT.composeComponent('NavBar.BucketSelect.State',
+const useStyles = makeStyles(({ spacing: { unit }, zIndex }) => ({
+  input: {
+    marginLeft: unit * 2,
+  },
+  popper: {
+    zIndex: zIndex.appBar + 1,
+  },
+  item: {
+    paddingBottom: 20,
+    paddingTop: 20,
+  },
+  description: {
+    maxWidth: 50 * unit,
+  },
+  icon: {
+    height: 40,
+    width: 40,
+  },
+}));
+
+// TODO: better placeholder styling
+const Placeholder = () => <Delay>{() => <CircularProgress />}</Delay>;
+
+export default RT.composeComponent('NavBar.BucketSelect',
   RC.setPropTypes({
-    buckets: PT.array.isRequired,
+    autoFocus: PT.bool,
     cancel: PT.func,
-    children: PT.func.isRequired,
   }),
-  connect(),
-  NamedRoutes.inject(),
-  RC.withStateHandlers({
-    value: '',
-    anchor: null,
-  }, {
-    setValue: () => (value) => ({ value }),
-    nextSuggestion: ({ value }, { buckets }) => () => ({
-      value: getBucketCycled(buckets, value, 1) || '',
-    }),
-    prevSuggestion: ({ value }, { buckets }) => () => ({
-      value: getBucketCycled(buckets, value, -1) || '',
-    }),
-    setAnchor: () => (anchor) => ({ anchor }),
-  }),
-  RC.withHandlers({
-    go: ({ bucket, urls, dispatch, cancel }) => (to) => {
-      if (to && bucket !== to) {
+  RT.withSuspense(() => <Placeholder />),
+  ({ autoFocus = false, cancel }) => {
+    const currentBucket = BucketConfig.useCurrentBucket();
+    const bucketConfigs = BucketConfig.useBucketConfigs();
+    const { suggestedBuckets } = Config.useConfig();
+    const classes = useStyles();
+    const dispatch = reduxHook.useDispatch();
+    const { urls } = NamedRoutes.use();
+
+    const [value, setValue] = React.useState('');
+    const [anchor, setAnchor] = React.useState();
+
+    const suggestions = React.useMemo(
+      () => suggestedBuckets.filter((s) => s === DIVIDER || !!bucketConfigs[s]),
+      [suggestedBuckets, bucketConfigs],
+    );
+
+    const buckets = React.useMemo(
+      () => suggestedBuckets.filter((s) => !!bucketConfigs[s]),
+      [suggestedBuckets, bucketConfigs],
+    );
+
+    const nextSuggestion = React.useCallback(() => {
+      setValue(getBucketCycled(buckets, value, 1) || '');
+    }, [buckets, value]);
+
+    const prevSuggestion = React.useCallback(() => {
+      setValue(getBucketCycled(buckets, value, -1) || '');
+    }, [buckets, value]);
+
+    const go = React.useCallback((to) => {
+      if (to && currentBucket !== to) {
         dispatch(push(urls.bucketRoot(to)));
       }
       if (cancel) cancel();
-    },
-    handleChange: ({ setValue }) => (evt) => {
+    }, [currentBucket, urls, dispatch, cancel]);
+
+    const handleChange = React.useCallback((evt) => {
       setValue(normalizeBucket(evt.target.value));
-    },
-    handleFocus: ({ setAnchor }) => (evt) => {
+    }, []);
+
+    const handleFocus = React.useCallback((evt) => {
       setAnchor(evt.target);
-    },
-    handleBlur: ({ setAnchor, cancel }) => () => {
+    }, []);
+
+    const handleBlur = React.useCallback(() => {
       setTimeout(() => {
         setAnchor(null);
         if (cancel) cancel();
       }, 300);
-    },
-  }),
-  RC.withHandlers({
-    handleKey: ({
-      anchor,
-      go,
-      value,
-      nextSuggestion,
-      prevSuggestion,
-    }) => (evt) => {
+    }, [cancel]);
+
+    const handleKey = React.useCallback((evt) => {
       // eslint-disable-next-line default-case
       switch (evt.key) {
         case 'Enter':
@@ -123,117 +154,65 @@ const State = RT.composeComponent('NavBar.BucketSelect.State',
           nextSuggestion();
           break;
       }
-    },
-    handleSuggestion: ({ go, setValue }) => (s) => {
+    }, [anchor, go, value, nextSuggestion, prevSuggestion]);
+
+    const handleSuggestion = (s) => {
       setValue(s);
       go(s);
-    },
-  }),
-  ({ children, ...props }) => children(props));
+    };
 
-const Styles = RT.composeComponent('NavBar.BucketSelect.Styles',
-  RC.setPropTypes({
-    children: PT.func.isRequired,
-  }),
-  withStyles(({ spacing: { unit }, zIndex }) => ({
-    input: {
-      marginLeft: unit * 2,
-    },
-    popper: {
-      zIndex: zIndex.appBar + 1,
-    },
-    item: {
-      paddingBottom: 20,
-      paddingTop: 20,
-    },
-    description: {
-      maxWidth: 50 * unit,
-    },
-    icon: {
-      height: 40,
-      width: 40,
-    },
-    help: {
-      paddingLeft: 2 * unit,
-      paddingRight: 2 * unit,
-      paddingTop: unit,
-    },
-  })),
-  ({ classes, children }) => children(classes));
-
-// TODO: better placeholder styling
-const Placeholder = () => <Delay>{() => <CircularProgress />}</Delay>;
-
-export default RT.composeComponent('NavBar.BucketSelect',
-  RC.setPropTypes({
-    autoFocus: PT.bool,
-    cancel: PT.func,
-  }),
-  ({ autoFocus = false, cancel }) => (
-    <Wait.Placeholder fallback={() => <Placeholder />}>
-      <BucketConfig.WithBucketConfigs suggestedOnly>
-        {Wait.wait((buckets) => (
-          <State buckets={buckets} cancel={cancel}>
-            {(state) => (
-              <Styles>
-                {(classes) => (
-                  <React.Fragment>
-                    <NavInput
-                      startAdornment={<InputAdornment>s3://</InputAdornment>}
-                      value={state.value}
-                      className={classes.input}
-                      autoFocus={autoFocus}
-                      onKeyDown={state.handleKey}
-                      onChange={state.handleChange}
-                      onFocus={state.handleFocus}
-                      onBlur={state.handleBlur}
-                      placeholder=" Enter bucket name"
+    return (
+      <React.Fragment>
+        <NavInput
+          startAdornment={<InputAdornment>s3://</InputAdornment>}
+          value={value}
+          className={classes.input}
+          autoFocus={autoFocus}
+          onKeyDown={handleKey}
+          onChange={handleChange}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          placeholder=" Enter bucket name"
+        />
+        <Popper
+          open={!!anchor}
+          anchorEl={anchor}
+          placement="bottom-end"
+          className={classes.popper}
+        >
+          <Paper>
+            <MenuList>
+              {suggestions.map((s, i) => {
+                // eslint-disable-next-line react/no-array-index-key
+                if (s === DIVIDER) return <Divider key={`${s}:${i}`} />;
+                const b = bucketConfigs[s];
+                return (
+                  <MenuItem
+                    className={classes.item}
+                    key={s}
+                    onClick={() => handleSuggestion(s)}
+                    selected={s === value}
+                  >
+                    <img
+                      src={b.icon}
+                      alt={b.title}
+                      className={classes.icon}
                     />
-                    <Popper
-                      open={!!state.anchor}
-                      anchorEl={state.anchor}
-                      placement="bottom-end"
-                      className={classes.popper}
-                    >
-                      <Paper>
-                        <MenuList>
-                          {buckets.map((s) => (
-                            <MenuItem
-                              className={classes.item}
-                              key={s.name}
-                              onClick={() => state.handleSuggestion(s.name)}
-                              selected={s.name === state.value}
-                            >
-                              <img
-                                src={s.icon}
-                                alt={s.title}
-                                className={classes.icon}
-                              />
-                              <ListItemText
-                                primary={s.title}
-                                secondary={s.description}
-                                secondaryTypographyProps={{
-                                  noWrap: true,
-                                  className: classes.description,
-                                }}
-                                title={s.description}
-                              />
-                            </MenuItem>
-                          ))}
-                          <li className={classes.help}>
-                            <Link href={LINK_INSTALLATION}>
-                              Learn how to create your own registry
-                            </Link>
-                          </li>
-                        </MenuList>
-                      </Paper>
-                    </Popper>
-                  </React.Fragment>
-                )}
-              </Styles>
-            )}
-          </State>
-        ))}
-      </BucketConfig.WithBucketConfigs>
-    </Wait.Placeholder>
-  ));
+                    <ListItemText
+                      primary={b.title}
+                      secondary={b.description}
+                      secondaryTypographyProps={{
+                        noWrap: true,
+                        className: classes.description,
+                      }}
+                      title={b.description}
+                    />
+                  </MenuItem>
+                );
+              })}
+            </MenuList>
+          </Paper>
+        </Popper>
+      </React.Fragment>
+    );
+  });

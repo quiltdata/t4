@@ -226,6 +226,13 @@ class PackageEntry(object):
         dest = fix_url(dest)
         copy_file(physical_key, dest, self.meta)
 
+        # return a package reroot package physical keys after the copy operation succeeds
+        # see GH#388 for context
+        entry = self._clone()
+        entry.physical_keys = [dest]
+        return entry
+
+
     def __call__(self, func=None, **kwargs):
         """
         Shorthand for self.deserialize()
@@ -452,14 +459,23 @@ class Package(object):
         """
         nice_dest = fix_url(dest).rstrip('/')
         file_list = []
-        
+        pkg = Package()
+
         for logical_key, entry in self.walk():
-            logical_key = quote(logical_key)
             physical_key = _to_singleton(entry.physical_keys)
-            new_physical_key = f'{nice_dest}/{logical_key}'
+            new_physical_key = f'{nice_dest}/{quote(logical_key)}'
+
             file_list.append((physical_key, new_physical_key, entry.size, entry.meta))
 
+            # return a package reroot package physical keys after the copy operation succeeds
+            # see GH#388 for context
+            new_entry = entry._clone()
+            new_entry.physical_keys = [new_physical_key]
+            pkg.set(logical_key, new_entry)
+
         copy_file_list(file_list)
+        
+        return pkg
 
     def keys(self):
         """
@@ -647,9 +663,13 @@ class Package(object):
         if not entries:
             return
 
-        physical_keys = (entry.physical_keys[0] for entry in entries)
-        total_size = sum(entry.size for entry in entries)
-        results = calculate_sha256(physical_keys, total_size)
+        physical_keys = []
+        sizes = []
+        for entry in entries:
+            physical_keys.append(entry.physical_keys[0])
+            sizes.append(entry.size)
+
+        results = calculate_sha256(physical_keys, sizes)
 
         for entry, obj_hash in zip(entries, results):
             entry.hash = dict(type='SHA256', value=obj_hash)

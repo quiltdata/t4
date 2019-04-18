@@ -14,5 +14,5 @@ npm-debug.log
 firebase.json
 
 # Local config
-static/config.json
-static/federation.json
+static/**/config.json
+static/**/federation.json

@@ -10,6 +10,8 @@ import { withStyles } from '@material-ui/core/styles';
 
 import Layout from 'components/Layout';
 import { ThrowNotFound } from 'containers/NotFoundPage';
+import * as AWS from 'utils/AWS';
+import { useCurrentBucketConfig } from 'utils/BucketConfig';
 import * as NamedRoutes from 'utils/NamedRoutes';
 import * as RT from 'utils/reactTools';
 
@@ -107,56 +109,58 @@ const BucketLayout = RT.composeComponent('Bucket.Layout',
     </Layout>
   ));
 
-export default RT.composeComponent('Bucket',
-  ({ location, match: { params: { bucket } } }) => (
-    <NamedRoutes.Inject>
-      {({ paths }) => (
-        <BucketLayout
-          bucket={bucket}
-          section={getBucketSection(paths)(location.pathname)}
-        >
-          <Switch>
-            <Route
-              path={paths.bucketRoot}
-              component={Overview}
-              exact
-            />
-            <Route
-              path={paths.bucketFile}
-              component={File}
-              exact
-              strict
-            />
-            <Route
-              path={paths.bucketDir}
-              component={Dir}
-              exact
-            />
-            <Route
-              path={paths.bucketSearch}
-              component={Search}
-              exact
-            />
-            <Route
-              path={paths.bucketPackageList}
-              component={PackageList}
-              exact
-            />
-            <Route
-              path={paths.bucketPackageDetail}
-              component={PackageDetail}
-              exact
-            />
-            <Route
-              path={paths.bucketPackageTree}
-              component={PackageTree}
-              exact
-            />
-            <Route
-              component={ThrowNotFound}
-            />
-          </Switch>
-        </BucketLayout>
-      )}
-    </NamedRoutes.Inject>
-  ));
+export default ({ location, match: { params: { bucket } } }) => {
+  const { paths } = NamedRoutes.use();
+  const bucketCfg = useCurrentBucketConfig();
+  const s3Props = bucketCfg && bucketCfg.region && { region: bucketCfg.region };
+  return (
+    <AWS.S3.Provider {...s3Props}>
+      <BucketLayout
+        bucket={bucket}
+        section={getBucketSection(paths)(location.pathname)}
+      >
+        <Switch>
+          <Route
+            path={paths.bucketRoot}
+            component={Overview}
+            exact
+          />
+          <Route
+            path={paths.bucketFile}
+            component={File}
+            exact
+            strict
+          />
+          <Route
+            path={paths.bucketDir}
+            component={Dir}
+            exact
+          />
+          <Route
+            path={paths.bucketSearch}
+            component={Search}
+            exact
+          />
+          <Route
+            path={paths.bucketPackageList}
+            component={PackageList}
+            exact
+          />
+          <Route
+            path={paths.bucketPackageDetail}
+            component={PackageDetail}
+            exact
+          />
+          <Route
+            path={paths.bucketPackageTree}
+            component={PackageTree}
+            exact
+          />
+          <Route
+            component={ThrowNotFound}
+          />
+        </Switch>
+      </BucketLayout>
+    </AWS.S3.Provider>
+  );
+};
