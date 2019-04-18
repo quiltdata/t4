@@ -6,4 +6,5 @@ coverage:
     - "::api/python/"
   ignore:
     "api/python/tests"
+    "api/python/setup.py"
 

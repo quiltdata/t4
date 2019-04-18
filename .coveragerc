@@ -11,4 +11,3 @@ exclude_lines =
 ignore_errors = True
 omit =
     api/python/tests/**/*
-    api/python/setup.py
