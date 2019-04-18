@@ -781,7 +781,7 @@ class Package(object):
 
         self._fix_sha256()
 
-        hash_string = self.top_hash()
+        hash_string = self.top_hash
         manifest = io.BytesIO()
         self.dump(manifest)
         put_bytes(
@@ -801,7 +801,7 @@ class Package(object):
             put_bytes(hash_bytes, timestamp_path)
             put_bytes(hash_bytes, latest_path)
 
-        return hash_string
+        return self
 
     def dump(self, writable_file):
         """
@@ -916,6 +916,7 @@ class Package(object):
         del pkg._children[path[-1]]
         return self
 
+    @property
     def top_hash(self):
         """
         Returns the top hash of the package.
