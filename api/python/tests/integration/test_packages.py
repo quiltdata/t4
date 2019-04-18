@@ -55,7 +55,7 @@ class PackageTest(QuiltTestCase):
 
         # Build a new package into the local registry.
         new_pkg = new_pkg.set('foo', test_file_name)
-        top_hash = new_pkg.build("Quilt/Test")
+        top_hash = new_pkg.build("Quilt/Test").top_hash
 
         # Verify manifest is registered by hash.
         out_path = Path(BASE_PATH, ".quilt/packages", top_hash)
@@ -71,7 +71,7 @@ class PackageTest(QuiltTestCase):
         # Test unnamed packages.
         new_pkg = Package()
         new_pkg = new_pkg.set('bar', test_file_name)
-        top_hash = new_pkg.build()
+        top_hash = new_pkg.build().top_hash
         out_path = Path(BASE_PATH, ".quilt/packages", top_hash)
         with open(out_path) as fd:
             pkg = Package.load(fd)
@@ -88,7 +88,7 @@ class PackageTest(QuiltTestCase):
 
         # Build a new package into the local registry.
         new_pkg = new_pkg.set('foo', test_file_name)
-        top_hash = new_pkg.build("Quilt/Test")
+        top_hash = new_pkg.build("Quilt/Test").top_hash
 
         # Verify manifest is registered by hash.
         out_path = Path(BASE_PATH, ".quilt/packages", top_hash)
@@ -104,7 +104,7 @@ class PackageTest(QuiltTestCase):
         # Test unnamed packages.
         new_pkg = Package()
         new_pkg = new_pkg.set('bar', test_file_name)
-        top_hash = new_pkg.build()
+        top_hash = new_pkg.build().top_hash
         out_path = Path(BASE_PATH, ".quilt/packages", top_hash)
         with open(out_path) as fd:
             pkg = Package.load(fd)
@@ -113,7 +113,7 @@ class PackageTest(QuiltTestCase):
         new_base_path = Path(BASE_PATH, ".quilttest")
         with patch('t4.packages.get_from_config') as mock_config:
             mock_config.return_value = new_base_path
-            top_hash = new_pkg.build("Quilt/Test")
+            top_hash = new_pkg.build("Quilt/Test").top_hash
             out_path = Path(new_base_path, ".quilt/packages", top_hash).resolve()
             with open(out_path) as fd:
                 pkg = Package.load(fd)
@@ -163,7 +163,7 @@ class PackageTest(QuiltTestCase):
             registry = BASE_PATH.as_uri()
             pkg = Package()
             pkgmock.return_value = pkg
-            top_hash = pkg.top_hash()
+            top_hash = pkg.top_hash
 
             # local registry load
             pkg = Package.browse(registry='local', top_hash=top_hash)
@@ -319,7 +319,7 @@ class PackageTest(QuiltTestCase):
             new_pkg.push('Quilt/package', 's3://my_test_bucket/')
 
             # Manifest copied
-            top_hash = new_pkg.top_hash()
+            top_hash = new_pkg.top_hash
             bytes_mock.assert_any_call(top_hash.encode(), 's3://my_test_bucket/.quilt/named_packages/Quilt/package/latest')
             bytes_mock.assert_any_call(ANY, 's3://my_test_bucket/.quilt/packages/' + top_hash)
 
@@ -343,7 +343,7 @@ class PackageTest(QuiltTestCase):
             push_uri = Path('package_contents').resolve().as_uri()
 
             # Manifest copied
-            top_hash = new_pkg.top_hash()
+            top_hash = new_pkg.top_hash
             bytes_mock.assert_any_call(top_hash.encode(), push_uri + '/.quilt/named_packages/Quilt/package/latest')
             bytes_mock.assert_any_call(ANY, push_uri + '/.quilt/packages/' + top_hash)
 
@@ -559,21 +559,21 @@ class PackageTest(QuiltTestCase):
         test_file.write_text('asdf', 'utf-8')
 
         pkg = Package()
-        th1 = pkg.top_hash()
+        th1 = pkg.top_hash
         pkg.set('asdf', test_file)
         pkg.build()
-        th2 = pkg.top_hash()
+        th2 = pkg.top_hash
         assert th1 != th2
 
         test_file.write_text('jkl', 'utf-8')
         pkg.set('jkl', test_file)
         pkg.build()
-        th3 = pkg.top_hash()
+        th3 = pkg.top_hash
         assert th1 != th3
         assert th2 != th3
 
         pkg.delete('jkl')
-        th4 = pkg.top_hash()
+        th4 = pkg.top_hash
         assert th2 == th4
 
     def test_keys(self):
@@ -756,7 +756,7 @@ class PackageTest(QuiltTestCase):
 
         pkg = Package.browse(registry=registry, top_hash=top_hash)
 
-        assert pkg.top_hash() == top_hash, \
+        assert pkg.top_hash == top_hash, \
             "Unexpected top_hash for {}/.quilt/packages/{}".format(registry, top_hash)
 
 
@@ -775,8 +775,8 @@ class PackageTest(QuiltTestCase):
         Verify local package delete works when multiple packages reference the
         same tophash.
         """
-        top_hash = Package().build("Quilt/Test1")
-        top_hash = Package().build("Quilt/Test2")
+        top_hash = Package().build("Quilt/Test1").top_hash
+        top_hash = Package().build("Quilt/Test2").top_hash
         t4.delete_package('Quilt/Test1', registry=BASE_PATH)
 
         assert 'Quilt/Test1' not in t4.list_packages()
@@ -930,7 +930,7 @@ class PackageTest(QuiltTestCase):
         pkg = Package()
         pkg.set('as/df', LOCAL_MANIFEST)
         pkg.set('as/qw', LOCAL_MANIFEST)
-        top_hash = pkg.build()
+        top_hash = pkg.build().top_hash
         manifest = list(pkg.manifest)
 
         pkg2 = Package.browse(top_hash=top_hash, registry='local')

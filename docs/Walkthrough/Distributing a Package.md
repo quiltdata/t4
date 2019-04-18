@@ -40,11 +40,14 @@ The default remote registry, if set, persists between sessions.
 
 ## Distributing a package version
 
-A successful package `build` or `push` returns a *top hash*.
+Once you build `build` or `push` a package, it has a *top_hash*:
 
-```bash
-$ python
->>> t4.Package().build("username/packagename")
+```python
+import t4
+
+p = t4.Package()
+p.build("username/packagename")
+p.top_hash
 
 '2a5a67156ca9238c14d12042db51c5b52260fdd5511b61ea89b58929d6e1769b'
 ```
