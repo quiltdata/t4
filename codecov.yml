@@ -7,4 +7,3 @@ coverage:
   ignore:
     "api/python/tests"
     "api/python/setup.py"
-
