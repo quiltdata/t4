@@ -59,6 +59,10 @@ Installing Quilt will modify the following Bucket characteristics:
     * Properties > Versioning (will be enabled)
     * Properties > Object-level logging (will be enabled)
     * Properties > Events (will add one notification)
+    
+1. If you are not using AWS Marketplace, you require **a license key**.
+Email [contact@quiltdata.io](mailto:contact@quiltdata.io), with the subodomain that you wish to access Quilt on
+(e.g. https://quilt.example.com) to obtain a license key.
 
 ### AWS Service Catalog
 
@@ -94,7 +98,8 @@ you see in Service Catalog.
 
 1. Specify stack details in the form of a stack _name_ and CloudFormation
 _parameters_. Refer to the descriptions displayed above each
-text box for further details.
+text box for further details. Service Catalog users require a license key. See
+[Before you install Quilt](#Before_you_install_Quilt) for how to obtain a license key.
 
     ![](./imgs/stack-details.png)
 
