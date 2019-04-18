@@ -11,8 +11,6 @@ import * as React from 'react';
 import ReactDOM from 'react-dom';
 import { createBrowserHistory as createHistory } from 'history';
 import 'sanitize.css/sanitize.css';
-//  Need to bypass CSS modules used by standard loader
-//  See https://github.com/react-boilerplate/react-boilerplate/issues/238#issuecomment-222080327
 import { ThemeProvider } from '@material-ui/styles';
 
 // Import root app
@@ -158,11 +156,4 @@ if (!window.Intl) {
     .then(() => render(translationMessages));
 } else {
   render(translationMessages);
-}
-
-// Delete the old service worker.
-if (navigator.serviceWorker) {
-  navigator.serviceWorker.getRegistrations().then((registrations) => {
-    registrations.forEach((registration) => { registration.unregister(); });
-  });
 }
