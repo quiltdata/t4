@@ -121,8 +121,15 @@ class FormatRegistry:
         """Get a handler or handlers meeting the specified requirements
 
         Preference:
-            Args are checked, in order, for matches.  All matching formats
-            are returned, most-recently added handlers first in the list.
+            Registered handlers are filtered by `obj_type`, then by `meta`,
+            then sorted by `ext`.  If any of these aren't given, that action
+            is skipped.
+
+            If only `ext` is given, it will be used as a fallback, and only
+            handlers that can handle that extension will be returned.
+
+            All other factors being equal, latest-added handlers have
+            preference over earlier handlers.
 
         Args:
             obj_type: type of object to convert from/to
@@ -139,10 +146,10 @@ class FormatRegistry:
                 list.
 
         Returns:
-            list: Formats in order of preference (latest-added first)
+            list: Matching formats
 
         Raises:
-            QuiltException: if no matching formats are found
+            QuiltException: Reason no matching formats were found
         """
         # Reasons to use lists and not sets:
         # * we want to retain order, so recently added formats take precedence
