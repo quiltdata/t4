@@ -114,7 +114,28 @@ def search(query, search_endpoint, limit, aws_region='us-east-1'):
         raise exception
 
 def get_raw_mapping_unpacked(endpoint, aws_region):
-    """ Gets raw mapping from Elasticsearch """
+    """
+    Gets raw mapping from Elasticsearch
+
+    (Calvin) From manual testing and inspection, this is my understanding of the format:
+    {
+        $index_name: {
+            'mappings': {
+                $mapping_type_name (usually '_doc'): {
+                    ...mappings
+                }
+            }
+        }
+    }
+    mappings is of the form:
+    {
+        'properties': {
+            $key_name: type | mappings,
+            ...
+        }
+    }
+    type is one of 'long', 'text', 'keyword', etc.
+    """
     es_client = _create_es(endpoint, aws_region)
     raw_response = es_client.indices.get_mapping(index=ES_INDEX)
     return raw_response['drive']['mappings']['_doc']
