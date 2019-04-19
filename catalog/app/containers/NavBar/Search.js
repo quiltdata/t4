@@ -1,99 +1,88 @@
 import cx from 'classnames';
 import { push } from 'connected-react-router/immutable';
 import PT from 'prop-types';
-import * as R from 'ramda';
 import * as React from 'react';
-import { connect } from 'react-redux';
-import { Route } from 'react-router-dom';
 import * as RC from 'recompose';
+import * as reduxHook from 'redux-react-hook';
 import CircularProgress from '@material-ui/core/CircularProgress';
 import Icon from '@material-ui/core/Icon';
 import InputAdornment from '@material-ui/core/InputAdornment';
 import InputBase from '@material-ui/core/InputBase';
-import { withStyles } from '@material-ui/styles';
+import { makeStyles } from '@material-ui/styles';
 import { fade } from '@material-ui/core/styles/colorManipulator';
 
 import * as BucketConfig from 'utils/BucketConfig';
 import Delay from 'utils/Delay';
 import * as NamedRoutes from 'utils/NamedRoutes';
-import * as Wait from 'utils/Wait';
 import parse from 'utils/parseSearch';
 import * as RT from 'utils/reactTools';
+import { useRoute } from 'utils/router';
 
 
-const Styles = RT.composeComponent('NavBar.Search.Styles',
-  RC.setPropTypes({
-    children: PT.func.isRequired,
-  }),
-  withStyles(({ shape: { borderRadius }, spacing: { unit }, palette }) => ({
-    root: {
-      background: fade(palette.common.white, 0.9),
-      borderRadius,
-      marginLeft: 2 * unit,
-      minWidth: 240,
-      '&:not($disabled):hover': {
-        background: palette.common.white,
-      },
-    },
-    disabled: {
-      opacity: 0.8,
-    },
-    focused: {
+const useStyles = makeStyles(({ shape: { borderRadius }, spacing: { unit }, palette }) => ({
+  root: {
+    background: fade(palette.common.white, 0.9),
+    borderRadius,
+    marginLeft: 2 * unit,
+    minWidth: 240,
+    '&:not($disabled):hover': {
       background: palette.common.white,
     },
-    input: {
-      paddingLeft: 4 * unit,
-      textOverflow: 'ellipsis',
-    },
-    adornment: {
-      justifyContent: 'center',
-      pointerEvents: 'none',
-      position: 'absolute',
-      width: 4 * unit,
-    },
-  })),
-  ({ classes, children }) => children(classes));
+  },
+  disabled: {
+    opacity: 0.8,
+  },
+  focused: {
+    background: palette.common.white,
+  },
+  input: {
+    paddingLeft: 4 * unit,
+    textOverflow: 'ellipsis',
+  },
+  adornment: {
+    justifyContent: 'center',
+    pointerEvents: 'none',
+    position: 'absolute',
+    width: 4 * unit,
+  },
+}));
 
-const SearchBox = RT.composeComponent('NavBar.Search.SearchBox',
-  ({ disabled, ...props }) => (
-    <Styles>
-      {({ adornment, disabled: disabledCls, ...classes }) => (
-        <InputBase
-          startAdornment={
-            <InputAdornment className={adornment}>
-              <Icon>search</Icon>
-            </InputAdornment>
-          }
-          classes={classes}
-          className={cx({ [disabledCls]: disabled })}
-          placeholder="Search"
-          disabled={disabled}
-          {...props}
-        />
-      )}
-    </Styles>
-  ));
+const SearchBox = ({ disabled, ...props }) => {
+  const { adornment, disabled: disabledCls, ...classes } = useStyles();
+  return (
+    <InputBase
+      startAdornment={
+        <InputAdornment className={adornment}>
+          <Icon>search</Icon>
+        </InputAdornment>
+      }
+      classes={classes}
+      className={cx({ [disabledCls]: disabled })}
+      placeholder="Search"
+      disabled={disabled}
+      {...props}
+    />
+  );
+};
 
 const State = RT.composeComponent('NavBar.Search.State',
   RC.setPropTypes({
     children: PT.func.isRequired,
     bucket: PT.string.isRequired,
-    query: PT.string.isRequired,
   }),
-  connect(undefined, undefined, undefined, { pure: false }),
-  NamedRoutes.inject(),
-  RC.withStateHandlers({
-    value: null,
-  }, {
-    focus: (_state, { query }) => () => ({ value: query }),
-    blur: () => () => ({ value: null }),
-    change: () => (value) => ({ value }),
-  }),
-  RC.withHandlers({
-    onChange: ({ change }) => (evt) => {
+  ({ bucket, children }) => {
+    const { paths, urls } = NamedRoutes.use();
+    const { location: l, match } = useRoute(paths.bucketSearch);
+    const query = (match && parse(l.search).q) || '';
+    const dispatch = reduxHook.useDispatch();
+
+    const [value, change] = React.useState(null);
+
+    const onChange = React.useCallback((evt) => {
       change(evt.target.value);
-    },
-    onKeyDown: ({ dispatch, urls, bucket, value, query }) => (evt) => {
+    }, []);
+
+    const onKeyDown = React.useCallback((evt) => {
       // eslint-disable-next-line default-case
       switch (evt.key) {
         case 'Enter':
@@ -108,49 +97,30 @@ const State = RT.composeComponent('NavBar.Search.State',
           evt.target.blur();
           break;
       }
-    },
-    onFocus: ({ focus }) => () => {
-      focus();
-    },
-    onBlur: ({ blur }) => () => {
-      blur();
-    },
-  }),
-  ({ children, value, query, ...props }) => children({
-    value: value === null ? query : value,
-    ...R.pick(['onChange', 'onKeyDown', 'onFocus', 'onBlur'], props),
-  }));
+    }, [dispatch, urls, bucket, value, query]);
 
-const fallback = () => <Delay>{() => <CircularProgress />}</Delay>;
+    const onFocus = React.useCallback(() => {
+      change(query);
+    }, [query]);
 
-const WithQuery = RT.composeComponent('NavBar.Search.WithQuery',
-  RC.setPropTypes({
-    children: PT.func.isRequired,
-  }),
-  ({ children }) => (
-    <NamedRoutes.Inject>
-      {({ paths }) => (
-        <Route path={paths.bucketSearch}>
-          {({ location: l, match }) => children((match && parse(l.search).q) || '')}
-        </Route>
-      )}
-    </NamedRoutes.Inject>
-  ));
+    const onBlur = React.useCallback(() => {
+      change(null);
+    }, []);
 
-export default RT.composeComponent('NavBar.Search', () => (
-  <Wait.Placeholder fallback={fallback}>
-    <BucketConfig.WithCurrentBucketConfig>
-      {Wait.wait(({ name, searchEndpoint }) => searchEndpoint
-        ? (
-          <WithQuery>
-            {(query) => (
-              <State bucket={name} query={query}>
-                {(state) => <SearchBox {...state} />}
-              </State>
-            )}
-          </WithQuery>
-        )
-        : <SearchBox disabled value="Search not available" />)}
-    </BucketConfig.WithCurrentBucketConfig>
-  </Wait.Placeholder>
-));
+    return children({
+      value: value === null ? query : value,
+      onChange,
+      onKeyDown,
+      onFocus,
+      onBlur,
+    });
+  });
+
+export default RT.composeComponent('NavBar.Search',
+  RT.withSuspense(() => <Delay>{() => <CircularProgress />}</Delay>),
+  () => {
+    const { name, searchEndpoint } = BucketConfig.useCurrentBucketConfig();
+    return searchEndpoint
+      ? <State bucket={name}>{(state) => <SearchBox {...state} />}</State>
+      : <SearchBox disabled value="Search not available" />;
+  });

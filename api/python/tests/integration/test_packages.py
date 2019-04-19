@@ -5,7 +5,7 @@ from pathlib import Path
 import shutil
 
 import jsonlines
-from mock import patch, call, ANY
+from unittest.mock import patch, call, ANY
 import pytest
 
 import t4
@@ -55,7 +55,7 @@ class PackageTest(QuiltTestCase):
 
         # Build a new package into the local registry.
         new_pkg = new_pkg.set('foo', test_file_name)
-        top_hash = new_pkg.build("Quilt/Test")
+        top_hash = new_pkg.build("Quilt/Test").top_hash
 
         # Verify manifest is registered by hash.
         out_path = Path(BASE_PATH, ".quilt/packages", top_hash)
@@ -71,7 +71,7 @@ class PackageTest(QuiltTestCase):
         # Test unnamed packages.
         new_pkg = Package()
         new_pkg = new_pkg.set('bar', test_file_name)
-        top_hash = new_pkg.build()
+        top_hash = new_pkg.build().top_hash
         out_path = Path(BASE_PATH, ".quilt/packages", top_hash)
         with open(out_path) as fd:
             pkg = Package.load(fd)
@@ -88,7 +88,7 @@ class PackageTest(QuiltTestCase):
 
         # Build a new package into the local registry.
         new_pkg = new_pkg.set('foo', test_file_name)
-        top_hash = new_pkg.build("Quilt/Test")
+        top_hash = new_pkg.build("Quilt/Test").top_hash
 
         # Verify manifest is registered by hash.
         out_path = Path(BASE_PATH, ".quilt/packages", top_hash)
@@ -104,7 +104,7 @@ class PackageTest(QuiltTestCase):
         # Test unnamed packages.
         new_pkg = Package()
         new_pkg = new_pkg.set('bar', test_file_name)
-        top_hash = new_pkg.build()
+        top_hash = new_pkg.build().top_hash
         out_path = Path(BASE_PATH, ".quilt/packages", top_hash)
         with open(out_path) as fd:
             pkg = Package.load(fd)
@@ -113,7 +113,7 @@ class PackageTest(QuiltTestCase):
         new_base_path = Path(BASE_PATH, ".quilttest")
         with patch('t4.packages.get_from_config') as mock_config:
             mock_config.return_value = new_base_path
-            top_hash = new_pkg.build("Quilt/Test")
+            top_hash = new_pkg.build("Quilt/Test").top_hash
             out_path = Path(new_base_path, ".quilt/packages", top_hash).resolve()
             with open(out_path) as fd:
                 pkg = Package.load(fd)
@@ -163,7 +163,7 @@ class PackageTest(QuiltTestCase):
             registry = BASE_PATH.as_uri()
             pkg = Package()
             pkgmock.return_value = pkg
-            top_hash = pkg.top_hash()
+            top_hash = pkg.top_hash
 
             # local registry load
             pkg = Package.browse(registry='local', top_hash=top_hash)
@@ -239,7 +239,7 @@ class PackageTest(QuiltTestCase):
         package_ = Package().set_dir('/', DATA_DIR / 'nested')
 
         out_dir = 'output'
-        package_.fetch(out_dir)
+        new_package_ = package_.fetch(out_dir)
 
         expected = {'one.txt': '1', 'two.txt': '2', 'three.txt': '3'}
         file_count = 0
@@ -253,6 +253,12 @@ class PackageTest(QuiltTestCase):
                         'unexpected contents in {}: {}'.format(name, contents)
         assert file_count == len(expected), \
             'fetch wrote {} files; expected: {}'.format(file_count, expected)
+
+        # test that package re-rooting works as expected
+        out_dir_abs_path = f'file://{pathlib.Path(out_dir).absolute().as_posix()}'
+        assert all(
+            entry.physical_keys[0].startswith(out_dir_abs_path) for _, entry in new_package_.walk()
+        )
 
     def test_package_fetch_default_dest(self):
         """Verify fetching a package to the default local destination."""
@@ -280,7 +286,13 @@ class PackageTest(QuiltTestCase):
 
         # Raise an error if you copy to yourself.
         with pytest.raises(shutil.SameFileError):
-            pkg['foo'].fetch(DATA_DIR / 'foo.txt')
+            pkg.set('foo', DATA_DIR / 'foo.txt')['foo'].fetch(DATA_DIR / 'foo.txt')
+
+        # The key gets re-rooted correctly.
+        pkg = t4.Package().set('foo', DATA_DIR / 'foo.txt')
+        new_pkg_entry = pkg['foo'].fetch('bar.txt')
+        out_abs_path = f'file://{pathlib.Path(".").absolute().as_posix()}/bar.txt'
+        assert new_pkg_entry.physical_keys[0] == out_abs_path
 
     def test_fetch_default_dest(tmpdir):
         """Verify fetching a package entry to a default destination."""
@@ -307,7 +319,7 @@ class PackageTest(QuiltTestCase):
             new_pkg.push('Quilt/package', 's3://my_test_bucket/')
 
             # Manifest copied
-            top_hash = new_pkg.top_hash()
+            top_hash = new_pkg.top_hash
             bytes_mock.assert_any_call(top_hash.encode(), 's3://my_test_bucket/.quilt/named_packages/Quilt/package/latest')
             bytes_mock.assert_any_call(ANY, 's3://my_test_bucket/.quilt/packages/' + top_hash)
 
@@ -331,7 +343,7 @@ class PackageTest(QuiltTestCase):
             push_uri = Path('package_contents').resolve().as_uri()
 
             # Manifest copied
-            top_hash = new_pkg.top_hash()
+            top_hash = new_pkg.top_hash
             bytes_mock.assert_any_call(top_hash.encode(), push_uri + '/.quilt/named_packages/Quilt/package/latest')
             bytes_mock.assert_any_call(ANY, push_uri + '/.quilt/packages/' + top_hash)
 
@@ -482,7 +494,7 @@ class PackageTest(QuiltTestCase):
 
     def test_list_local_packages(self):
         """Verify that list returns packages in the appdirs directory."""
-        temp_local_registry = Path('test_registry').resolve().as_uri()
+        temp_local_registry = Path('test_registry').resolve().as_uri() + '/.quilt'
         with patch('t4.packages.get_package_registry', lambda path: temp_local_registry), \
             patch('t4.api.get_package_registry', lambda path: temp_local_registry):
             # Build a new package into the local registry.
@@ -495,6 +507,14 @@ class PackageTest(QuiltTestCase):
             assert len(pkgs) == 3
             assert "Quilt/Foo" in pkgs
             assert "Quilt/Bar" in pkgs
+
+            # Verify 'local' keyword works as expected.
+            assert list(pkgs) == list(t4.list_packages('local'))
+
+            # Verify specifying a local path explicitly works as expected.
+            assert list(pkgs) == list(t4.list_packages(
+                pathlib.Path(temp_local_registry).parent.as_posix()
+            ))
 
             # Verify package repr is as expected.
             pkgs_repr = str(pkgs)
@@ -539,21 +559,21 @@ class PackageTest(QuiltTestCase):
         test_file.write_text('asdf', 'utf-8')
 
         pkg = Package()
-        th1 = pkg.top_hash()
+        th1 = pkg.top_hash
         pkg.set('asdf', test_file)
         pkg.build()
-        th2 = pkg.top_hash()
+        th2 = pkg.top_hash
         assert th1 != th2
 
         test_file.write_text('jkl', 'utf-8')
         pkg.set('jkl', test_file)
         pkg.build()
-        th3 = pkg.top_hash()
+        th3 = pkg.top_hash
         assert th1 != th3
         assert th2 != th3
 
         pkg.delete('jkl')
-        th4 = pkg.top_hash()
+        th4 = pkg.top_hash
         assert th2 == th4
 
     def test_keys(self):
@@ -736,7 +756,7 @@ class PackageTest(QuiltTestCase):
 
         pkg = Package.browse(registry=registry, top_hash=top_hash)
 
-        assert pkg.top_hash() == top_hash, \
+        assert pkg.top_hash == top_hash, \
             "Unexpected top_hash for {}/.quilt/packages/{}".format(registry, top_hash)
 
 
@@ -755,8 +775,8 @@ class PackageTest(QuiltTestCase):
         Verify local package delete works when multiple packages reference the
         same tophash.
         """
-        top_hash = Package().build("Quilt/Test1")
-        top_hash = Package().build("Quilt/Test2")
+        top_hash = Package().build("Quilt/Test1").top_hash
+        top_hash = Package().build("Quilt/Test2").top_hash
         t4.delete_package('Quilt/Test1', registry=BASE_PATH)
 
         assert 'Quilt/Test1' not in t4.list_packages()
@@ -910,7 +930,7 @@ class PackageTest(QuiltTestCase):
         pkg = Package()
         pkg.set('as/df', LOCAL_MANIFEST)
         pkg.set('as/qw', LOCAL_MANIFEST)
-        top_hash = pkg.build()
+        top_hash = pkg.build().top_hash
         manifest = list(pkg.manifest)
 
         pkg2 = Package.browse(top_hash=top_hash, registry='local')
@@ -951,27 +971,6 @@ class PackageTest(QuiltTestCase):
         assert list(p_copy) == ['a'] and list(p_copy['a']) == ['df']
 
 
-    def test_reduce(self):
-        pkg = Package()
-        pkg.set('as/df', LOCAL_MANIFEST)
-        pkg.set('as/qw', LOCAL_MANIFEST)
-        assert pkg.reduce(lambda a, b: a) == ('as/df', pkg['as/df'])
-        assert pkg.reduce(lambda a, b: b) == ('as/qw', pkg['as/qw'])
-        assert list(pkg.reduce(lambda a, b: a + [b], [])) == [
-            ('as/df', pkg['as/df']),
-            ('as/qw', pkg['as/qw'])
-        ]
-
-        pkg['as'].set_meta({'foo': 'bar'})
-        assert pkg.reduce(lambda a, b: b, include_directories=True) ==\
-            ('as/qw', pkg['as/qw'])
-        assert list(pkg.reduce(lambda a, b: a + [b], [], include_directories=True)) == [
-            ('as/', pkg['as']),
-            ('as/df', pkg['as/df']),
-            ('as/qw', pkg['as/qw'])
-        ]
-
-
     def test_import(self):
         with patch('t4.Package.browse') as browse_mock, \
             patch('t4.imports.list_packages') as list_packages_mock:
@@ -998,3 +997,52 @@ class PackageTest(QuiltTestCase):
             pkg.set('foo', './')
         with pytest.raises(QuiltException):
             pkg.set('foo', os.path.dirname(__file__))
+
+
+    def test_default_package_get_local(self):
+        foodir = pathlib.Path("foo_dir")
+        bazdir = pathlib.Path("baz_dir")
+        foodir.mkdir(parents=True, exist_ok=True)
+        bazdir.mkdir(parents=True, exist_ok=True)
+        with open('bar', 'w') as fd:
+            fd.write(fd.name)
+        with open('foo', 'w') as fd:
+            fd.write(fd.name)
+        with open(bazdir / 'baz', 'w') as fd:
+            fd.write(fd.name)
+        with open(foodir / 'bar', 'w') as fd:
+            fd.write(fd.name)
+
+        currdir = 'file://' + pathlib.Path('.').absolute().as_posix() + '/'
+
+        # consistent local case
+        pkg = t4.Package().set_dir("/", "./")
+        assert pkg.get() == currdir
+
+        # package with one inconsistent path, leading case
+        pkg = t4.Package().set_dir("/", "./")
+        pkg.set('badpath', 'bar')
+        with pytest.raises(QuiltException):
+            pkg.get()
+
+        # package with one inconsistent path, training case
+        pkg = t4.Package().set_dir("/", "./")
+        # prefix with 'z_' to ensure that this entry is last in sorted order
+        pkg.set('z_badpath', 'bar')
+        with pytest.raises(QuiltException):
+            pkg.get()
+
+        # package with inconsistent schemes
+        with patch('t4.packages.get_size_and_meta', return_value=(0, dict(), '0')):
+            pkg = t4.Package().set_dir("/", "./")
+            pkg.set("bar", "s3://test-bucket/bar")
+            with pytest.raises(QuiltException):
+                pkg.get()
+
+        # package with inconsistent root directories
+        with open('foo_dir/foo', 'w') as fd:
+            fd.write(fd.name)
+        pkg = t4.Package().set_dir("/", "./")
+        pkg.set('foo', 'foo_dir/foo')
+        with pytest.raises(QuiltException):
+            pkg.get()

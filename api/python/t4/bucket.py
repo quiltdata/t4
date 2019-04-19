@@ -149,10 +149,16 @@ class Bucket(object):
             obj(serializable): serializable object to store at key
             meta(dict): optional user-provided metadata to store
         """
+        user_meta = meta or {}
         dest = self._uri + key
-        all_meta = dict(user_meta=meta or {})
-        data, format_meta = FormatRegistry.serialize(obj, all_meta)
+        ext = pathlib.PurePosixPath(key).suffix
+        all_meta = {
+            'user_meta': user_meta,
+        }
+        
+        data, format_meta = FormatRegistry.serialize(obj, all_meta, ext)
         all_meta.update(format_meta)
+
         put_bytes(data, dest, all_meta)
 
     def put_file(self, key, path, meta=None):
@@ -173,8 +179,12 @@ class Bucket(object):
             * if no file exists at path
             * if copy fails
         """
+        user_meta = meta or {}
         dest = self._uri + key
-        copy_file(fix_url(path), dest, meta)
+        all_meta = {
+            'user_meta': user_meta,
+        }
+        copy_file(fix_url(path), dest, all_meta)
 
     def put_dir(self, key, directory):
         """

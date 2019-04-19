@@ -51,11 +51,8 @@ export default ({ handle }) => Preview.load(handle, AsyncResult.case({
     // eslint-disable-next-line react/prop-types
     Unsupported: () => (
       <Message>
-        <Typography variant="body1" gutterBottom>
-          Preview not available
-        </Typography>
         {withSignedUrl(handle, (url) => (
-          <Button variant="outlined" href={url}>View in Browser</Button>
+          <Button variant="outlined" href={url}>Download and view in Browser</Button>
         ))}
       </Message>
     ),

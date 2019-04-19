@@ -198,13 +198,13 @@ class PackageEntry(object):
 
         pkey_ext = pathlib.PurePosixPath(unquote(urlparse(physical_key).path)).suffix
 
-        # Verify format can be handled before checking hash..
-        FormatRegistry.deserialize(data, self.meta, pkey_ext, check_only=True, **format_opts)
+        # Verify format can be handled before checking hash.  Raises if none found.
+        formats = FormatRegistry.search(None, self.meta, pkey_ext)
 
         # Verify hash before deserializing..
         self._verify_hash(data)
 
-        return FormatRegistry.deserialize(data, self.meta, pkey_ext, **format_opts)
+        return formats[0].deserialize(data, self.meta, pkey_ext, **format_opts)
 
     def fetch(self, dest=None):
         """
@@ -225,6 +225,13 @@ class PackageEntry(object):
         physical_key = _to_singleton(self.physical_keys)
         dest = fix_url(dest)
         copy_file(physical_key, dest, self.meta)
+
+        # return a package reroot package physical keys after the copy operation succeeds
+        # see GH#388 for context
+        entry = self._clone()
+        entry.physical_keys = [dest]
+        return entry
+
 
     def __call__(self, func=None, **kwargs):
         """
@@ -452,14 +459,23 @@ class Package(object):
         """
         nice_dest = fix_url(dest).rstrip('/')
         file_list = []
-        
+        pkg = Package()
+
         for logical_key, entry in self.walk():
-            logical_key = quote(logical_key)
             physical_key = _to_singleton(entry.physical_keys)
-            new_physical_key = f'{nice_dest}/{logical_key}'
+            new_physical_key = f'{nice_dest}/{quote(logical_key)}'
+
             file_list.append((physical_key, new_physical_key, entry.size, entry.meta))
 
+            # return a package reroot package physical keys after the copy operation succeeds
+            # see GH#388 for context
+            new_entry = entry._clone()
+            new_entry.physical_keys = [new_physical_key]
+            pkg.set(logical_key, new_entry)
+
         copy_file_list(file_list)
+        
+        return pkg
 
     def keys(self):
         """
@@ -609,7 +625,7 @@ class Package(object):
 
         return self
 
-    def get(self, logical_key):
+    def get(self, logical_key=None):
         """
         Gets object from logical_key and returns its physical path.
         Equivalent to self[logical_key].get().
@@ -624,10 +640,77 @@ class Package(object):
             KeyError: when logical_key is not present in the package
             ValueError: if the logical_key points to a Package rather than PackageEntry.
         """
-        obj = self[logical_key]
-        if not isinstance(obj, PackageEntry):
-            raise ValueError("Key does point to a PackageEntry")
-        return obj.get()
+        if logical_key:
+            obj = self[logical_key]
+            if not isinstance(obj, PackageEntry):
+                raise ValueError("Key does point to a PackageEntry")
+            return obj.get()
+        else:
+            # a package has a logical root directory if all of its children are rooted at the
+            # same directory or object path. in other words, the following things must match:
+            # * the URL scheme of every physical key is the same
+            # * the root path to each physical key is the same
+            first_lkey, first_entry = next(self.walk())
+            first_pkey = first_entry.physical_keys[0].split('?versionId=')[0]
+            hypothesized_scheme = urlparse(first_pkey).scheme
+
+            # ensure that the first entry has a logically consistent physical and logical key
+            if not first_pkey.endswith(first_lkey):
+                raise QuiltException(
+                    f"Cannot get the root directory for this package because it is not "
+                    f"physically consistent, as it contains entries whose logical keys and "
+                    f"physical keys have different names. For example, the {first_lkey!r} package "
+                    f"entry points to a file named {first_pkey.split('/')[-1]!r} (expected a file "
+                    f"named {first_lkey.split('/')[-1]!r}). To make this package physically "
+                    f"consistent run 't4.Package.install(\"$PKG_NAME\")', replacing '$PKG_NAME' "
+                    f"with the name of this package. Note that this will result in file copying."
+                )
+            hypothesized_root_path = first_pkey[:first_pkey.rfind(first_lkey)]
+
+            # every subsequent entry will be checked to ensure that its logical key is rooted
+            # at the same physical key as the first entry
+            for lkey, entry in self.walk():
+                pkey = entry.physical_keys[0].split('?versionId=')[0]
+                scheme = urlparse(pkey).scheme
+                root_path = pkey[:pkey.rfind(lkey)]
+
+                if scheme != hypothesized_scheme:
+                    raise QuiltException(
+                        f"Cannot get the root directory for this package because it is not "
+                        f"physically consistent, as it contains both local and remote entries. "
+                        f"For example, the {first_lkey!r} package entry is a "
+                        f"'{hypothesized_scheme}' entry, whist the {lkey!r} package entry is a "
+                        f"'{scheme}' entry. To make this package physically "
+                        f"consistent run 't4.Package.install(\"$PKG_NAME\")', replacing "
+                        f"'$PKG_NAME' with the name of this package. Note that this will result "
+                        f"in file copying."
+                    )
+                elif not pkey.endswith(lkey):
+                    raise QuiltException(
+                        f"Cannot get the root directory for this package because it is not "
+                        f"physically consistent, as it contains entries whose logical keys and "
+                        f"physical keys have different names. For example, the "
+                        f"{lkey!r} package entry points to a file named "
+                        f"{pkey.split('/')[-1]!r} (expected a file named "
+                        f"{first_lkey.split('/')[-1]!r}). To make this package physically "
+                        f"consistent run 't4.Package.install(\"$PKG_NAME\")', replacing "
+                        f"'$PKG_NAME' with the name of this package. Note that this will result "
+                        f"in file copying."
+                    )
+                elif root_path != hypothesized_root_path:
+                    raise QuiltException(
+                        f"Cannot get the root directory for this package because it is not "
+                        f"physically consistent, as it contains entries rooted in different "
+                        f"physical locations. For example, the {lkey!r} entry is located in the "
+                        f"{'/'.join(pkey.split('/')[:-1])!r} directory, whilst the "
+                        f"{first_lkey!r} is located in the "
+                        f"{'/'.join(first_pkey.split('/')[:-1])!r} directory. To make this "
+                        f"package physically consistent run 't4.Package.install(\"$PKG_NAME\")', "
+                        f"replacing '$PKG_NAME' with the name of this package. Note that this "
+                        f"will result in file copying."
+                    )
+
+            return hypothesized_root_path
 
     def get_meta(self):
         """
@@ -647,9 +730,13 @@ class Package(object):
         if not entries:
             return
 
-        physical_keys = (entry.physical_keys[0] for entry in entries)
-        total_size = sum(entry.size for entry in entries)
-        results = calculate_sha256(physical_keys, total_size)
+        physical_keys = []
+        sizes = []
+        for entry in entries:
+            physical_keys.append(entry.physical_keys[0])
+            sizes.append(entry.size)
+
+        results = calculate_sha256(physical_keys, sizes)
 
         for entry, obj_hash in zip(entries, results):
             entry.hash = dict(type='SHA256', value=obj_hash)
@@ -694,7 +781,7 @@ class Package(object):
 
         self._fix_sha256()
 
-        hash_string = self.top_hash()
+        hash_string = self.top_hash
         manifest = io.BytesIO()
         self.dump(manifest)
         put_bytes(
@@ -714,7 +801,7 @@ class Package(object):
             put_bytes(hash_bytes, timestamp_path)
             put_bytes(hash_bytes, latest_path)
 
-        return hash_string
+        return self
 
     def dump(self, writable_file):
         """
@@ -829,6 +916,7 @@ class Package(object):
         del pkg._children[path[-1]]
         return self
 
+    @property
     def top_hash(self):
         """
         Returns the top hash of the package.
@@ -1031,40 +1119,3 @@ class Package(object):
                 p.set(lk, entity)
 
         return p
-
-    def reduce(self, f, default=None, include_directories=False):
-        """
-        Applies a reduce operation across neighboring package entries,
-        in left-right order.
-
-        Args:
-            f: function
-                The function to be applied to each package entry.
-                This function should take two arguments. By default these
-                will be the (logical key, PackageEntry) for the left entry and
-                the (logical key, PackageEntry) argument for the right entry.
-                As you iterate over the package entries, the left argument will
-                be replaced by the output of the previous reduce operation.
-            default: initial value
-                The default argument. If left unspecified, the (logical key,
-                PackageEntry) pair for the first package entry in the package
-                will be used.
-            include_directories: bool
-                Whether or not to include directory entries in the map.
-
-        Returns: list
-            A list of truthy (logical key, entry) tuples.
-        """
-        entities = []
-
-        if include_directories:
-            entities += [(lk, self[lk.rstrip("/")]) for lk, _ in self._walk_dir_meta()]
-
-        entities += list(self.walk())
-        out = default if default is not None else entities[0]
-        iters = entities if default is not None else entities[1:]
-
-        for entry in iters:
-            out = f(out, entry)
-            
-        return out

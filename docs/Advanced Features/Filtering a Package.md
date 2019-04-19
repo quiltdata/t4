@@ -15,9 +15,6 @@ p.map(lambda lk, entry: entry)
 
 # filter out entries not meeting certain criteria
 p.filter(lambda lk, entry: 'cool' not in lk)
-
-# reduce across entries
-p.reduce(lambda a_lk, a, b_lk, b: a.size + b.size)
 ```
 
 Notice that these functions operate over `(logical_key, entry)` tuples. Each `logical_key` is a string. Each `entry` is `PackageEntry` object, as would be returned if you slice to a leaf node of the package (e.g. `p['bar']`).

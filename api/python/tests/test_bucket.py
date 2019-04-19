@@ -1,5 +1,5 @@
 import json
-from mock import patch
+from unittest.mock import patch
 import pathlib
 from urllib.parse import urlparse
 
@@ -175,9 +175,12 @@ class TestBucket(QuiltTestCase):
 
             copy_mock.reset_mock()
             test_meta = {'asdf': 'jkl;'}
+            expected_meta = {
+                'user_meta': test_meta
+            }
             bucket.put_file(key='README.md', path='./README', meta=test_meta)
             (src, dest, meta) = copy_mock.call_args_list[0][0]
-            assert meta == test_meta
+            assert meta == expected_meta
 
     def test_bucket_put_dir(self):
         path = pathlib.Path(__file__).parent / 'data'
@@ -350,3 +353,23 @@ class TestBucket(QuiltTestCase):
             }
         }
         get_raw_mapping_unpacked.assert_called_once_with('https://foo.bar/search', 'us-east-1')
+
+    @patch('t4.bucket.put_bytes')
+    def test_bucket_put_ext(self, put_bytes):
+        # This just ensures the bucket is calling serialize() correctly.
+        obj = 'just a string..'
+        b = Bucket('s3://t4-testing-fake')
+        b.put('foo.json', obj)
+
+        assert put_bytes.called
+        assert len(put_bytes.call_args_list) == 1
+
+        args, kwargs = put_bytes.call_args
+        # avoid args[n] call if put_bytes was called w/kwarg arguments
+        data = kwargs['data'] if 'data' in kwargs else args[0]
+        dest = kwargs['dest'] if 'dest' in kwargs else args[1]
+        meta = kwargs['meta'] if 'meta' in kwargs else args[2]
+
+        assert json.loads(data) == obj
+        assert dest == 's3://t4-testing-fake/foo.json'
+        assert meta.get('format', {}).get('name') == 'json'
