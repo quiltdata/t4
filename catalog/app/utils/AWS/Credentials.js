@@ -1,5 +1,5 @@
-import 'aws-sdk/lib/credentials';
 import AWS from 'aws-sdk/lib/core';
+import 'aws-sdk/lib/credentials';
 import * as React from 'react';
 import * as reduxHook from 'redux-react-hook';
 

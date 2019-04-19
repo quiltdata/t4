@@ -1,5 +1,5 @@
-import 'aws-sdk/lib/config';
 import AWS from 'aws-sdk/lib/core';
+import 'aws-sdk/lib/config';
 import * as React from 'react';
 
 import * as RT from 'utils/reactTools';

@@ -67,8 +67,6 @@ export default (variants) => {
   const constructors = R.mapObjIndexed(mkConstructor, symbols);
 
   const doCase = (cases, ...args) => {
-    invariant(R.type(cases) === 'Object',
-      `${scope}/case: cases must be an object`);
     invariant(R.all((x) => typeof x === 'function', cases),
       `${scope}/case: cases must be an object of functions`);
     // eslint-disable-next-line no-underscore-dangle

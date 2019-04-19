@@ -1,7 +1,6 @@
 /* app.js - application entry point */
 // Needed for redux-saga es6 generator support
-import 'babel-polyfill';
-import 'whatwg-fetch';
+import '@babel/polyfill';
 
 // TODO: remove after mui v4 release
 import './installStyles';
@@ -10,24 +9,24 @@ import './installStyles';
 // Import all the third party stuff
 import * as React from 'react';
 import ReactDOM from 'react-dom';
-import createHistory from 'history/createBrowserHistory';
+import { createBrowserHistory as createHistory } from 'history';
 import 'sanitize.css/sanitize.css';
-//  Need to bypass CSS modules used by standard loader
-//  See https://github.com/react-boilerplate/react-boilerplate/issues/238#issuecomment-222080327
 import { ThemeProvider } from '@material-ui/styles';
 
 // Import root app
 import Error from 'components/Error';
 import * as Intercom from 'components/Intercom';
 import Layout from 'components/Layout';
+import Placeholder from 'components/Placeholder';
 import App from 'containers/App';
-import Placeholder from 'containers/App/Placeholder';
 import LanguageProvider from 'containers/LanguageProvider';
 import * as Auth from 'containers/Auth';
 import * as Notifications from 'containers/Notifications';
 import routes from 'constants/routes';
 import * as style from 'constants/style';
-import * as AWS from 'utils/AWS';
+import * as AWSCredentials from 'utils/AWS/Credentials';
+import * as AWSConfig from 'utils/AWS/Config';
+import * as AWSSigner from 'utils/AWS/Signer';
 import * as APIConnector from 'utils/APIConnector';
 import * as Config from 'utils/Config';
 import * as Data from 'utils/Data';
@@ -42,12 +41,10 @@ import { nest, composeComponent } from 'utils/reactTools';
 import RouterProvider, { LOCATION_CHANGE, selectLocation } from 'utils/router';
 import mkStorage from 'utils/storage';
 import Tracking from 'utils/tracking';
-// Load the favicon, the manifest.json file and the .htaccess file
+// Load the icons
 /* eslint-disable import/no-unresolved, import/extensions */
 import '!file-loader?name=[name].[ext]!./favicon.ico';
-import '!file-loader?name=[name].[ext]!./manifest.json';
 import '!file-loader?name=[name].[ext]!./quilt-og.png';
-import 'file-loader?name=[name].[ext]!./.htaccess';
 /* eslint-enable import/no-unresolved, import/extensions */
 // Import i18n messages
 import { translationMessages } from './i18n';
@@ -127,9 +124,9 @@ const render = (messages) => {
         locationSelector: selectLocation,
         userSelector: Auth.selectors.username,
       }],
-      AWS.Credentials.Provider,
-      AWS.Config.Provider,
-      AWS.Signer.Provider,
+      AWSCredentials.Provider,
+      AWSConfig.Provider,
+      AWSSigner.Provider,
       Notifications.WithNotifications,
       ErrorBoundary,
       App,
@@ -159,11 +156,4 @@ if (!window.Intl) {
     .then(() => render(translationMessages));
 } else {
   render(translationMessages);
-}
-
-// Delete the old service worker.
-if (navigator.serviceWorker) {
-  navigator.serviceWorker.getRegistrations().then((registrations) => {
-    registrations.forEach((registration) => { registration.unregister(); });
-  });
 }

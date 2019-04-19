@@ -11,11 +11,11 @@ the `/config.json` path.
 # local web server for catalog w/hot reload
 $ cd catalog
 # copy and edit config file
-$ cp config.json.example static/config.json
-$ vi static/config.json
+$ cp config.json.example static-dev/config.json
+$ vi static-dev/config.json
 # copy and edit federation file if required
-$ cp federation.json.example static/federation.json
-$ vi static/federation.json
+$ cp federation.json.example static-dev/federation.json
+$ vi static-dev/federation.json
 $ npm start
 ```
 
