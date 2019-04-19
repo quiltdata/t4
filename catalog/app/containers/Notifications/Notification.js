@@ -1,22 +1,22 @@
-import PT from 'prop-types';
-import React from 'react';
-import { setPropTypes } from 'recompose';
-import { makeStyles } from '@material-ui/styles';
-import Button from '@material-ui/core/Button';
-import Snackbar from '@material-ui/core/Snackbar';
-import Icon from '@material-ui/core/Icon';
-import IconButton from '@material-ui/core/IconButton';
+import PT from 'prop-types'
+import React from 'react'
+import { setPropTypes } from 'recompose'
+import { makeStyles } from '@material-ui/styles'
+import Button from '@material-ui/core/Button'
+import Snackbar from '@material-ui/core/Snackbar'
+import Icon from '@material-ui/core/Icon'
+import IconButton from '@material-ui/core/IconButton'
 
-import { composeComponent } from 'utils/reactTools';
-
+import { composeComponent } from 'utils/reactTools'
 
 const useStyles = makeStyles((t) => ({
   close: {
     padding: t.spacing.unit / 2,
   },
-}));
+}))
 
-export default composeComponent('Notifications.Notification',
+export default composeComponent(
+  'Notifications.Notification',
   setPropTypes({
     id: PT.string.isRequired,
     ttl: PT.number.isRequired,
@@ -28,9 +28,9 @@ export default composeComponent('Notifications.Notification',
     dismiss: PT.func.isRequired,
   }),
   ({ id, ttl, message, action, dismiss }) => {
-    const classes = useStyles();
+    const classes = useStyles()
 
-    const handleClose = React.useCallback(() => dismiss(id), [dismiss, id]);
+    const handleClose = React.useCallback(() => dismiss(id), [dismiss, id])
 
     return (
       <Snackbar
@@ -56,5 +56,6 @@ export default composeComponent('Notifications.Notification',
           </React.Fragment>
         }
       />
-    );
-  });
+    )
+  },
+)

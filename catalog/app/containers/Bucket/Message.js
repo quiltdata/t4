@@ -1,13 +1,13 @@
-import PT from 'prop-types';
-import * as React from 'react';
-import * as RC from 'recompose';
-import Typography from '@material-ui/core/Typography';
-import { withStyles } from '@material-ui/styles';
+import PT from 'prop-types'
+import * as React from 'react'
+import * as RC from 'recompose'
+import Typography from '@material-ui/core/Typography'
+import { withStyles } from '@material-ui/styles'
 
-import * as RT from 'utils/reactTools';
+import * as RT from 'utils/reactTools'
 
-
-export default RT.composeComponent('Bucket.Message',
+export default RT.composeComponent(
+  'Bucket.Message',
   RC.setPropTypes({
     headline: PT.node,
     children: PT.node,
@@ -17,8 +17,7 @@ export default RT.composeComponent('Bucket.Message',
       marginTop: 5 * unit,
       textAlign: 'center',
     },
-    headline: {
-    },
+    headline: {},
     body: {
       marginTop: 2 * unit,
     },
@@ -36,4 +35,5 @@ export default RT.composeComponent('Bucket.Message',
         </Typography>
       )}
     </div>
-  ));
+  ),
+)

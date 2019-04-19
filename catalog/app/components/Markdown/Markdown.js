@@ -1,17 +1,17 @@
-import cx from 'classnames';
-import createDOMPurify from 'dompurify';
-import hljs from 'highlight.js';
-import memoize from 'lodash/memoize';
-import PT from 'prop-types';
-import * as R from 'ramda';
-import * as React from 'react';
-import * as RC from 'recompose';
-import Remarkable from 'remarkable';
-import { replaceEntities, escapeHtml, unescapeMd } from 'remarkable/lib/common/utils';
-import { withStyles } from '@material-ui/styles';
+import cx from 'classnames'
+import createDOMPurify from 'dompurify'
+import hljs from 'highlight.js'
+import memoize from 'lodash/memoize'
+import PT from 'prop-types'
+import * as R from 'ramda'
+import * as React from 'react'
+import * as RC from 'recompose'
+import Remarkable from 'remarkable'
+import { replaceEntities, escapeHtml, unescapeMd } from 'remarkable/lib/common/utils'
+import { withStyles } from '@material-ui/styles'
 
-import { linkStyle } from 'utils/StyledLink';
-import * as RT from 'utils/reactTools';
+import { linkStyle } from 'utils/StyledLink'
+import * as RT from 'utils/reactTools'
 
 /* Most of what's in the commonmark spec for HTML blocks;
  * minus troublesome/abusey/not-in-HTML5 tags: basefont, body, center, dialog,
@@ -82,33 +82,37 @@ const SANITIZE_OPTS = {
   ],
   FORBID_TAGS: ['style', 'script'],
   FORBID_ATTR: ['style'],
-};
+}
 
 // TODO: switch to pluggable react-aware renderer
 // TODO: use react-router's Link component for local links
 const highlight = (str, lang) => {
   if (lang === 'none') {
-    return '';
-  } else if (hljs.getLanguage(lang)) {
+    return ''
+  }
+  if (hljs.getLanguage(lang)) {
     try {
-      return hljs.highlight(lang, str).value;
+      return hljs.highlight(lang, str).value
     } catch (err) {
       // istanbul ignore next
-      console.error(err); // eslint-disable-line no-console
+      console.error(err) // eslint-disable-line no-console
     }
   } else {
     try {
-      return hljs.highlightAuto(str).value;
+      return hljs.highlightAuto(str).value
     } catch (err) {
       // istanbul ignore next
-      console.error(err); // eslint-disable-line no-console
+      console.error(err) // eslint-disable-line no-console
     }
   }
   // istanbul ignore next
-  return ''; // use external default escaping
-};
+  return '' // use external default escaping
+}
 
-const escape = R.pipe(replaceEntities, escapeHtml);
+const escape = R.pipe(
+  replaceEntities,
+  escapeHtml,
+)
 
 /**
  * A Markdown (Remarkable) plugin. Takes a Remarkable instance and adjusts it.
@@ -130,27 +134,24 @@ const escape = R.pipe(replaceEntities, escapeHtml);
  *
  * @returns {MarkdownPlugin}
  */
-const imageHandler = ({
-  disable = false,
-  process = R.identity,
-}) => (md) => {
+const imageHandler = ({ disable = false, process = R.identity }) => (md) => {
   // eslint-disable-next-line no-param-reassign
   md.renderer.rules.image = (tokens, idx) => {
-    const t = process(tokens[idx]);
+    const t = process(tokens[idx])
 
     if (disable) {
-      const alt = t.alt ? escape(t.alt) : '';
-      const src = escape(t.src);
-      const title = t.title ? ` "${escape(t.title)}"` : '';
-      return `<span>![${alt}](${src}${title})</span>`;
+      const alt = t.alt ? escape(t.alt) : ''
+      const src = escape(t.src)
+      const title = t.title ? ` "${escape(t.title)}"` : ''
+      return `<span>![${alt}](${src}${title})</span>`
     }
 
-    const src = escapeHtml(t.src);
-    const alt = t.alt ? escape(unescapeMd(t.alt)) : '';
-    const title = t.title ? ` title="${escape(t.title)}"` : '';
-    return `<img src="${src}" alt="${alt}"${title} />`;
-  };
-};
+    const src = escapeHtml(t.src)
+    const alt = t.alt ? escape(unescapeMd(t.alt)) : ''
+    const title = t.title ? ` title="${escape(t.title)}"` : ''
+    return `<img src="${src}" alt="${alt}"${title} />`
+  }
+}
 
 /**
  * Create a plugin for remarkable that does custom processing of links.
@@ -164,18 +165,15 @@ const imageHandler = ({
  *
  * @returns {MarkdownPlugin}
  */
-const linkHandler = ({
-  nofollow = true,
-  process = R.identity,
-}) => (md) => {
+const linkHandler = ({ nofollow = true, process = R.identity }) => (md) => {
   // eslint-disable-next-line no-param-reassign
   md.renderer.rules.link_open = (tokens, idx) => {
-    const t = process(tokens[idx]);
-    const title = t.title ? ` title="${escape(t.title)}"` : '';
-    const rel = nofollow ? ' rel="nofollow"' : '';
-    return `<a href="${escapeHtml(t.href)}"${rel}${title}>`;
-  };
-};
+    const t = process(tokens[idx])
+    const title = t.title ? ` title="${escape(t.title)}"` : ''
+    const rel = nofollow ? ' rel="nofollow"' : ''
+    return `<a href="${escapeHtml(t.href)}"${rel}${title}>`
+  }
+}
 
 /**
  * Get Remarkable instance based on the given options (memoized).
@@ -187,29 +185,21 @@ const linkHandler = ({
  *
  * @returns {Object} Remarakable instance
  */
-export const getRenderer = memoize(({
-  images,
-  processImg,
-  processLink,
-}) => {
+export const getRenderer = memoize(({ images, processImg, processLink }) => {
   const md = new Remarkable('full', {
     highlight,
     html: true,
     linkify: true,
     typographer: true,
-  });
-  md.use(linkHandler({
-    process: processLink,
-  }));
-  md.use(imageHandler({
-    disable: !images,
-    process: processImg,
-  }));
-  const purify = createDOMPurify(window);
-  return (data) => purify.sanitize(md.render(data), SANITIZE_OPTS);
-});
+  })
+  md.use(linkHandler({ process: processLink }))
+  md.use(imageHandler({ disable: !images, process: processImg }))
+  const purify = createDOMPurify(window)
+  return (data) => purify.sanitize(md.render(data), SANITIZE_OPTS)
+})
 
-export const Container = RT.composeComponent('Markdown.Container',
+export const Container = RT.composeComponent(
+  'Markdown.Container',
   RC.setPropTypes({
     children: PT.string,
     className: PT.string,
@@ -251,9 +241,11 @@ export const Container = RT.composeComponent('Markdown.Container',
       // eslint-disable-next-line react/no-danger
       dangerouslySetInnerHTML={{ __html: children }}
     />
-  ));
+  ),
+)
 
-export default RT.composeComponent('Markdown',
+export default RT.composeComponent(
+  'Markdown',
   RC.setPropTypes({
     data: PT.string,
     images: PT.bool,
@@ -264,4 +256,5 @@ export default RT.composeComponent('Markdown',
     <Container {...props}>
       {getRenderer({ images, processImg, processLink })(data)}
     </Container>
-  ));
+  ),
+)

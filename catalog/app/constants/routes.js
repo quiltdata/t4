@@ -1,8 +1,6 @@
-import { mkSearch } from 'utils/NamedRoutes';
+import { mkSearch } from 'utils/NamedRoutes'
 
-
-// eslint-disable-next-line no-useless-escape
-const PACKAGE_PATTERN = '[a-z0-9-_]+\/[a-z0-9-_]+';
+const PACKAGE_PATTERN = '[a-z0-9-_]+/[a-z0-9-_]+'
 
 export default {
   home: {
@@ -56,8 +54,7 @@ export default {
   },
   bucketFile: {
     path: '/b/:bucket/tree/:path+',
-    url: (bucket, path, version) =>
-      `/b/${bucket}/tree/${path}${mkSearch({ version })}`,
+    url: (bucket, path, version) => `/b/${bucket}/tree/${path}${mkSearch({ version })}`,
   },
   bucketDir: {
     path: '/b/:bucket/tree/:path(.+/)?',
@@ -82,4 +79,4 @@ export default {
     path: '/admin',
     url: () => '/admin',
   },
-};
+}

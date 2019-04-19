@@ -1,5 +1,4 @@
-import tagged from 'utils/tagged';
-
+import tagged from 'utils/tagged'
 
 /*
 ParquetMeta: {
@@ -28,7 +27,7 @@ export const PreviewData = tagged([
   'Text', // { contents: string, lang: string }
   'Vcf', // { meta: string[], header: string[], body: string[][], variants: string[] }
   'Vega', // { spec: Object }
-]);
+])
 
 export const PreviewError = tagged([
   'TooLarge', // { handle }
@@ -36,4 +35,4 @@ export const PreviewError = tagged([
   'DoesNotExist', // { handle }
   'Unexpected', // { handle, originalError: any }
   'MalformedJson', // { handle, originalError: SyntaxError }
-]);
+])

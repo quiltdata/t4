@@ -1,14 +1,14 @@
-import PT from 'prop-types';
-import * as React from 'react';
-import * as RC from 'recompose';
-import { unstable_Box as Box } from '@material-ui/core/Box';
+import PT from 'prop-types'
+import * as React from 'react'
+import * as RC from 'recompose'
+import { unstable_Box as Box } from '@material-ui/core/Box'
 
-import Footer from 'components/Footer';
-import * as NavBar from 'containers/NavBar';
-import { composeComponent } from 'utils/reactTools';
+import Footer from 'components/Footer'
+import * as NavBar from 'containers/NavBar'
+import { composeComponent } from 'utils/reactTools'
 
-
-export default composeComponent('Layout',
+export default composeComponent(
+  'Layout',
   RC.setPropTypes({
     children: PT.node,
     pre: PT.node,
@@ -28,4 +28,5 @@ export default composeComponent('Layout',
       <Box flexGrow={1} />
       <Footer />
     </Box>
-  ));
+  ),
+)

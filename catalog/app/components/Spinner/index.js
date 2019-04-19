@@ -1,14 +1,14 @@
 /* Spinner */
-import cx from 'classnames';
-import PT from 'prop-types';
-import * as React from 'react';
-import * as RC from 'recompose';
-import { withStyles } from '@material-ui/styles';
+import cx from 'classnames'
+import PT from 'prop-types'
+import * as React from 'react'
+import * as RC from 'recompose'
+import { withStyles } from '@material-ui/styles'
 
-import * as RT from 'utils/reactTools';
+import * as RT from 'utils/reactTools'
 
-
-export default RT.composeComponent('Spinner',
+export default RT.composeComponent(
+  'Spinner',
   RC.setPropTypes({
     className: PT.string,
     drop: PT.any,
@@ -23,4 +23,5 @@ export default RT.composeComponent('Spinner',
     <div className={cx(className, classes.root)} {...props}>
       <i className="fa fa-cog fa-fw fa-spin" />
     </div>
-  ));
+  ),
+)
