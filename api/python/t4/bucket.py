@@ -11,7 +11,7 @@ from .data_transfer import (copy_file, copy_object, delete_object, get_bytes,
                             get_size_and_meta, list_object_versions,
                             list_objects, put_bytes, select)
 from .formats import FormatRegistry
-from .search_util import get_raw_mapping_unpacked, search
+from .search_util import get_search_schema, search
 from .util import QuiltException, find_bucket_config, fix_url, get_from_config, parse_s3_url
 
 
@@ -60,22 +60,14 @@ class Bucket(object):
         # TODO: we can maybe get this from searchEndpoint or apiGatewayEndpoint
         self._region = bucket_config.get('region', 'us-east-1')
 
-    def _get_mappings(self):
-        if not self._search_endpoint:
-            self.config()
-        return get_raw_mapping_unpacked(self._search_endpoint, self._region)
-
     def get_user_meta_schema(self):
         """
         Returns the current search mappings for user metadata from the search endpoint.
         """
-        unpacked_mappings = self._get_mappings()
-        def transform_mappings(mappings):
-            if 'properties' in mappings:
-                mappings = mappings['properties']
-                return {key: transform_mappings(mappings[key]) for key in mappings.keys()}
-            return mappings['type']
-        return transform_mappings(unpacked_mappings['user_meta'])
+        if not self._search_endpoint or not self._region:
+            self.config()
+        schema = get_search_schema(self._search_endpoint, self._region)
+        return schema['user_meta']
 
     def search(self, query, limit=10):
         """

@@ -3,6 +3,45 @@ from unittest.mock import patch, MagicMock
 
 from t4 import Bucket
 
+from t4.search_util import get_search_schema
+
+@patch('t4.search_util.get_raw_mapping_unpacked')
+def test_search_schema_transform(get_raw_mapping_unpacked):
+    get_raw_mapping_unpacked.return_value = {
+        'properties': {
+            'user_meta': {
+                'properties': {
+                    'foo': {
+                        'type': 'text'
+                    },
+                    'bar': {
+                        'type': 'long'
+                    },
+                    'baz': {
+                        'properties': {
+                            'asdf': {
+                                'type': 'keyword'
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    search_endpoint = 'https://foo.bar/search'
+    region = 'us-east-1'
+    result = get_search_schema(search_endpoint, region)
+    expected = {
+        'user_meta': {
+            'foo': 'text',
+            'bar': 'long',
+            'baz': {
+                'asdf': 'keyword'
+            }
+        }
+    }
+    assert result == expected
+
 class ResponseMock(object):
     pass
 
