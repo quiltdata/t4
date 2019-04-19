@@ -1,4 +1,4 @@
-import R from 'ramda';
+import * as R from 'ramda';
 
 import AsyncResult from 'utils/AsyncResult';
 import * as Resource from 'utils/Resource';

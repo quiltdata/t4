@@ -71,7 +71,7 @@ export const objectMeta = ({ s3, bucket, path, version }) =>
     .promise()
     .then(R.pipe(
       R.path(['Metadata', 'helium']),
-      JSON.parse,
+      R.when(Boolean, JSON.parse),
     ));
 
 const isValidManifest = R.both(Array.isArray, R.all(R.is(String)));
