@@ -576,3 +576,48 @@ assert len(two_hits) == 2
 
 five_hits = b.search(make_number_query(5))
 assert len(five_hits) == 3
+
+"""
+Note: fields inside user_meta are dynamically mapped.
+If you take a look at the example mappings, dynamic mappings will usually
+include a 'fields' object like this:
+    "fields": {
+      "keyword": {
+        "type": "keyword",
+        "ignore_above": 256
+      }
+    }
+Say this is part of a field called `user_meta.foo`. What this means is that Elasticsearch
+    has created an extra field called `user_meta.foo.keyword` that has exact-match indexing.
+    So it is a good idea to check for this "fields" structure in the mapping, and use it
+    if it's present.
+"""
+example_key = str(uuid.uuid4())
+example_meta_key = str(uuid.uuid4())
+example_meta_value = 'a test string with several tokens'
+example_meta = {
+    example_meta_key: example_meta_value
+}
+b.put(example_key, '', meta=example_meta)
+time.sleep(2)
+# This is a 'normal' term search, that may have trouble with multi-token values
+example_term_query = {
+    'query': {
+        'term': {
+            'user_meta.{}'.format(example_meta_key): example_meta_value
+        }
+    }
+}
+results = b.search(example_term_query)
+print('Matches without keyword: ' + str(len(results)))
+
+# This is the same query using the keyword nested field
+example_term_keyword_query = {
+    'query': {
+        'term': {
+            'user_meta.{}.keyword'.format(example_meta_key): example_meta_value
+        }
+    }
+}
+results = b.search(example_term_keyword_query)
+print('Matches with keyword: ' + str(len(results)))
