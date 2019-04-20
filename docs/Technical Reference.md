@@ -64,6 +64,8 @@ Installing Quilt will modify the following Bucket characteristics:
 Email [contact@quiltdata.io](mailto:contact@quiltdata.io), with the subodomain that you wish to access Quilt on
 (e.g. https://quilt.example.com) to obtain a license key.
 
+1. An **subdomain that is as yet not mapped in DNS** where users will access Quilt on the web. For example `quilt.mycompany.com`.
+
 ### AWS Service Catalog
 
 1. Email [contact@quiltdata.io](mailto:contact@quiltdata.io)
