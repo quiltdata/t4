@@ -109,3 +109,14 @@ def test_bucket_search():
         results = bucket.search('*')
         assert es_mock.search.called_with('*', 'test')
         assert len(results) == 1
+
+        query = {
+            'query': {
+                'term': {
+                    'key': '*'
+                }
+            }
+        }
+        results = bucket.search(query)
+        assert es_mock.search.called_with('*', 'test')
+        assert len(results) == 1
