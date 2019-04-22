@@ -67,6 +67,7 @@ setup(
         'ruamel.yaml<=0.15.70',
         'six>=1.10.0',
         'tqdm>=4.26.0',
+        'urllib3==1.24.2',             # required by requests
         'xattr>=0.9.6; platform_system!="Windows"',
         'humanize',
         'ipywidgets>=0.6.0'                 # required by tqdm.autonotebook
