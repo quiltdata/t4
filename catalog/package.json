@@ -86,7 +86,7 @@
     "katex": "^0.10.0",
     "lodash": "^4.17.11",
     "minimist": "^1.2.0",
-    "mixpanel-browser": "^2.23.0",
+    "mixpanel-browser": "^2.27.1",
     "prop-types": "^15.7.2",
     "ramda": "^0.26.1",
     "react": "^16.8.6",
