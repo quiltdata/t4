@@ -3,5 +3,6 @@
     "config:base"
   ],
   "enabledManagers": ["npm"],
-  "rangeStrategy": "bump"
+  "rangeStrategy": "bump",
+  "labels": ["js dependencies"]
 }
