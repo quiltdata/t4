@@ -53,9 +53,10 @@ const loadText = (handle, callback) =>
       Ok: callback,
       _: callback,
     }),
+    { forceLang: 'json' },
   )
 
-export const detect = utils.extIs('.json')
+export const detect = R.either(utils.extIs('.json'), R.startsWith('.quilt/'))
 
 export const load = utils.withFirstBytes(
   256,

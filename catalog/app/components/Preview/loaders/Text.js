@@ -66,10 +66,13 @@ const getLang = R.pipe(
 
 const hl = (lang) => (contents) => hljs.highlight(lang, contents).value
 
-export const load = utils.previewFetcher('txt', ({ info: { data } }, { handle }) => {
-  const head = data.head.join('\n')
-  const tail = data.tail.join('\n')
-  const lang = getLang(handle.key)
-  const highlighted = R.map(hl(lang), { head, tail })
-  return AsyncResult.Ok(PreviewData.Text({ head, tail, lang, highlighted }))
-})
+export const load = utils.previewFetcher(
+  'txt',
+  ({ info: { data } }, { handle, forceLang }) => {
+    const head = data.head.join('\n')
+    const tail = data.tail.join('\n')
+    const lang = forceLang || getLang(handle.key)
+    const highlighted = R.map(hl(lang), { head, tail })
+    return AsyncResult.Ok(PreviewData.Text({ head, tail, lang, highlighted }))
+  },
+)
