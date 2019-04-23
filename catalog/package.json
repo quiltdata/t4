@@ -62,7 +62,7 @@
     "@material-ui/core": "^3.9.3",
     "@material-ui/styles": "^3.0.0-alpha.10",
     "@material-ui/system": "^3.0.0-alpha.2",
-    "@sentry/browser": "^5.0.8",
+    "@sentry/browser": "^5.1.0",
     "assert": "^1.4.1",
     "autobind-decorator": "^2.3.1",
     "aws-sdk": "^2.348.0",
