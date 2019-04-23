@@ -73,7 +73,7 @@
     "cross-env": "^5.2.0",
     "dedent": "^0.7.0",
     "dompurify": "^1.0.10",
-    "elasticsearch-browser": "^15.2.0",
+    "elasticsearch-browser": "^15.4.1",
     "express": "^4.16.4",
     "fontfaceobserver": "^2.1.0",
     "highlight.js": "^9.13.1",
