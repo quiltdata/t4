@@ -16,7 +16,9 @@ export const mkSearch = R.pipe(
 
 export const Provider = composeComponent(
   'NamedRoutes.Provider',
-  withPropsOnChange(['routes'], ({ routes }) => ({
+  // using rest syntax here to cast module or some other object-like thing
+  // into plain object
+  withPropsOnChange(['routes'], ({ routes: { ...routes } }) => ({
     paths: R.pluck('path', routes),
     urls: R.pluck('url', routes),
   })),
