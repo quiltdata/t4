@@ -76,11 +76,13 @@ def search(query, search_endpoint, limit, aws_region='us-east-1'):
 
     if isinstance(query, dict):
         payload = query
-    else:
+    elif isinstance(query, str):
         payload = {'query': {'query_string': {
             'default_field': 'content',
             'query': query,
         }}}
+    else:
+        raise QuiltException('Value provided for `query` is invalid')
 
     if limit:
         payload['size'] = limit
