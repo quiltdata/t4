@@ -63,6 +63,8 @@ export const usePagination = (
   return {
     paginated,
     total: items.length,
+    from: offset + 1,
+    to: offset + perPage,
     perPage,
     setPerPage,
     page,
