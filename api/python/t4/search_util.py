@@ -74,10 +74,15 @@ def search(query, search_endpoint, limit, aws_region='us-east-1'):
     """
     es_client = _create_es(search_endpoint, aws_region)
 
-    payload = {'query': {'query_string': {
-        'default_field': 'content',
-        'query': query,
-    }}}
+    if isinstance(query, dict):
+        payload = query
+    elif isinstance(query, str):
+        payload = {'query': {'query_string': {
+            'default_field': 'content',
+            'query': query,
+        }}}
+    else:
+        raise QuiltException('Value provided for `query` is invalid')
 
     if limit:
         payload['size'] = limit
@@ -113,7 +118,7 @@ def search(query, search_endpoint, limit, aws_region='us-east-1'):
         setattr(exception, 'raw_response', raw_response)
         raise exception
 
-def get_raw_mapping_unpacked(endpoint, aws_region):
+def get_raw_mapping_unpacked(endpoint, aws_region, return_full_response=False):
     """
     Gets raw mapping from Elasticsearch
 
@@ -138,6 +143,8 @@ def get_raw_mapping_unpacked(endpoint, aws_region):
     """
     es_client = _create_es(endpoint, aws_region)
     raw_response = es_client.indices.get_mapping(index=ES_INDEX)
+    if return_full_response:
+        return raw_response
     return raw_response['drive']['mappings']['_doc']
 
 def get_search_schema(endpoint, aws_region):
