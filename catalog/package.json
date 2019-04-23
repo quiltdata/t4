@@ -76,7 +76,7 @@
     "elasticsearch-browser": "^15.4.1",
     "express": "^4.16.4",
     "fontfaceobserver": "^2.1.0",
-    "highlight.js": "^9.13.1",
+    "highlight.js": "^9.15.6",
     "history": "^4.9.0",
     "immutable": "^3.8.2",
     "intl": "^1.2.5",
