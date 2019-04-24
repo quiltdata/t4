@@ -64,6 +64,8 @@ Installing Quilt will modify the following Bucket characteristics:
 Email [contact@quiltdata.io](mailto:contact@quiltdata.io), with the subodomain that you wish to access Quilt on
 (e.g. https://quilt.example.com) to obtain a license key.
 
+1. An **subdomain that is as yet not mapped in DNS** where users will access Quilt on the web. For example `quilt.mycompany.com`.
+
 ### AWS Service Catalog
 
 1. Email [contact@quiltdata.io](mailto:contact@quiltdata.io)
@@ -120,18 +122,18 @@ your CloudFormation stack.
 
     ![](./imgs/events.png)
 
-1.  To finish the installation, you will want to view the stack Outputs.
+1. To finish the installation, you will want to view the stack Outputs.
 
     ![](./imgs/outputs.png)
 
-    1. In a separate browser window, open the DNS settings for your domain.
+    In a separate browser window, open the DNS settings for your domain.
     Create the following two `CNAME` records. **Replace italics** with the
     corresponding stack Outputs.
 
-        | Name | Value |
-        |------|-------|
-        | _QuiltWebHost_  | _CloudfrontDomain_ | 
-        | _RegistryHostName_  | _LoadBalancerDNSName_ | 
+    | CNAME | Value |
+    |------|-------|
+    | _QuiltWebHost_  | _CloudfrontDomain_ | 
+    | _RegistryHostName_  | _LoadBalancerDNSName_ | 
 
 1. Quilt is now up and running. You can click on the _QuiltWebHost_ value
 in Outputs and log in with your administrator password to invite users.

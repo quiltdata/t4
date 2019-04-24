@@ -4,7 +4,7 @@ import sys
 from setuptools import setup, find_packages
 from setuptools.command.install import install
 
-VERSION = "0.1.2"
+VERSION = "0.1.3"
 
 def readme():
     readme_short = """
@@ -67,6 +67,7 @@ setup(
         'ruamel.yaml<=0.15.70',
         'six>=1.10.0',
         'tqdm>=4.26.0',
+        'urllib3<1.25,>=1.21.1',             # required by requests
         'xattr>=0.9.6; platform_system!="Windows"',
         'humanize',
         'ipywidgets>=0.6.0'                 # required by tqdm.autonotebook

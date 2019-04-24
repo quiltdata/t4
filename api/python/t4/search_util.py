@@ -74,10 +74,15 @@ def search(query, search_endpoint, limit, aws_region='us-east-1'):
     """
     es_client = _create_es(search_endpoint, aws_region)
 
-    payload = {'query': {'query_string': {
-        'default_field': 'content',
-        'query': query,
-    }}}
+    if isinstance(query, dict):
+        payload = query
+    elif isinstance(query, str):
+        payload = {'query': {'query_string': {
+            'default_field': 'content',
+            'query': query,
+        }}}
+    else:
+        raise QuiltException('Value provided for `query` is invalid')
 
     if limit:
         payload['size'] = limit
@@ -112,3 +117,44 @@ def search(query, search_endpoint, limit, aws_region='us-east-1'):
                                     "bad query or a misconfigured search service.")
         setattr(exception, 'raw_response', raw_response)
         raise exception
+
+def get_raw_mapping_unpacked(endpoint, aws_region, return_full_response=False):
+    """
+    Gets raw mapping from Elasticsearch
+
+    (Calvin) From manual testing and inspection, this is my understanding of the format:
+    {
+        $index_name: {
+            'mappings': {
+                $mapping_type_name (usually '_doc'): {
+                    ...mappings
+                }
+            }
+        }
+    }
+    mappings is of the form:
+    {
+        'properties': {
+            $key_name: type | mappings,
+            ...
+        }
+    }
+    type is one of 'long', 'text', 'keyword', etc.
+    """
+    es_client = _create_es(endpoint, aws_region)
+    raw_response = es_client.indices.get_mapping(index=ES_INDEX)
+    if return_full_response:
+        return raw_response
+    return raw_response['drive']['mappings']['_doc']
+
+def get_search_schema(endpoint, aws_region):
+    """
+    Returns the current search mappings for user metadata from the search endpoint.
+    """
+    unpacked_mappings = get_raw_mapping_unpacked(endpoint, aws_region)
+    def transform_mappings(mappings):
+        if 'properties' in mappings:
+            mappings = mappings['properties']
+            return {key: transform_mappings(mappings[key]) for key in mappings.keys()}
+        return mappings['type']
+    return transform_mappings(unpacked_mappings)
