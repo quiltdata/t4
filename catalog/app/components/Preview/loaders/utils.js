@@ -181,7 +181,7 @@ const withGatewayEndpoint = (callback) => (
 
 export const previewFetcher = (type, process) => {
   const fetch = (x) => fetchPreview(x).then((res) => process(res, x))
-  return (handle, callback) =>
+  return (handle, callback, extra) =>
     withSigner((signer) =>
       withGatewayEndpoint(
         AsyncResult.case({
@@ -191,7 +191,7 @@ export const previewFetcher = (type, process) => {
           },
           Ok: (endpoint) =>
             withData(
-              { fetch, params: { endpoint, type, handle, signer } },
+              { fetch, params: { endpoint, type, handle, signer, ...extra } },
               AsyncResult.case({
                 _: callback,
                 Err: (e, ...args) => {
