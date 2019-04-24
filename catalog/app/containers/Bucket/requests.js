@@ -207,10 +207,8 @@ export const getPackageRevisions = withErrorHandling(
 
       const loadInfo = async () => {
         const url = signer.getSignedS3URL({ bucket, key: manifestKey })
-        // TODO: uncomment once the preview endpoint is fixed
-        // const r = await fetch(`${endpoint}/preview?url=${encodeURIComponent(url)}&input=txt&line_count=1`)
         const r = await fetch(
-          `${endpoint}/preview?url=${encodeURIComponent(url)}&input=txt`,
+          `${endpoint}/preview?url=${encodeURIComponent(url)}&input=txt&line_count=1`,
         )
         const json = await r.json()
         try {
