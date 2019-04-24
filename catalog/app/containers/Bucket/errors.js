@@ -1,18 +1,17 @@
-import * as R from 'ramda';
-import * as React from 'react';
-import { connect } from 'react-redux';
-import { Route, Link } from 'react-router-dom';
-import { createStructuredSelector } from 'reselect';
-import Button from '@material-ui/core/Button';
+import * as R from 'ramda'
+import * as React from 'react'
+import { connect } from 'react-redux'
+import { Route, Link } from 'react-router-dom'
+import { createStructuredSelector } from 'reselect'
+import Button from '@material-ui/core/Button'
 
-import * as Auth from 'containers/Auth';
-import * as NamedRoutes from 'utils/NamedRoutes';
-import StyledLink from 'utils/StyledLink';
-import { BaseError } from 'utils/error';
-import * as RT from 'utils/reactTools';
+import * as Auth from 'containers/Auth'
+import * as NamedRoutes from 'utils/NamedRoutes'
+import StyledLink from 'utils/StyledLink'
+import { BaseError } from 'utils/error'
+import * as RT from 'utils/reactTools'
 
-import Message from './Message';
-
+import Message from './Message'
 
 export class BucketError extends BaseError {}
 
@@ -20,11 +19,13 @@ export class AccessDenied extends BucketError {}
 
 export class CORSError extends BucketError {}
 
-const WhenAuth = connect(createStructuredSelector({
-  authenticated: Auth.selectors.authenticated,
-}))(({ authenticated, cases, args }) => cases[authenticated](...args));
+const WhenAuth = connect(
+  createStructuredSelector({
+    authenticated: Auth.selectors.authenticated,
+  }),
+)(({ authenticated, cases, args }) => cases[authenticated](...args))
 
-const whenAuth = (cases) => (...args) => <WhenAuth {...{ cases, args }} />;
+const whenAuth = (cases) => (...args) => <WhenAuth {...{ cases, args }} />
 
 const SignIn = RT.composeComponent('Bucket.errors.SignIn', () => (
   <NamedRoutes.Inject>
@@ -43,41 +44,55 @@ const SignIn = RT.composeComponent('Bucket.errors.SignIn', () => (
       </Route>
     )}
   </NamedRoutes.Inject>
-));
+))
 
 const defaultHandlers = [
-  [R.is(CORSError), () => (
-    <Message headline="Error">
-      Seems like this bucket is not configured for T4.
-      <br />
-      <StyledLink href="https://quiltdocs.gitbook.io/t4/references/technical-reference#deploying-the-t4-catalog-on-aws">
-        Learn how to configure the bucket for T4
-      </StyledLink>.
-    </Message>
-  )],
-  [R.is(AccessDenied), whenAuth({
-    true: () => (
-      <Message headline="Access Denied">
-        Seems like you don&apos;t have access to this bucket.
+  [
+    R.is(CORSError),
+    () => (
+      <Message headline="Error">
+        Seems like this bucket is not configured for T4.
         <br />
-        <StyledLink href="https://quiltdocs.gitbook.io/t4/walkthrough/working-with-the-catalog#brief-tour">
-          Learn about access control in T4
-        </StyledLink>.
+        <StyledLink href="https://quiltdocs.gitbook.io/t4/references/technical-reference#deploying-the-t4-catalog-on-aws">
+          Learn how to configure the bucket for T4
+        </StyledLink>
+        .
       </Message>
     ),
-    false: () => (
-      <Message headline="Access Denied">
-        Anonymous access not allowed. Please sign in.
-        <br />
-        <br />
-        <SignIn />
-      </Message>
-    ),
-  })],
-];
+  ],
+  [
+    R.is(AccessDenied),
+    whenAuth({
+      true: () => (
+        <Message headline="Access Denied">
+          Seems like you don&apos;t have access to this bucket.
+          <br />
+          <StyledLink href="https://quiltdocs.gitbook.io/t4/walkthrough/working-with-the-catalog#brief-tour">
+            Learn about access control in T4
+          </StyledLink>
+          .
+        </Message>
+      ),
+      false: () => (
+        <Message headline="Access Denied">
+          Anonymous access not allowed. Please sign in.
+          <br />
+          <br />
+          <SignIn />
+        </Message>
+      ),
+    }),
+  ],
+]
 
-export const displayError = (pairs = []) => R.cond([
-  ...defaultHandlers,
-  ...pairs,
-  [R.T, (e) => { throw e; }],
-]);
+export const displayError = (pairs = []) =>
+  R.cond([
+    ...defaultHandlers,
+    ...pairs,
+    [
+      R.T,
+      (e) => {
+        throw e
+      },
+    ],
+  ])

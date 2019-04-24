@@ -1,6 +1,5 @@
-import { dirname, basename, resolve } from 'path';
-import { parse as parseUrl } from 'url';
-
+import { dirname, basename, resolve } from 'path'
+import { parse as parseUrl } from 'url'
 
 /**
  * Handle for an S3 object.
@@ -23,7 +22,7 @@ import { parse as parseUrl } from 'url';
  *
  * @returns {string}
  */
-export const ensureNoSlash = (str) => str.replace(/\/$/, '');
+export const ensureNoSlash = (str) => str.replace(/\/$/, '')
 
 /**
  * Ensure the string has a trailing slash.
@@ -32,7 +31,7 @@ export const ensureNoSlash = (str) => str.replace(/\/$/, '');
  *
  * @returns {string}
  */
-export const ensureSlash = (str) => `${ensureNoSlash(str)}/`;
+export const ensureSlash = (str) => `${ensureNoSlash(str)}/`
 
 /**
  * Go up a level.
@@ -42,9 +41,9 @@ export const ensureSlash = (str) => `${ensureNoSlash(str)}/`;
  * @returns {string}
  */
 export const up = (prefix) => {
-  const d = dirname(prefix);
-  return d === '.' || d === '/' ? '' : ensureSlash(d);
-};
+  const d = dirname(prefix)
+  return d === '.' || d === '/' ? '' : ensureSlash(d)
+}
 
 /**
  * Check if the path is a directory / prefix (ends with a slash).
@@ -53,7 +52,7 @@ export const up = (prefix) => {
  *
  * @returns {bool}
  */
-export const isDir = (path) => path === '' || path.endsWith('/');
+export const isDir = (path) => path === '' || path.endsWith('/')
 
 /**
  * Get the "prefix" part of a path.
@@ -63,11 +62,11 @@ export const isDir = (path) => path === '' || path.endsWith('/');
  * @returns {string}
  */
 export const getPrefix = (path) => {
-  if (!path) return '';
-  if (isDir(path)) return path;
-  const name = dirname(path);
-  return name === '.' ? '' : ensureSlash(name);
-};
+  if (!path) return ''
+  if (isDir(path)) return path
+  const name = dirname(path)
+  return name === '.' ? '' : ensureSlash(name)
+}
 
 /**
  * Get the "basename" part of a path.
@@ -77,9 +76,9 @@ export const getPrefix = (path) => {
  * @returns {string}
  */
 export const getBasename = (path) => {
-  if (!path) return '';
-  return isDir(path) ? '' : basename(path);
-};
+  if (!path) return ''
+  return isDir(path) ? '' : basename(path)
+}
 
 /**
  * Split a path into a basename and prefix parts. Examples:
@@ -99,7 +98,7 @@ export const getBasename = (path) => {
 export const splitPath = (path) => ({
   prefix: getPrefix(path),
   basename: getBasename(path),
-});
+})
 
 /**
  * Remove specified prefix from the path.
@@ -110,7 +109,7 @@ export const splitPath = (path) => ({
  * @returns {string}
  */
 export const withoutPrefix = (prefix, path) =>
-  path.startsWith(prefix) ? path.replace(prefix, '') : path;
+  path.startsWith(prefix) ? path.replace(prefix, '') : path
 
 /**
  * Check if the string is an S3 URL.
@@ -119,7 +118,7 @@ export const withoutPrefix = (prefix, path) =>
  *
  * @returns {bool}
  */
-export const isS3Url = (url) => url.startsWith('s3://');
+export const isS3Url = (url) => url.startsWith('s3://')
 
 /**
  * Parse an S3 URL and create an S3Handle out of it.
@@ -129,13 +128,13 @@ export const isS3Url = (url) => url.startsWith('s3://');
  * @returns {S3Handle}
  */
 export const parseS3Url = (url) => {
-  const u = parseUrl(url, true);
+  const u = parseUrl(url, true)
   return {
     bucket: u.hostname,
     key: (u.pathname || '/').substring(1),
     version: u.query.versionId,
-  };
-};
+  }
+}
 
 /**
  * Resolve an S3 key.
@@ -145,8 +144,7 @@ export const parseS3Url = (url) => {
  *
  * @returns {string}
  */
-export const resolveKey = (from, to) =>
-  resolve(`/${getPrefix(from)}`, to).substring(1);
+export const resolveKey = (from, to) => resolve(`/${getPrefix(from)}`, to).substring(1)
 
 /**
  * Create an S3Handle for a URL relative to the given S3Handle.
@@ -158,13 +156,13 @@ export const resolveKey = (from, to) =>
  */
 export const handleFromUrl = (url, referrer) => {
   // absolute URL (e.g. `s3://${bucket}/${key}`)
-  if (isS3Url(url)) return parseS3Url(url);
+  if (isS3Url(url)) return parseS3Url(url)
   if (!referrer) {
-    throw new Error('handleFromUrl: referrer required for local URLs');
+    throw new Error('handleFromUrl: referrer required for local URLs')
   }
   // path-like URL (e.g. `dir/file.json` or `/dir/file.json`)
-  return { bucket: referrer.bucket, key: resolveKey(referrer.key, url) };
-};
+  return { bucket: referrer.bucket, key: resolveKey(referrer.key, url) }
+}
 
 /**
  * Get breadcrumbs for a path.
@@ -174,6 +172,4 @@ export const handleFromUrl = (url, referrer) => {
  * @returns {[{ label: string, path: string }]}
  */
 export const getBreadCrumbs = (path) =>
-  path
-    ? [...getBreadCrumbs(up(path)), { label: basename(path), path }]
-    : [];
+  path ? [...getBreadCrumbs(up(path)), { label: basename(path), path }] : []

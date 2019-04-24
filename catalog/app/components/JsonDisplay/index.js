@@ -1,1 +1,1 @@
-export { default } from './JsonDisplay';
+export { default } from './JsonDisplay'

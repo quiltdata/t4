@@ -1,15 +1,15 @@
-import * as React from 'react';
-import { FormattedMessage } from 'react-intl';
-import { withStyles } from '@material-ui/styles';
+import * as React from 'react'
+import { FormattedMessage } from 'react-intl'
+import { withStyles } from '@material-ui/styles'
 
-import FAIcon from 'components/FAIcon';
-import { blog, twitter, gitWeb } from 'constants/urls';
-import * as RT from 'utils/reactTools';
+import FAIcon from 'components/FAIcon'
+import { blog, twitter, gitWeb } from 'constants/urls'
+import * as RT from 'utils/reactTools'
 
-import messages from './messages';
+import messages from './messages'
 
-
-export default RT.composeComponent('Footer',
+export default RT.composeComponent(
+  'Footer',
   withStyles(({ palette, breakpoints, spacing: { unit } }) => ({
     root: {
       backgroundColor: palette.primary.dark,
@@ -72,4 +72,5 @@ export default RT.composeComponent('Footer',
         </p>
       </div>
     </footer>
-  ));
+  ),
+)

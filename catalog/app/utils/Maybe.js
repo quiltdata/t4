@@ -1,8 +1,7 @@
-import tagged from 'utils/tagged';
+import tagged from 'utils/tagged'
 
+const Maybe = tagged(['Nothing', 'Just'])
 
-const Maybe = tagged(['Nothing', 'Just']);
+Maybe.from = (v) => (v == null ? Maybe.Nothing() : Maybe.Just(v))
 
-Maybe.from = (v) => v == null ? Maybe.Nothing() : Maybe.Just(v);
-
-export default Maybe;
+export default Maybe

@@ -1,12 +1,11 @@
 /* constants for use in CSS. prefer integers over strings so we can do math */
-import * as colors from '@material-ui/core/colors';
-import { createMuiTheme } from '@material-ui/core/styles';
-
+import * as colors from '@material-ui/core/colors'
+import { createMuiTheme } from '@material-ui/core/styles'
 
 // TODO: deprecate, mv to theme
-export const bodyColor = colors.grey[900];
-export const bodySize = '1em';
-export const headerColor = colors.grey[900];
+export const bodyColor = colors.grey[900]
+export const bodySize = '1em'
+export const headerColor = colors.grey[900]
 
 const palette = {
   primary: {
@@ -16,26 +15,26 @@ const palette = {
   secondary: {
     main: colors.orange[600],
   },
-};
+}
 
 const typography = {
   useNextVariants: true,
   monospace: {
     fontFamily: ['Roboto Mono', 'monospace'],
   },
-};
+}
 
 export const theme = createMuiTheme({
   palette,
   typography,
-});
+})
 
 // expose theme for development purposes
 if (process.env.NODE_ENV === 'development') {
-  window.THEME = theme;
+  window.THEME = theme
 }
 
 export const themeInverted = createMuiTheme({
   palette: { ...palette, type: 'dark' },
   typography,
-});
+})

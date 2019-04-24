@@ -1,29 +1,35 @@
-import PT from 'prop-types';
-import * as React from 'react';
-import { Link } from 'react-router-dom';
-import { mapProps, setPropTypes } from 'recompose';
-import Button from '@material-ui/core/Button';
-import TextField from '@material-ui/core/TextField';
-import { styled, withStyles } from '@material-ui/styles';
+import PT from 'prop-types'
+import * as React from 'react'
+import { Link } from 'react-router-dom'
+import { mapProps, setPropTypes } from 'recompose'
+import Button from '@material-ui/core/Button'
+import TextField from '@material-ui/core/TextField'
+import { styled, withStyles } from '@material-ui/styles'
 
-import Layout from 'components/Layout';
-import Spinner from 'components/Spinner';
-import { composeComponent } from 'utils/reactTools';
+import Layout from 'components/Layout'
+import Spinner from 'components/Spinner'
+import { composeComponent } from 'utils/reactTools'
 
+export const Container = styled('div')(
+  {
+    marginLeft: 'auto',
+    marginRight: 'auto',
+    maxWidth: 280,
+    minHeight: 'calc(100vh - 300px)',
+    width: '100%',
+  },
+  { name: 'Auth.Container' },
+)
 
-export const Container = styled('div')({
-  marginLeft: 'auto',
-  marginRight: 'auto',
-  maxWidth: 280,
-  minHeight: 'calc(100vh - 300px)',
-  width: '100%',
-}, { name: 'Auth.Container' });
+export const Heading = styled('h1')(
+  {
+    textAlign: 'center',
+  },
+  { name: 'Auth.Heading' },
+)
 
-export const Heading = styled('h1')({
-  textAlign: 'center',
-}, { name: 'Auth.Heading' });
-
-export const Field = composeComponent('Auth.Field',
+export const Field = composeComponent(
+  'Auth.Field',
   setPropTypes({
     input: PT.object.isRequired,
     meta: PT.object.isRequired,
@@ -41,14 +47,19 @@ export const Field = composeComponent('Auth.Field',
     ...input,
     ...rest,
   })),
-  TextField);
+  TextField,
+)
 
-export const FieldErrorLink = styled(Link)({
-  color: 'inherit !important',
-  textDecoration: 'underline',
-}, { name: 'Auth.FieldErrorLink' });
+export const FieldErrorLink = styled(Link)(
+  {
+    color: 'inherit !important',
+    textDecoration: 'underline',
+  },
+  { name: 'Auth.FieldErrorLink' },
+)
 
-export const Error = composeComponent('Auth.Error',
+export const Error = composeComponent(
+  'Auth.Error',
   withStyles((t) => ({
     root: {
       color: t.palette.error.main,
@@ -69,33 +80,41 @@ export const Error = composeComponent('Auth.Error',
     className: classes.root,
     ...rest,
   })),
-  ({ error, ...rest }) =>
-    error ? <p {...rest}>{error}</p> : null);
+  ({ error, ...rest }) => (error ? <p {...rest}>{error}</p> : null),
+)
 
-export const Actions = styled('div')(({ theme: t }) => ({
-  display: 'flex',
-  justifyContent: 'center',
-  marginTop: t.spacing.unit * 4,
-}), { name: 'Auth.Actions' });
+export const Actions = styled('div')(
+  ({ theme: t }) => ({
+    display: 'flex',
+    justifyContent: 'center',
+    marginTop: t.spacing.unit * 4,
+  }),
+  { name: 'Auth.Actions' },
+)
 
-export const Hint = styled('p')(({ theme: t }) => ({
-  fontSize: 12,
-  lineHeight: '16px',
-  marginBottom: t.spacing.unit * 1.5,
-  marginTop: t.spacing.unit * 4,
-  textAlign: 'center',
+export const Hint = styled('p')(
+  ({ theme: t }) => ({
+    fontSize: 12,
+    lineHeight: '16px',
+    marginBottom: t.spacing.unit * 1.5,
+    marginTop: t.spacing.unit * 4,
+    textAlign: 'center',
 
-  // TODO: this selector is quite fragile, we should fix this
-  'p + &': {
-    marginTop: t.spacing.unit * 1.5,
+    // TODO: this selector is quite fragile, we should fix this
+    'p + &': {
+      marginTop: t.spacing.unit * 1.5,
+    },
+  }),
+  { name: 'Auth.Hint' },
+)
+
+export const Message = styled('p')(
+  {
+    textAlign: 'center',
   },
-}), { name: 'Auth.Hint' });
+  { name: 'Auth.Message' },
+)
 
-export const Message = styled('p')({
-  textAlign: 'center',
-}, { name: 'Auth.Message' });
-
-// eslint-disable-next-line react/prop-types
 export const mkLayout = (heading) => ({ children }) => (
   <Layout>
     <Container>
@@ -103,9 +122,10 @@ export const mkLayout = (heading) => ({ children }) => (
       {children}
     </Container>
   </Layout>
-);
+)
 
-export const Submit = composeComponent('Auth.Submit',
+export const Submit = composeComponent(
+  'Auth.Submit',
   setPropTypes({
     busy: PT.bool,
     // TODO: deprecate
@@ -113,12 +133,7 @@ export const Submit = composeComponent('Auth.Submit',
     children: PT.node,
   }),
   ({ busy, label, children, ...rest }) => (
-    <Button
-      color="primary"
-      variant="contained"
-      type="submit"
-      {...rest}
-    >
+    <Button color="primary" variant="contained" type="submit" {...rest}>
       {label}
       {children}
       {busy && (
@@ -135,4 +150,5 @@ export const Submit = composeComponent('Auth.Submit',
         </React.Fragment>
       )}
     </Button>
-  ));
+  ),
+)

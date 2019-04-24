@@ -1,83 +1,82 @@
 // import { withInitialState } from 'utils/reduxTools';
 
-import tagged from './tagged';
-
+import tagged from './tagged'
 
 describe('tagged', () => {
   describe('case', () => {
-    const Result = tagged(['Ok', 'Err']);
-    const ok = Result.Ok('ok');
-    const err = Result.Err('err');
+    const Result = tagged(['Ok', 'Err'])
+    const ok = Result.Ok('ok')
+    const err = Result.Err('err')
 
     describe('exhaustive', () => {
       const match = Result.case({
         Ok: (v) => `ok: ${v}`,
         Err: (e) => `err: ${e}`,
-      });
+      })
 
       it('should work', () => {
-        expect(match(ok)).toBe('ok: ok');
-        expect(match(err)).toBe('err: err');
-      });
+        expect(match(ok)).toBe('ok: ok')
+        expect(match(err)).toBe('err: err')
+      })
 
       it('should throw on invalid type', () => {
         expect(() => {
-          match('sup');
-        }).toThrow(/must be called with an instance/);
-      });
-    });
+          match('sup')
+        }).toThrow(/must be called with an instance/)
+      })
+    })
 
     describe('non-exhaustive', () => {
       it('should throw', () => {
         expect(() => {
           Result.case({
             Ok: (v) => v,
-          });
-        }).toThrow(/non-exhaustive/);
-      });
-    });
+          })
+        }).toThrow(/non-exhaustive/)
+      })
+    })
 
     describe('with catch-all (_)', () => {
       const match = Result.case({
         Ok: (v) => v,
         _: () => 'catch-all',
-      });
+      })
 
       it('should work', () => {
-        expect(match(ok)).toBe('ok');
-        expect(match(err)).toBe('catch-all');
-      });
-    });
+        expect(match(ok)).toBe('ok')
+        expect(match(err)).toBe('catch-all')
+      })
+    })
 
     describe('with invalid type handler (__)', () => {
       const match = Result.case({
         _: () => 'catch-all',
         __: (v) => `invalid: ${v}`,
-      });
+      })
 
       it('should work', () => {
-        expect(match(ok)).toBe('catch-all');
-        expect(match(err)).toBe('catch-all');
-        expect(match('test')).toBe('invalid: test');
-      });
-    });
+        expect(match(ok)).toBe('catch-all')
+        expect(match(err)).toBe('catch-all')
+        expect(match('test')).toBe('invalid: test')
+      })
+    })
 
     describe('with extra arguments', () => {
       const cases = {
         Ok: (val, ...rest) => [val, ...rest],
         _: () => 'catch-all',
-      };
+      }
 
-      const args = [1, 2];
+      const args = [1, 2]
 
-      const expected = ['ok', ...args];
+      const expected = ['ok', ...args]
 
       it('should work', () => {
-        expect(Result.case(cases, ok, ...args)).toEqual(expected);
-        expect(Result.case(cases)(ok, ...args)).toEqual(expected);
-      });
-    });
-  });
+        expect(Result.case(cases, ok, ...args)).toEqual(expected)
+        expect(Result.case(cases)(ok, ...args)).toEqual(expected)
+      })
+    })
+  })
 
   /*
   describe('reducer example', () => {
@@ -163,4 +162,4 @@ describe('tagged', () => {
     });
   });
   */
-});
+})
