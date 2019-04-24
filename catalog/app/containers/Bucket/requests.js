@@ -28,6 +28,9 @@ const catchErrors = (pairs = []) =>
     ],
   ])
 
+const withErrorHandling = (fn, pairs) => (...args) =>
+  fn(...args).catch(catchErrors(pairs))
+
 export const bucketListing = ({ s3, bucket, path = '' }) =>
   s3
     .listObjectsV2({
@@ -174,7 +177,7 @@ export const listPackages = async ({ s3, bucket }) =>
     )
     .catch(catchErrors())
 
-const loadRevisionHash = ({ s3, bucket }) => async (key) =>
+const loadRevisionHash = ({ s3, bucket, key }) =>
   s3
     .getObject({ Bucket: bucket, Key: key })
     .promise()
@@ -186,54 +189,67 @@ const parseJSONL = R.pipe(
   R.reject(R.isNil),
 )
 
-const loadManifest = ({ s3, bucket }) => async (hash, { loadKeys = false } = {}) =>
-  s3
-    .getObject({
-      Bucket: bucket,
-      Key: `${MANIFESTS_PREFIX}${hash}`,
-      Range: loadKeys ? undefined : 'bytes=0-127',
-    })
-    .promise()
-    .then(({ Body, LastModified }) => {
-      const [info, ...keys] = parseJSONL(Body.toString('utf-8'))
-      return { info, keys, modified: LastModified }
-    })
-
 const getRevisionIdFromKey = (key) => key.substring(key.lastIndexOf('/') + 1)
 const getRevisionKeyFromId = (name, id) => `${PACKAGES_PREFIX}${name}/${id}`
 
-const loadRevision = async ({ s3, bucket, key, loadKeys = false }) => {
-  const hash = await loadRevisionHash({ s3, bucket })(key)
-  const { info, keys, modified } = await loadManifest({ s3, bucket })(hash, { loadKeys })
-  return {
-    id: getRevisionIdFromKey(key),
-    hash,
-    info,
-    keys,
-    modified,
-  }
-}
+export const getPackageRevisions = withErrorHandling(
+  async ({ s3, signer, endpoint, bucket, name }) => {
+    const res = await s3
+      .listObjectsV2({
+        Bucket: bucket,
+        Prefix: `${PACKAGES_PREFIX}${name}/`,
+      })
+      .promise()
 
-export const getPackageRevisions = ({ s3, bucket, name }) =>
-  s3
-    .listObjectsV2({
-      Bucket: bucket,
-      Prefix: `${PACKAGES_PREFIX}${name}/`,
-    })
-    .promise()
-    .then((res) =>
-      Promise.all(res.Contents.map((i) => loadRevision({ s3, bucket, key: i.Key }))),
-    )
-    .then(R.sortBy((r) => -r.modified))
-    .catch(catchErrors())
+    const loadRevision = async (key) => {
+      const hash = await loadRevisionHash({ s3, bucket, key })
+      const manifestKey = `${MANIFESTS_PREFIX}${hash}`
 
-export const fetchPackageTree = ({ s3, bucket, name, revision }) =>
-  loadRevision({
-    s3,
-    bucket,
-    key: getRevisionKeyFromId(name, revision),
-    loadKeys: true,
-  }).catch(catchErrors())
+      const loadInfo = async () => {
+        const url = signer.getSignedS3URL({ bucket, key: manifestKey })
+        // TODO: uncomment once the preview endpoint is fixed
+        // const r = await fetch(`${endpoint}/preview?url=${encodeURIComponent(url)}&input=txt&line_count=1`)
+        const r = await fetch(
+          `${endpoint}/preview?url=${encodeURIComponent(url)}&input=txt`,
+        )
+        const json = await r.json()
+        try {
+          return JSON.parse(json.info.data.head[0])
+        } catch (e) {
+          return {}
+        }
+      }
+
+      const loadModified = async () => {
+        const head = await s3.headObject({ Bucket: bucket, Key: manifestKey }).promise()
+        return head.LastModified
+      }
+
+      return {
+        id: getRevisionIdFromKey(key),
+        hash,
+        info: await loadInfo(),
+        modified: await loadModified(),
+      }
+    }
+
+    const revisions = await Promise.all(res.Contents.map((i) => loadRevision(i.Key)))
+    const sorted = R.sortBy((r) => -r.modified, revisions)
+    return sorted
+  },
+)
+
+export const fetchPackageTree = withErrorHandling(
+  async ({ s3, bucket, name, revision }) => {
+    const hashKey = getRevisionKeyFromId(name, revision)
+    const hash = await loadRevisionHash({ s3, bucket, key: hashKey })
+    const manifestKey = `${MANIFESTS_PREFIX}${hash}`
+    const r = await s3.getObject({ Bucket: bucket, Key: manifestKey }).promise()
+    const [info, ...keys] = parseJSONL(r.Body.toString('utf-8'))
+    const modified = r.LastModified
+    return { id: revision, hash, info, keys, modified }
+  },
+)
 
 const SEARCH_SIZE = 1000
 const SEARCH_REQUEST_TIMEOUT = 120000
