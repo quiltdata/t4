@@ -4,9 +4,6 @@ build
 quilt_packages
 stats.json
 
-# local testing files
-static/**/*.json
-
 # Cruft
 .DS_Store
 npm-debug.log
