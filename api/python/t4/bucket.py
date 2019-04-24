@@ -4,17 +4,14 @@ bucket.py
 Contains the Bucket class, which provides several useful functions
     over an s3 bucket.
 """
-import json
 import pathlib
 from urllib.parse import urlparse
-
-import requests
 
 from .data_transfer import (copy_file, copy_object, delete_object, get_bytes,
                             get_size_and_meta, list_object_versions,
                             list_objects, put_bytes, select)
 from .formats import FormatRegistry
-from .search_util import search
+from .search_util import get_search_schema, search
 from .util import QuiltException, find_bucket_config, fix_url, get_from_config, parse_s3_url
 
 
@@ -60,7 +57,17 @@ class Bucket(object):
         elif 'search_endpoint' in bucket_config:
             # old format
             self._search_endpoint = bucket_config['search_endpoint']
-        self._region = bucket_config.get('region')
+        # TODO: we can maybe get this from searchEndpoint or apiGatewayEndpoint
+        self._region = bucket_config.get('region', 'us-east-1')
+
+    def get_user_meta_schema(self):
+        """
+        Returns the current search mappings for user metadata from the search endpoint.
+        """
+        if not self._search_endpoint or not self._region:
+            self.config()
+        schema = get_search_schema(self._search_endpoint, self._region)
+        return schema['user_meta']
 
     def search(self, query, limit=10):
         """
