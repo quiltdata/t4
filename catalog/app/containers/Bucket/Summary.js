@@ -31,10 +31,6 @@ import * as requests from './requests'
 const README_RE = /^readme\.md$/i
 const SUMMARIZE_RE = /^quilt_summarize\.json$/i
 const IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.gif']
-<<<<<<< HEAD
-=======
-const MAX_THUMBNAILS = 100
->>>>>>> master
 
 const withSignedUrl = (handle, callback) => (
   <AWS.Signer.Inject>
