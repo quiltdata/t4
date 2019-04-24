@@ -182,13 +182,17 @@ const loadRevisionHash = ({ s3, bucket }) => async (key) =>
 
 const parseJSONL = R.pipe(
   R.split('\n'),
-  R.reject(R.isEmpty),
-  R.map(JSON.parse),
+  R.map(R.tryCatch(JSON.parse, () => null)),
+  R.reject(R.isNil),
 )
 
-const loadManifest = ({ s3, bucket }) => async (hash) =>
+const loadManifest = ({ s3, bucket }) => async (hash, { loadKeys = false } = {}) =>
   s3
-    .getObject({ Bucket: bucket, Key: `${MANIFESTS_PREFIX}${hash}` })
+    .getObject({
+      Bucket: bucket,
+      Key: `${MANIFESTS_PREFIX}${hash}`,
+      Range: loadKeys ? undefined : 'bytes=0-127',
+    })
     .promise()
     .then(({ Body, LastModified }) => {
       const [info, ...keys] = parseJSONL(Body.toString('utf-8'))
@@ -198,9 +202,9 @@ const loadManifest = ({ s3, bucket }) => async (hash) =>
 const getRevisionIdFromKey = (key) => key.substring(key.lastIndexOf('/') + 1)
 const getRevisionKeyFromId = (name, id) => `${PACKAGES_PREFIX}${name}/${id}`
 
-const loadRevision = async ({ s3, bucket }, key) => {
+const loadRevision = async ({ s3, bucket, key, loadKeys = false }) => {
   const hash = await loadRevisionHash({ s3, bucket })(key)
-  const { info, keys, modified } = await loadManifest({ s3, bucket })(hash)
+  const { info, keys, modified } = await loadManifest({ s3, bucket })(hash, { loadKeys })
   return {
     id: getRevisionIdFromKey(key),
     hash,
@@ -218,13 +222,18 @@ export const getPackageRevisions = ({ s3, bucket, name }) =>
     })
     .promise()
     .then((res) =>
-      Promise.all(res.Contents.map((i) => loadRevision({ s3, bucket }, i.Key))),
+      Promise.all(res.Contents.map((i) => loadRevision({ s3, bucket, key: i.Key }))),
     )
     .then(R.sortBy((r) => -r.modified))
     .catch(catchErrors())
 
 export const fetchPackageTree = ({ s3, bucket, name, revision }) =>
-  loadRevision({ s3, bucket }, getRevisionKeyFromId(name, revision)).catch(catchErrors())
+  loadRevision({
+    s3,
+    bucket,
+    key: getRevisionKeyFromId(name, revision),
+    loadKeys: true,
+  }).catch(catchErrors())
 
 const SEARCH_SIZE = 1000
 const SEARCH_REQUEST_TIMEOUT = 120000

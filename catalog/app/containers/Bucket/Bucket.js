@@ -38,7 +38,7 @@ const match = (cases) => (pathname) => {
 }
 
 const sections = {
-  overview: { path: 'bucketRoot', exact: true },
+  overview: { path: 'bucketOverview', exact: true },
   packages: { path: 'bucketPackageList' },
   tree: [
     { path: 'bucketFile', exact: true, strict: true },
@@ -85,13 +85,13 @@ const BucketLayout = RT.composeComponent(
       pre={
         <AppBar position="static" className={classes.appBar}>
           <Tabs value={section} centered>
-            <NavTab label="Overview" value="overview" to={urls.bucketRoot(bucket)} />
+            <NavTab label="Files" value="tree" to={urls.bucketDir(bucket)} />
             <NavTab
               label="Packages"
               value="packages"
               to={urls.bucketPackageList(bucket)}
             />
-            <NavTab label="Files" value="tree" to={urls.bucketDir(bucket)} />
+            <NavTab label="Overview" value="overview" to={urls.bucketOverview(bucket)} />
             {section === 'search' && (
               <NavTab label="Search" value="search" to={urls.bucketSearch(bucket)} />
             )}
@@ -117,9 +117,9 @@ export default ({
     <S3.Provider {...s3Props}>
       <BucketLayout bucket={bucket} section={getBucketSection(paths)(location.pathname)}>
         <Switch>
-          <Route path={paths.bucketRoot} component={Overview} exact />
           <Route path={paths.bucketFile} component={File} exact strict />
           <Route path={paths.bucketDir} component={Dir} exact />
+          <Route path={paths.bucketOverview} component={Overview} exact />
           <Route path={paths.bucketSearch} component={Search} exact />
           <Route path={paths.bucketPackageList} component={PackageList} exact />
           <Route path={paths.bucketPackageDetail} component={PackageDetail} exact />
