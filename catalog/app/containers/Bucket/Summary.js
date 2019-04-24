@@ -11,9 +11,11 @@ import Card from '@material-ui/core/Card'
 import CardContent from '@material-ui/core/CardContent'
 import CardHeader from '@material-ui/core/CardHeader'
 import CircularProgress from '@material-ui/core/CircularProgress'
+import Divider from '@material-ui/core/Divider'
 import Typography from '@material-ui/core/Typography'
-import { withStyles } from '@material-ui/styles'
+import { styled, withStyles } from '@material-ui/styles'
 
+import * as Pagination from 'components/Pagination'
 import * as Preview from 'components/Preview'
 import Thumbnail from 'components/Thumbnail'
 import * as AWS from 'utils/AWS'
@@ -29,7 +31,6 @@ import * as requests from './requests'
 const README_RE = /^readme\.md$/i
 const SUMMARIZE_RE = /^quilt_summarize\.json$/i
 const IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.gif']
-const MAX_THUMBNAILS = 100
 
 const withSignedUrl = (handle, callback) => (
   <AWS.Signer.Inject>
@@ -47,23 +48,12 @@ const extractSummary = R.applySpec({
   ),
 })
 
-const SummaryItem = composeComponent(
-  'Bucket.Summary.Item',
-  RC.setPropTypes({
-    title: PT.node.isRequired,
-    children: PT.node.isRequired,
-  }),
-  withStyles(({ spacing: { unit } }) => ({
-    root: {
-      marginTop: 2 * unit,
-    },
-  })),
-  ({ classes, title, children }) => (
-    <Card className={classes.root}>
-      <CardHeader title={<Typography variant="h5">{title}</Typography>} />
-      <CardContent>{children}</CardContent>
-    </Card>
-  ),
+const Container = styled(Card)(({ theme: t }) => ({
+  marginTop: 2 * t.spacing.unit,
+}))
+
+const Header = ({ children }) => (
+  <CardHeader title={<Typography variant="h5">{children}</Typography>} />
 )
 
 const SummaryItemFile = composeComponent(
@@ -72,17 +62,17 @@ const SummaryItemFile = composeComponent(
     handle: PT.object.isRequired,
     name: PT.string,
   }),
-  ({ handle, name }) => (
-    <NamedRoutes.Inject>
-      {({ urls }) => (
-        <SummaryItem
-          title={
-            // TODO: move link generation to the upper level to support package links
-            <StyledLink to={urls.bucketFile(handle.bucket, handle.key)}>
-              {name || basename(handle.logicalKey || handle.key)}
-            </StyledLink>
-          }
-        >
+  ({ handle, name }) => {
+    const { urls } = NamedRoutes.use()
+    return (
+      <Container>
+        {/* TODO: move link generation to the upper level to support package links */}
+        <Header>
+          <StyledLink to={urls.bucketFile(handle.bucket, handle.key)}>
+            {name || basename(handle.logicalKey || handle.key)}
+          </StyledLink>
+        </Header>
+        <CardContent>
           {Preview.load(
             handle,
             AsyncResult.case({
@@ -157,10 +147,10 @@ const SummaryItemFile = composeComponent(
               _: () => <CircularProgress />,
             }),
           )}
-        </SummaryItem>
-      )}
-    </NamedRoutes.Inject>
-  ),
+        </CardContent>
+      </Container>
+    )
+  },
 )
 
 const Thumbnails = composeComponent(
@@ -168,9 +158,6 @@ const Thumbnails = composeComponent(
   RC.setPropTypes({
     images: PT.array.isRequired,
   }),
-  RC.withProps(({ images }) => ({
-    showing: images.slice(0, MAX_THUMBNAILS),
-  })),
   withStyles(({ spacing: { unit } }) => ({
     container: {
       display: 'flex',
@@ -195,37 +182,56 @@ const Thumbnails = composeComponent(
       },
     },
   })),
-  ({ classes, images, showing }) => (
-    <SummaryItem title={`Images (showing ${showing.length} out of ${images.length})`}>
-      <NamedRoutes.Inject>
-        {({ urls }) => (
-          <div className={classes.container}>
-            {showing.map((i) => (
-              <Link
-                key={i.key}
-                // TODO: move link generation to the upper level to support package links
-                to={urls.bucketFile(i.bucket, i.key, i.version)}
-                className={classes.link}
-              >
-                <Thumbnail
-                  handle={i}
-                  className={classes.img}
-                  alt={basename(i.logicalKey || i.key)}
-                  title={basename(i.logicalKey || i.key)}
-                />
-              </Link>
-            ))}
-            {R.times(
-              (i) => (
-                <div className={classes.filler} key={`__filler${i}`} />
-              ),
-              (5 - (showing.length % 5)) % 5,
-            )}
-          </div>
+  ({ classes, images }) => {
+    const { urls } = NamedRoutes.use()
+
+    const scrollRef = React.useRef(null)
+    const scroll = React.useCallback((prev) => {
+      if (prev && scrollRef.current) scrollRef.current.scrollIntoView()
+    })
+
+    const pagination = Pagination.use(images, { perPage: 25, onChange: scroll })
+
+    return (
+      <Container>
+        <Header>
+          Images ({pagination.from}&ndash;{pagination.to} of {images.length})
+        </Header>
+        <div ref={scrollRef} />
+        <CardContent className={classes.container}>
+          {pagination.paginated.map((i) => (
+            <Link
+              key={i.key}
+              // TODO: move link generation to the upper level to support package links
+              to={urls.bucketFile(i.bucket, i.key, i.version)}
+              className={classes.link}
+            >
+              <Thumbnail
+                handle={i}
+                className={classes.img}
+                alt={basename(i.logicalKey || i.key)}
+                title={basename(i.logicalKey || i.key)}
+              />
+            </Link>
+          ))}
+          {R.times(
+            (i) => (
+              <div className={classes.filler} key={`__filler${i}`} />
+            ),
+            (5 - (pagination.paginated.length % 5)) % 5,
+          )}
+        </CardContent>
+        {pagination.pages > 1 && (
+          <Box>
+            <Divider />
+            <Box display="flex" justifyContent="flex-end" px={2} py={0.25}>
+              <Pagination.Controls {...pagination} />
+            </Box>
+          </Box>
         )}
-      </NamedRoutes.Inject>
-    </SummaryItem>
-  ),
+      </Container>
+    )
+  },
 )
 
 export default composeComponent(
