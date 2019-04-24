@@ -1,77 +1,79 @@
-import get from 'lodash/fp/get';
-import React from 'react';
-import { FormattedMessage as FM } from 'react-intl';
-import {
-  branch,
-  renderComponent,
-  withStateHandlers,
-} from 'recompose';
-import { reduxForm, Field, SubmissionError } from 'redux-form/immutable';
+import get from 'lodash/fp/get'
+import React from 'react'
+import { FormattedMessage as FM } from 'react-intl'
+import { branch, renderComponent, withStateHandlers } from 'recompose'
+import { reduxForm, Field, SubmissionError } from 'redux-form/immutable'
 
-import * as NamedRoutes from 'utils/NamedRoutes';
-import * as Sentry from 'utils/Sentry';
-import Link from 'utils/StyledLink';
-import defer from 'utils/defer';
-import { composeComponent } from 'utils/reactTools';
-import validate, * as validators from 'utils/validators';
+import * as NamedRoutes from 'utils/NamedRoutes'
+import * as Sentry from 'utils/Sentry'
+import Link from 'utils/StyledLink'
+import defer from 'utils/defer'
+import { composeComponent } from 'utils/reactTools'
+import validate, * as validators from 'utils/validators'
 
-import { signUp } from './actions';
-import * as errors from './errors';
-import msg from './messages';
-import * as Layout from './Layout';
+import { signUp } from './actions'
+import * as errors from './errors'
+import msg from './messages'
+import * as Layout from './Layout'
 
-
-const Container = Layout.mkLayout(<FM {...msg.signUpHeading} />);
+const Container = Layout.mkLayout(<FM {...msg.signUpHeading} />)
 
 // TODO: what to show if authenticated?
-export default composeComponent('Auth.SignUp',
-  withStateHandlers({
-    done: false,
-  }, {
-    setDone: () => () => ({ done: true }),
-  }),
+export default composeComponent(
+  'Auth.SignUp',
+  withStateHandlers(
+    {
+      done: false,
+    },
+    {
+      setDone: () => () => ({ done: true }),
+    },
+  ),
   Sentry.inject(),
   reduxForm({
     form: 'Auth.SignUp',
     onSubmit: async (values, dispatch, { setDone, sentry }) => {
       try {
-        const result = defer();
-        dispatch(signUp(values.remove('passwordCheck').toJS(), result.resolver));
-        await result.promise;
-        setDone();
+        const result = defer()
+        dispatch(signUp(values.remove('passwordCheck').toJS(), result.resolver))
+        await result.promise
+        setDone()
       } catch (e) {
         if (e instanceof errors.UsernameTaken) {
-          throw new SubmissionError({ username: 'taken' });
+          throw new SubmissionError({ username: 'taken' })
         }
         if (e instanceof errors.InvalidUsername) {
-          throw new SubmissionError({ username: 'invalid' });
+          throw new SubmissionError({ username: 'invalid' })
         }
         if (e instanceof errors.EmailTaken) {
-          throw new SubmissionError({ email: 'taken' });
+          throw new SubmissionError({ email: 'taken' })
         }
         if (e instanceof errors.InvalidEmail) {
-          throw new SubmissionError({ email: 'invalid' });
+          throw new SubmissionError({ email: 'invalid' })
         }
         if (e instanceof errors.InvalidPassword) {
-          throw new SubmissionError({ password: 'invalid' });
+          throw new SubmissionError({ password: 'invalid' })
         }
         if (e instanceof errors.SMTPError) {
-          throw new SubmissionError({ _error: 'smtp' });
+          throw new SubmissionError({ _error: 'smtp' })
         }
-        sentry('captureException', e);
-        throw new SubmissionError({ _error: 'unexpected' });
+        sentry('captureException', e)
+        throw new SubmissionError({ _error: 'unexpected' })
       }
     },
   }),
-  branch(get('done'), renderComponent(() => (
-    <Container>
-      <Layout.Message>
-        <FM {...msg.signUpSuccess} />
-      </Layout.Message>
-    </Container>
-  ))),
+  branch(
+    get('done'),
+    renderComponent(() => (
+      <Container>
+        <Layout.Message>
+          <FM {...msg.signUpSuccess} />
+        </Layout.Message>
+      </Container>
+    )),
+  ),
   ({ handleSubmit, submitting, submitFailed, invalid, error }) => {
-    const { urls } = NamedRoutes.use();
+    const { urls } = NamedRoutes.use()
     return (
       <Container>
         <form onSubmit={handleSubmit}>
@@ -176,5 +178,6 @@ export default composeComponent('Auth.SignUp',
           </Layout.Hint>
         </form>
       </Container>
-    );
-  });
+    )
+  },
+)

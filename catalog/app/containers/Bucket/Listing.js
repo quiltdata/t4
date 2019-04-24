@@ -1,30 +1,30 @@
-import PT from 'prop-types';
-import * as R from 'ramda';
-import * as React from 'react';
-import { Link } from 'react-router-dom';
-import * as RC from 'recompose';
-import { unstable_Box as Box } from '@material-ui/core/Box';
-import Card from '@material-ui/core/Card';
-import CardContent from '@material-ui/core/CardContent';
-import CircularProgress from '@material-ui/core/CircularProgress';
-import Divider from '@material-ui/core/Divider';
-import Icon from '@material-ui/core/Icon';
-import ListItem from '@material-ui/core/ListItem';
-import Typography from '@material-ui/core/Typography';
-import { withStyles } from '@material-ui/styles';
+import PT from 'prop-types'
+import * as R from 'ramda'
+import * as React from 'react'
+import { Link } from 'react-router-dom'
+import * as RC from 'recompose'
+import { unstable_Box as Box } from '@material-ui/core/Box'
+import Card from '@material-ui/core/Card'
+import CardContent from '@material-ui/core/CardContent'
+import CircularProgress from '@material-ui/core/CircularProgress'
+import Divider from '@material-ui/core/Divider'
+import Icon from '@material-ui/core/Icon'
+import ListItem from '@material-ui/core/ListItem'
+import Typography from '@material-ui/core/Typography'
+import { withStyles } from '@material-ui/styles'
 
-import * as Pagination from 'components/Pagination';
-import { composeComponent } from 'utils/reactTools';
-import { readableBytes } from 'utils/string';
-import tagged from 'utils/tagged';
-
+import * as Pagination from 'components/Pagination'
+import { composeComponent } from 'utils/reactTools'
+import { readableBytes } from 'utils/string'
+import tagged from 'utils/tagged'
 
 export const ListingItem = tagged([
   'Dir', // { name, to }
   'File', // { name, to, size, modified }
-]);
+])
 
-const Item = composeComponent('Bucket.Listing.Item',
+const Item = composeComponent(
+  'Bucket.Listing.Item',
   RC.setPropTypes({
     icon: PT.string,
     name: PT.string.isRequired,
@@ -55,36 +55,36 @@ const Item = composeComponent('Bucket.Listing.Item',
   })),
   // eslint-disable-next-line object-curly-newline
   ({ classes, name, to, icon, children, ...props }) => (
-    <ListItem
-      component={Link}
-      to={to}
-      className={classes.root}
-      {...props}
-    >
+    <ListItem component={Link} to={to} className={classes.root} {...props}>
       <div className={classes.name}>
         {!!icon && <Icon className={classes.icon}>{icon}</Icon>}
         {name}
       </div>
       <div className={classes.info}>{children}</div>
     </ListItem>
-  ));
+  ),
+)
 
-const computeStats = R.reduce(ListingItem.reducer({
-  File: (file) => R.evolve({
-    files: R.inc,
-    size: R.add(file.size),
-    modified: R.max(file.modified),
+const computeStats = R.reduce(
+  ListingItem.reducer({
+    File: (file) =>
+      R.evolve({
+        files: R.inc,
+        size: R.add(file.size),
+        modified: R.max(file.modified),
+      }),
+    Dir: ({ name }) => (name === '..' ? R.identity : R.evolve({ dirs: R.inc })),
   }),
-  Dir: ({ name }) =>
-    name === '..' ? R.identity : R.evolve({ dirs: R.inc }),
-}), {
-  dirs: 0,
-  files: 0,
-  size: 0,
-  modified: 0,
-});
+  {
+    dirs: 0,
+    files: 0,
+    size: 0,
+    modified: 0,
+  },
+)
 
-const Stats = composeComponent('Bucket.Listing.Stats',
+const Stats = composeComponent(
+  'Bucket.Listing.Stats',
   RC.setPropTypes({
     items: PT.array.isRequired,
     truncated: PT.bool.isRequired,
@@ -110,26 +110,30 @@ const Stats = composeComponent('Bucket.Listing.Stats',
     },
   })),
   ({ classes, items, truncated }) => {
-    const stats = React.useMemo(() => computeStats(items), [items]);
+    const stats = React.useMemo(() => computeStats(items), [items])
     return (
       <div className={classes.root}>
         <span>{stats.dirs} folders</span>
         <span className={classes.divider}> | </span>
-        <span>{truncated && '> '}{stats.files} files</span>
+        <span>
+          {truncated && '> '}
+          {stats.files} files
+        </span>
         <span className={classes.divider}> | </span>
-        <span>{truncated && '> '}{readableBytes(stats.size)}</span>
-        {truncated && (
-          <span className={classes.truncated}>(truncated)</span>
-        )}
+        <span>
+          {truncated && '> '}
+          {readableBytes(stats.size)}
+        </span>
+        {truncated && <span className={classes.truncated}>(truncated)</span>}
         <span className={classes.spacer} />
-        {!!stats.modified && (
-          <span>Last modified {stats.modified.toLocaleString()}</span>
-        )}
+        {!!stats.modified && <span>Last modified {stats.modified.toLocaleString()}</span>}
       </div>
-    );
-  });
+    )
+  },
+)
 
-export default composeComponent('Bucket.Listing',
+export default composeComponent(
+  'Bucket.Listing',
   RC.setPropTypes({
     // Array of ListingItems
     items: PT.array.isRequired,
@@ -138,7 +142,7 @@ export default composeComponent('Bucket.Listing',
   }),
   withStyles(({ spacing: { unit }, palette }) => ({
     root: {
-      minHeight: 40 + (4 * unit), // for spinner
+      minHeight: 40 + 4 * unit, // for spinner
       padding: '0 !important',
       position: 'relative',
     },
@@ -170,12 +174,12 @@ export default composeComponent('Bucket.Listing',
     },
   })),
   ({ classes, items, truncated = false, locked = false }) => {
-    const scrollRef = React.useRef(null);
+    const scrollRef = React.useRef(null)
     const scroll = React.useCallback((prev) => {
-      if (prev && scrollRef.current) scrollRef.current.scrollIntoView();
-    });
+      if (prev && scrollRef.current) scrollRef.current.scrollIntoView()
+    })
 
-    const pagination = Pagination.use(items, { perPage: 25, onChange: scroll });
+    const pagination = Pagination.use(items, { perPage: 25, onChange: scroll })
 
     return (
       <Card>
@@ -185,53 +189,43 @@ export default composeComponent('Bucket.Listing',
               <CircularProgress />
             </div>
           )}
-          {!items.length
-            ? (
-              <Typography className={classes.empty} variant="h5">
-                No files
-              </Typography>
-            )
-            : (
-              <React.Fragment>
-                <Stats items={items} truncated={truncated} />
-                <div ref={scrollRef} />
-                {pagination.paginated.map(ListingItem.case({
-                  // eslint-disable-next-line react/prop-types
+          {!items.length ? (
+            <Typography className={classes.empty} variant="h5">
+              No files
+            </Typography>
+          ) : (
+            <React.Fragment>
+              <Stats items={items} truncated={truncated} />
+              <div ref={scrollRef} />
+              {pagination.paginated.map(
+                ListingItem.case({
                   Dir: ({ name, to }) => (
-                    <Item
-                      icon="folder_open"
-                      key={name}
-                      name={name}
-                      to={to}
-                    />
+                    <Item icon="folder_open" key={name} name={name} to={to} />
                   ),
-                  // eslint-disable-next-line react/prop-types
                   File: ({ name, to, size, modified }) => (
-                    <Item
-                      icon="insert_drive_file"
-                      key={name}
-                      name={name}
-                      to={to}
-                    >
+                    <Item icon="insert_drive_file" key={name} name={name} to={to}>
                       <div className={classes.size}>{readableBytes(size)}</div>
                       {!!modified && (
-                        <div className={classes.modified}>{modified.toLocaleString()}</div>
+                        <div className={classes.modified}>
+                          {modified.toLocaleString()}
+                        </div>
                       )}
                     </Item>
                   ),
-                }))}
-                {pagination.pages > 1 && (
-                  <Box>
-                    <Divider />
-                    <Box display="flex" justifyContent="flex-end" px={1} py={0.25}>
-                      <Pagination.Controls {...pagination} />
-                    </Box>
+                }),
+              )}
+              {pagination.pages > 1 && (
+                <Box>
+                  <Divider />
+                  <Box display="flex" justifyContent="flex-end" px={1} py={0.25}>
+                    <Pagination.Controls {...pagination} />
                   </Box>
-                )}
-              </React.Fragment>
-            )
-          }
+                </Box>
+              )}
+            </React.Fragment>
+          )}
         </CardContent>
       </Card>
-    );
-  });
+    )
+  },
+)

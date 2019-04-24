@@ -1,18 +1,16 @@
-import cx from 'classnames';
-import * as React from 'react';
-import ExpansionPanel from '@material-ui/core/ExpansionPanel';
-import ExpansionPanelDetails from '@material-ui/core/ExpansionPanelDetails';
-import ExpansionPanelSummary from '@material-ui/core/ExpansionPanelSummary';
-import Icon from '@material-ui/core/Icon';
-import Typography from '@material-ui/core/Typography';
-import { makeStyles } from '@material-ui/styles';
+import cx from 'classnames'
+import * as React from 'react'
+import ExpansionPanel from '@material-ui/core/ExpansionPanel'
+import ExpansionPanelDetails from '@material-ui/core/ExpansionPanelDetails'
+import ExpansionPanelSummary from '@material-ui/core/ExpansionPanelSummary'
+import Icon from '@material-ui/core/Icon'
+import Typography from '@material-ui/core/Typography'
+import { makeStyles } from '@material-ui/styles'
 
-import ButtonIcon from 'components/ButtonIcon';
-
+import ButtonIcon from 'components/ButtonIcon'
 
 const useStyles = makeStyles({
-  summaryExpanded: {
-  },
+  summaryExpanded: {},
   summaryRoot: {
     '&$summaryExpanded': {
       minHeight: 48,
@@ -32,9 +30,8 @@ const useStyles = makeStyles({
   gutterTop: {
     marginTop: 16,
   },
-});
+})
 
-/* eslint-disable react/prop-types */
 export default ({
   icon,
   heading,
@@ -44,7 +41,7 @@ export default ({
   gutterTop = false,
   children,
 }) => {
-  const classes = useStyles();
+  const classes = useStyles()
 
   return (
     <ExpansionPanel
@@ -64,10 +61,11 @@ export default ({
         }}
       >
         <Typography variant="button" className={classes.heading}>
-          {!!icon && <ButtonIcon>{icon}</ButtonIcon>}{heading}
+          {!!icon && <ButtonIcon>{icon}</ButtonIcon>}
+          {heading}
         </Typography>
       </ExpansionPanelSummary>
       <ExpansionPanelDetails>{children}</ExpansionPanelDetails>
     </ExpansionPanel>
-  );
-};
+  )
+}

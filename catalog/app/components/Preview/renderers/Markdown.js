@@ -1,7 +1,5 @@
-import * as React from 'react';
+import * as React from 'react'
 
-import { Container } from 'components/Markdown';
+import { Container } from 'components/Markdown'
 
-
-export default ({ rendered }, props) =>
-  <Container {...props}>{rendered}</Container>;
+export default ({ rendered }, props) => <Container {...props}>{rendered}</Container>

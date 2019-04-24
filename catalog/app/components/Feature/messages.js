@@ -2,7 +2,7 @@
  * Text for Feature component
  */
 
-import { defineMessages } from 'react-intl';
+import { defineMessages } from 'react-intl'
 
 export default defineMessages({
   demo: {
@@ -29,4 +29,4 @@ export default defineMessages({
     id: 'app.components.Feature.tagline',
     defaultMessage: 'Quilt versions and deploys data',
   },
-});
+})

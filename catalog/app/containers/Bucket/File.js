@@ -1,52 +1,52 @@
-import { basename } from 'path';
+import { basename } from 'path'
 
-import dedent from 'dedent';
-import PT from 'prop-types';
-import * as R from 'ramda';
-import * as React from 'react';
-import { FormattedRelative } from 'react-intl';
-import { Link } from 'react-router-dom';
-import * as RC from 'recompose';
-import Button from '@material-ui/core/Button';
-import CircularProgress from '@material-ui/core/CircularProgress';
-import Icon from '@material-ui/core/Icon';
-import IconButton from '@material-ui/core/IconButton';
-import List from '@material-ui/core/List';
-import ListItem from '@material-ui/core/ListItem';
-import ListItemIcon from '@material-ui/core/ListItemIcon';
-import ListItemSecondaryAction from '@material-ui/core/ListItemSecondaryAction';
-import ListItemText from '@material-ui/core/ListItemText';
-import Popover from '@material-ui/core/Popover';
-import Typography from '@material-ui/core/Typography';
-import * as colors from '@material-ui/core/colors';
-import { makeStyles, styled } from '@material-ui/styles';
+import dedent from 'dedent'
+import PT from 'prop-types'
+import * as R from 'ramda'
+import * as React from 'react'
+import { FormattedRelative } from 'react-intl'
+import { Link } from 'react-router-dom'
+import * as RC from 'recompose'
+import Button from '@material-ui/core/Button'
+import CircularProgress from '@material-ui/core/CircularProgress'
+import Icon from '@material-ui/core/Icon'
+import IconButton from '@material-ui/core/IconButton'
+import List from '@material-ui/core/List'
+import ListItem from '@material-ui/core/ListItem'
+import ListItemIcon from '@material-ui/core/ListItemIcon'
+import ListItemSecondaryAction from '@material-ui/core/ListItemSecondaryAction'
+import ListItemText from '@material-ui/core/ListItemText'
+import Popover from '@material-ui/core/Popover'
+import Typography from '@material-ui/core/Typography'
+import * as colors from '@material-ui/core/colors'
+import { makeStyles, styled } from '@material-ui/styles'
 
-import ButtonIcon from 'components/ButtonIcon';
-import AsyncResult from 'utils/AsyncResult';
-import * as AWS from 'utils/AWS';
-import Data from 'utils/Data';
-import * as NamedRoutes from 'utils/NamedRoutes';
-import { linkStyle } from 'utils/StyledLink';
-import parseSearch from 'utils/parseSearch';
-import * as RT from 'utils/reactTools';
-import { getBreadCrumbs, up } from 'utils/s3paths';
-import { readableBytes } from 'utils/string';
+import ButtonIcon from 'components/ButtonIcon'
+import AsyncResult from 'utils/AsyncResult'
+import * as AWS from 'utils/AWS'
+import Data from 'utils/Data'
+import * as NamedRoutes from 'utils/NamedRoutes'
+import { linkStyle } from 'utils/StyledLink'
+import parseSearch from 'utils/parseSearch'
+import * as RT from 'utils/reactTools'
+import { getBreadCrumbs, up } from 'utils/s3paths'
+import { readableBytes } from 'utils/string'
 
-import BreadCrumbs, { Crumb } from './BreadCrumbs';
-import Code from './Code';
-import FilePreview from './FilePreview';
-import Section from './Section';
-import * as requests from './requests';
-import { withSignedUrl } from './utils';
+import BreadCrumbs, { Crumb } from './BreadCrumbs'
+import Code from './Code'
+import FilePreview from './FilePreview'
+import Section from './Section'
+import * as requests from './requests'
+import { withSignedUrl } from './utils'
 
-
-const getCrumbs = ({ bucket, path, urls }) => R.chain(
-  ({ label, path: segPath }) => [
-    Crumb.Segment({ label, to: urls.bucketDir(bucket, segPath) }),
-    Crumb.Sep(<React.Fragment>&nbsp;/ </React.Fragment>),
-  ],
-  [{ label: bucket, path: '' }, ...getBreadCrumbs(up(path))],
-);
+const getCrumbs = ({ bucket, path, urls }) =>
+  R.chain(
+    ({ label, path: segPath }) => [
+      Crumb.Segment({ label, to: urls.bucketDir(bucket, segPath) }),
+      Crumb.Sep(<React.Fragment>&nbsp;/ </React.Fragment>),
+    ],
+    [{ label: bucket, path: '' }, ...getBreadCrumbs(up(path))],
+  )
 
 const useVersionInfoStyles = makeStyles(({ typography }) => ({
   version: {
@@ -60,39 +60,38 @@ const useVersionInfoStyles = makeStyles(({ typography }) => ({
   list: {
     width: 420,
   },
-}));
+}))
 
-const VersionInfo = RT.composeComponent('Bucket.File.VersionInfo',
+const VersionInfo = RT.composeComponent(
+  'Bucket.File.VersionInfo',
   RC.setPropTypes({
     bucket: PT.string.isRequired,
     path: PT.string.isRequired,
     version: PT.string,
   }),
   ({ bucket, path, version }) => {
-    const s3 = AWS.S3.use();
-    const { urls } = NamedRoutes.use();
+    const s3 = AWS.S3.use()
+    const { urls } = NamedRoutes.use()
 
-    const [anchor, setAnchor] = React.useState();
-    const [opened, setOpened] = React.useState(false);
-    const open = React.useCallback(() => setOpened(true), []);
-    const close = React.useCallback(() => setOpened(false), []);
+    const [anchor, setAnchor] = React.useState()
+    const [opened, setOpened] = React.useState(false)
+    const open = React.useCallback(() => setOpened(true), [])
+    const close = React.useCallback(() => setOpened(false), [])
 
-    const classes = useVersionInfoStyles();
+    const classes = useVersionInfoStyles()
 
     return (
       <React.Fragment>
         {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
         <span className={classes.version} onClick={open} ref={setAnchor}>
-          {version
-            ? <span className={classes.mono}>{version.substring(0, 12)}</span>
-            : 'latest'
-          }
-          {' '}<Icon>expand_more</Icon>
+          {version ? (
+            <span className={classes.mono}>{version.substring(0, 12)}</span>
+          ) : (
+            'latest'
+          )}{' '}
+          <Icon>expand_more</Icon>
         </span>
-        <Data
-          fetch={requests.objectVersions}
-          params={{ s3, bucket, path }}
-        >
+        <Data fetch={requests.objectVersions} params={{ s3, bucket, path }}>
           {R.pipe(
             AsyncResult.case({
               Ok: (versions) => (
@@ -119,21 +118,16 @@ const VersionInfo = RT.composeComponent('Bucket.File.VersionInfo',
                           <span>
                             {v.lastModified.toLocaleString()}
                             <br />
-                            <span className={classes.mono}>
-                              {v.id}
-                            </span>
+                            <span className={classes.mono}>{v.id}</span>
                           </span>
                         }
                       />
                       <ListItemSecondaryAction>
-                        {withSignedUrl(
-                          { bucket, key: path, version: v.id },
-                          (url) => (
-                            <IconButton href={url}>
-                              <Icon>arrow_downward</Icon>
-                            </IconButton>
-                          ),
-                        )}
+                        {withSignedUrl({ bucket, key: path, version: v.id }, (url) => (
+                          <IconButton href={url}>
+                            <Icon>arrow_downward</Icon>
+                          </IconButton>
+                        ))}
                       </ListItemSecondaryAction>
                     </ListItem>
                   ))}
@@ -142,10 +136,10 @@ const VersionInfo = RT.composeComponent('Bucket.File.VersionInfo',
               Err: () => (
                 <List>
                   <ListItem>
-                    <ListItemIcon><Icon>error</Icon></ListItemIcon>
-                    <Typography variant="body1">
-                      Error fetching versions
-                    </Typography>
+                    <ListItemIcon>
+                      <Icon>error</Icon>
+                    </ListItemIcon>
+                    <Typography variant="body1">Error fetching versions</Typography>
                   </ListItem>
                 </List>
               ),
@@ -155,9 +149,7 @@ const VersionInfo = RT.composeComponent('Bucket.File.VersionInfo',
                     <ListItemIcon>
                       <CircularProgress size={24} />
                     </ListItemIcon>
-                    <Typography variant="body1">
-                      Fetching versions
-                    </Typography>
+                    <Typography variant="body1">Fetching versions</Typography>
                   </ListItem>
                 </List>
               ),
@@ -176,8 +168,9 @@ const VersionInfo = RT.composeComponent('Bucket.File.VersionInfo',
           )}
         </Data>
       </React.Fragment>
-    );
-  });
+    )
+  },
+)
 
 const AnnotationsBox = styled('div')(({ theme: t }) => ({
   background: colors.lightBlue[50],
@@ -189,29 +182,25 @@ const AnnotationsBox = styled('div')(({ theme: t }) => ({
   padding: t.spacing.unit,
   whiteSpace: 'pre',
   width: '100%',
-}));
+}))
 
-// eslint-disable-next-line react/prop-types
 const Annotations = ({ bucket, path, version }) => {
-  const s3 = AWS.S3.use();
+  const s3 = AWS.S3.use()
   return (
-    <Data
-      fetch={requests.objectMeta}
-      params={{ s3, bucket, path, version }}
-    >
+    <Data fetch={requests.objectMeta} params={{ s3, bucket, path, version }}>
       {AsyncResult.case({
-        Ok: (meta) => !!meta && !R.isEmpty(meta) && (
-          <Section icon="list" heading="Annotations">
-            <AnnotationsBox>
-              {JSON.stringify(meta, null, 2)}
-            </AnnotationsBox>
-          </Section>
-        ),
+        Ok: (meta) =>
+          !!meta &&
+          !R.isEmpty(meta) && (
+            <Section icon="list" heading="Annotations">
+              <AnnotationsBox>{JSON.stringify(meta, null, 2)}</AnnotationsBox>
+            </Section>
+          ),
         _: () => null,
       })}
     </Data>
-  );
-};
+  )
+}
 
 const useStyles = makeStyles(({ spacing: { unit }, palette }) => ({
   topBar: {
@@ -238,26 +227,27 @@ const useStyles = makeStyles(({ spacing: { unit }, palette }) => ({
   button: {
     marginLeft: unit,
   },
-}));
+}))
 
-// eslint-disable-next-line react/prop-types
-export default ({ match: { params: { bucket, path } }, location }) => {
-  const { version } = parseSearch(location.search);
-  const classes = useStyles();
-  const { urls } = NamedRoutes.use();
+export default ({
+  match: {
+    params: { bucket, path },
+  },
+  location,
+}) => {
+  const { version } = parseSearch(location.search)
+  const classes = useStyles()
+  const { urls } = NamedRoutes.use()
 
   const code = dedent`
     import t4
     b = t4.Bucket("s3://${bucket}")
     b.fetch("${path}", "./${basename(path)}")
-  `;
+  `
 
   return (
     <React.Fragment>
-      <BreadCrumbs
-        variant="subtitle1"
-        items={getCrumbs({ bucket, path, urls })}
-      />
+      <BreadCrumbs variant="subtitle1" items={getCrumbs({ bucket, path, urls })} />
       <div className={classes.topBar}>
         <Typography variant="h6" className={classes.nameAndVersion}>
           <span className={classes.basename} title={basename(path)}>
@@ -281,5 +271,5 @@ export default ({ match: { params: { bucket, path } }, location }) => {
       </Section>
       <Annotations bucket={bucket} path={path} version={version} />
     </React.Fragment>
-  );
-};
+  )
+}

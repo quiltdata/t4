@@ -1,1 +1,1 @@
-export * from './Intercom';
+export * from './Intercom'

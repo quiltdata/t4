@@ -1,1 +1,1 @@
-export default from './Bucket';
+export default from './Bucket'

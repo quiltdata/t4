@@ -1,6 +1,5 @@
-import PT from 'prop-types';
-import * as React from 'react';
-
+import PT from 'prop-types'
+import * as React from 'react'
 
 export default class Delay extends React.Component {
   static propTypes = {
@@ -13,23 +12,23 @@ export default class Delay extends React.Component {
   }
 
   constructor() {
-    super();
-    this.state = { ready: false };
+    super()
+    this.state = { ready: false }
   }
 
   componentDidMount() {
     this.timeout = setTimeout(() => {
-      clearTimeout(this.timeout);
-      delete this.timeout;
-      this.setState({ ready: true });
-    }, this.props.ms);
+      clearTimeout(this.timeout)
+      delete this.timeout
+      this.setState({ ready: true })
+    }, this.props.ms)
   }
 
   componentWillUnmount() {
-    if (this.timeout) clearTimeout(this.timeout);
+    if (this.timeout) clearTimeout(this.timeout)
   }
 
   render() {
-    return this.state.ready ? this.props.children() : null;
+    return this.state.ready ? this.props.children() : null
   }
 }

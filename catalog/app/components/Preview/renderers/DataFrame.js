@@ -1,13 +1,13 @@
-import cx from 'classnames';
-import PT from 'prop-types';
-import * as React from 'react';
-import * as RC from 'recompose';
-import { withStyles } from '@material-ui/styles';
+import cx from 'classnames'
+import PT from 'prop-types'
+import * as React from 'react'
+import * as RC from 'recompose'
+import { withStyles } from '@material-ui/styles'
 
-import * as RT from 'utils/reactTools';
+import * as RT from 'utils/reactTools'
 
-
-const DataFrame = RT.composeComponent('Preview.renderers.DataFrame',
+const DataFrame = RT.composeComponent(
+  'Preview.renderers.DataFrame',
   RC.setPropTypes({
     children: PT.string,
     className: PT.string,
@@ -49,7 +49,7 @@ const DataFrame = RT.composeComponent('Preview.renderers.DataFrame',
         dangerouslySetInnerHTML={{ __html: children }}
       />
     </div>
-  ));
+  ),
+)
 
-export default ({ preview }, props) =>
-  <DataFrame {...props}>{preview}</DataFrame>;
+export default ({ preview }, props) => <DataFrame {...props}>{preview}</DataFrame>

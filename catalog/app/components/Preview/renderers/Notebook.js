@@ -1,15 +1,15 @@
-import cx from 'classnames';
-import PT from 'prop-types';
-import * as React from 'react';
-import * as RC from 'recompose';
-import { unstable_Box as Box } from '@material-ui/core/Box';
+import cx from 'classnames'
+import PT from 'prop-types'
+import * as React from 'react'
+import * as RC from 'recompose'
+import { unstable_Box as Box } from '@material-ui/core/Box'
 
-import 'katex/dist/katex.css';
+import 'katex/dist/katex.css'
 
-import * as RT from 'utils/reactTools';
+import * as RT from 'utils/reactTools'
 
-
-const Notebook = RT.composeComponent('Preview.renderers.Notebook',
+const Notebook = RT.composeComponent(
+  'Preview.renderers.Notebook',
   RC.setPropTypes({
     children: PT.string,
     className: PT.string,
@@ -22,7 +22,7 @@ const Notebook = RT.composeComponent('Preview.renderers.Notebook',
       dangerouslySetInnerHTML={{ __html: children }}
       {...props}
     />
-  ));
+  ),
+)
 
-export default ({ preview }, props) =>
-  <Notebook {...props}>{preview}</Notebook>;
+export default ({ preview }, props) => <Notebook {...props}>{preview}</Notebook>

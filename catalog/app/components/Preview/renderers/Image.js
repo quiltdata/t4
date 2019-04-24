@@ -1,12 +1,12 @@
-import cx from 'classnames';
-import * as React from 'react';
-import { withStyles } from '@material-ui/styles';
+import cx from 'classnames'
+import * as React from 'react'
+import { withStyles } from '@material-ui/styles'
 
-import Thumbnail from 'components/Thumbnail';
-import * as RT from 'utils/reactTools';
+import Thumbnail from 'components/Thumbnail'
+import * as RT from 'utils/reactTools'
 
-
-const Image = RT.composeComponent('Preview.renderers.Image',
+const Image = RT.composeComponent(
+  'Preview.renderers.Image',
   withStyles(() => ({
     root: {
       display: 'block',
@@ -21,6 +21,7 @@ const Image = RT.composeComponent('Preview.renderers.Image',
       alt=""
       {...props}
     />
-  ));
+  ),
+)
 
-export default (img, props) => <Image {...img} {...props} />;
+export default (img, props) => <Image {...img} {...props} />
