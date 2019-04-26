@@ -35,7 +35,9 @@ Colocating data with context in this way is a powerful way of making your data p
 > * Objects linked to in `quilt_summarize.json` are always previewed as of the latest version, even if you are browsing an old version of a package.
 > * Object titles and image thumbnails link to the file view, even if you are in the package view.
 
-Last but not least, the T4 catalog includes an admin panel. This is used to control user authorization to your catalog.
+## Access control
+
+The T4 catalog includes an admin panel. This is used to control user authorization to your catalog.
 
 ![](../imgs/catalog_admin_panel.png)
 

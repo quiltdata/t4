@@ -53,7 +53,7 @@ const defaultHandlers = [
       <Message headline="Error">
         Seems like this bucket is not configured for T4.
         <br />
-        <StyledLink href="https://quiltdocs.gitbook.io/t4/references/technical-reference#deploying-the-t4-catalog-on-aws">
+        <StyledLink href="https://quiltdocs.gitbook.io/t4/references/technical-reference#deploy-a-private-quilt-instance-on-aws">
           Learn how to configure the bucket for T4
         </StyledLink>
         .
@@ -67,7 +67,7 @@ const defaultHandlers = [
         <Message headline="Access Denied">
           Seems like you don&apos;t have access to this bucket.
           <br />
-          <StyledLink href="https://quiltdocs.gitbook.io/t4/walkthrough/working-with-the-catalog#brief-tour">
+          <StyledLink href="https://quiltdocs.gitbook.io/t4/walkthrough/working-with-the-catalog#access-control">
             Learn about access control in T4
           </StyledLink>
           .
