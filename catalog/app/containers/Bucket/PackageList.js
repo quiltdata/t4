@@ -56,7 +56,7 @@ export default RT.composeComponent(
           R.isEmpty,
           () => (
             <Message headline="No packages">
-              <Link href="https://github.com/quiltdata/t4/blob/master/UserDocs.md#publishing-a-package-to-t4">
+              <Link href="https://quiltdocs.gitbook.io/t4/walkthrough/creating-a-package">
                 Learn how to create a package
               </Link>
               .
