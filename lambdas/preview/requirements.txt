@@ -15,7 +15,7 @@ jsonschema==2.6.0
 jupyter-core==4.4.0
 MarkupSafe==1.1.0
 mistune==0.8.4
-nbconvert==5.3.1
+nbconvert==5.4.1
 nbformat==4.4.0
 numpy==1.16.1
 pandas==0.24.1
@@ -36,3 +36,4 @@ traitlets==4.3.2
 urllib3==1.24.1
 wcwidth==0.1.7
 webencodings==0.5.1
+xlrd==1.2.0

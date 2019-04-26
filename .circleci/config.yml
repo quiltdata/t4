@@ -52,7 +52,8 @@ jobs:
             virtualenv venv
             . venv/bin/activate
             pip install lambdas/shared/
-            pip install lambdas/es/indexer[tests]
+            pip install -r lambdas/es/indexer/requirements.txt
+            pip install -r lambdas/es/indexer/test-requirements.txt
       - run:
           name: Pytest
           command: |
@@ -94,7 +95,6 @@ jobs:
           command: |
             . venv/bin/activate
             cd lambdas/shared && pytest --cov=./
-
   build:
     docker:
       - image: circleci/python:3.6-jessie

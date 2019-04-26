@@ -18,8 +18,11 @@ class TestThumbnail(TestCase):
     @classmethod
     def _make_event(cls, query, headers=None):
         return {
+            'httpMethod': 'POST',
+            'path': '/foo',
             'queryStringParameters': query or None,
-            'headers': headers or None
+            'headers': headers or None,
+            'body': None,
         }
 
     @responses.activate

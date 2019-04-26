@@ -38,6 +38,9 @@ SCHEMA = {
         },
         'size': {
             'enum': list(SIZE_PARAMETER_MAP)
+        },
+        'output': {
+            'enum': ['json', 'raw']
         }
     },
     'required': ['url', 'size'],
@@ -46,12 +49,13 @@ SCHEMA = {
 
 @api(cors_origins=get_default_origins())
 @validate(SCHEMA)
-def lambda_handler(params, _):
+def lambda_handler(request):
     """
     Generate thumbnails for images in S3
     """
-    url = params['url']
-    size = SIZE_PARAMETER_MAP[params['size']]
+    url = request.args['url']
+    size = SIZE_PARAMETER_MAP[request.args['size']]
+    output = request.args.get('output', 'json')
 
     resp = requests.get(url)
     if resp.ok:
@@ -64,20 +68,30 @@ def lambda_handler(params, _):
             thumbnail_bytes = BytesIO()
             image.save(thumbnail_bytes, image.format)
 
-        encoded = base64.b64encode(thumbnail_bytes.getvalue()).decode()
+        data = thumbnail_bytes.getvalue()
 
-        ret_val = {
-            'info': {
-                'original_format': orig_format,
-                'original_size': orig_size,
-                'thumbnail_format': orig_format,
-                'thumbnail_size': thumbnail_size,
-            },
-            'thumbnail': encoded,
+        info = {
+            'original_format': orig_format,
+            'original_size': orig_size,
+            'thumbnail_format': orig_format,
+            'thumbnail_size': thumbnail_size,
         }
+
+        if output == 'json':
+            ret_val = {
+                'info': info,
+                'thumbnail': base64.b64encode(data).decode(),
+            }
+            return make_json_response(200, ret_val)
+        else:
+            headers = {
+                'Content-Type': Image.MIME[orig_format],
+                'X-Quilt-Info': json.dumps(info)
+            }
+            return 200, data, headers
+
     else:
         ret_val = {
             'error': resp.reason
         }
-
-    return make_json_response(200, ret_val)
+        return make_json_response(resp.status_code, ret_val)

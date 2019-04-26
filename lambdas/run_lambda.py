@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+from base64 import b64decode
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import sys
 from urllib.parse import urlparse, parse_qsl, unquote
@@ -12,24 +13,36 @@ PORT = 8080
 LAMBDA_PATH = '/lambda'
 
 class Handler(BaseHTTPRequestHandler):
-    def do_GET(self):
+    def _handle_request(self, req_body):
         parsed_url = urlparse(self.path)
         path = unquote(parsed_url.path)
 
         if path == LAMBDA_PATH:
             query = dict(parse_qsl(parsed_url.query))
-            headers = self.headers
+            # BaseHTTPRequestHandler API gives us a case-insensitive dict
+            # of headers, while the lambda API uses lowercase header names.
+            # So change the keys to lowercase to match the lambda API.
+            headers = {k.lower(): v for k, v in self.headers.items()}
 
             args = {
+                'httpMethod': self.command,
+                'path': path,
                 'queryStringParameters': query or None,
-                'headers': headers or None
+                'headers': headers or None,
+                'body': req_body,
             }
 
             result = lambda_handler(args, None)
 
             code = result['statusCode']
             headers = result['headers']
-            body = result['body'].encode()
+            body = result['body']
+            encoded = result.get("isBase64Encoded", False)
+
+            if encoded:
+                body = b64decode(body)
+            else:
+                body = body.encode()
 
             headers['Content-Length'] = str(len(body))
 
@@ -43,6 +56,14 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header('Content-Type', 'text/plain')
             self.end_headers()
             self.wfile.write(b'Not Found')
+
+    def do_GET(self):
+        self._handle_request(None)
+
+    def do_POST(self):
+        size = int(self.headers.get('Content-Length', '0'))
+        body = self.rfile.read(size)
+        self._handle_request(body)
 
 
 def main(argv):
