@@ -49,7 +49,7 @@ import '!file-loader?name=[name].[ext]!./quilt-og.png'
 // Import i18n messages
 import { translationMessages } from './i18n'
 // Import CSS reset and Global Styles
-import './global-styles'
+import WithGlobalStyles from './global-styles'
 
 // listen for Roboto fonts
 fontLoader('Roboto', 'Roboto Mono').then(() => {
@@ -100,6 +100,7 @@ const sentryUserSelector = (state) => {
 const render = (messages) => {
   ReactDOM.render(
     nest(
+      WithGlobalStyles,
       FinalBoundary,
       Sentry.Provider,
       [Store.Provider, { history }],

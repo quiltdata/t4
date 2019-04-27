@@ -1,10 +1,11 @@
-import { injectGlobal } from 'styled-components'
+import * as React from 'react'
+import { createGlobalStyle } from 'styled-components'
 
 import { bodyColor, bodySize, headerColor } from 'constants/style'
 
 // TODO: deprecate this, use MUI css baseline, theme and typography
 /* eslint no-unused-expressions: 0 */
-injectGlobal`
+const GlobalStyles = createGlobalStyle`
   html,
   body {
     cursor: auto;
@@ -110,3 +111,10 @@ injectGlobal`
     min-width: 100%;
   }
 `
+
+export default ({ children }) => (
+  <>
+    <GlobalStyles />
+    {children}
+  </>
+)
