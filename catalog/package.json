@@ -94,7 +94,7 @@
     "react-helmet": "^6.0.0-beta",
     "react-images": "^0.5.19",
     "react-intl": "^2.8.0",
-    "react-redux": "^7.0.2",
+    "react-redux": "^7.0.3",
     "react-router-dom": "^5.0.0",
     "react-stripe-checkout": "^2.6.3",
     "recompose": "^0.30.0",
