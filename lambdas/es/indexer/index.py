@@ -167,92 +167,101 @@ def handler(event, _):
     """fetch the S3 object from event, extract relevant data and metadata,
     dispatch post_to_es
     """
-
-    for msg in event['Records']:
-        for record in json.loads(json.loads(msg['body'])['Message'])['Records']:
-            try:
-                eventname = record['eventName']
-                bucket = unquote(record['s3']['bucket']['name'])
-                key = unquote(record['s3']['object']['key'])
-                version_id = record['s3']['object'].get('versionId')
-                version_id = unquote(version_id) if version_id else None
-                etag = unquote(record['s3']['object']['eTag'])
-
-                if eventname == 'ObjectRemoved:Delete':
-                    event_type = 'Delete'
-                    post_to_es(event_type, 0, '', key, {})
-                    continue
-                elif eventname == 'ObjectCreated:Put':
-                    event_type = 'Create'
-                else:
-                    event_type = eventname
+    try:
+        for msg in event['Records']:
+            for record in json.loads(json.loads(msg['body'])['Message'])['Records']:
                 try:
-                    # Retry with back-off for eventual consistency reasons
-                    @tenacity.retry(wait=tenacity.wait_exponential(multiplier=2, min=4, max=30))
-                    def get_obj_from_s3(bucket, key, version_id=None, etag=None):
-                        if version_id:
-                            response = S3_CLIENT.get_object(Bucket=bucket, Key=key, VersionId=version_id)
-                        else:
-                            response = S3_CLIENT.get_object(Bucket=bucket, Key=key)
-                            # assert etag match, otherwise raise exception and let retry handle a new
-                            # request.
-                            if response['ETag'] != etag:
-                                raise Exception("Failed to retrieve most recent object matching eTag in "
-                                                "bucket notification.")
-                        return response
-                    response = get_obj_from_s3(bucket, key, version_id, etag)
+                    eventname = record['eventName']
+                    bucket = unquote(record['s3']['bucket']['name'])
+                    key = unquote(record['s3']['object']['key'])
+                    version_id = record['s3']['object'].get('versionId')
+                    version_id = unquote(version_id) if version_id else None
+                    etag = unquote(record['s3']['object']['eTag'])
 
-                except botocore.exceptions.ClientError as e:
-                    print("Exception while getting object")
-                    print(e)
-                    print(bucket)
-                    print(key)
-                    raise
-
-                size = response['ContentLength']
-                meta = response['Metadata']
-                text = ''
-
-                to_index = get_config(bucket).get('to_index', [])
-                to_index = [x.lower() for x in to_index]
-                _, ext = os.path.splitext(key)
-                ext = ext.lower()
-                if ext in to_index:
-                    # try to index data from the object itself
-                    if ext in ['.md', '.rmd']:
-                        try:
-                            text = response['Body'].read().decode('utf-8')
-                        except UnicodeDecodeError:
-                            print("Unicode decode error in .md file")
-                    elif ext == '.ipynb':
-                        try:
-                            notebook = response['Body'].read().decode('utf-8')
-                            text = extract_text(notebook)
-                        except UnicodeDecodeError as uni:
-                            print("Unicode decode error in {}: {} ".format(key, uni))
-                        except (json.JSONDecodeError, nbformat.reader.NotJSONError):
-                            print("Invalid JSON in {}.".format(key))
-                        except (KeyError, AttributeError)  as err:
-                            print("Missing key in {}: {}".format(key, err))
-                        # there might be more errors than covered by test_read_notebook
-                        # better not to fail altogether
-                        except Exception as exc:#pylint: disable=broad-except
-                            print("Exception in file {}: {}".format(key, exc))
+                    if eventname == 'ObjectRemoved:Delete':
+                        event_type = 'Delete'
+                        post_to_es(event_type, 0, '', key, {})
+                        continue
+                    elif eventname == 'ObjectCreated:Put':
+                        event_type = 'Create'
                     else:
-                        # TODO: phone this into mixpanel
-                        print(f"no logic to index {ext}")
+                        event_type = eventname
+                    try:
+                        # Retry with back-off for eventual consistency reasons
+                        @tenacity.retry(wait=tenacity.wait_exponential(multiplier=2, min=4, max=30))
+                        def get_obj_from_s3(bucket, key, version_id=None, etag=None):
+                            if version_id:
+                                response = S3_CLIENT.get_object(Bucket=bucket, Key=key, VersionId=version_id)
+                            else:
+                                response = S3_CLIENT.get_object(Bucket=bucket, Key=key)
+                                # assert etag match, otherwise raise exception and let retry handle a new
+                                # request.
+                                if response['ETag'] != etag:
+                                    raise Exception("Failed to retrieve most recent object matching eTag in "
+                                                    "bucket notification.")
+                            return response
+                        response = get_obj_from_s3(bucket, key, version_id, etag)
 
-                # decode helium metadata
-                try:
-                    meta['helium'] = json.loads(meta['helium'])
-                except (KeyError, json.JSONDecodeError):
-                    print('decoding helium metadata failed')
+                    except botocore.exceptions.ClientError as e:
+                        print("Exception while getting object")
+                        print(e)
+                        print(bucket)
+                        print(key)
+                        raise
 
-                post_to_es(event_type, size, text, key, meta, version_id)
-            except Exception as e:
-                # do our best to process each result
-                print("Exception encountered")
-                print(e)
-                import traceback
-                traceback.print_tb(e.__traceback__)
-                print(msg)
+                    size = response['ContentLength']
+                    meta = response['Metadata']
+                    text = ''
+
+                    to_index = get_config(bucket).get('to_index', [])
+                    to_index = [x.lower() for x in to_index]
+                    _, ext = os.path.splitext(key)
+                    ext = ext.lower()
+                    if ext in to_index:
+                        # try to index data from the object itself
+                        if ext in ['.md', '.rmd']:
+                            try:
+                                text = response['Body'].read().decode('utf-8')
+                            except UnicodeDecodeError:
+                                print("Unicode decode error in .md file")
+                        elif ext == '.ipynb':
+                            try:
+                                notebook = response['Body'].read().decode('utf-8')
+                                text = extract_text(notebook)
+                            except UnicodeDecodeError as uni:
+                                print("Unicode decode error in {}: {} ".format(key, uni))
+                            except (json.JSONDecodeError, nbformat.reader.NotJSONError):
+                                print("Invalid JSON in {}.".format(key))
+                            except (KeyError, AttributeError)  as err:
+                                print("Missing key in {}: {}".format(key, err))
+                            # there might be more errors than covered by test_read_notebook
+                            # better not to fail altogether
+                            except Exception as exc:#pylint: disable=broad-except
+                                print("Exception in file {}: {}".format(key, exc))
+                        else:
+                            # TODO: phone this into mixpanel
+                            print(f"no logic to index {ext}")
+
+                    # decode helium metadata
+                    try:
+                        meta['helium'] = json.loads(meta['helium'])
+                    except (KeyError, json.JSONDecodeError):
+                        print('decoding helium metadata failed')
+
+                    post_to_es(event_type, size, text, key, meta, version_id)
+                except Exception as e:
+                    # do our best to process each result
+                    print("Exception encountered for record")
+                    print(e)
+                    import traceback
+                    traceback.print_tb(e.__traceback__)
+                    print(msg)
+    except Exception as e:
+        # do our best to process each result
+        print("Exception encountered for whole Event")
+        print(e)
+        import traceback
+        traceback.print_tb(e.__traceback__)
+        print(event)
+        # Fail the lambda so the message is not dequeued.
+        raise e

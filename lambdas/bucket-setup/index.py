@@ -1,18 +1,15 @@
 """
-Sets up QuiltBucket (parameterized) for use with Quilt3 services.
-By design, should never affect bucket content.
+Modify bucket properties so that bucket works well with Quilt;
+intended for QuiltBucket (CloudFormation parameter)
 """
-
 import boto3
 import botocore
 import cfnresponse
 
-s3_client = boto3.client('s3') # pylint: disable=invalid-name
+S3_CLIENT = boto3.client('s3')
 
 def handler(event, context):
-    """
-    entry point
-    """
+    """entry point"""
     if event['RequestType'] == 'Delete':
         cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
         return
@@ -31,10 +28,8 @@ def handler(event, context):
         raise
 
 def enable_versioning(bucket):
-    """
-    switch on object versioning
-    """
-    s3_client.put_bucket_versioning(
+    """switch on object versionsing"""
+    S3_CLIENT.put_bucket_versioning(
         Bucket=bucket,
         VersioningConfiguration={
             'Status': 'Enabled'
@@ -42,9 +37,7 @@ def enable_versioning(bucket):
     )
 
 def set_cors(bucket, catalog_host):
-    """
-    set CORS so that the web catalog can talk to the bucket
-    """
+    """set CORS so catalog works properly"""
     new_cors_rule = {
         'AllowedHeaders': ['*'],
         'AllowedMethods': [
@@ -65,7 +58,7 @@ def set_cors(bucket, catalog_host):
     }
 
     try:
-        existing_cors_rules = s3_client.get_bucket_cors(Bucket=bucket)['CORSRules']
+        existing_cors_rules = S3_CLIENT.get_bucket_cors(Bucket=bucket)['CORSRules']
     # if there's no CORS set at all, we'll get an error
     except botocore.exceptions.ClientError as problem:
         if 'NoSuchCORSConfiguration' in str(problem):
@@ -75,7 +68,7 @@ def set_cors(bucket, catalog_host):
 
     if new_cors_rule not in existing_cors_rules:
         existing_cors_rules.append(new_cors_rule)
-        s3_client.put_bucket_cors(
+        S3_CLIENT.put_bucket_cors(
             Bucket=bucket,
             CORSConfiguration={
                 'CORSRules': existing_cors_rules
