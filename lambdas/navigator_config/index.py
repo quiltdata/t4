@@ -8,8 +8,9 @@ import os
 from pathlib import Path
 
 import boto3
+from jsonschema import Draft4Validator
+
 import cfnresponse
-from jsonschema import Draft4Validator, ValidationError
 
 S3_CLIENT = boto3.client('s3')
 
@@ -20,8 +21,9 @@ def handler(event, context):
     if event['RequestType'] == 'Delete':
         try:
             stackname = event['ResourceProperties']['StackName']
-        except KeyError:
-            print('Could not find StackName resource property.')
+            config_bucket_name = event['ResourceProperties']['DestBucket']
+        except KeyError as e:
+            print('Could not find {} resource property.'.format(e.args[0]))
             print('Doing nothing and reporting success.')
             cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
             return
@@ -37,7 +39,8 @@ def handler(event, context):
                 cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
                 return
 
-            wipe_bucket(event, context)
+            wipe_bucket(config_bucket_name)
+            cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
             return
         except Exception:
             cfnresponse.send(event, context, cfnresponse.FAILED, {})
@@ -80,36 +83,27 @@ def handler(event, context):
         cfnresponse.send(event, context, cfnresponse.FAILED, {})
         raise
 
-def wipe_bucket(event, context):
+def wipe_bucket(bucket):
     """
     Removes all versions of `config.json` and `federation.json` from
         the config bucket. Called on stack delete.
     """
-    try:
-        bucket = event['ResourceProperties']['DestBucket']
+    s3 = boto3.resource('s3')
+    bucket = s3.Bucket(bucket)
+    versioned_objs = []
 
-        if event['RequestType'] == 'Delete':
-            s3 = boto3.resource('s3')
-            bucket = s3.Bucket(bucket)
-            # for obj_version in bucket.object_versions.all():
-            versioned_objs = []
+    files_to_delete = ['config.json', 'federation.json']
+    for prefix in files_to_delete:
+        for obj_version in bucket.object_versions.filter(Prefix=prefix):
+            versioned_objs.append({'Key': obj_version.object_key,
+                                   'VersionId': obj_version.id})
 
-            files_to_delete = ['config.json', 'federation.json']
-            for prefix in files_to_delete:
-                for obj_version in bucket.object_versions.filter(Prefix=prefix):
-                    versioned_objs.append({'Key': obj_version.object_key,
-                                           'VersionId': obj_version.id})
-
-            # Use a list comprehension to break into chunks of size 1000
-            # for API limits.
-            n = 1000
-            for shard in [versioned_objs[i * n:(i + 1) * n] \
-                for i in range((len(versioned_objs) + n - 1) // n )]:
-                bucket.delete_objects(Delete={'Objects': shard})
-        cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
-    except Exception as e:
-        print(str(e))
-        cfnresponse.send(event, context, cfnresponse.FAILED, {})
+    # Use a list comprehension to break into chunks of size 1000
+    # for API limits.
+    n = 1000
+    for shard in [versioned_objs[i * n:(i + 1) * n] \
+        for i in range((len(versioned_objs) + n - 1) // n)]:
+        bucket.delete_objects(Delete={'Objects': shard})
 
 def validate_configs(catalog_config, federation):
     """
