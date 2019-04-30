@@ -20,13 +20,20 @@ def handler(event, context):
     if event['RequestType'] == 'Delete':
         try:
             stackname = event['ResourceProperties']['StackName']
+        except KeyError:
+            print('Could not find StackName resource property.')
+            print('Doing nothing and reporting success.')
+            cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+            return
+
+        try:
             cf_client = boto3.client('cloudformation')
             describe = cf_client.describe_stacks(StackName=stackname)
             status = describe['Stacks'][0]['StackStatus']
 
             if not status == 'DELETE_IN_PROGRESS':
-                # If stack isn't deleting, then this resource is just getting cleaned
-                #   up -- so do nothing
+                print('Stack is not deleting, so this resource is just getting '
+                      'cleaned up. Doing nothing and reporting success.')
                 cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
                 return
 
@@ -39,12 +46,16 @@ def handler(event, context):
     # event['RequestType'] in ['Create', 'Update']
     try:
         props = event['ResourceProperties']
+        try:
+            catalog_config = props['CatalogConfig']
+            federation = props['Federation']
 
-        catalog_config = props['CatalogConfig']
-        federation = props['Federation']
-        
-        config_bucket = props['DestBucket']
-        config_dir = props['DestDir']
+            config_bucket = props['DestBucket']
+            config_dir = props['DestDir']
+        except KeyError as e:
+            print('Failed to access a resource property.')
+            print(str(e))
+            raise
 
         validate_configs(catalog_config, federation)
 
@@ -97,7 +108,7 @@ def wipe_bucket(event, context):
                 bucket.delete_objects(Delete={'Objects': shard})
         cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
     except Exception as e:
-        print(e)
+        print(str(e))
         cfnresponse.send(event, context, cfnresponse.FAILED, {})
 
 def validate_configs(catalog_config, federation):
