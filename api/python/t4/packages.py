@@ -15,7 +15,7 @@ from six import string_types, binary_type
 
 
 from .data_transfer import (
-    calculate_sha256, copy_file, copy_file_list, get_bytes, get_size_and_meta, 
+    calculate_sha256, copy_file, copy_file_list, get_bytes, get_size_and_meta,
     list_object_versions, put_bytes
 )
 from .exceptions import PackageException
@@ -36,6 +36,7 @@ def hash_file(readable_file):
         buf = readable_file.read(4096)
 
     return hasher.hexdigest()
+
 
 def _to_singleton(physical_keys):
     """
@@ -64,6 +65,7 @@ class PackageEntry(object):
     Represents an entry at a logical key inside a package.
     """
     __slots__ = ['physical_keys', 'size', 'hash', 'meta']
+
     def __init__(self, physical_keys, size, hash_obj, meta):
         """
         Creates an entry.
@@ -110,7 +112,7 @@ class PackageEntry(object):
         """
         Returns clone of this PackageEntry.
         """
-        return self.__class__(copy.deepcopy(self.physical_keys), self.size, \
+        return self.__class__(copy.deepcopy(self.physical_keys), self.size,
                               copy.deepcopy(self.hash), copy.deepcopy(self.meta))
 
     def set_user_meta(self, meta):
@@ -217,9 +219,18 @@ class PackageEntry(object):
         Returns:
             None
         """
-        if dest is None:
-            name = pathlib.Path(_to_singleton(self.physical_keys)).name
-            name = name.split('?versionId=')[0]
+        # Generate name for the file regardless of received destination
+        name = pathlib.Path(_to_singleton(self.physical_keys)).name
+        name = name.split('?versionId=')[0]
+
+        # If provided a destination, resolve the path and determine directory or destination behavior
+        if dest:
+            dest = pathlib.Path(dest).expanduser().resolve()
+            # We can determine if filepath was passed or directory was passed based off suffix
+            # We can't use the `is_dir` or `is_file` methods because the directory or file may not exist
+            if dest.suffix == "":
+                dest = dest / name
+        else:
             dest = name
 
         physical_key = _to_singleton(self.physical_keys)
@@ -231,7 +242,6 @@ class PackageEntry(object):
         entry = self._clone()
         entry.physical_keys = [dest]
         return entry
-
 
     def __call__(self, func=None, **kwargs):
         """
@@ -322,7 +332,7 @@ class Package(object):
 
         Args:
             name(str): Name of package to install.
-            registry(str): Registry where package is located. 
+            registry(str): Registry where package is located.
                 Defaults to the default remote registry.
             top_hash(str): Hash of package to install. Defaults to latest.
             dest(str): Local path to download files to.
@@ -349,7 +359,6 @@ class Package(object):
             dest = get_install_location()
 
         return pkg.push(name=name, dest=dest, registry=dest_registry)
-
 
     @classmethod
     def browse(cls, name=None, registry=None, top_hash=None):
@@ -386,7 +395,6 @@ class Package(object):
         latest_hash = latest_hash.strip()
         latest_path = '{}/packages/{}'.format(registry_prefix, quote(latest_hash))
         return cls._from_path(latest_path)
-
 
     @classmethod
     def _from_path(cls, uri):
@@ -457,7 +465,9 @@ class Package(object):
         Returns:
             None
         """
-        nice_dest = fix_url(dest).rstrip('/')
+        # Resolve and fix the destination
+        nice_dest = str(pathlib.Path(dest).expanduser().resolve())
+        nice_dest = fix_url(nice_dest).rstrip('/')
         file_list = []
         pkg = Package()
 
@@ -474,7 +484,7 @@ class Package(object):
             pkg.set(logical_key, new_entry)
 
         copy_file_list(file_list)
-        
+
         return pkg
 
     def keys(self):
@@ -963,14 +973,14 @@ class Package(object):
 
         if registry is None:
             if dest is None:
-                # Only a package name is set, so set registry and dest to the default 
+                # Only a package name is set, so set registry and dest to the default
                 # registry.
                 registry = get_from_config('default_remote_registry')
                 if not registry:
                     raise QuiltException("No registry specified and no default remote "
-                                        "registry configured. Please specify a "
-                                        "registry or configure a default remote "
-                                        "registry with t4.config")
+                                         "registry configured. Please specify a "
+                                         "registry or configure a default remote "
+                                         "registry with t4.config")
 
                 dest = registry
             else:
@@ -1049,7 +1059,7 @@ class Package(object):
         Deleted: present in self, but not other_pkg.
 
         Args:
-            other_pkg: Package to diff 
+            other_pkg: Package to diff
 
         Returns:
             added, modified, deleted (all lists of logical keys)
@@ -1065,7 +1075,7 @@ class Package(object):
                 modified.append(lk)
 
         added = list(sorted(other_entries))
-        
+
         return added, modified, deleted
 
     def map(self, f, include_directories=False):
@@ -1113,7 +1123,7 @@ class Package(object):
                     excluded_dirs.add(lk)
 
         for lk, entity in self.walk():
-            if (not any(p in excluded_dirs 
+            if (not any(p in excluded_dirs
                         for p in pathlib.PurePosixPath(lk).parents)
                     and f(lk, entity)):
                 p.set(lk, entity)
