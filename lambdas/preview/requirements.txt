@@ -10,7 +10,7 @@ idna==2.7
 ipython==7.2.0
 ipython-genutils==0.2.0
 jedi==0.13.2
-Jinja2==2.10
+Jinja2==2.10.1
 jsonschema==2.6.0
 jupyter-core==4.4.0
 MarkupSafe==1.1.0
@@ -33,7 +33,7 @@ requests==2.20.0
 six==1.12.0
 testpath==0.4.2
 traitlets==4.3.2
-urllib3==1.24.1
+urllib3==1.25.2
 wcwidth==0.1.7
 webencodings==0.5.1
 xlrd==1.2.0
