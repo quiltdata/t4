@@ -40,6 +40,6 @@ T4 is alpha software. It is not yet recommended for production use.
 * `/catalog` (JavaScript) - Search, browse, and preview your data in S3
 * `/api/python` - Read, write, and annotate Python objects in S3
 
-## Documentation
-* [Docs](https://quiltdocs.gitbook.io/t4/)
+## Roadmap
+
 * [Roadmap](https://github.com/quiltdata/t4/blob/master/Roadmap.md)

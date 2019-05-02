@@ -6,6 +6,7 @@
 [![docs on_gitbook](https://img.shields.io/badge/docs-on_gitbook-blue.svg?style=flat-square)](https://quiltdocs.gitbook.io/t4/)
 [![chat on_slack](https://img.shields.io/badge/chat-on_slack-blue.svg?style=flat-square)](https://slack.quiltdata.com/)
 [![codecov](https://codecov.io/gh/quiltdata/t4/branch/master/graph/badge.svg)](https://codecov.io/gh/quiltdata/t4)
+[![pypi](https://img.shields.io/pypi/v/t4.svg?style=flat-square)](https://pypi.org/project/t4/)
 
 # Alpha - technology preview
 
@@ -34,10 +35,11 @@ T4 is alpha software. It is not yet recommended for production use.
 * Read/write Python objects to and from S3
 * Immutable versions for objects, immutable packages for collections of objects
 
-## Roadmap
-* [Roadmap](https://github.com/quiltdata/t4/blob/master/Roadmap.md)
-
-
 ## Components
+
 * `/catalog` (JavaScript) - Search, browse, and preview your data in S3
 * `/api/python` - Read, write, and annotate Python objects in S3
+
+## Roadmap
+
+* [Roadmap](https://github.com/quiltdata/t4/blob/master/Roadmap.md)
