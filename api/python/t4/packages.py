@@ -117,7 +117,7 @@ class PackageEntry(object):
     def meta(self):
         return self._meta.get('user_meta', dict())
 
-    def set_user_meta(self, meta):
+    def set_meta(self, meta):
         """
         Sets the user_meta for this PackageEntry.
         """
@@ -155,7 +155,7 @@ class PackageEntry(object):
             self.size = None
             self.hash = None
         elif meta is not None:
-            self.set_user_meta(meta)
+            self.set_meta(meta)
         else:
             raise PackageException('Must specify either path or meta')
 
@@ -861,7 +861,7 @@ class Package(object):
         else:
             raise TypeError("Expected a string for entry")
         if meta is not None:
-            entry.set_user_meta(meta)
+            entry.set_meta(meta)
 
         path = self._split_key(logical_key)
 

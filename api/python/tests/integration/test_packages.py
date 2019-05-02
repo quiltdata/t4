@@ -478,18 +478,18 @@ class PackageTest(QuiltTestCase):
             .set('foo', DATA_DIR / 'foo.txt', {'value': 'blah'})
             .set('bar', DATA_DIR / 'foo.txt', {'value': 'blah2'})
         )
-        pkg['foo'].meta['target'] = 'unicode'
-        pkg['bar'].meta['target'] = 'unicode'
+        pkg['foo']._meta['target'] = 'unicode'
+        pkg['bar']._meta['target'] = 'unicode'
 
         assert pkg['foo'].meta == {'value': 'blah'}
         assert pkg['bar'].meta == {'value': 'blah2'}
 
-        assert pkg['foo'].meta == {'target': 'unicode', 'user_meta': {'value': 'blah'}}
-        assert pkg['bar'].meta == {'target': 'unicode', 'user_meta': {'value': 'blah2'}}
+        assert pkg['foo']._meta == {'target': 'unicode', 'user_meta': {'value': 'blah'}}
+        assert pkg['bar']._meta == {'target': 'unicode', 'user_meta': {'value': 'blah2'}}
 
-        pkg['foo'].set_user_meta({'value': 'other value'})
+        pkg['foo'].set_meta({'value': 'other value'})
         assert pkg['foo'].meta == {'value': 'other value'}
-        assert pkg['foo'].meta == {'target': 'unicode', 'user_meta': {'value': 'other value'}}
+        assert pkg['foo']._meta == {'target': 'unicode', 'user_meta': {'value': 'other value'}}
 
 
     def test_list_local_packages(self):
