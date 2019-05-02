@@ -63,7 +63,7 @@ class PackageEntry(object):
     """
     Represents an entry at a logical key inside a package.
     """
-    __slots__ = ['physical_keys', 'size', 'hash', 'meta']
+    __slots__ = ['physical_keys', 'size', 'hash', '_meta']
     def __init__(self, physical_keys, size, hash_obj, meta):
         """
         Creates an entry.
@@ -81,14 +81,14 @@ class PackageEntry(object):
         self.physical_keys = [fix_url(x) for x in physical_keys]
         self.size = size
         self.hash = hash_obj
-        self.meta = meta or {}
+        self._meta = meta or {}
 
     def __eq__(self, other):
         return (
             # Don't check physical keys.
             self.size == other.size
             and self.hash == other.hash
-            and self.meta == other.meta
+            and self._meta == other._meta
         )
 
     def __repr__(self):
@@ -102,7 +102,7 @@ class PackageEntry(object):
             'physical_keys': self.physical_keys,
             'size': self.size,
             'hash': self.hash,
-            'meta': self.meta
+            'meta': self._meta
         }
         return copy.deepcopy(ret)
 
@@ -111,25 +111,17 @@ class PackageEntry(object):
         Returns clone of this PackageEntry.
         """
         return self.__class__(copy.deepcopy(self.physical_keys), self.size, \
-                              copy.deepcopy(self.hash), copy.deepcopy(self.meta))
+                              copy.deepcopy(self.hash), copy.deepcopy(self._meta))
+
+    @property
+    def meta(self):
+        return self._meta.get('user_meta', dict())
 
     def set_user_meta(self, meta):
         """
         Sets the user_meta for this PackageEntry.
         """
-        self.meta['user_meta'] = meta
-
-    def get_user_meta(self):
-        """
-        Returns the user metadata from this PackageEntry.
-        """
-        return self.meta.get('user_meta')
-
-    def get_meta(self):
-        """
-        Returns the metadata from this PackageEntry.
-        """
-        return self.meta
+        self._meta['user_meta'] = meta
 
     def _verify_hash(self, read_bytes):
         """
@@ -199,12 +191,12 @@ class PackageEntry(object):
         pkey_ext = pathlib.PurePosixPath(unquote(urlparse(physical_key).path)).suffix
 
         # Verify format can be handled before checking hash.  Raises if none found.
-        formats = FormatRegistry.search(None, self.meta, pkey_ext)
+        formats = FormatRegistry.search(None, self._meta, pkey_ext)
 
         # Verify hash before deserializing..
         self._verify_hash(data)
 
-        return formats[0].deserialize(data, self.meta, pkey_ext, **format_opts)
+        return formats[0].deserialize(data, self._meta, pkey_ext, **format_opts)
 
     def fetch(self, dest=None):
         """
@@ -225,7 +217,7 @@ class PackageEntry(object):
         else:
             dest = fix_url(dest)
 
-        copy_file(physical_key, dest, self.meta)
+        copy_file(physical_key, dest, self._meta)
 
         # return a package reroot package physical keys after the copy operation succeeds
         # see GH#388 for context
@@ -315,6 +307,10 @@ class Package(object):
             repr_str += ' ' + '...\n'
 
         return repr_str
+
+    @property
+    def meta(self):
+        return self._meta.get('user_meta', dict())
 
     @classmethod
     def install(cls, name, registry=None, top_hash=None, dest=None, dest_registry=None):
@@ -511,7 +507,7 @@ class Package(object):
         for key, child in sorted(self._children.items()):
             if isinstance(child, PackageEntry):
                 continue
-            meta = child.get_meta()
+            meta = child.meta
             if meta:
                 yield key + '/', meta
             for child_key, child_meta in child._walk_dir_meta():
@@ -712,12 +708,6 @@ class Package(object):
                     )
 
             return hypothesized_root_path
-
-    def get_meta(self):
-        """
-        Returns user metadata for this Package.
-        """
-        return self._meta.get('user_meta', {})
 
     def set_meta(self, meta):
         """
