@@ -79,7 +79,7 @@ Note that this feature is currently only supported for buckets backed by a T4 ca
 
 ```python
 # for example
-t4.config(navigator_url="https://alpha.quiltdata.com")
+t4.config(navigator_url="https://aics.quiltdata.com")
 ```
 
 T4 supports unstructured search:

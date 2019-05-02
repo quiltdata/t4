@@ -8,9 +8,6 @@
 [![codecov](https://codecov.io/gh/quiltdata/t4/branch/master/graph/badge.svg)](https://codecov.io/gh/quiltdata/t4)
 [![pypi](https://img.shields.io/pypi/v/t4.svg?style=flat-square)](https://pypi.org/project/t4/)
 
-# Alpha - technology preview
-
-T4 is alpha software. It is not yet recommended for production use.
 
 ## Overview
 [Rethinking S3: Announcing T4, a team data hub](https://blog.quiltdata.com/rethinking-s3-announcing-t4-a-team-data-hub-8e63ce7ec988).
@@ -40,6 +37,6 @@ T4 is alpha software. It is not yet recommended for production use.
 * `/catalog` (JavaScript) - Search, browse, and preview your data in S3
 * `/api/python` - Read, write, and annotate Python objects in S3
 
-## Documentation
-* [Docs](https://quiltdocs.gitbook.io/t4/)
+## Roadmap
+
 * [Roadmap](https://github.com/quiltdata/t4/blob/master/Roadmap.md)
