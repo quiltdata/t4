@@ -21,6 +21,9 @@ def handler(event, context):
     if event['RequestType'] == 'Delete':
         try:
             stackname = event['ResourceProperties']['StackName']
+            # This is limited to the config bucket of the stack
+            # by NavigatorInitRole (the only bucket it references
+            # is ConfigBucket)
             config_bucket_name = event['ResourceProperties']['DestBucket']
         except KeyError as e:
             print('Could not find {} resource property.'.format(e.args[0]))
