@@ -24,7 +24,7 @@ NB_EXTRACTS = {
 def test_extract_text():
     """ test extraction of code + markdown with format_notebook
     this code was developed after running format_notebook on ~6400 notebooks
-    found here https://alpha.quiltdata.com/b/alpha-quilt-storage/tree/notebook-search/
+    found here s3://alpha-quilt-storage/tree/notebook-search/
     """
     parent = os.path.dirname(__file__)
     basedir = os.path.join(parent, 'data')

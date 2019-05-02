@@ -86,7 +86,7 @@ def extract_text(notebook_str):
         * Deliberately decided not to index output streams and display strings
         because they were noisy and low value
         * Tested this code against ~6400 Jupyter notebooks in
-        https://alpha.quiltdata.com/b/alpha-quilt-storage/tree/notebook-search/
+        s3://alpha-quilt-storage/tree/notebook-search/
         * Might be useful to index "cell_type" : "raw" in the future
     See also:
         * Format reference https://nbformat.readthedocs.io/en/latest/format_description.html
