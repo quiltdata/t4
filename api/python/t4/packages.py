@@ -217,13 +217,14 @@ class PackageEntry(object):
         Returns:
             None
         """
-        if dest is None:
-            name = pathlib.Path(_to_singleton(self.physical_keys)).name
-            name = name.split('?versionId=')[0]
-            dest = name
-
         physical_key = _to_singleton(self.physical_keys)
-        dest = fix_url(dest)
+
+        if dest is None:
+            name = pathlib.PurePosixPath(unquote(urlparse(physical_key).path)).name
+            dest = (pathlib.Path().resolve() / name).as_uri()
+        else:
+            dest = fix_url(dest)
+
         copy_file(physical_key, dest, self.meta)
 
         # return a package reroot package physical keys after the copy operation succeeds
