@@ -89,10 +89,11 @@ def fix_url(url):
     if parsed.scheme and not os.path.splitdrive(url)[0]:
         return url
 
+    # `expanduser()` expands any leading "~" or "~user" path components, as a user convenience
     # `resolve()` _tries_ to make the URI absolute - but doesn't guarantee anything.
     # In particular, on Windows, non-existent files won't be resolved.
     # `absolute()` makes the URI absolute, though it can still contain '..'
-    fixed_url = pathlib.Path(url).resolve().absolute().as_uri()
+    fixed_url = pathlib.Path(url).expanduser().resolve().absolute().as_uri()
 
     # pathlib likes to remove trailing slashes, so add it back if needed.
     if url[-1:] in (os.sep, os.altsep) and not fixed_url.endswith('/'):

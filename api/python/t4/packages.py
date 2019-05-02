@@ -218,9 +218,8 @@ class PackageEntry(object):
             None
         """
         if dest is None:
-            name = pathlib.Path(_to_singleton(self.physical_keys)).name
-            name = name.split('?versionId=')[0]
-            dest = name
+            pkey = _to_singleton(self.physical_keys)
+            dest = pathlib.PurePosixPath(unquote(urlparse(pkey).path)).name
 
         physical_key = _to_singleton(self.physical_keys)
         dest = fix_url(dest)
