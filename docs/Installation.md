@@ -7,7 +7,7 @@ Quilt has two user-facing components:
 
 ## Python client
 
-Python 3.6 is required.
+Python 3.6 or higher is required.
 
 ```bash
 $ pip install t4
