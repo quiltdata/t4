@@ -19,6 +19,11 @@ A new Bucket
 Updates this bucket's search endpoint based on a federation config.
 
 
+## Bucket.get\_user\_meta\_schema(self)  {#Bucket.get\_user\_meta\_schema}
+
+Returns the current search mappings for user metadata from the search endpoint.
+
+
 ## Bucket.search(self, query, limit=10)  {#Bucket.search}
 
 Execute a search against the configured search endpoint.
@@ -79,7 +84,7 @@ __Arguments__
 * __key__:  Key of object to deserialize.
 
 
-## Bucket.put(self, key, obj, user\_meta=None)  {#Bucket.put}
+## Bucket.put(self, key, obj, meta=None)  {#Bucket.put}
 
 Stores `obj` at key in bucket, optionally with user-provided metadata.
 
@@ -87,10 +92,10 @@ __Arguments__
 
 * __key(str)__:  key in bucket to put object to
 * __obj(serializable)__:  serializable object to store at key
-* __user_meta(dict)__:  optional user-provided metadata to store
+* __meta(dict)__:  optional user-provided metadata to store
 
 
-## Bucket.put\_file(self, key, path, user\_meta=None)  {#Bucket.put\_file}
+## Bucket.put\_file(self, key, path, meta=None)  {#Bucket.put\_file}
 
 Stores file at path to key in bucket.
 
@@ -99,7 +104,7 @@ __Arguments__
 * __key(str)__:  key in bucket to store file at
 * __path(str)__:  string representing local path to file
 Optional args:
-    user_meta(dict): T4 metadata to attach to file
+    meta(dict): T4 metadata to attach to file
         Must be less than 2KiB serialized
 
 __Returns__
