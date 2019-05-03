@@ -1,6 +1,7 @@
 # Installation
 
 Quilt has two user-facing components:
+
 * A Python client
 * A web catalog
 

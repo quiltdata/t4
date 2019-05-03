@@ -138,8 +138,6 @@ your CloudFormation stack.
 1. Quilt is now up and running. You can click on the _QuiltWebHost_ value
 in Outputs and log in with your administrator password to invite users.
 
-You may stop here ;)
-
 ____________________
 
 ## Known limitations

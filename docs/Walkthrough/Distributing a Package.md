@@ -11,7 +11,7 @@ p = t4.Package()
 top_hash = p.build("username/packagename")
 ```
 
-Building a package requires providing it with a name. Packages names must follow the `${namespace}/${packagename}` format. For small teams, we recommend using the package author's name as the namespace.
+Building a package requires providing it with a name. Packages names must follow the `$"{namespace}/${packagename}"` format. For small teams, we recommend using the package author's name as the namespace.
 
 ## Pushing a package to a remote registry
 
@@ -27,7 +27,9 @@ p.push(
 )
 ```
 
-`push` targets a *registry*&mdash;a storage backend, currently either an S3 bucket (e.g. `s3://my-bucket`) or a local directory path (e.g. `/path/to/somewhere/`). The registry is infered from the second argument, `dest`. If you omit this argument, the default remot registry will be used:
+`s3://your-bucket` is the *registry*&mdash;the storage backend that the package is available from.
+
+If you omit a registry entirely, the default remote registry will be used:
 
 ```python
 import t4
@@ -37,6 +39,19 @@ t4.Package().push("username/packagename")
 ```
 
 The default remote registry, if set, persists between sessions.
+
+Note that by default, the contents of the package will be written into the `s3://your-bucket/username/packagename/` path. If you want the files to land someplace else, pass a more specific path:
+
+```python
+p.push(
+    "username/packagename",
+    "s3://your-bucket/foo/bar/"
+)
+# object will land in "/foo/bar/"
+# instead of "/username/packagename/"
+```
+
+> For even more fine-grained control of object landing paths see the section on [Materialization](./Advanced%20Features/Materialization.md).
 
 ## Distributing a package version
 
