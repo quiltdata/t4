@@ -7,6 +7,18 @@ In-memory representation of a package
 Provides a generator of the dicts that make up the serialied package.
 
 
+## top_hash
+
+Returns the top hash of the package.
+
+Note that physical keys are not hashed because the package has
+    the same semantics regardless of where the bytes come from.
+
+__Returns__
+
+A string that represents the top hash of the package
+
+
 ## Package.\_\_repr\_\_(self, max\_lines=20)  {#Package.\_\_repr\_\_}
 
 String representation of the Package.
@@ -133,7 +145,7 @@ __Raises__
 When `path` doesn't exist
 
 
-## Package.get(self, logical\_key)  {#Package.get}
+## Package.get(self, logical\_key=None)  {#Package.get}
 
 Gets object from logical_key and returns its physical path.
 Equivalent to self[logical_key].get().
@@ -150,11 +162,6 @@ __Raises__
 
 * `KeyError`:  when logical_key is not present in the package
 * `ValueError`:  if the logical_key points to a Package rather than PackageEntry.
-
-
-## Package.get\_meta(self)  {#Package.get\_meta}
-
-Returns user metadata for this Package.
 
 
 ## Package.set\_meta(self, meta)  {#Package.set\_meta}
@@ -226,18 +233,6 @@ __Raises__
 * `KeyError`:  when logical_key is not present to be deleted
 
 
-## Package.top\_hash(self)  {#Package.top\_hash}
-
-Returns the top hash of the package.
-
-Note that physical keys are not hashed because the package has
-    the same semantics regardless of where the bytes come from.
-
-__Returns__
-
-A string that represents the top hash of the package
-
-
 ## Package.push(self, name, dest=None, registry=None, message=None)  {#Package.push}
 
 Copies objects to path, then creates a new package that points to those objects.
@@ -306,29 +301,4 @@ __Arguments__
 __Returns__
 
 A new package with entries that evaluated to False removed
-
-
-## Package.reduce(self, f, default=None, include\_directories=False)  {#Package.reduce}
-
-Applies a reduce operation across neighboring package entries,
-in left-right order.
-
-__Arguments__
-
-* __f__:  function
-    The function to be applied to each package entry.
-    This function should take two arguments. By default these
-    will be the (logical key, PackageEntry) for the left entry and
-    the (logical key, PackageEntry) argument for the right entry.
-    As you iterate over the package entries, the left argument will
-    be replaced by the output of the previous reduce operation.
-* __default__:  initial value
-    The default argument. If left unspecified, the (logical key,
-    PackageEntry) pair for the first package entry in the package
-    will be used.
-* __include_directories__:  bool
-    Whether or not to include directory entries in the map.
-
-Returns: list
-    A list of truthy (logical key, entry) tuples.
 

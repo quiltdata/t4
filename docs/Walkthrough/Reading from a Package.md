@@ -77,7 +77,7 @@ p["commodities"]["gold.csv"].get()
 # returns /path/to/workdir/commodities/gold.csv
 
 p.get()
-# returns /Users/aleksey/Dekstop/trades/ or similar
+# returns /path/to/workdir/
 ```
 
 ## Getting metadata
