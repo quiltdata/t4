@@ -51,7 +51,7 @@ p.push(
 # instead of "/username/packagename/"
 ```
 
-> For even more fine-grained control of object landing paths see the section on [Materialization](./Advanced%20Features/Materialization.md).
+> For even more fine-grained control of object landing paths see [Materialization](../Advanced%20Features/Materialization.md).
 
 ## Distributing a package version
 
