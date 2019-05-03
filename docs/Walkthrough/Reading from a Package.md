@@ -82,15 +82,15 @@ p.get()
 
 ## Getting metadata
 
-Entries, folders, and the package itself may all have associated metadata, which you can use `get_meta` to retrieve:
+Metadata is available using the `meta` property.
 
 ```python
 # get entry metadata
-p["commodities"]["gold.csv"].get_meta()
+p["commodities"]["gold.csv"].meta
 
 # get directory metadata
-p["commodities"].get_meta()
+p["commodities"].meta
 
 # get package metadata
-p.get_meta()
+p.meta
 ```

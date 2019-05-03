@@ -391,7 +391,7 @@ class PackageTest(QuiltTestCase):
         assert pathlib.Path('bar').resolve().as_uri() == pkg['bar'].physical_keys[0]
         assert (bazdir / 'baz').resolve().as_uri() == pkg['foo_dir/baz_dir/baz'].physical_keys[0]
         assert (foodir / 'bar').resolve().as_uri() == pkg['foo_dir/bar'].physical_keys[0]
-        assert pkg.get_meta() == "test_meta"
+        assert pkg.meta == "test_meta"
 
         pkg = Package()
         pkg = pkg.set_dir('/','foo_dir/baz_dir/')
@@ -432,7 +432,7 @@ class PackageTest(QuiltTestCase):
 
         assert pathlib.Path('foo').resolve().as_uri() == pkg['new_dir/foo'].physical_keys[0]
         assert pathlib.Path('bar').resolve().as_uri() == pkg['new_dir/bar'].physical_keys[0]
-        assert pkg['new_dir'].get_meta() == "new_test_meta"
+        assert pkg['new_dir'].meta == "new_test_meta"
 
         # verify set_dir logical key shortcut
         pkg = Package()
@@ -456,7 +456,7 @@ class PackageTest(QuiltTestCase):
 
             assert pkg['a.txt'].physical_keys[0] == 's3://bucket/foo/a.txt?versionId=xyz'
             assert pkg['x']['y.txt'].physical_keys[0] == 's3://bucket/foo/x/y.txt'
-            assert pkg.get_meta() == "test_meta"
+            assert pkg.meta == "test_meta"
             assert pkg['x']['y.txt'].size == 10  # GH368
 
             list_object_versions_mock.assert_called_with('bucket', 'foo/')
@@ -478,18 +478,18 @@ class PackageTest(QuiltTestCase):
             .set('foo', DATA_DIR / 'foo.txt', {'value': 'blah'})
             .set('bar', DATA_DIR / 'foo.txt', {'value': 'blah2'})
         )
-        pkg['foo'].meta['target'] = 'unicode'
-        pkg['bar'].meta['target'] = 'unicode'
+        pkg['foo']._meta['target'] = 'unicode'
+        pkg['bar']._meta['target'] = 'unicode'
 
-        assert pkg['foo'].get_user_meta() == {'value': 'blah'}
-        assert pkg['bar'].get_user_meta() == {'value': 'blah2'}
+        assert pkg['foo'].meta == {'value': 'blah'}
+        assert pkg['bar'].meta == {'value': 'blah2'}
 
-        assert pkg['foo'].meta == {'target': 'unicode', 'user_meta': {'value': 'blah'}}
-        assert pkg['bar'].meta == {'target': 'unicode', 'user_meta': {'value': 'blah2'}}
+        assert pkg['foo']._meta == {'target': 'unicode', 'user_meta': {'value': 'blah'}}
+        assert pkg['bar']._meta == {'target': 'unicode', 'user_meta': {'value': 'blah2'}}
 
-        pkg['foo'].set_user_meta({'value': 'other value'})
-        assert pkg['foo'].get_user_meta() == {'value': 'other value'}
-        assert pkg['foo'].meta == {'target': 'unicode', 'user_meta': {'value': 'other value'}}
+        pkg['foo'].set_meta({'value': 'other value'})
+        assert pkg['foo'].meta == {'value': 'other value'}
+        assert pkg['foo']._meta == {'target': 'unicode', 'user_meta': {'value': 'other value'}}
 
 
     def test_list_local_packages(self):
@@ -730,23 +730,23 @@ class PackageTest(QuiltTestCase):
         pkg.set('qwer/asdf', LOCAL_MANIFEST)
         pkg.set('qwer/as/df', LOCAL_MANIFEST)
         pkg.build()
-        assert pkg['asdf'].get_meta() == {}
-        assert pkg.get_meta() == {}
-        assert pkg['qwer']['as'].get_meta() == {}
+        assert pkg['asdf'].meta == {}
+        assert pkg.meta == {}
+        assert pkg['qwer']['as'].meta == {}
         pkg['asdf'].set_meta(test_meta)
-        assert pkg['asdf'].get_meta() == test_meta
+        assert pkg['asdf'].meta == test_meta
         pkg['qwer']['as'].set_meta(test_meta)
-        assert pkg['qwer']['as'].get_meta() == test_meta
+        assert pkg['qwer']['as'].meta == test_meta
         pkg.set_meta(test_meta)
-        assert pkg.get_meta() == test_meta
+        assert pkg.meta == test_meta
         dump_path = 'test_meta'
         with open(dump_path, 'w') as f:
             pkg.dump(f)
         with open(dump_path) as f:
             pkg2 = Package.load(f)
-        assert pkg2['asdf'].get_meta() == test_meta
-        assert pkg2['qwer']['as'].get_meta() == test_meta
-        assert pkg2.get_meta() == test_meta
+        assert pkg2['asdf'].meta == test_meta
+        assert pkg2['qwer']['as'].meta == test_meta
+        assert pkg2.meta == test_meta
 
     def test_top_hash_stable(self):
         """Ensure that top_hash() never changes for a given manifest"""
