@@ -14,8 +14,8 @@ def create_mappings(params):
     if existing['TopicConfigurations'] \
             or existing['QueueConfigurations'] \
             or existing['LambdaFunctionConfigurations']:
-        raise Exception('Unable to attach notifications. Notification already configured
-                on bucket {}.'.format(params['Bucket']))
+        raise Exception('Unable to attach notifications. Notification already configured '
+                'on bucket {}.'.format(params['Bucket']))
 
     s3.put_bucket_notification_configuration(**params)
     return
