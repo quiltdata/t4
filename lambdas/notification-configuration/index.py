@@ -37,8 +37,7 @@ def handler(event, context):
     print('Changing bucket notification settings')
     try:
         params = select_params(event['ResourceProperties'])
-        bucket = params['Bucket']
-        current_resource_id = 'notification_' + bucket
+        current_resource_id = 'notification_' + params['Bucket']
         if event['RequestType'] == 'Create':
             set_mappings(params)
             send(event, context, SUCCESS, physical_resource_id=current_resource_id)
@@ -57,8 +56,8 @@ def handler(event, context):
             send(event, context, SUCCESS, physical_resource_id=current_resource_id)
             return
         elif event['RequestType'] == 'Delete':
-            # We don't have access to OldResourceProperties here, so we
-            # can't do anything helpful. So we do nothing.
+            # Stack is being deleted, so we clear notifications on the bucket.
+            set_mappings(params, delete=True)
             send(event, context, SUCCESS, physical_resource_id=current_resource_id)
             return
         else:
