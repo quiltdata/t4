@@ -29,12 +29,12 @@ def handler(event, context):
         current_resource_id = 'notification_' + bucket
         if event['RequestType'] == 'Create':
             create_mappings(params)
-            send(event, context, SUCCESS, {}, physical_resource_id=current_resource_id)
+            send(event, context, SUCCESS, physical_resource_id=current_resource_id)
             return
         elif event['RequestType'] == 'Update':
             if event['PhysicalResourceId'] == current_resource_id:
                 # do nothing if physical_resource_id is unchanged
-                send(event, context, SUCCESS, {}, physical_resource_id=current_resource_id)
+                send(event, context, SUCCESS, physical_resource_id=current_resource_id)
                 return
             # Otherwise, bucket name changed. Must set up new notification.
             # Also must delete old notification on old bucket.
@@ -45,15 +45,15 @@ def handler(event, context):
             params['NotificationConfiguration'] = {}
             s3.put_bucket_notification_configuration(**params)
             # report success with new resource id
-            send(event, context, SUCCESS, {}, physical_resource_id=current_resource_id)
+            send(event, context, SUCCESS, physical_resource_id=current_resource_id)
             return
         elif event['RequestType'] == 'Delete':
             # do nothing
-            send(event, context, SUCCESS, {}, physical_resource_id=current_resource_id)
+            send(event, context, SUCCESS, physical_resource_id=current_resource_id)
             return
         else:
             # unknown event type
-            send(event, context, FAILED, {}, physical_resource_id=current_resource_id,
+            send(event, context, FAILED, physical_resource_id=current_resource_id,
                     reason='Unknown event type ' + event['RequestType'])
             return
 
@@ -61,5 +61,5 @@ def handler(event, context):
         print('Exception encountered')
         print(str(e))
         # TODO: send failure with error message
-        send(event, context, FAILED, {}, reason=str(e))
+        send(event, context, FAILED, reason=str(e))
         raise

@@ -14,7 +14,7 @@ SUCCESS = "SUCCESS"
 FAILED = "FAILED"
 
 
-def send(event, context, response_status, reason=None, response_data=None, physical_resource_id=None):
+def send(event, context, response_status, *, reason=None, response_data=None, physical_resource_id=None):
     response_data = response_data or {}
     response_body = json.dumps(
         {
