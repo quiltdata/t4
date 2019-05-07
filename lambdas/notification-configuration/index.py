@@ -11,9 +11,9 @@ def create_mappings(params):
     """ Sets up desired mappings after checking no mappings currently exist. """
     s3 = boto3.client('s3')
     existing = s3.get_bucket_notification_configuration(Bucket=params['Bucket'])
-    if existing['TopicConfigurations'] \
-            or existing['QueueConfigurations'] \
-            or existing['LambdaFunctionConfigurations']:
+    if 'TopicConfigurations' in existing \
+            or 'QueueConfigurations' in existing \
+            or 'LambdaFunctionConfigurations' in existing:
         raise Exception('Unable to attach notifications. Notification already configured '
                 'on bucket {}.'.format(params['Bucket']))
 
