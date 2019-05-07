@@ -21,6 +21,7 @@ def create_mappings(params):
     return
 
 def handler(event, context):
+    """ Top-level handler for custom resource """
     print('Changing bucket notification settings')
     try:
         params = dict(event['ResourceProperties'])
