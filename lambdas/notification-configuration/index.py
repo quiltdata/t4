@@ -17,11 +17,27 @@ def set_mappings(params, *, delete=False):
         return
 
     existing = s3.get_bucket_notification_configuration(Bucket=params['Bucket'])
-    if 'TopicConfigurations' in existing \
-            or 'QueueConfigurations' in existing \
-            or 'LambdaFunctionConfigurations' in existing:
-        raise Exception('Unable to attach notifications. Notification already configured '
-                'on bucket {}.'.format(params['Bucket']))
+    notification_types = ['TopicConfigurations', 'QueueConfigurations', 'LambdaFunctionConfigurations']
+    for ty in notification_types:
+        if ty in existing:
+            # Existing notification present. Check whether it's ours
+            if ty == 'TopicConfigurations':
+                if len(existing['TopicConfigurations']) > 1:
+                    raise Exception('Unable to attach notifications. Multiple Topic notifications '
+                            'present on bucket {}'.format(params['Bucket']))
+                try:
+                    existing_arn = existing['TopicConfigurations'][0]['TopicArn']
+                    new_arn = params['NotificationConfiguration']['TopicConfigurations'][0]['TopicArn']
+                    if existing_arn == new_arn:
+                        # We have verified that the only topic configuration is the one for our queue,
+                        # so we can safely continue checking the other types.
+                        continue
+                except KeyError:
+                    raise Exception('Unable to attach notifications. Existing topic configuration '
+                            'present on bucket {}.'.format(params['Bucket']))
+
+            raise Exception(('Unable to attach notifications. Existing notification type {} present '
+                    'on bucket {}').format(ty, params['Bucket']))
 
     s3.put_bucket_notification_configuration(**params)
 
