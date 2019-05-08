@@ -20,23 +20,24 @@ def set_mappings(params, *, delete=False):
     notification_types = ['TopicConfigurations', 'QueueConfigurations', 'LambdaFunctionConfigurations']
     for ty in notification_types:
         if ty in existing:
-            # Existing notification present. Check whether it's ours
+            # Existing notification present. Check whether it's ours from a previous deploy
             if ty == 'TopicConfigurations':
                 if len(existing['TopicConfigurations']) > 1:
-                    raise Exception('Unable to attach notifications. Multiple Topic notifications '
+                    raise Exception('Unable to attach notification. Multiple Topic notifications '
                             'present on bucket {}'.format(params['Bucket']))
+                # If there's only one topic configuration and its arn matches our topic arn then
+                # we can safely overwrite it
                 try:
                     existing_arn = existing['TopicConfigurations'][0]['TopicArn']
                     new_arn = params['NotificationConfiguration']['TopicConfigurations'][0]['TopicArn']
-                    if existing_arn == new_arn:
-                        # We have verified that the only topic configuration is the one for our queue,
-                        # so we can safely continue checking the other types.
-                        continue
+                    if not existing_arn == new_arn:
+                        raise Exception('Unable to attach notification. Existing '
+                                'notification for a different topic on bucket ' + params['Bucket'])
                 except KeyError:
-                    raise Exception('Unable to attach notifications. Existing topic configuration '
+                    raise Exception('Unable to attach notification. Existing topic configuration '
                             'present on bucket {}.'.format(params['Bucket']))
-
-            raise Exception(('Unable to attach notifications. Existing notification type {} present '
+            else:
+                raise Exception(('Unable to attach notification. Existing notification type {} present '
                     'on bucket {}').format(ty, params['Bucket']))
 
     s3.put_bucket_notification_configuration(**params)
