@@ -37,10 +37,8 @@ const mkTracker = (token) => {
 
 export default ({ locationSelector, userSelector, children }) => {
   const cfg = Config.useConfig()
-  // workaround to avoid changing client configs
-  const token = cfg.mixpanelToken || cfg.mixPanelToken
 
-  const tracker = React.useMemo(() => mkTracker(token), [token])
+  const tracker = React.useMemo(() => mkTracker(cfg.mixpanelToken), [cfg.mixpanelToken])
 
   const selector = React.useCallback(
     R.applySpec({
