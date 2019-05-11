@@ -66,6 +66,10 @@
     "mixPanelToken": {
       "type": "string",
       "description": "Token for MixPanel analytics service"
+    },
+    "analyticsBucket": {
+      "type": "string",
+      "description": "Bucket where object analytics data is stored"
     }
   },
   "required": [
