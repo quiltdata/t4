@@ -201,14 +201,6 @@ def _download_file(callback, src_bucket, src_key, src_version, dest_path, overri
     return pathlib.Path(dest_path).as_uri()
 
 
-NO_OP_COPY_ERROR_MESSAGE = ("An error occurred (InvalidRequest) when calling "
-                            "the CopyObject operation: This copy request is illegal "
-                            "because it is trying to copy an object to itself "
-                            "without changing the object's metadata, storage "
-                            "class, website redirect location or encryption "
-                            "attributes.")
-
-
 def _copy_remote_file(callback, size, src_bucket, src_key, src_version,
                       dest_bucket, dest_key, override_meta, extra_args=None):
     src_params = dict(
@@ -238,19 +230,10 @@ def _copy_remote_file(callback, size, src_bucket, src_key, src_version,
     if extra_args:
         params.update(extra_args)
 
-    try:
-        resp = s3_client.copy_object(**params)
-        callback(size)
-        version_id = resp.get('VersionId')  # Absent in unversioned buckets.
-        return make_s3_url(dest_bucket, dest_key, version_id)
-    except ClientError as e:
-        # suppress error from copying a file to itself
-        if str(e) == NO_OP_COPY_ERROR_MESSAGE:
-            callback(size)
-            # TODO: We need to return a new URL, but the error does not tell us
-            # the file's version ID!
-            return
-        raise
+    resp = s3_client.copy_object(**params)
+    callback(size)
+    version_id = resp.get('VersionId')  # Absent in unversioned buckets.
+    return make_s3_url(dest_bucket, dest_key, version_id)
 
 
 def _copy_file_list_internal(file_list):
