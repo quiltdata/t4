@@ -24,6 +24,7 @@ import { makeStyles, styled } from '@material-ui/styles'
 import ButtonIcon from 'components/ButtonIcon'
 import AsyncResult from 'utils/AsyncResult'
 import * as AWS from 'utils/AWS'
+import * as Config from 'utils/Config'
 import Data from 'utils/Data'
 import * as NamedRoutes from 'utils/NamedRoutes'
 import { linkStyle } from 'utils/StyledLink'
@@ -79,6 +80,36 @@ const VersionInfo = RT.composeComponent(
     const close = React.useCallback(() => setOpened(false), [])
 
     const classes = useVersionInfoStyles()
+
+    const cfg = Config.useConfig()
+    const { analyticsBucket } = cfg
+
+    const sqlEscape = (arg) => arg.replace(/'/g, "''")
+    const query = `SELECT counts FROM s3object WHERE eventname = 'GetObject' AND bucket = '${sqlEscape(bucket)}' AND "key" = '${sqlEscape(path)}'`
+
+    s3.selectObjectContent({
+      Bucket: analyticsBucket,
+      Key: 'ObjectAccessCounts.csv',
+      Expression: query,
+      ExpressionType: 'SQL',
+      InputSerialization: { CSV: { FileHeaderInfo: 'Use' } },
+      OutputSerialization: { JSON: {} },
+    })
+      .promise()
+      .then((result) => {
+        result.Payload.forEach((evt) => {
+          if (evt.Records) {
+            const lines = evt.Records.Payload.toString().split('\n')
+            if (lines.length === 2 && lines[1] === '') {
+              const data = JSON.parse(lines[0])
+              const counts = JSON.parse(data.counts)
+              console.log('Access counts:', counts)
+            } else {
+              console.error('Received unexpected data:', lines)
+            }
+          }
+        })
+      })
 
     return (
       <React.Fragment>
