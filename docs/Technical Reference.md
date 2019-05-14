@@ -66,7 +66,7 @@ Email [contact@quiltdata.io](mailto:contact@quiltdata.io), with the subodomain t
 
 1. An **subdomain that is as yet not mapped in DNS** where users will access Quilt on the web. For example `quilt.mycompany.com`.
 
-1. Available **CloudTrail Trails** in the region that you wish to host your stack
+1. Available **CloudTrail Trails** in the region where you wish to host your stack
 ([learn more](https://docs.aws.amazon.com/awscloudtrail/latest/userguide/WhatIsCloudTrail-Limits.html)).
 
 ### AWS Service Catalog
