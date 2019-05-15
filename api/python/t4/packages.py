@@ -950,7 +950,6 @@ class Package(object):
             A new package that points to the copied objects.
         """
         validate_package_name(name)
-        self._set_commit_message(message)
 
         if registry is None:
             if dest is None:
@@ -988,7 +987,7 @@ class Package(object):
         dest_url = fix_url(dest).rstrip('/') + '/' + quote(name)
         if dest_url.startswith('file://') or dest_url.startswith('s3://'):
             pkg = self._materialize(dest_url)
-            pkg.build(name, registry=registry)
+            pkg.build(name, registry=registry, message=message)
             return pkg
         else:
             raise NotImplementedError
