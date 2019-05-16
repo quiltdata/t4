@@ -54,7 +54,12 @@ def handler(event, context):
     print('Changing bucket notification settings')
     try:
         params = select_params(event['ResourceProperties'])
-        current_resource_id = 'notification_' + params['Bucket']
+        bucket = params['Bucket']
+        current_resource_id = 'notification_' + bucket
+        if bucket == '':
+            print('Bucket is empty string, doing nothing and returning success')
+            send(event, context, SUCCESS, physical_resource_id=current_resource_id)
+            return
         if event['RequestType'] == 'Create':
             set_mappings(params)
             send(event, context, SUCCESS, physical_resource_id=current_resource_id)
