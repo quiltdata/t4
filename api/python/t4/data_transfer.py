@@ -141,7 +141,7 @@ def _upload_file(callback, size, src_path, dest_bucket, dest_key, override_meta)
         with open(src_path, 'rb') as fd:
             for i in itertools.count(1):
                 # TODO(dima): Better progress callback.
-                chunk = fd.read(s3_transfer_config.multipart_threshold)
+                chunk = fd.read(s3_transfer_config.multipart_chunksize)
                 if not chunk:
                     break
                 part = s3_client.upload_part(
@@ -212,28 +212,62 @@ def _copy_remote_file(callback, size, src_bucket, src_key, src_version,
             VersionId=src_version
         )
 
-    params = dict(
-        CopySource=src_params,
-        Bucket=dest_bucket,
-        Key=dest_key
-    )
-    if override_meta is None:
-        params.update(dict(
-            MetadataDirective='COPY'
-        ))
+    if size < s3_transfer_config.multipart_threshold:
+        params = dict(
+            CopySource=src_params,
+            Bucket=dest_bucket,
+            Key=dest_key
+        )
+        if override_meta is None:
+            params.update(dict(
+                MetadataDirective='COPY'
+            ))
+        else:
+            params.update(dict(
+                MetadataDirective='REPLACE',
+                Metadata={HELIUM_METADATA: json.dumps(override_meta)}
+            ))
+
+        if extra_args:
+            params.update(extra_args)
+
+        resp = s3_client.copy_object(**params)
+        callback(size)
+        version_id = resp.get('VersionId')  # Absent in unversioned buckets.
+        return make_s3_url(dest_bucket, dest_key, version_id)
     else:
-        params.update(dict(
-            MetadataDirective='REPLACE',
-            Metadata={HELIUM_METADATA: json.dumps(override_meta)}
-        ))
-
-    if extra_args:
-        params.update(extra_args)
-
-    resp = s3_client.copy_object(**params)
-    callback(size)
-    version_id = resp.get('VersionId')  # Absent in unversioned buckets.
-    return make_s3_url(dest_bucket, dest_key, version_id)
+        if override_meta is None:
+            resp = s3_client.head_object(Bucket=src_bucket, Key=src_key)
+            metadata = resp['Metadata']
+        else:
+            metadata = {HELIUM_METADATA: json.dumps(override_meta)}
+        resp = s3_client.create_multipart_upload(
+            Bucket=dest_bucket,
+            Key=dest_key,
+            Metadata=metadata,
+        )
+        upload_id = resp['UploadId']
+        parts = []
+        for i, start in enumerate(range(0, size, s3_transfer_config.multipart_chunksize), 1):
+            end = min(start + s3_transfer_config.multipart_chunksize, size)
+            part = s3_client.upload_part_copy(
+                CopySource=src_params,
+                CopySourceRange=f'bytes={start}-{end-1}',
+                Bucket=dest_bucket,
+                Key=dest_key,
+                UploadId=upload_id,
+                PartNumber=i
+            )
+            parts.append({"PartNumber": i, "ETag": part["CopyPartResult"]["ETag"]})
+            callback(end - start)
+        resp = s3_client.complete_multipart_upload(
+            Bucket=dest_bucket,
+            Key=dest_key,
+            UploadId=upload_id,
+            MultipartUpload={"Parts": parts}
+        )
+        version_id = resp.get('VersionId')  # Absent in unversioned buckets.
+        return make_s3_url(dest_bucket, dest_key, version_id)
 
 
 def _copy_file_list_internal(file_list):
