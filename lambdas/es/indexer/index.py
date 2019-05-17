@@ -170,13 +170,14 @@ def handler(event, _):
     try:
         # existence of event['Records'] is guaranteed by
         # https://docs.aws.amazon.com/AmazonS3/latest/dev/notification-content-structure.html
-        # see above for details on event structure, s3:TestEvent
         for outer in event['Records']:
             # these should all be SNS messages (indexer consumes from SNS topic, by design)
             raw_message = json.loads(outer['body'])['Message']
             message = json.loads(raw_message)
-            if 'Records' not in message:
-                # consume event (we don't want to index it)
+            # When you configure an event notification on a bucket,
+            # Amazon S3 sends an s3:TestEvent (refer to link above)
+            if message['Event'] == "s3:TestEvent":
+                # consume event without indexing it
                 return
             for record in message['Records']:
                 try:
@@ -194,8 +195,7 @@ def handler(event, _):
                     elif eventname == 'ObjectCreated:Put':
                         event_type = 'Create'
                     else:
-                        # we should only send either Create or Delete events
-                        return
+                        event_type = eventname
                     try:
                         # Retry with back-off for eventual consistency reasons
                         @tenacity.retry(wait=tenacity.wait_exponential(multiplier=2, min=4, max=30))
