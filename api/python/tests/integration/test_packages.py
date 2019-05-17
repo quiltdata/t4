@@ -1,4 +1,5 @@
 """ Integration tests for T4 Packages. """
+from io import BytesIO
 import os
 import pathlib
 from pathlib import Path
@@ -23,7 +24,7 @@ REMOTE_MANIFEST = DATA_DIR / 't4_manifest.jsonl'
 def mock_make_api_call(self, operation_name, kwarg):
     """ Mock boto3's AWS API Calls for testing. """
     if operation_name == 'GetObject':
-        parsed_response = {'Body': {'foo'}}
+        parsed_response = {'Body': BytesIO(b'foo')}
         return parsed_response
     if operation_name == 'ListObjectsV2':
         parsed_response = {'CommonPrefixes': ['foo']}
@@ -36,10 +37,6 @@ def mock_make_api_call(self, operation_name, kwarg):
         }
         return parsed_response
     raise NotImplementedError(operation_name)
-
-
-def no_op_mock(*args, **kwargs):
-    pass
 
 
 class PackageTest(QuiltTestCase):
@@ -850,16 +847,12 @@ class PackageTest(QuiltTestCase):
         with patch('botocore.client.BaseClient._make_api_call', new=mock_make_api_call):
             with open(REMOTE_MANIFEST) as fd:
                 pkg = Package.load(fd)
-            with patch('t4.data_transfer._download_file', return_value='foo.txt'), \
-                    patch('t4.Package.build', new=no_op_mock), \
-                    patch('t4.packages.get_from_config') as config_mock:
-                config_mock.return_value = BASE_DIR
-                pkg.push('Quilt/test_pkg_name', 'pkg', message='test_message')
-                assert pkg._meta['message'] == 'test_message'
+            pkg.push('Quilt/test_pkg_name', 'pkg', message='test_message')
+            assert pkg._meta['message'] == 'test_message'
 
-                # ensure messages are strings
-                with pytest.raises(ValueError):
-                    pkg.push('Quilt/test_pkg_name', 'pkg', message={})
+            # ensure messages are strings
+            with pytest.raises(ValueError):
+                pkg.push('Quilt/test_pkg_name', 'pkg', message={})
 
     def test_overwrite_dir_fails(self):
         with pytest.raises(QuiltException):
