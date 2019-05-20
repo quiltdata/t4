@@ -1,3 +1,4 @@
+import * as dateFns from 'date-fns'
 import * as R from 'ramda'
 
 import { resolveKey } from 'utils/s3paths'
@@ -319,3 +320,104 @@ export const search = async ({ es, query }) => {
     throw e
   }
 }
+
+const sqlEscape = (arg) => arg.replace(/'/g, "''")
+
+const queryStats = async ({
+  s3,
+  analyticsBucket,
+  analyticsKey,
+  query,
+  today,
+  window = 365,
+}) => {
+  const headP = s3
+    .headObject({
+      Bucket: analyticsBucket,
+      Key: analyticsKey,
+    })
+    .promise()
+
+  const { Payload } = await s3
+    .selectObjectContent({
+      Bucket: analyticsBucket,
+      Key: analyticsKey,
+      Expression: query,
+      ExpressionType: 'SQL',
+      InputSerialization: { CSV: { FileHeaderInfo: 'Use' } },
+      OutputSerialization: { JSON: {} },
+    })
+    .promise()
+
+  console.log('payload', Payload)
+
+  // TODO
+  for (const evt of Payload) {
+    if (evt.Records) {
+      const lines = evt.Records.Payload.toString().split('\n')
+      console.log('lines', lines)
+      if (lines.length === 2 && lines[1] === '') {
+        const data = JSON.parse(lines[0])
+        console.log('parsed:', data)
+        // const counts = JSON.parse(data.counts)
+        // console.log('Access counts:', counts)
+      } else {
+        console.error('Received unexpected data:', lines)
+      }
+    }
+  }
+
+  const counts = R.times(() => Math.round(Math.random() * 100), window)
+
+  const { LastModified: end } = await headP
+
+  const offset = dateFns.differenceInDays(today, end)
+  console.log('dates', { today, end, offset })
+  const filledCounts = counts.concat(R.repeat(0, offset))
+  // TODO: ensure direction is right
+  const windowedCounts = filledCounts.slice(-window)
+
+  return {
+    counts: windowedCounts.map((value, i) => ({
+      value,
+      date: dateFns.subDays(today, windowedCounts.length - i),
+    })),
+    total: R.sum(windowedCounts),
+  }
+}
+
+const OBJECT_STATS_KEY = 'ObjectAccessCounts.csv'
+
+export const objectStats = ({ s3, analyticsBucket, bucket, path, today }) =>
+  queryStats({
+    s3,
+    analyticsBucket,
+    analyticsKey: OBJECT_STATS_KEY,
+    query: `
+      SELECT counts FROM s3object
+      WHERE eventname = 'GetObject'
+      AND bucket = '${sqlEscape(bucket)}'
+      AND "key" = '${sqlEscape(path)}'
+    `,
+    today,
+    window: 365,
+  })
+
+// TODO: proper key
+const PKG_STATS_KEY = 'ObjectAccessCounts.csv'
+
+export const pkgStats = ({ s3, analyticsBucket, bucket, name, hash, today }) =>
+  queryStats({
+    s3,
+    analyticsBucket,
+    analyticsKey: PKG_STATS_KEY,
+    // TODO: proper query
+    query: `
+      SELECT counts FROM s3object
+      WHERE eventname = 'GetObject'
+      AND bucket = '${sqlEscape(bucket)}'
+      AND "key" = '${sqlEscape(name)}'
+    `,
+    today,
+    window: 30,
+  })

@@ -1,12 +1,17 @@
 import * as R from 'ramda'
 import * as React from 'react'
 import { Link } from 'react-router-dom'
-import Card from '@material-ui/core/Card'
-import CardContent from '@material-ui/core/CardContent'
-import CircularProgress from '@material-ui/core/CircularProgress'
-import Typography from '@material-ui/core/Typography'
+import {
+  Card,
+  CardContent,
+  CircularProgress,
+  Typography,
+  colors,
+} from '@material-ui/core'
+import { unstable_Box as Box } from '@material-ui/core/Box'
 import { makeStyles, withStyles } from '@material-ui/styles'
 
+import Sparkline from 'components/Sparkline'
 import AsyncResult from 'utils/AsyncResult'
 import * as AWS from 'utils/AWS'
 import * as Config from 'utils/Config'
@@ -58,8 +63,8 @@ export default ({
   const classes = useStyles()
   const s3 = AWS.S3.use()
   const signer = AWS.Signer.use()
-  const { apiGatewayEndpoint: endpoint } = Config.useConfig()
-
+  const { apiGatewayEndpoint: endpoint, analyticsBucket } = Config.useConfig()
+  const today = React.useMemo(() => new Date(), [])
   return (
     <>
       <Typography variant="h4">{name}: revisions</Typography>
@@ -79,9 +84,39 @@ export default ({
                     className={classes.link}
                     to={urls.bucketPackageTree(bucket, name, id)}
                   >
-                    <Field label="Message:">{info.commit_message || '<empty>'}</Field>
-                    <Field label="Date:">{modified.toLocaleString()}</Field>
-                    <Field label="Hash:">{hash}</Field>
+                    <Box
+                      display="flex"
+                      flexWrap="wrap"
+                      justifyContent="space-between"
+                      alignItems="center"
+                    >
+                      <Box>
+                        <Field label="Message:">{info.commit_message || '<empty>'}</Field>
+                        <Field label="Date:">{modified.toLocaleString()}</Field>
+                        <Field label="Hash:">{hash}</Field>
+                      </Box>
+                      <Data
+                        fetch={requests.pkgStats}
+                        params={{ s3, analyticsBucket, bucket, name, hash, today }}
+                      >
+                        {AsyncResult.case({
+                          Ok: ({ counts, total }) => (
+                            <Box minWidth={300} mt={3} ml={10}>
+                              <Sparkline
+                                data={R.pluck('value', counts)}
+                                width={300}
+                                height={20}
+                                color={colors.blueGrey[100]}
+                                color2={colors.blueGrey[800]}
+                                fill={false}
+                              />
+                            </Box>
+                          ),
+                          Pending: () => <CircularProgress />,
+                          _: () => null,
+                        })}
+                      </Data>
+                    </Box>
                   </CardContent>
                 </Card>
               ),
