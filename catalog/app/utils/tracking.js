@@ -6,7 +6,7 @@ import * as Config from 'utils/Config'
 import usePrevious from 'utils/usePrevious'
 
 const loadMixpanel = (token) =>
-  import('mixpanel-browser').then((mp) => {
+  import('mixpanel-browser').then(({ default: mp }) => {
     mp.init(token)
     return mp
   })
