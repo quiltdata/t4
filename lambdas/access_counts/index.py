@@ -42,6 +42,7 @@ CREATE_OBJECT_ACCESS_LOG = textwrap.dedent(f"""\
             json_extract_scalar(requestparameters, '$.key') AS key
         FROM cloudtrail
     )
+    -- Filter out non-S3 events, or S3 events like ListBucket that have no object
     WHERE bucket IS NOT NULL AND key IS NOT NULL
 """)
 
@@ -54,6 +55,7 @@ CREATE_PACKAGE_HASHES = textwrap.dedent(f"""\
     )
     AS
     SELECT
+        -- Parse a file path like `s3://BUCKET/.quilt/named_packages/USER_NAME/PACKAGE_NAME/VERSION`
         split_part("$path", '/', 3) AS bucket,
         split_part("$path", '/', 6) || '/' || split_part("$path", '/', 7) AS name,
         split_part("$path", '/', 8) AS version,
@@ -171,6 +173,8 @@ def delete_temp_dir():
 def handler(event, context):
     delete_temp_dir()
 
+    # Drop old Athen tables from previous runs.
+    # (They're in the DB owned by the stack, so safe to do.)
     for query_id in [run_query(DROP_OBJECT_ACCESS_LOG), run_query(DROP_PACKAGE_HASHES)]:
         wait_for_query(query_id)
 
