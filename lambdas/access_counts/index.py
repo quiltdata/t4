@@ -57,7 +57,7 @@ CREATE_PACKAGE_HASHES = textwrap.dedent(f"""\
     SELECT
         -- Parse a file path like `s3://BUCKET/.quilt/named_packages/USER_NAME/PACKAGE_NAME/VERSION`
         split_part("$path", '/', 3) AS bucket,
-        split_part("$path", '/', 6) || '/' || split_part("$path", '/', 7) AS name,
+        concat(split_part("$path", '/', 6), '/', split_part("$path", '/', 7)) AS name,
         split_part("$path", '/', 8) AS version,
         hash
     FROM named_packages
@@ -93,7 +93,7 @@ PACKAGE_VERSION_ACCESS_COUNTS = textwrap.dedent("""\
         hash,
         CAST(histogram(date) AS JSON) AS counts
     FROM object_access_log JOIN package_hashes
-    ON object_access_log.bucket = package_hashes.bucket AND key = '.quilt/packages/' || hash
+    ON object_access_log.bucket = package_hashes.bucket AND key = concat('.quilt/packages/', hash)
     GROUP BY eventname, package_hashes.bucket, name, version, hash
 """)
 
