@@ -248,7 +248,7 @@ const Analytics = ({ bucket, path }) => {
   return (
     <Section icon="bar_charts" heading="Analytics" defaultExpanded>
       <Data
-        fetch={requests.objectStats}
+        fetch={requests.objectAccessCounts}
         params={{ s3, analyticsBucket, bucket, path, today }}
       >
         {AsyncResult.case({

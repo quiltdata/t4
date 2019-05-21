@@ -153,7 +153,7 @@ export default composeComponent(
         </linearGradient>
       </defs>
       <g>
-        {cursorPos && (
+        {!!cursorPos && !!onCursor && (
           <g>
             <line
               x1={cursorPos.x}
