@@ -144,9 +144,9 @@ def handler(event, context):
         s3.delete_object(Bucket=QUERY_RESULT_BUCKET, Key=key + '.metadata')
 
     outputs = [
-        ('Objects.csv', object_access_counts, ['eventname', 'bucket', 'key']),
-        ('Packages.csv', package_access_counts, ['eventname', 'bucket', 'name']),
-        ('PackageVersions.csv', package_version_access_counts, ['eventname', 'bucket', 'name', 'version', 'hash']),
+        ('Objects.csv', object_access_counts, ['eventname', 'bucket', 'key', 'counts']),
+        ('Packages.csv', package_access_counts, ['eventname', 'bucket', 'name', 'counts']),
+        ('PackageVersions.csv', package_version_access_counts, ['eventname', 'bucket', 'name', 'version', 'hash', 'counts']),
     ]
 
     for name, data, header in outputs:
