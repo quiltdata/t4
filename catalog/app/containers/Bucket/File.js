@@ -260,7 +260,7 @@ const Analytics = ({ bucket, path }) => {
               alignItems="center"
             >
               <Box>
-                <Typography variant="h5">Traffic</Typography>
+                <Typography variant="h5">Downloads</Typography>
                 <Typography variant="h4" component="div">
                   {readableQuantity(cursor === null ? total : counts[cursor].value)}
                 </Typography>
