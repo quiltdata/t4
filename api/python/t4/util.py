@@ -366,3 +366,19 @@ def quiltignore_filter(paths, ignore, url_scheme):
         return files.union(dirs)
     else:
         raise NotImplementedError
+
+def validate_key(key):
+    """
+    Verify that a file path or S3 path does not contain any '.' or '..' separators or files.
+    """
+    if key is None or key == '':
+        raise QuiltException(
+            f"Invalid key {key!r}. A package entry key cannot be empty."
+        )
+
+    if ((key == '.' or '/./' in key or key.startswith('./') or key.endswith('/.')) or
+        (key == '..' or  '/../' in key or key.startswith('../') or key.endswith('/..'))):
+        raise QuiltException(
+            f"Invalid key {key!r}. "
+            f"A package entry key cannot contain a file or folder named '.' or '..' in its path."
+        )

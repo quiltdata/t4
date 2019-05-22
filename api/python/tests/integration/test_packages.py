@@ -1027,6 +1027,64 @@ class PackageTest(QuiltTestCase):
         with pytest.raises(QuiltException):
             pkg.set('foo', os.path.dirname(__file__))
 
+        # we do not allow '.' or '..' files or filename separators
+        with pytest.raises(QuiltException):
+            pkg.set('.', LOCAL_MANIFEST)
+        with pytest.raises(QuiltException):
+            pkg.set('..', LOCAL_MANIFEST)
+        with pytest.raises(QuiltException):
+            pkg.set('./foo', LOCAL_MANIFEST)
+        with pytest.raises(QuiltException):
+            pkg.set('../foo', LOCAL_MANIFEST)
+        with pytest.raises(QuiltException):
+            pkg.set('foo/.', LOCAL_MANIFEST)
+        with pytest.raises(QuiltException):
+            pkg.set('foo/..', LOCAL_MANIFEST)
+        with pytest.raises(QuiltException):
+            pkg.set('foo/./bar', LOCAL_MANIFEST)
+        with pytest.raises(QuiltException):
+            pkg.set('foo/../bar', LOCAL_MANIFEST)
+
+        with pytest.raises(QuiltException):
+            pkg.set('s3://foo/.', LOCAL_MANIFEST)
+        with pytest.raises(QuiltException):
+            pkg.set('s3://foo/..', LOCAL_MANIFEST)
+
+
+    def test_invalid_key_dir(self):
+        # mock getting a list of files to include ones that break criteria
+        with patch('t4.packages.list_object_versions') as list_object_versions_mock:
+            # raises because of a '.' path separator
+            list_object_versions_mock.return_value = ([
+                dict(Key='foo/./bar.txt', VersionId='null', IsLatest=True, Size=10),
+            ], [])
+            with pytest.raises(QuiltException):
+                t4.Package().set_dir('foo', 's3://bucket/foo/')
+
+            # raises because of a '..' path separator
+            list_object_versions_mock.reset_mock()
+            list_object_versions_mock.return_value = ([
+                dict(Key='foo/../bar.txt', VersionId='null', IsLatest=True, Size=10),
+            ], [])
+            with pytest.raises(QuiltException):
+                t4.Package().set_dir('foo', 's3://bucket/foo/')
+
+            # raises because of a '.' object name
+            list_object_versions_mock.reset_mock()
+            list_object_versions_mock.return_value = ([
+                dict(Key='foo/.', VersionId='null', IsLatest=True, Size=10),
+            ], [])
+            with pytest.raises(QuiltException):
+                t4.Package().set_dir('foo', 's3://bucket/foo/')
+
+            # raises because of a '..' object name
+            list_object_versions_mock.reset_mock()
+            list_object_versions_mock.return_value = ([
+                dict(Key='foo/..', VersionId='null', IsLatest=True, Size=10),
+            ], [])
+            with pytest.raises(QuiltException):
+                t4.Package().set_dir('foo', 's3://bucket/foo/')
+
 
     def test_default_package_get_local(self):
         foodir = pathlib.Path("foo_dir")
