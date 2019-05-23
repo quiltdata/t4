@@ -1027,6 +1027,29 @@ class PackageTest(QuiltTestCase):
         with pytest.raises(QuiltException):
             pkg.set('foo', os.path.dirname(__file__))
 
+        # we do not allow '.' or '..' files or filename separators
+        with pytest.raises(QuiltException):
+            pkg.set('.', LOCAL_MANIFEST)
+        with pytest.raises(QuiltException):
+            pkg.set('..', LOCAL_MANIFEST)
+        with pytest.raises(QuiltException):
+            pkg.set('./foo', LOCAL_MANIFEST)
+        with pytest.raises(QuiltException):
+            pkg.set('../foo', LOCAL_MANIFEST)
+        with pytest.raises(QuiltException):
+            pkg.set('foo/.', LOCAL_MANIFEST)
+        with pytest.raises(QuiltException):
+            pkg.set('foo/..', LOCAL_MANIFEST)
+        with pytest.raises(QuiltException):
+            pkg.set('foo/./bar', LOCAL_MANIFEST)
+        with pytest.raises(QuiltException):
+            pkg.set('foo/../bar', LOCAL_MANIFEST)
+
+        with pytest.raises(QuiltException):
+            pkg.set('s3://foo/.', LOCAL_MANIFEST)
+        with pytest.raises(QuiltException):
+            pkg.set('s3://foo/..', LOCAL_MANIFEST)
+
 
     def test_default_package_get_local(self):
         foodir = pathlib.Path("foo_dir")
