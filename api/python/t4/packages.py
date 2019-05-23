@@ -852,7 +852,6 @@ class Package(object):
 
         if isinstance(entry, (string_types, getattr(os, 'PathLike', str))):
             url = fix_url(str(entry))
-            validate_key(url)
             size, orig_meta, version = get_size_and_meta(url)
 
             # Deterimine if a new version needs to be appended.
@@ -863,7 +862,6 @@ class Package(object):
                     url = make_s3_url(bucket, key, version)
             entry = PackageEntry([url], size, None, orig_meta)
         elif isinstance(entry, PackageEntry):
-            validate_key(_to_singleton(entry.physical_keys))
             entry = entry._clone()
         else:
             raise TypeError(
