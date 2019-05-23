@@ -1,6 +1,5 @@
 > **[Important Note: this project now lives in the `quiltdata/quilt` repository.](https://github.com/quiltdata/quilt)**
 
-
 <!--
 	Are you editing this file?
 	* /README.md and docs/README.md should be identical copies (symlinks don't work)
