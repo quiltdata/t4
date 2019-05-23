@@ -851,9 +851,8 @@ class Package(object):
             entry = logical_key_abs_path.relative_to(current_working_dir)
 
         if isinstance(entry, (string_types, getattr(os, 'PathLike', str))):
-            entry_str = str(entry)
-            validate_key(entry_str)
-            url = fix_url(entry_str)
+            url = fix_url(str(entry))
+            validate_key(url)
             size, orig_meta, version = get_size_and_meta(url)
 
             # Deterimine if a new version needs to be appended.
