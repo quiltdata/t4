@@ -1,3 +1,6 @@
+> **[Important Note: this project now lives in the `quiltdata/quilt` repository.](https://github.com/quiltdata/quilt)**
+
+
 <!--
 	Are you editing this file?
 	* /README.md and docs/README.md should be identical copies (symlinks don't work)
@@ -7,7 +10,6 @@
 [![chat on_slack](https://img.shields.io/badge/chat-on_slack-blue.svg?style=flat-square)](https://slack.quiltdata.com/)
 [![codecov](https://codecov.io/gh/quiltdata/t4/branch/master/graph/badge.svg)](https://codecov.io/gh/quiltdata/t4)
 [![pypi](https://img.shields.io/pypi/v/t4.svg?style=flat-square)](https://pypi.org/project/t4/)
-
 
 ## Overview
 [Rethinking S3: Announcing T4, a team data hub](https://blog.quiltdata.com/rethinking-s3-announcing-t4-a-team-data-hub-8e63ce7ec988).
