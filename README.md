@@ -1,4 +1,4 @@
-> **[Important Note: this project now lives in the `quiltdata/quilt` repository.](https://github.com/quiltdata/quilt)**
+# T4 features and code have moved to [quilt](https://github.com/quiltdata/quilt)
 
 <!--
 	Are you editing this file?
