@@ -168,8 +168,18 @@ def handler(event, _):
     dispatch post_to_es
     """
     try:
-        for msg in event['Records']:
-            for record in json.loads(json.loads(msg['body'])['Message'])['Records']:
+        # existence of event['Records'] is guaranteed by
+        # https://docs.aws.amazon.com/AmazonS3/latest/dev/notification-content-structure.html
+        for outer in event['Records']:
+            # these should all be SNS messages (indexer consumes from SNS topic, by design)
+            raw_message = json.loads(outer['body'])['Message']
+            message = json.loads(raw_message)
+            # When you configure an event notification on a bucket,
+            # Amazon S3 sends an s3:TestEvent (refer to link above)
+            if message['Event'] == "s3:TestEvent":
+                # consume event without indexing it
+                return
+            for record in message['Records']:
                 try:
                     eventname = record['eventName']
                     bucket = unquote(record['s3']['bucket']['name'])
@@ -255,7 +265,7 @@ def handler(event, _):
                     print(e)
                     import traceback
                     traceback.print_tb(e.__traceback__)
-                    print(msg)
+                    print(outer)
     except Exception as e:
         # do our best to process each result
         print("Exception encountered for whole Event")
